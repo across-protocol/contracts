@@ -147,6 +147,14 @@ yarn tron-deploy-counterfactual-clone <factory> <implementation> <merkleRoot> <s
 
 ## Periphery Scripts
 
+### TronMulticallHandler
+
+Tron-specific `MulticallHandler` variant that drains leftover TRC20 tokens with a balance-delta transfer check, required for Tron USDT because its `transfer` returns `false` even on success. No constructor args.
+
+```bash
+yarn tron-deploy-tron-multicall-handler [--testnet]
+```
+
 ### SpokePoolPeriphery
 
 Deploys `SpokePoolPeriphery`. The constructor internally deploys a `SwapProxy`, which is accessible via `spokePoolPeriphery.swapProxy()` — a separate `SwapProxy` deployment is not required when deploying the periphery.
@@ -203,6 +211,7 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                           |
 | `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                           |
 | `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction              |
+| `periphery/tron-deploy-tron-multicall-handler.ts`                     | Deploys TronMulticallHandler (no args)                                 |
 | `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
 | `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone SwapProxy                                         |
 

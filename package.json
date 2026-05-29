@@ -63,6 +63,7 @@
     "tron-deploy-counterfactual-clone": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-clone.ts",
     "tron-deploy-clone": "ts-node script/tron/counterfactual/tron-deploy-clone.ts",
     "tron-execute-clone-deposit": "ts-node script/tron/counterfactual/tron-execute-clone-deposit.ts",
+    "tron-deploy-tron-multicall-handler": "ts-node script/tron/periphery/tron-deploy-tron-multicall-handler.ts",
     "tron-deploy-spoke-pool-periphery": "ts-node script/tron/periphery/tron-deploy-spoke-pool-periphery.ts",
     "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
