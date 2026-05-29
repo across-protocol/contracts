@@ -195,7 +195,7 @@ contract TransferProxyTest is Test {
         mockERC20.approve(address(transferProxy), amount);
 
         vm.expectEmit(address(transferProxy));
-        emit TransferProxy.Transfer(address(mockERC20), recipient, amount);
+        emit TransferProxy.Proxy(depositor, 0, address(mockERC20), amount);
 
         transferProxy.deposit(
             depositor.toBytes32(),
