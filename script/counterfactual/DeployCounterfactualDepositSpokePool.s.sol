@@ -37,7 +37,7 @@ contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
         console.log("Wrapped native token:", wrappedNativeToken);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(_deploySalt(), initCode);
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositSpokePool deployed to:", deployed);

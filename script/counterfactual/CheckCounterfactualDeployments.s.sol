@@ -9,6 +9,8 @@ import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counte
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
+import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { RoutePolicyImmutableRoot } from "../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
 
 // Verifies counterfactual contract deployments across all configured chains.
 //
@@ -40,10 +42,23 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
     uint256 totalFail;
     uint256 totalReview;
 
+    /// @dev Genesis deployer EOA, used to predict the RoutePolicy proxy address. Optional — if
+    ///      MNEMONIC is unset the RoutePolicy proxy check is downgraded to a review note.
+    address deployer;
+    bool _haveDeployer;
+
     function run() external {
         _loadConfig(CONFIG_PATH, false);
         multisigsJson = vm.readFile(MULTISIGS_PATH);
         deployedAddressesJson = vm.readFile("broadcast/deployed-addresses.json");
+
+        // Derive the genesis deployer EOA if MNEMONIC is available (needed to predict the
+        // RoutePolicy proxy address — its CREATE2 inputs include the deployer EOA as genesis owner).
+        string memory mnemonic = vm.envOr("MNEMONIC", string(""));
+        if (bytes(mnemonic).length > 0) {
+            deployer = vm.addr(vm.deriveKey(mnemonic, 0));
+            _haveDeployer = true;
+        }
 
         uint256[] memory chains = config.getChainIds();
         for (uint256 i = 0; i < chains.length; i++) {
@@ -71,21 +86,19 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         console.log("## %s (Chain %s)", name, chainId);
 
         _checkBytecodeContracts(chainId);
+        _checkAdminWithdrawManager(chainId);
+        _checkWithdrawImplementation(chainId);
+        _checkRoutePolicy(chainId);
         _checkSpokePoolContract(chainId);
         _checkCctpContract(chainId);
         _checkOftContract(chainId);
-        _checkAdminWithdrawManager(chainId);
     }
 
     // --- Bytecode-only contracts ---
 
     function _checkBytecodeContracts(uint256 chainId) internal {
-        string[3] memory names = [
-            string("CounterfactualDeposit"),
-            "CounterfactualDepositFactory",
-            "WithdrawImplementation"
-        ];
-        for (uint256 i = 0; i < 3; i++) {
+        string[2] memory names = [string("CounterfactualDeposit"), "CounterfactualDepositFactory"];
+        for (uint256 i = 0; i < 2; i++) {
             address addr = _getDeployed(names[i], chainId);
             if (addr == address(0)) {
                 _fail(names[i], "address", "not in deployed-addresses.json");
@@ -95,6 +108,83 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
                 _pass(names[i], "bytecode", "deployed");
             }
         }
+    }
+
+    // --- WithdrawImplementation (bytecode + immutable admin == AdminWithdrawManager) ---
+
+    function _checkWithdrawImplementation(uint256 chainId) internal {
+        address addr = _getDeployed("WithdrawImplementation", chainId);
+        if (addr == address(0)) {
+            _fail("WithdrawImplementation", "address", "not in deployed-addresses.json");
+            return;
+        }
+        if (addr.code.length == 0) {
+            _fail("WithdrawImplementation", "bytecode", "no code on-chain");
+            return;
+        }
+        _pass("WithdrawImplementation", "bytecode", "deployed");
+
+        // Auto-check: immutable admin must equal the deployed AdminWithdrawManager. This is the
+        // wiring that lets the manager drive withdrawals; a mismatch silently breaks that path.
+        address expectedManager = _getDeployed("AdminWithdrawManager", chainId);
+        if (expectedManager == address(0)) {
+            _review(
+                "WithdrawImplementation",
+                "admin",
+                WithdrawImplementation(addr).admin(),
+                address(0),
+                "no manager in deployed-addresses.json"
+            );
+        } else {
+            _assertAddrEq("WithdrawImplementation", "admin", WithdrawImplementation(addr).admin(), expectedManager);
+        }
+    }
+
+    // --- RoutePolicy proxy (predicted from deployer; code + genesis-root sanity + owner review) ---
+
+    function _checkRoutePolicy(uint256 chainId) internal {
+        // The proxy is cloneArgs.routePolicyAddress — the address that must be uniform across chains
+        // for clone consistency. Its address is determined by the genesis init data (deployer EOA
+        // owner + genesis root), so we predict it from the deployer rather than trusting a
+        // deployed-addresses.json entry (the proxy is a generic ERC1967Proxy).
+        if (!_haveDeployer) {
+            _review("RoutePolicy", "proxy", address(0), address(0), "MNEMONIC unset - cannot predict proxy address");
+            return;
+        }
+        address proxy = _predictRoutePolicyProxy(deployer);
+        if (proxy.code.length == 0) {
+            _fail("RoutePolicy", "proxy", "no code at predicted proxy address (not deployed?)");
+            return;
+        }
+        _pass("RoutePolicy", "proxy", vm.toString(proxy));
+
+        // Sanity: the proxy responds to activeRoot. Value itself is reviewed, not asserted — the
+        // real root is chain-specific and rotated post-genesis.
+        try RoutePolicyImmutableRoot(proxy).activeRoot(address(0)) returns (bytes32 root) {
+            if (root == bytes32(0)) {
+                _review(
+                    "RoutePolicy",
+                    "activeRoot",
+                    address(0),
+                    address(0),
+                    "still genesis bytes32(0) - policy NOT yet activated"
+                );
+            } else {
+                _info("RoutePolicy", string.concat("activeRoot = ", vm.toString(root), " (activated)"));
+            }
+        } catch {
+            _fail("RoutePolicy", "activeRoot", "call reverted - proxy may not point at a valid impl");
+        }
+
+        // Manual review: owner should be the chain-local multisig after the ownership transfer.
+        address configOwner = config.get("ownerAndDirectWithdrawer").toAddress();
+        _review(
+            "RoutePolicy",
+            "owner",
+            RoutePolicyImmutableRoot(proxy).owner(),
+            configOwner,
+            "config.toml (post-transfer)"
+        );
     }
 
     // --- CounterfactualDepositSpokePool ---

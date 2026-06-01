@@ -12,6 +12,7 @@ import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counte
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
+import { RoutePolicyImmutableRoot } from "../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
 
 // Deploys counterfactual contracts via CREATE2 using the deterministic deployment proxy
 // (0x4e59b44847b379578588920cA78FbF26c0B4956C). Each individual deploy script is invoked via ffi
@@ -21,21 +22,36 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // across chains (no constructor args, or same constructor args) get the same address everywhere.
 // Contracts with chain-specific constructor args get chain-specific addresses.
 //
+// === Cross-chain clone-address consistency (the headline goal) ===
+// A clone's address depends on: the CREATE2 deployer (the factory), the clone init code (which
+// embeds the dispatcher address), and the salt — plus its `argsHash`. `argsHash` covers
+// `(outputToken, destinationChainId, recipient, userAddress, routePolicyAddress)`. So for a given
+// clone identity to resolve to the same address on every chain, three deployed contracts MUST be at
+// the same address everywhere:
+//   1. CounterfactualDepositFactory  (CREATE2 deployer of clones; no constructor args)
+//   2. CounterfactualDeposit         (dispatcher embedded in clone bytecode; no constructor args)
+//   3. RoutePolicy proxy             (cloneArgs.routePolicyAddress; uniform via genesis-root + EOA-owner deploy)
+// The other contracts below are NOT part of clone identity and need not be uniform — but we keep
+// them uniform where cheaply possible for operational simplicity. See README.md for the full
+// explanation.
+//
 // Same address across all chains:
-//   - CounterfactualDeposit (no constructor args)
-//   - CounterfactualDepositFactory (no constructor args)
-//   - WithdrawImplementation (no constructor args)
-//   - AdminWithdrawManager (same constructor args on all chains)
+//   - CounterfactualDeposit          (no constructor args)
+//   - CounterfactualDepositFactory   (no constructor args)
+//   - AdminWithdrawManager           (constructor args (deployer, deployer, signer) are all global)
+//   - WithdrawImplementation         (immutable admin = AdminWithdrawManager, which is global)
+//   - RoutePolicy impl + proxy       (genesis root bytes32(0) + deployer-EOA owner; both global)
 //
 // Chain-specific addresses (different constructor args per chain):
 //   - CounterfactualDepositSpokePool
 //   - CounterfactualDepositCCTP
 //   - CounterfactualDepositOFT
+//   - RoutePolicy implementations deployed AFTER genesis (carry chain-specific roots; the proxy
+//     address they sit behind stays uniform)
 //
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
 //   - No nonce burning for skipped contracts
-//   - No ordering dependency — deploy in any order
 //   - Idempotent — already-deployed contracts are auto-skipped
 //
 // Configuration:
@@ -45,10 +61,15 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from
 //     config.toml. Role transfers (owner/directWithdrawer) are done directly by this script after
 //     all ffi deployments complete, with a safety check that directWithdrawer transferred
-//     successfully before transferring ownership
+//     successfully before transferring ownership.
+//   - RoutePolicy proxy is deployed with the deployer EOA as owner; ownership is transferred to the
+//     chain-local multisig (ownerAndDirectWithdrawer) as a post-deploy step when transferRoles=true.
+//     Activating the policy (setting a real root) is a SEPARATE governance action — see
+//     RotateRoutePolicyRoot — performed by the multisig after deployment.
 //
 // Always deployed:
-//   - CounterfactualDeposit, CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
+//   - CounterfactualDeposit, CounterfactualDepositFactory, AdminWithdrawManager,
+//     WithdrawImplementation, RoutePolicy (impl + proxy)
 //
 // Optionally deployed (controlled by bool arguments):
 //   - CounterfactualDepositSpokePool (deploySpokePool)
@@ -146,18 +167,21 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("Predicted addresses:");
 
         // Predict and log addresses for all contracts being deployed.
-        address predictedDeposit = _predictCreate2(bytes32(0), type(CounterfactualDeposit).creationCode);
-        address predictedFactory = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
-        address predictedWithdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
-        address predictedAdmin = _predictCreate2(
-            bytes32(0),
-            abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
-        );
+        address predictedDeposit = _predictCreate2(_deploySalt(), type(CounterfactualDeposit).creationCode);
+        address predictedFactory = _predictCreate2(_deploySalt(), type(CounterfactualDepositFactory).creationCode);
+        // AdminWithdrawManager is global; WithdrawImplementation's immutable admin is the manager,
+        // so its address is derived from the manager's predicted address.
+        address predictedAdmin = _predictAdminWithdrawManager(deployer, signer);
+        address predictedWithdraw = _predictWithdrawImpl(predictedAdmin);
+        address predictedRoutePolicyImpl = _predictRoutePolicyImpl();
+        address predictedRoutePolicyProxy = _predictRoutePolicyProxy(deployer);
 
         _logPredicted("CounterfactualDeposit", predictedDeposit);
         _logPredicted("CounterfactualDepositFactory", predictedFactory);
-        _logPredicted("WithdrawImplementation", predictedWithdraw);
         _logPredicted("AdminWithdrawManager", predictedAdmin);
+        _logPredicted("WithdrawImplementation", predictedWithdraw);
+        _logPredicted("RoutePolicy (impl)", predictedRoutePolicyImpl);
+        _logPredicted("RoutePolicy (proxy)", predictedRoutePolicyProxy);
 
         address predictedSpokePool;
         if (deploySpokePool) {
@@ -233,6 +257,25 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployWithdrawImplementation.s.sol"),
                 "DeployWithdrawImplementation",
+                "",
+                profile
+            );
+        }
+
+        // --- RoutePolicy (impl carrying genesis root bytes32(0) + ERC1967Proxy owned by deployer) ---
+        // The proxy address is cloneArgs.routePolicyAddress, so it MUST be uniform across chains.
+        // It is here only because the genesis root is bytes32(0) and the owner is the deployer EOA
+        // (both global). The real root is applied later via RotateRoutePolicyRoot (a no-address-change
+        // upgrade). DeployRoutePolicy deploys both impl and proxy in a single broadcast.
+        if (predictedRoutePolicyProxy.code.length > 0) {
+            console.log("RoutePolicy (proxy): ALREADY DEPLOYED");
+        } else {
+            console.log("Deploying RoutePolicy (impl + proxy)...");
+            _runForgeScript(
+                rpcUrl,
+                broadcastFlag,
+                string.concat(SCRIPT_DIR, "DeployRoutePolicy.s.sol"),
+                "DeployRoutePolicy",
                 "",
                 profile
             );
@@ -352,11 +395,27 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 }
                 vm.stopBroadcast();
             }
+
+            // --- Transfer RoutePolicy proxy ownership to the chain-local multisig ---
+            // This is a state change only; it does not affect the proxy's address. After this,
+            // only the multisig can rotate the root (activate the policy) via RotateRoutePolicyRoot.
+            RoutePolicyImmutableRoot routePolicy = RoutePolicyImmutableRoot(predictedRoutePolicyProxy);
+            if (ownerAndDirectWithdrawer != routePolicy.owner()) {
+                console.log("Transferring RoutePolicy proxy ownership to:", ownerAndDirectWithdrawer);
+                vm.startBroadcast(deployerPrivateKey);
+                routePolicy.transferOwnership(ownerAndDirectWithdrawer);
+                vm.stopBroadcast();
+            } else {
+                console.log("RoutePolicy proxy ownership already set.");
+            }
         }
 
         console.log("============================================");
         console.log("All deployments complete!");
         console.log("============================================");
+        console.log("REMINDER: the RoutePolicy is deployed with the genesis root (bytes32(0)) and is");
+        console.log("          NOT yet usable by non-user executors. The chain-local multisig must");
+        console.log("          rotate it to the real root via RotateRoutePolicyRoot to activate it.");
     }
 
     function _logPredicted(string memory name, address predicted) internal view {

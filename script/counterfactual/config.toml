@@ -1,3 +1,10 @@
+# Optional global CREATE2 salt for ALL counterfactual contracts. Must stay identical across every
+# chain (it feeds the factory, dispatcher, and RoutePolicy proxy addresses, which feed clone
+# addresses). Because it is a single top-level key in this one shared file, it is uniform by
+# construction. Omit it (or leave it as the zero value) to keep the historical addresses; change it
+# only for a deliberate, fresh "v2" redeploy at new addresses on every chain.
+deploySalt = "0x0000000000000000000000000000000000000000000000000000000000000000"
+
 [1]
 endpoint_url = "${NODE_URL_1}"
 [1.address]
