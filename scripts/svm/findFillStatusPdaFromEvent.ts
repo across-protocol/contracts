@@ -26,7 +26,7 @@ import {
   getSpokePoolProgram,
   evmAddressToPublicKey,
   intToU8Array32,
-} from "../../src/svm/web3-v1";
+} from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = anchor.AnchorProvider.env();

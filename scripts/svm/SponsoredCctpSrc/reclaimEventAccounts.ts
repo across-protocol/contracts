@@ -16,7 +16,7 @@ import {
   intToU8Array32,
   isSolanaDevnet,
   readProgramEvents,
-} from "../../../src/svm/web3-v1";
+} from "@across-protocol/sdk/svm";
 import { ComputeBudgetProgram, PublicKey, Transaction } from "@solana/web3.js";
 
 // Set up the provider and programs

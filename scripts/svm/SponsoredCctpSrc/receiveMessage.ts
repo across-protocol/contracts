@@ -15,7 +15,7 @@ import {
   isSolanaDevnet,
   processEventFromTx,
   publicKeyToEvmAddress,
-} from "../../../src/svm/web3-v1";
+} from "@across-protocol/sdk/svm";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import { requireEnv } from "../utils/helpers";

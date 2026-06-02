@@ -18,7 +18,7 @@ import {
   sendTransactionWithExistingLookupTable,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "../../../src/svm/web3-v1";
+} from "@across-protocol/sdk/svm";
 import { requireEnv } from "../utils/helpers";
 
 // Set up the provider and programs
