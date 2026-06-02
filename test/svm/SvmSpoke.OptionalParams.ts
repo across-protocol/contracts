@@ -10,7 +10,7 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { MerkleTree } from "../../utils/MerkleTree";
 import {
   calculateRelayHashUint8Array,
   getFillRelayDelegatePda,
