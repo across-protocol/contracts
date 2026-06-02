@@ -69,11 +69,11 @@ endpoint_url = "${NODE_URL_130}"
 
 [unichain.address]
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
-sponsoredCCTPSrcPeriphery = "0x232e7f2F8967b3F2e37649eBE1d89C79E4770e20"
+sponsoredCCTPSrcPeriphery = "0xce9Cf0C8f8121b573f6212344F53BC7746846e71"
 usdc = "0x078D782b760474a361dDA0AF3839290b0EF57AD6"
 cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
-sponsoredCCTPDstPeriphery = "0x4dE364Ddd1918Cb3217b2C8359634Cd6F5c8aA8c"
-multicallHandler = "0xE52e5D68b9844D0e5A7Dcd6B82C713ADCF5488dc"
+sponsoredCCTPDstPeriphery = "0x98eed6C603a5C5674B8783748E4353506307D098"
+multicallHandler = "0x7A64A0B796bDb99409803EE427186942c7b70C39"
 
 [unichain.uint]
 cctpDomainId = 10

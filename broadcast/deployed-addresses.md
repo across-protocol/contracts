@@ -116,7 +116,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://uniscan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPSrcPeriphery      | [0x232e7f2F8967b3F2e37649eBE1d89C79E4770e20](https://uniscan.xyz/address/0x232e7f2F8967b3F2e37649eBE1d89C79E4770e20) |
+| SponsoredCCTPSrcPeriphery      | [0xce9Cf0C8f8121b573f6212344F53BC7746846e71](https://uniscan.xyz/address/0xce9Cf0C8f8121b573f6212344F53BC7746846e71) |
 | SponsoredOFTSrcPeriphery       | [0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A](https://uniscan.xyz/address/0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://uniscan.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 

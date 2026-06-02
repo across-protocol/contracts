@@ -448,9 +448,9 @@
           "transaction_hash": "0x52e78f777ab18c2b0211ee814a5b9c317b348f88c7af157b0e12df7535e4f8bd"
         },
         "SponsoredCCTPSrcPeriphery": {
-          "address": "0x232e7f2F8967b3F2e37649eBE1d89C79E4770e20",
-          "block_number": 48991025,
-          "transaction_hash": "0x96c9931eca4866ec6f9bc50435b1c96da72df6bd560dd465b2532b3af8fbd79f"
+          "address": "0xce9Cf0C8f8121b573f6212344F53BC7746846e71",
+          "block_number": 40277181,
+          "transaction_hash": "0x5d0fcdfb942ef6868c78269cc0a5aa92879a9609f58aed0d10ec26290c9276d8"
         },
         "SponsoredOFTSrcPeriphery": {
           "address": "0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A",
