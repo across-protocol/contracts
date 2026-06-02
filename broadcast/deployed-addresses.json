@@ -1470,6 +1470,16 @@
         }
       }
     },
+    "43114": {
+      "chain_name": "Chain 43114",
+      "contracts": {
+        "Safe": {
+          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
+          "block_number": 86958004,
+          "transaction_hash": "0x200b98e4ec8b7f99c0a41ea4732e8a11a5c2d4f6915c9d7d43f0bc083de8204a"
+        }
+      }
+    },
     "57073": {
       "chain_name": "Ink",
       "contracts": {

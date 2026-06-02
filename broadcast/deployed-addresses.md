@@ -515,6 +515,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler | [0x02D2B95F631E0CF6c203E77f827381B0885F7822](https://block-explorer.testnet.lens.dev/address/0x02D2B95F631E0CF6c203E77f827381B0885F7822) |
 | SpokePool        | [0x6A0a7f39530923911832Dd60667CE5da5449967B](https://block-explorer.testnet.lens.dev/address/0x6A0a7f39530923911832Dd60667CE5da5449967B) |
 
+## Chain 43114 (43114)
+
+| Contract Name | Address                                    |
+| ------------- | ------------------------------------------ |
+| Safe          | 0xd396CcB6770EAB84045c9Bce2939c478639E2A7F |
+
 ## Polygon Amoy (80002)
 
 | Contract Name       | Address                                                                                                                       |
