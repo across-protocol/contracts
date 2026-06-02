@@ -1,7 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# This script verifies the bytecode of a contract onchain matches the bytecode in the artifact
+# This legacy script verifies the bytecode of a contract onchain matches the bytecode in the local Foundry artifact.
+# Clean and rebuild first to avoid comparing against stale out/ artifacts:
+#   forge clean && forge cache clean && yarn build-evm-foundry
+#
+# If you already have an existing Foundry dry-run receipt and the deployment script is deterministic,
+# prefer ./scripts/verifyBytecodeDryRun.sh instead.
+#
 # It takes the following arguments:
 # 1. The transaction hash of the contract deployment
 # 2. The RPC URL to use
@@ -158,6 +164,13 @@ elif [[ -n "${ENCODED_ARGS:-}" ]]; then
     fi
     exit 1
 else
+    # No constructor args — try metadata-only comparison.
+    STRIPPED_ONCHAIN=$(strip_cbor_metadata "$ONCHAIN")
+    STRIPPED_LOCAL=$(strip_cbor_metadata "$LOCAL_INIT")
+    if [[ "$STRIPPED_ONCHAIN" == "$STRIPPED_LOCAL" ]]; then
+        echo "✅ Code match (metadata hash differs)"
+        exit 0
+    fi
     echo "❌ Code mismatch"
     echo "Onchain bytes : ${#ONCHAIN}"
     echo "Local bytes   : ${#LOCAL_INIT}"
