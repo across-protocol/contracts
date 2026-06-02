@@ -45,7 +45,7 @@ import {
   readEventsUntilFound,
   sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
 } from "../../src/svm/web3-v1";
-import { FillDataValues, RelayData } from "../../src/types/svm";
+import { FillDataValues, RelayData, FillAccounts } from "../../src/types/svm";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, testAcrossPlusMessage } from "./utils";
 const {
@@ -80,21 +80,6 @@ describe("svm_spoke.fill", () => {
 
   const relayAmount = 500000;
   let relayData: RelayData; // reused relay data for all tests.
-
-  type FillAccounts = {
-    state: PublicKey;
-    delegate: PublicKey;
-    signer: PublicKey;
-    instructionParams: PublicKey;
-    mint: PublicKey;
-    relayerTokenAccount: PublicKey;
-    recipientTokenAccount: PublicKey;
-    fillStatus: PublicKey;
-    tokenProgram: PublicKey;
-    associatedTokenProgram: PublicKey;
-    systemProgram: PublicKey;
-    program: PublicKey;
-  };
 
   let accounts: FillAccounts; // Store accounts to simplify contract interactions.
 

@@ -5,7 +5,7 @@ use crate::event::{FillType, FilledRelay, RelayExecutionEventInfo, RequestedSlow
 use crate::{
     common::RelayData,
     constants::DISCRIMINATOR_SIZE,
-    constraints::is_relay_hash_valid,
+    constraints::{has_valid_params_presence, is_relay_hash_valid},
     error::{CommonError, SvmError},
     state::{ExecuteSlowRelayLeafParams, FillStatus, FillStatusAccount, RequestSlowFillParams, RootBundle, State},
     utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
@@ -35,6 +35,10 @@ pub struct RequestSlowFill<'info> {
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", _relay_hash.as_ref()],
         bump,
+        // Validate optional parameters before they are unwrapped in other constraints by Anchor.
+        constraint = has_valid_params_presence(
+            &[relay_data.is_some()],
+            instruction_params.is_some()) @ SvmError::InconsistentOptionalParameters,
         constraint = is_relay_hash_valid(
             &_relay_hash,
             &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
@@ -101,7 +105,7 @@ fn unwrap_request_slow_fill_params(
         _ => account
             .as_ref()
             .map(|account| RequestSlowFillParams { relay_data: account.relay_data.clone() })
-            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+            .unwrap(), // We do not expect this to panic here as optional parameters are validated in context.
     }
 }
 
@@ -133,7 +137,12 @@ impl SlowFill {
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(_relay_hash: [u8; 32], slow_fill_leaf: Option<SlowFill>, _root_bundle_id: Option<u32>)]
+#[instruction(
+    _relay_hash: [u8; 32],
+    slow_fill_leaf: Option<SlowFill>,
+    _root_bundle_id: Option<u32>,
+    proof: Option<Vec<[u8; 32]>>
+)]
 pub struct ExecuteSlowRelayLeaf<'info> {
     pub signer: Signer<'info>,
 
@@ -141,7 +150,15 @@ pub struct ExecuteSlowRelayLeaf<'info> {
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
     pub instruction_params: Option<Account<'info, ExecuteSlowRelayLeafParams>>,
 
-    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
+        bump,
+        // This check is not directly relevant to the state account, but the validation must be performed before any of
+        // the optional params are unwrapped by Anchor.
+        constraint = has_valid_params_presence(
+            &[slow_fill_leaf.is_some(), _root_bundle_id.is_some(), proof.is_some()],
+            instruction_params.is_some()) @ SvmError::InconsistentOptionalParameters
+    )]
     pub state: Account<'info, State>,
 
     #[account(
@@ -310,6 +327,6 @@ fn unwrap_execute_slow_relay_leaf_params(
                 root_bundle_id: account.root_bundle_id,
                 proof: account.proof.clone(),
             })
-            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+            .unwrap(), // We do not expect this to panic here as optional parameters are validated in context.
     }
 }
