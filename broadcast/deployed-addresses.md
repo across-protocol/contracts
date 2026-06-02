@@ -381,6 +381,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | UniswapV3_SwapAndBridge        | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://arbiscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
+## Avalanche (43114)
+
+| Contract Name | Address                                                                                                               |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+
 ## Ink (57073)
 
 | Contract Name                  | Address                                                                                                                          |
@@ -514,12 +520,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | MulticallHandler | [0x02D2B95F631E0CF6c203E77f827381B0885F7822](https://block-explorer.testnet.lens.dev/address/0x02D2B95F631E0CF6c203E77f827381B0885F7822) |
 | SpokePool        | [0x6A0a7f39530923911832Dd60667CE5da5449967B](https://block-explorer.testnet.lens.dev/address/0x6A0a7f39530923911832Dd60667CE5da5449967B) |
-
-## Chain 43114 (43114)
-
-| Contract Name | Address                                    |
-| ------------- | ------------------------------------------ |
-| Safe          | 0xd396CcB6770EAB84045c9Bce2939c478639E2A7F |
 
 ## Polygon Amoy (80002)
 

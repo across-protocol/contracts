@@ -1471,7 +1471,7 @@
       }
     },
     "43114": {
-      "chain_name": "Chain 43114",
+      "chain_name": "Avalanche",
       "contracts": {
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
