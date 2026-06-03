@@ -129,15 +129,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 1inch_SwapAndBridge              | [0xaBa0F11D55C5dDC52cD0Cb2cd052B621d45159d5](https://polygonscan.com/address/0xaBa0F11D55C5dDC52cD0Cb2cd052B621d45159d5) |
 | 1inch_UniversalSwapAndBridge     | [0xF9735e425A36d22636EF4cb75c7a6c63378290CA](https://polygonscan.com/address/0xF9735e425A36d22636EF4cb75c7a6c63378290CA) |
-| AdminWithdrawManager             | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://polygonscan.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit            | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://polygonscan.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP        | [0xfDeA19d7eB37612f6235Cd2ca2E902BC3DF7E18c](https://polygonscan.com/address/0xfDeA19d7eB37612f6235Cd2ca2E902BC3DF7E18c) |
-| CounterfactualDepositFactory     | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://polygonscan.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositOFT         | [0x9382Ee0cc9508ec6e0daA7D7C37fb95D4baB4607](https://polygonscan.com/address/0x9382Ee0cc9508ec6e0daA7D7C37fb95D4baB4607) |
-| CounterfactualDepositSpokePool   | [0xE7db272828e4BbC5Fb89D64231bE8A160C8af072](https://polygonscan.com/address/0xE7db272828e4BbC5Fb89D64231bE8A160C8af072) |
+| AdminWithdrawManager             | [0x2287723967B5c7e4Cd00C760890c3E902758bEb1](https://polygonscan.com/address/0x2287723967B5c7e4Cd00C760890c3E902758bEb1) |
+| CounterfactualDeposit            | [0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA](https://polygonscan.com/address/0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA) |
+| CounterfactualDepositCCTP        | [0x15A300A6A5548F973B76a9f6EF09344c861f6CB3](https://polygonscan.com/address/0x15A300A6A5548F973B76a9f6EF09344c861f6CB3) |
+| CounterfactualDepositFactory     | [0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2](https://polygonscan.com/address/0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2) |
+| CounterfactualDepositOFT         | [0xcA905b50fD11E6AC61CA90daE58e250E8a6302Ff](https://polygonscan.com/address/0xcA905b50fD11E6AC61CA90daE58e250E8a6302Ff) |
+| CounterfactualDepositSpokePool   | [0xb236ec803e42e01a83BeBb162e569cF28De697DF](https://polygonscan.com/address/0xb236ec803e42e01a83BeBb162e569cF28De697DF) |
 | MintableERC1155                  | [0xA15a90E7936A2F8B70E181E955760860D133e56B](https://polygonscan.com/address/0xA15a90E7936A2F8B70E181E955760860D133e56B) |
 | MulticallHandler                 | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://polygonscan.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | PolygonTokenBridger              | [0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57](https://polygonscan.com/address/0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57) |
+| RoutePolicy                      | [0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3](https://polygonscan.com/address/0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3) |
+| RoutePolicyImmutableRoot         | [0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23](https://polygonscan.com/address/0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23) |
 | SpokePool                        | [0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096](https://polygonscan.com/address/0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096) |
 | SpokePoolPeriphery               | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://polygonscan.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier                | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://polygonscan.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
@@ -146,7 +148,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                    | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://polygonscan.com/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge          | [0x9220Fa27ae680E4e8D9733932128FA73362E0393](https://polygonscan.com/address/0x9220Fa27ae680E4e8D9733932128FA73362E0393) |
 | UniswapV3_UniversalSwapAndBridge | [0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2](https://polygonscan.com/address/0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2) |
-| WithdrawImplementation           | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://polygonscan.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation           | [0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d](https://polygonscan.com/address/0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d) |
 
 ## Monad (143)
 
