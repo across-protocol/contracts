@@ -60,6 +60,18 @@ interface JsonOutput {
   };
 }
 
+/** Proxies report the generic `ERC1967Proxy` contractName, so map the deploying script to the
+ *  logical contract. SpokePool scripts are handled by `isSpokePoolDeployScript`. Unmatched proxies
+ *  are NOT assumed to be SpokePool (that previously let the RoutePolicy proxy clobber it). */
+const PROXY_LOGICAL_NAME_BY_SCRIPT: Record<string, string> = {
+  "DeployRoutePolicy.s.sol": "RoutePolicy",
+};
+
+/** SpokePool deploy scripts (`Deploy*SpokePool.s.sol`) put the SpokePool behind an `ERC1967Proxy`. */
+function isSpokePoolDeployScript(scriptName: string): boolean {
+  return /SpokePool\.s\.sol$/.test(scriptName);
+}
+
 /**
  * Get the git repository root directory.
  */
@@ -219,7 +231,21 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           let contractName = (tx.contractName as string | null) ?? "";
 
           if (contractName === "ERC1967Proxy") {
-            contractName = "SpokePool";
+            // Resolve the proxy by its deploying script; never default an unknown proxy to SpokePool.
+            const mappedProxyName = PROXY_LOGICAL_NAME_BY_SCRIPT[broadcastFile.scriptName];
+            if (mappedProxyName) {
+              contractName = mappedProxyName;
+            } else if (isSpokePoolDeployScript(broadcastFile.scriptName)) {
+              contractName = "SpokePool";
+            } else {
+              const derivedName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "");
+              console.warn(
+                `extract-addresses: unclassified ERC1967Proxy deployed by "${broadcastFile.scriptName}" — ` +
+                  `labeling it "${derivedName}" rather than assuming SpokePool. ` +
+                  `Add it to PROXY_LOGICAL_NAME_BY_SCRIPT (or the SpokePool rule) to classify it explicitly.`
+              );
+              contractName = derivedName || "UnknownProxy";
+            }
           } else if (contractName.endsWith("_SpokePool")) {
             // skip
             continue;
