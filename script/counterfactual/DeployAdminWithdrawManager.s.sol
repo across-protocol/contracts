@@ -10,7 +10,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // global). Role transfers are handled by DeployAllCounterfactual after deployment.
 //
 // How to run:
-// 1. Edit script/counterfactual/config.toml with signer per chain
+// 1. Edit script/counterfactual/config.toml with the global top-level signer
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script script/counterfactual/DeployAdminWithdrawManager.s.sol:DeployAdminWithdrawManager \
 //      --rpc-url $NODE_URL -vvvv
@@ -21,9 +21,7 @@ contract DeployAdminWithdrawManager is CounterfactualConfig {
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        _loadCounterfactualConfig();
-        address signer = config.get("signer").toAddress();
-        require(signer != address(0), "config: signer is zero");
+        address signer = _signer();
 
         // Deploy with deployer as owner/directWithdrawer and config signer.
         // All three are global (not chain-specific), so CREATE2 address is the same everywhere.

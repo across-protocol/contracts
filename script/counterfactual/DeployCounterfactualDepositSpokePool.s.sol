@@ -14,7 +14,7 @@ import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counte
 contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
     /// @notice Zero-arg entry point: resolves all params from config.toml and on-chain constants.
     function run() external {
-        address signer = _loadSigner();
+        address signer = _signer();
         this.run(_resolveSpokePool(), signer, _resolveWrappedNativeToken());
     }
 

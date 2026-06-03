@@ -16,10 +16,10 @@ contract DeployCounterfactualDepositCCTP is CounterfactualConfig {
         require(hasCctpDomain(block.chainid), "Chain does not support CCTP");
         address srcPeriphery = _resolveCctpPeriphery();
         require(srcPeriphery != address(0), "CCTP periphery not deployed on this chain");
-        this.run(srcPeriphery, getCircleDomainId(block.chainid));
+        this.run(srcPeriphery, getCircleDomainId(block.chainid), _signer());
     }
 
-    function run(address srcPeriphery, uint32 sourceDomain) external {
+    function run(address srcPeriphery, uint32 sourceDomain, address signer) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
@@ -27,7 +27,7 @@ contract DeployCounterfactualDepositCCTP is CounterfactualConfig {
 
         bytes memory initCode = abi.encodePacked(
             type(CounterfactualDepositCCTP).creationCode,
-            abi.encode(srcPeriphery, sourceDomain)
+            abi.encode(srcPeriphery, sourceDomain, signer)
         );
         console.log("Deploying CounterfactualDepositCCTP via CREATE2...");
         console.log("Chain ID:", block.chainid);

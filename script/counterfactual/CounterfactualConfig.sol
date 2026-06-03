@@ -23,11 +23,6 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     ///      historical `bytes32(0)` addresses.
     bytes32 internal constant DEFAULT_DEPLOY_SALT = bytes32(0);
 
-    struct OperationalConfig {
-        address signer;
-        address ownerAndDirectWithdrawer;
-    }
-
     function _loadCounterfactualConfig() internal {
         _loadConfig(CONFIG_PATH, false);
     }
@@ -51,21 +46,20 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return DEFAULT_DEPLOY_SALT;
     }
 
-    function _loadOperationalConfig() internal returns (OperationalConfig memory cfg) {
-        _loadCounterfactualConfig();
-        cfg.signer = config.get("signer").toAddress();
-        require(cfg.signer != address(0), "config: signer is zero");
-        cfg.ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
-        require(
-            cfg.ownerAndDirectWithdrawer != address(0),
-            "config: ownerAndDirectWithdrawer is zero or missing for chain"
-        );
-    }
-
-    /// @dev Reads the signer address from config.toml for the current chain.
-    function _loadSigner() internal returns (address) {
-        _loadCounterfactualConfig();
-        address s = config.get("signer").toAddress();
+    /// @dev EIP-712 signer for execution fees / signed withdrawals, read from the REQUIRED top-level
+    ///      `signer` key in config.toml (a single global value, not per-chain).
+    ///
+    ///      Kept global for the same reason as `deploySalt`: the signer feeds the
+    ///      `AdminWithdrawManager` init code `(deployer, deployer, signer)`, so a single shared key
+    ///      makes that contract's CREATE2 address uniform across chains by construction — there is no
+    ///      per-chain signer to accidentally diverge. (It also feeds the chain-specific bridge impls,
+    ///      which vary by chain regardless.)
+    function _signer() internal view returns (address) {
+        // Read the raw file (not via StdConfig, which only models per-chain tables and ignores
+        // top-level scalar keys). No env resolution needed — the signer contains no ${VAR} patterns.
+        string memory content = vm.readFile(CONFIG_PATH);
+        require(vm.keyExistsToml(content, "$.signer"), "config: top-level signer is missing");
+        address s = vm.parseTomlAddress(content, "$.signer");
         require(s != address(0), "config: signer is zero");
         return s;
     }

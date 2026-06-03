@@ -106,7 +106,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         bool broadcast,
         string calldata profile
     ) external {
-        address signer = _loadSigner();
+        address signer = _signer();
 
         // Resolve chain-specific params from constants and deployed addresses.
         address spokePool;
@@ -186,7 +186,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         address predictedSpokePool;
         if (deploySpokePool) {
             predictedSpokePool = _predictCreate2(
-                bytes32(0),
+                _deploySalt(),
                 abi.encodePacked(
                     type(CounterfactualDepositSpokePool).creationCode,
                     abi.encode(spokePool, signer, wrappedNativeToken)
@@ -198,8 +198,11 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         address predictedCctp;
         if (deployCctp) {
             predictedCctp = _predictCreate2(
-                bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositCCTP).creationCode, abi.encode(cctpPeriphery, cctpDomain))
+                _deploySalt(),
+                abi.encodePacked(
+                    type(CounterfactualDepositCCTP).creationCode,
+                    abi.encode(cctpPeriphery, cctpDomain, signer)
+                )
             );
             _logPredicted("CounterfactualDepositCCTP", predictedCctp);
         }
@@ -207,8 +210,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         address predictedOft;
         if (deployOft) {
             predictedOft = _predictCreate2(
-                bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid))
+                _deploySalt(),
+                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid, signer))
             );
             _logPredicted("CounterfactualDepositOFT", predictedOft);
         }
@@ -317,10 +320,12 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositCCTP.s.sol"),
                     "DeployCounterfactualDepositCCTP",
                     string.concat(
-                        ' --sig "run(address,uint32)" ',
+                        ' --sig "run(address,uint32,address)" ',
                         vm.toString(cctpPeriphery),
                         " ",
-                        vm.toString(uint256(cctpDomain))
+                        vm.toString(uint256(cctpDomain)),
+                        " ",
+                        vm.toString(signer)
                     ),
                     profile
                 );
@@ -339,10 +344,12 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositOFT.s.sol"),
                     "DeployCounterfactualDepositOFT",
                     string.concat(
-                        ' --sig "run(address,uint32)" ',
+                        ' --sig "run(address,uint32,address)" ',
                         vm.toString(oftPeriphery),
                         " ",
-                        vm.toString(uint256(oftEid))
+                        vm.toString(uint256(oftEid)),
+                        " ",
+                        vm.toString(signer)
                     ),
                     profile
                 );
@@ -366,6 +373,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         // --- Transfer AdminWithdrawManager roles ---
         if (transferRoles) {
+            _loadCounterfactualConfig();
             address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
             require(ownerAndDirectWithdrawer != address(0), "config: ownerAndDirectWithdrawer is zero or missing");
             AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
@@ -432,8 +440,11 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string memory sigArgs,
         string memory profile
     ) internal {
-        // Append `|| true` so that non-fatal failures (e.g. etherscan verification
-        // timing out) don't cause ffi to revert and halt subsequent deployments.
+        // Append `|| true` so the child's full output is always returned to us (a non-zero exit
+        // would otherwise make vm.ffi revert opaquely). We then inspect that output below: a real
+        // deployment failure (e.g. a constructor revert) is caught explicitly, while a non-fatal
+        // failure that still completed the broadcast (e.g. an etherscan verification timeout, which
+        // happens *after* forge prints the success marker) is tolerated and does not halt the run.
         string memory cmd = string.concat(
             "FOUNDRY_PROFILE=",
             profile,
@@ -454,8 +465,34 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         args[0] = "bash";
         args[1] = "-c";
         args[2] = cmd;
-        vm.ffi(args);
+        bytes memory out = vm.ffi(args);
+
+        // The `|| true` swallows the child's exit code, so detect a failed deploy from its output:
+        // forge prints "Script ran successfully." only when the script (and its broadcast) succeeded.
+        // Its absence means the child reverted (e.g. a constructor/CREATE2 failure) — surface it
+        // instead of silently continuing and reporting "All deployments complete!".
+        require(
+            _contains(out, bytes("Script ran successfully.")),
+            string.concat("Child deploy failed (no success marker): ", contractName)
+        );
 
         console.log("Done.");
+    }
+
+    /// @dev Minimal substring search: true if `needle` occurs anywhere in `haystack`.
+    function _contains(bytes memory haystack, bytes memory needle) private pure returns (bool) {
+        if (needle.length == 0) return true;
+        if (haystack.length < needle.length) return false;
+        for (uint256 i = 0; i <= haystack.length - needle.length; i++) {
+            bool matched = true;
+            for (uint256 j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    matched = false;
+                    break;
+                }
+            }
+            if (matched) return true;
+        }
+        return false;
     }
 }

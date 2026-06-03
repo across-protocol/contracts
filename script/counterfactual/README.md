@@ -13,18 +13,23 @@ and [`RoutePolicies.md`](../../contracts/periphery/counterfactual/RoutePolicies.
 ## The headline goal: same clone address on every chain
 
 A user's counterfactual deposit address (the "clone") must resolve to the **same address on every
-source chain** for a given clone identity. A clone's CREATE2 address is a function of:
+source chain** for a given clone identity. A CREATE2 address is
+`keccak256(0xff ++ deployer ++ salt ++ keccak256(initCode))`, so a clone's address is a function of:
 
-- the **CREATE2 deployer** — the `CounterfactualDepositFactory`,
-- the **clone init code** — an EIP-1167 proxy whose bytecode embeds the **`CounterfactualDeposit`
-  dispatcher** address,
-- the **salt**, and
-- the clone's **`argsHash`** = `keccak256(abi.encode(outputToken, destinationChainId, recipient,
+- the **CREATE2 deployer** — the `CounterfactualDepositFactory`;
+- the **salt** — a standalone CREATE2 parameter (not part of init code; see `deploySalt` below); and
+- the **init code** — the clone's creation bytecode, which is an EIP-1167 minimal proxy embedding
+  the **`CounterfactualDeposit` dispatcher** address, with the 32-byte **`argsHash`** appended as
+  immutable args. `argsHash = keccak256(abi.encode(outputToken, destinationChainId, recipient,
 userAddress, routePolicyAddress))`.
 
-The first four are controlled by the SDK/user and are naturally identical for a given identity. The
-part that the _deployment_ must get right is that the three contract addresses feeding the clone
-address are themselves uniform across chains:
+(The salt is _not_ embedded in the proxy bytecode — only the dispatcher address is; the `argsHash`
+is appended init-code bytes. Both still feed the address via the formula above.)
+
+These are all controlled by the SDK/user and are naturally identical for a given identity, _except_
+that the contract addresses feeding the formula — the factory (deployer), the dispatcher (embedded
+in init code), and the RoutePolicy proxy (inside `argsHash`) — must themselves be uniform across
+chains:
 
 | Must be uniform across chains        | Why                                      | How it stays uniform                                 |
 | ------------------------------------ | ---------------------------------------- | ---------------------------------------------------- |
@@ -104,7 +109,7 @@ before the manager exists. `CounterfactualConfig._predictAdminWithdrawManager` /
 - `DeployCounterfactualDepositSpokePool.s.sol` / `...CCTP.s.sol` / `...OFT.s.sol` — bridge impls (chain-specific).
 - `DeployAllCounterfactual.s.sol` — orchestrates the full per-chain deployment via `ffi`.
 - `CheckCounterfactualDeployments.s.sol` — cross-chain verification.
-- `config.toml` — per-chain `signer` and `ownerAndDirectWithdrawer` (the chain-local multisig).
+- `config.toml` — global `deploySalt` and `signer`, plus per-chain `ownerAndDirectWithdrawer` (the chain-local multisig).
 
 ## Deployment process
 
@@ -117,11 +122,13 @@ Top-level (global, applies to all chains):
 - `deploySalt` — optional CREATE2 salt for every counterfactual contract. Defaults to `bytes32(0)`
   if omitted. Keep it identical across chains (it's a single top-level key, so it is by
   construction). Change it only for a deliberate fresh redeploy at new addresses everywhere.
+- `signer` — required EIP-712 signer for execution fees / signed withdrawals. A single top-level key
+  (not per-chain), so it is uniform across chains by construction — it feeds the
+  `AdminWithdrawManager` init code, keeping that contract's CREATE2 address identical everywhere (it
+  also feeds the chain-specific bridge impls, which vary by chain regardless).
 
 Per chain (`[chainId.address]`):
 
-- `signer` — the EIP-712 signer for execution fees / signed withdrawals (kept global in practice so
-  `AdminWithdrawManager` and the bridge impls stay uniform where they can).
 - `ownerAndDirectWithdrawer` — the chain-local multisig. Receives `AdminWithdrawManager`
   owner/directWithdrawer roles **and** `RoutePolicy` proxy ownership in the post-deploy transfer step.
 
@@ -191,8 +198,9 @@ When adding a new source chain or changing the deploy flow, preserve all of thes
 - [ ] `RoutePolicy` proxy genesis owner is the **deployer EOA**, never the chain-local multisig.
 - [ ] Real roots and the multisig owner are applied **after** genesis (rotation + ownership transfer),
       which are address-neutral.
-- [ ] `config.toml` `signer` is the same across chains (keeps `AdminWithdrawManager` and, transitively,
-      `WithdrawImplementation` uniform). If a chain needs a different signer, accept that those two
-      contracts diverge there — it does **not** affect clone addresses.
+- [ ] `signer` is a single global top-level key in `config.toml` (like `deploySalt`), so it is uniform
+      across chains by construction — keeping `AdminWithdrawManager` and, transitively,
+      `WithdrawImplementation` uniform. Do not move it into the per-chain `[chainId.address]` sections,
+      which would let it diverge.
 - [ ] Run `CheckCounterfactualDeployments` after deploying a new chain and confirm the factory,
       dispatcher, and RoutePolicy proxy addresses match the other chains.

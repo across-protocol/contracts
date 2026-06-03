@@ -37,8 +37,9 @@
           "block_number": 14704381
         },
         "SpokePool": {
-          "address": "0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5",
-          "block_number": 17117454
+          "address": "0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3",
+          "block_number": 25239154,
+          "transaction_hash": "0x7073996969d5aa312f534735493c5ad478f314b1d61f73e478de70e62a9cfe8b"
         },
         "HubPool": {
           "address": "0xc186fA914353c44b2E33eBE05f21846F1048bEda",
@@ -166,34 +167,34 @@
           "transaction_hash": "0x6eef2f065ce5c4b33bcd9f30af573fec9e3618dd3f50f7d801ce5354c0409d52"
         },
         "AdminWithdrawManager": {
-          "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",
-          "block_number": 24745943,
-          "transaction_hash": "0xe888f791b6bc51d26de53337197d08f42ac42a766f28d4c4091352dabcde26c5"
+          "address": "0x2287723967B5c7e4Cd00C760890c3E902758bEb1",
+          "block_number": 25239003,
+          "transaction_hash": "0xb8986da5947c8cbcbbec55ebe20a383293a73f20c9bf8555546e3c5157144250"
         },
         "CounterfactualDeposit": {
-          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
-          "block_number": 24745908,
-          "transaction_hash": "0x06ecc5b872078b00f3a154476701f66c98cbeff9211b00d6c46a9079c118ed93"
+          "address": "0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA",
+          "block_number": 25238986,
+          "transaction_hash": "0x8785757632308c211566d409aedfd605e413b38d7db7639249a8907c9a58fae0"
         },
         "CounterfactualDepositCCTP": {
-          "address": "0x50597a4426C6321C054CBF880f6bB4a8169082c8",
-          "block_number": 24745931,
-          "transaction_hash": "0x3f8837a2ab6419bff4f27d2637194aaa9999faaac32032cfedd61b6365a56b39"
+          "address": "0x0e7A875E3E1721daB417b85168E059F79A0797a5",
+          "block_number": 25239209,
+          "transaction_hash": "0x8ff5b4ae2801c888ae80b0038497f1ce8d74c4b7f5169be636ff4e0e58d068df"
         },
         "CounterfactualDepositFactory": {
-          "address": "0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772",
-          "block_number": 24745914,
-          "transaction_hash": "0x90866037a6183e5b43736c210ed96807a3174aef48c2adf60befc776ed7ccddd"
+          "address": "0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2",
+          "block_number": 25238990,
+          "transaction_hash": "0x58e7996fb936bcefbf52866ab4740b1b8612e08cdbe67de481032f9c3f79a118"
         },
         "CounterfactualDepositOFT": {
-          "address": "0x4094ceE40173E85841E9E7FC19B7fDc97301aF12",
-          "block_number": 24745938,
-          "transaction_hash": "0x0eaa6dc21c468958bd1dc36ca9d121ea4945fa031d514a0ad07adb1dd8ffdc95"
+          "address": "0x46D377f8Fb07cC626Ae4864C40a771389a71c0d9",
+          "block_number": 25239215,
+          "transaction_hash": "0x3f98088eaaec0fa95d1aa7b63e6f2bdf157b6593eefa50fb75413ab49da956f2"
         },
         "CounterfactualDepositSpokePool": {
-          "address": "0xc7b1662674b2226ce7943162f655897a40699ff9",
-          "block_number": 24745925,
-          "transaction_hash": "0xb46c184af2359773c6714d0bcfa4969690f0b703fa134ad313e291bd15961289"
+          "address": "0x6FBe95476a146d0b3Cf12b9e1E4649Da659Aad8E",
+          "block_number": 25239158,
+          "transaction_hash": "0x6beea761b3989c5a467392cfde95d7653e7eae1d2aa84e446a9ba26e078d0796"
         },
         "DonationBox": {
           "address": "0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168",
@@ -246,9 +247,9 @@
           "transaction_hash": "0x0969ace8106c5b2b49d16acf429033531961704e89369e236eb903c2f371b206"
         },
         "WithdrawImplementation": {
-          "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
-          "block_number": 24745919,
-          "transaction_hash": "0x3e2a3a02c79313e8e0a4f035b6755d510d1bfc71a840123215c9bc321d8bc795"
+          "address": "0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d",
+          "block_number": 25238995,
+          "transaction_hash": "0x6614c13c33103343ba88f29f725417671fa03a94f10a6230959b3198c009f4d2"
         }
       }
     },

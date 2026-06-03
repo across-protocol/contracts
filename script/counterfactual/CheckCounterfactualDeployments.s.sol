@@ -238,7 +238,7 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         }
 
         // Manual review: signer (no second source)
-        address configSigner = config.get("signer").toAddress();
+        address configSigner = _signer();
         _review("CounterfactualDepositSpokePool", "signer", sp.signer(), configSigner, "config.toml");
     }
 
@@ -315,7 +315,7 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         AdminWithdrawManager awm = AdminWithdrawManager(addr);
 
         address configOwner = config.get("ownerAndDirectWithdrawer").toAddress();
-        address configSigner = config.get("signer").toAddress();
+        address configSigner = _signer();
         address multisig = _getMultisig(chainId);
 
         // Manual review: owner — cross-reference config.toml AND multisigs.json

@@ -28,7 +28,7 @@ contract DeployWithdrawImplementation is CounterfactualConfig {
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        address signer = _loadSigner();
+        address signer = _signer();
         address adminWithdrawManager = _predictAdminWithdrawManager(deployer, signer);
 
         console.log("Deploying WithdrawImplementation via CREATE2...");
