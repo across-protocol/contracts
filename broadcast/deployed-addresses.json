@@ -1567,29 +1567,39 @@
           "transaction_hash": "0xc8c67f3f71bd3cbfda66c7e3af189520b619d9502d4a580ed9b0d066c0123e07"
         },
         "AdminWithdrawManager": {
-          "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",
-          "block_number": 29966638,
-          "transaction_hash": "0x479257487985eb054da7b33d62c72616217f7d140182e28828cf49b5cd95a602"
+          "address": "0x2287723967B5c7e4Cd00C760890c3E902758bEb1",
+          "block_number": 30896684,
+          "transaction_hash": "0x1600691ba400c528f5493d59c0873d821de50f34a6469692dba949a6e5cf8ec0"
         },
         "CounterfactualDeposit": {
-          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
-          "block_number": 29966600,
-          "transaction_hash": "0x59cf3c1decf6c2f3138b1820c04f8148531f533b64f06a47fbd72423acbccec2"
+          "address": "0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA",
+          "block_number": 30896639,
+          "transaction_hash": "0xbcbc259ae8bafbdaf39d69b61f289f0a625794567d4d433b0db94fd9d66e7549"
         },
         "CounterfactualDepositCCTP": {
-          "address": "0x962a42534F78D74b37f6e54cc2a32D721F7F2C61",
-          "block_number": 29966633,
-          "transaction_hash": "0x780a30ac9ff9e5795183fefdeca259b87dc86e867cb0409d5f4e302388422d43"
+          "address": "0xCA2443e515ead6Bf34eF77734885c0D32Db8536C",
+          "block_number": 30896675,
+          "transaction_hash": "0x6185f865d94ec274723835734a5c15d207fd238a44c25d9787ec8f0f6d1e0b84"
         },
         "CounterfactualDepositFactory": {
-          "address": "0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772",
-          "block_number": 29966609,
-          "transaction_hash": "0x365811b74f9d977445a692b6d443fb4d9bcca35e4af68590d9e6ff39edfe2ab3"
+          "address": "0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2",
+          "block_number": 30896646,
+          "transaction_hash": "0x01c4064b7ed0ebfa578d06d08ab12b47fec18726641f6f581f972375cd70e89e"
         },
         "CounterfactualDepositSpokePool": {
-          "address": "0xE120B2448682De0AD26236290F815528Be80d286",
-          "block_number": 29966623,
-          "transaction_hash": "0x94122db56e1f18ba93b4765902953f0a344de07c5a7ce148224646def30bc3cd"
+          "address": "0x7b51eDB855505317F4e32f351aA14e13a3f5e0ee",
+          "block_number": 30896669,
+          "transaction_hash": "0xc245f5bb886deb286b40fc508b35e31f2d90c05662024e523e9ffd9e386ca5eb"
+        },
+        "RoutePolicyImmutableRoot": {
+          "address": "0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23",
+          "block_number": 30896657,
+          "transaction_hash": "0xdb1bb8161e0fe2bf4d9f991ea68180a9ef6a4191a7c8c87001b0276ca7f48e11"
+        },
+        "RoutePolicy": {
+          "address": "0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3",
+          "block_number": 30896658,
+          "transaction_hash": "0xcb1cc65d5c87afb267ed4d3867be055cac8ac3d67a19d7ec331c8711bbebe5e6"
         },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xe3E88958d181AB43bf3902f8F00AF57cf5D44E8c",
@@ -1597,9 +1607,9 @@
           "transaction_hash": "0xccae9feadf0f925498fe85cde9f78f8c475abc14cc2a17e6eef66fb93a4903d0"
         },
         "WithdrawImplementation": {
-          "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
-          "block_number": 29966616,
-          "transaction_hash": "0x3f264fe18c19c945f33cbb1c9157ddd8273a1a6911db6f7e440c93cc3c7e9a7e"
+          "address": "0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d",
+          "block_number": 30896652,
+          "transaction_hash": "0x6fafa4bf0baf4ed93787f931220eb76f55112406fe8400e8a80a5da567637e30"
         }
       }
     },

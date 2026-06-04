@@ -405,17 +405,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                  |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://lineascan.build/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://lineascan.build/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP      | [0x962a42534F78D74b37f6e54cc2a32D721F7F2C61](https://lineascan.build/address/0x962a42534F78D74b37f6e54cc2a32D721F7F2C61) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://lineascan.build/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool | [0xE120B2448682De0AD26236290F815528Be80d286](https://lineascan.build/address/0xE120B2448682De0AD26236290F815528Be80d286) |
+| AdminWithdrawManager           | [0x2287723967B5c7e4Cd00C760890c3E902758bEb1](https://lineascan.build/address/0x2287723967B5c7e4Cd00C760890c3E902758bEb1) |
+| CounterfactualDeposit          | [0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA](https://lineascan.build/address/0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA) |
+| CounterfactualDepositCCTP      | [0xCA2443e515ead6Bf34eF77734885c0D32Db8536C](https://lineascan.build/address/0xCA2443e515ead6Bf34eF77734885c0D32Db8536C) |
+| CounterfactualDepositFactory   | [0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2](https://lineascan.build/address/0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2) |
+| CounterfactualDepositSpokePool | [0x7b51eDB855505317F4e32f351aA14e13a3f5e0ee](https://lineascan.build/address/0x7b51eDB855505317F4e32f351aA14e13a3f5e0ee) |
 | MulticallHandler               | [0xdF1C940487574EEfa79989a79a4936A0F979cDa2](https://lineascan.build/address/0xdF1C940487574EEfa79989a79a4936A0F979cDa2) |
+| RoutePolicy                    | [0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3](https://lineascan.build/address/0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3) |
+| RoutePolicyImmutableRoot       | [0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23](https://lineascan.build/address/0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23) |
 | SpokePool                      | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://lineascan.build/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://lineascan.build/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery      | [0xe3E88958d181AB43bf3902f8F00AF57cf5D44E8c](https://lineascan.build/address/0xe3E88958d181AB43bf3902f8F00AF57cf5D44E8c) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://lineascan.build/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation         | [0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d](https://lineascan.build/address/0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d) |
 
 ## Blast (81457)
 
