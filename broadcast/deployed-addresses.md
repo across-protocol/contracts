@@ -394,6 +394,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositOFT       | [0xd341ccFFAA85890B98F551E222EA6B2535D7Dd5F](https://explorer.inkonchain.com/address/0xd341ccFFAA85890B98F551E222EA6B2535D7Dd5F) |
 | CounterfactualDepositSpokePool | [0x1a7D0A3cC0143145bF755C18d86301D713a9BF85](https://explorer.inkonchain.com/address/0x1a7D0A3cC0143145bF755C18d86301D713a9BF85) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.inkonchain.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| RoutePolicy                    | [0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3](https://explorer.inkonchain.com/address/0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3) |
+| RoutePolicyImmutableRoot       | [0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23](https://explorer.inkonchain.com/address/0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23) |
 | SpokePool                      | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://explorer.inkonchain.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.inkonchain.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |

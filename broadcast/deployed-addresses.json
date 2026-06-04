@@ -1529,6 +1529,16 @@
           "block_number": 47043076,
           "transaction_hash": "0xb42a8114f002220ae9685baa5d1b6622d6c6d049a48b2e2f40e334f157218f1f"
         },
+        "RoutePolicyImmutableRoot": {
+          "address": "0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23",
+          "block_number": 47042960,
+          "transaction_hash": "0x339150f5d95ffaed83765226bdcd687e752f8d28b984354ab395936de48fd0ee"
+        },
+        "RoutePolicy": {
+          "address": "0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3",
+          "block_number": 47042960,
+          "transaction_hash": "0x220d3f98a1dc63c1d633acd8fac0dae284747a1063fb3612927236cf793e2fd9"
+        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0x1771c470d41b8c39338450C380bf2C080a2CEdD8",
           "block_number": 37528460,
