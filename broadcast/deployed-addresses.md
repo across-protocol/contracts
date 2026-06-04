@@ -154,12 +154,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                  |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://monadvision.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://monadvision.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP      | [0x885399AF13Eb21FFA7CBeC0AE1430A138E711885](https://monadvision.com/address/0x885399AF13Eb21FFA7CBeC0AE1430A138E711885) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://monadvision.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositOFT       | [0x9e899C8E185859D6c53C9250f2C4757de7dc2E1a](https://monadvision.com/address/0x9e899C8E185859D6c53C9250f2C4757de7dc2E1a) |
-| CounterfactualDepositSpokePool | [0xAA95c2c35b48af18C8F11343a161dbf9dcb9D066](https://monadvision.com/address/0xAA95c2c35b48af18C8F11343a161dbf9dcb9D066) |
+| AdminWithdrawManager           | [0x2287723967B5c7e4Cd00C760890c3E902758bEb1](https://monadvision.com/address/0x2287723967B5c7e4Cd00C760890c3E902758bEb1) |
+| CounterfactualDeposit          | [0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA](https://monadvision.com/address/0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA) |
+| CounterfactualDepositCCTP      | [0x70C54D0EB99B0ca4A4e8CDc1c7B92E90BDD2056B](https://monadvision.com/address/0x70C54D0EB99B0ca4A4e8CDc1c7B92E90BDD2056B) |
+| CounterfactualDepositFactory   | [0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2](https://monadvision.com/address/0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2) |
+| CounterfactualDepositOFT       | [0xD88Caf86582cFaD3843735b0786d0c5Bd2D9D987](https://monadvision.com/address/0xD88Caf86582cFaD3843735b0786d0c5Bd2D9D987) |
+| CounterfactualDepositSpokePool | [0xd04B4Ce663110C18838cFF19dF909880264ffF12](https://monadvision.com/address/0xd04B4Ce663110C18838cFF19dF909880264ffF12) |
 | MulticallHandler               | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://monadvision.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadvision.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
@@ -167,7 +167,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://monadvision.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SponsoredCCTPSrcPeriphery      | [0xc49226858478DE8757E425661b1B5297102330d7](https://monadvision.com/address/0xc49226858478DE8757E425661b1B5297102330d7) |
 | SponsoredOFTSrcPeriphery       | [0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0](https://monadvision.com/address/0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://monadvision.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation         | [0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d](https://monadvision.com/address/0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d) |
 
 ## Lens (232)
 
@@ -209,17 +209,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                                          |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://worldchain-mainnet-explorer.alchemy.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://worldchain-mainnet-explorer.alchemy.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP      | [0x24e9b525154Df0229D9035E7e927C21e08D2B0Cb](https://worldchain-mainnet-explorer.alchemy.com/address/0x24e9b525154Df0229D9035E7e927C21e08D2B0Cb) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://worldchain-mainnet-explorer.alchemy.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://worldchain-mainnet-explorer.alchemy.com/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
+| AdminWithdrawManager           | [0x2287723967B5c7e4Cd00C760890c3E902758bEb1](https://worldchain-mainnet-explorer.alchemy.com/address/0x2287723967B5c7e4Cd00C760890c3E902758bEb1) |
+| CounterfactualDeposit          | [0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA](https://worldchain-mainnet-explorer.alchemy.com/address/0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA) |
+| CounterfactualDepositCCTP      | [0xD479d58c9C5f34228a856bCAD9c986Ee06c26053](https://worldchain-mainnet-explorer.alchemy.com/address/0xD479d58c9C5f34228a856bCAD9c986Ee06c26053) |
+| CounterfactualDepositFactory   | [0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2](https://worldchain-mainnet-explorer.alchemy.com/address/0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2) |
+| CounterfactualDepositSpokePool | [0x562d72080A7C48CE13b7d9909f825abaeEE2764d](https://worldchain-mainnet-explorer.alchemy.com/address/0x562d72080A7C48CE13b7d9909f825abaeEE2764d) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://worldchain-mainnet-explorer.alchemy.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| RoutePolicy                    | [0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3](https://worldchain-mainnet-explorer.alchemy.com/address/0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3) |
+| RoutePolicyImmutableRoot       | [0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23](https://worldchain-mainnet-explorer.alchemy.com/address/0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet-explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://worldchain-mainnet-explorer.alchemy.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://worldchain-mainnet-explorer.alchemy.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery      | [0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923](https://worldchain-mainnet-explorer.alchemy.com/address/0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://worldchain-mainnet-explorer.alchemy.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation         | [0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d](https://worldchain-mainnet-explorer.alchemy.com/address/0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d) |
 
 ## HyperEVM (999)
 
