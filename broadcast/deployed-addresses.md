@@ -324,6 +324,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositSpokePool | [0x562d72080A7C48CE13b7d9909f825abaeEE2764d](https://basescan.org/address/0x562d72080A7C48CE13b7d9909f825abaeEE2764d) |
 | DonationBox_CCTP               | [0xC1d6B848553602BED3524B05B7EB68c20899d861](https://basescan.org/address/0xC1d6B848553602BED3524B05B7EB68c20899d861) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| RoutePolicy                    | [0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3](https://basescan.org/address/0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3) |
+| RoutePolicyImmutableRoot       | [0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23](https://basescan.org/address/0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://basescan.org/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://basescan.org/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
@@ -363,12 +365,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                  | Address                                                                                                              |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge            | [0xC456398D5eE3B93828252e48beDEDbc39e03368E](https://arbiscan.io/address/0xC456398D5eE3B93828252e48beDEDbc39e03368E) |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://arbiscan.io/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://arbiscan.io/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP      | [0x5D36f9c5E375Fe83053ea7D5327252eb0f9C95ca](https://arbiscan.io/address/0x5D36f9c5E375Fe83053ea7D5327252eb0f9C95ca) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://arbiscan.io/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositOFT       | [0xf6f828dF64E489a303C88077F67A28460c997b42](https://arbiscan.io/address/0xf6f828dF64E489a303C88077F67A28460c997b42) |
-| CounterfactualDepositSpokePool | [0x6A893D04dddE5C7066F63a88De6B5D3D2733F2F5](https://arbiscan.io/address/0x6A893D04dddE5C7066F63a88De6B5D3D2733F2F5) |
+| AdminWithdrawManager           | [0x2287723967B5c7e4Cd00C760890c3E902758bEb1](https://arbiscan.io/address/0x2287723967B5c7e4Cd00C760890c3E902758bEb1) |
+| CounterfactualDeposit          | [0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA](https://arbiscan.io/address/0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA) |
+| CounterfactualDepositCCTP      | [0x477fC429584BB8E8720145E2961Fb01C87228BA3](https://arbiscan.io/address/0x477fC429584BB8E8720145E2961Fb01C87228BA3) |
+| CounterfactualDepositFactory   | [0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2](https://arbiscan.io/address/0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2) |
+| CounterfactualDepositOFT       | [0x63b2eE08bb0d37d321231B93dB742021b992B8A6](https://arbiscan.io/address/0x63b2eE08bb0d37d321231B93dB742021b992B8A6) |
+| CounterfactualDepositSpokePool | [0x276D16Cea4c670794EAC61accA63DFf734E732Cc](https://arbiscan.io/address/0x276D16Cea4c670794EAC61accA63DFf734E732Cc) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://arbiscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
@@ -377,7 +379,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredOFTSrcPeriphery       | [0x39E4a5a7dED068831ea8D1c1012CEa07a811F624](https://arbiscan.io/address/0x39E4a5a7dED068831ea8D1c1012CEa07a811F624) |
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://arbiscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://arbiscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation         | [0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d](https://arbiscan.io/address/0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d) |
 
 ## Ink (57073)
 
