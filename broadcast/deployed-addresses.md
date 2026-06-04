@@ -372,6 +372,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositOFT       | [0x63b2eE08bb0d37d321231B93dB742021b992B8A6](https://arbiscan.io/address/0x63b2eE08bb0d37d321231B93dB742021b992B8A6) |
 | CounterfactualDepositSpokePool | [0x276D16Cea4c670794EAC61accA63DFf734E732Cc](https://arbiscan.io/address/0x276D16Cea4c670794EAC61accA63DFf734E732Cc) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| RoutePolicy                    | [0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3](https://arbiscan.io/address/0xE9019cDE6cB2034436b926ffDF2e42Af03f132b3) |
+| RoutePolicyImmutableRoot       | [0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23](https://arbiscan.io/address/0x0dc85A783ac0cBbfD276a3C49f72D2Ff6279Cc23) |
 | SpokePool                      | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://arbiscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://arbiscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
@@ -385,19 +387,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                          |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://explorer.inkonchain.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://explorer.inkonchain.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP      | [0xd588FEF696A2445E8509C5E65513d46c618CF3bc](https://explorer.inkonchain.com/address/0xd588FEF696A2445E8509C5E65513d46c618CF3bc) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://explorer.inkonchain.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositOFT       | [0x54942237DF5FAc5214A12b5784b26da39003A22F](https://explorer.inkonchain.com/address/0x54942237DF5FAc5214A12b5784b26da39003A22F) |
-| CounterfactualDepositSpokePool | [0x2620f9D23c05eA0abCd1dF4B58728aA95e211D4e](https://explorer.inkonchain.com/address/0x2620f9D23c05eA0abCd1dF4B58728aA95e211D4e) |
+| AdminWithdrawManager           | [0x2287723967B5c7e4Cd00C760890c3E902758bEb1](https://explorer.inkonchain.com/address/0x2287723967B5c7e4Cd00C760890c3E902758bEb1) |
+| CounterfactualDeposit          | [0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA](https://explorer.inkonchain.com/address/0x52D9E2d7CA4727b80e2152538B6A60D37a40DCEA) |
+| CounterfactualDepositCCTP      | [0xF3561F0507273f8F1b0D9951B1b5982353d3d194](https://explorer.inkonchain.com/address/0xF3561F0507273f8F1b0D9951B1b5982353d3d194) |
+| CounterfactualDepositFactory   | [0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2](https://explorer.inkonchain.com/address/0x3dFCF0770BFc983Ca489b27AD0a1599163352Bd2) |
+| CounterfactualDepositOFT       | [0xd341ccFFAA85890B98F551E222EA6B2535D7Dd5F](https://explorer.inkonchain.com/address/0xd341ccFFAA85890B98F551E222EA6B2535D7Dd5F) |
+| CounterfactualDepositSpokePool | [0x1a7D0A3cC0143145bF755C18d86301D713a9BF85](https://explorer.inkonchain.com/address/0x1a7D0A3cC0143145bF755C18d86301D713a9BF85) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.inkonchain.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://explorer.inkonchain.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.inkonchain.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery      | [0x1771c470d41b8c39338450C380bf2C080a2CEdD8](https://explorer.inkonchain.com/address/0x1771c470d41b8c39338450C380bf2C080a2CEdD8) |
 | SponsoredOFTSrcPeriphery       | [0xFE9D541c92E4e90437C7152A00244886dE37a658](https://explorer.inkonchain.com/address/0xFE9D541c92E4e90437C7152A00244886dE37a658) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://explorer.inkonchain.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation         | [0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d](https://explorer.inkonchain.com/address/0xBBaBe7b9DF4033ADeFFDD7826845E591caEf823d) |
 
 ## Linea (59144)
 
