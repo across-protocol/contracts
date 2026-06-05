@@ -80,6 +80,35 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable {
+        _execute(implementation, params, submitterData, proof);
+    }
+
+    /// @inheritdoc ICounterfactualDeposit
+    function updateRootAndExecute(
+        bytes32 newRoot,
+        bytes32[] calldata updateProof,
+        address implementation,
+        bytes calldata params,
+        bytes calldata submitterData,
+        bytes32[] calldata executeProof
+    ) external payable {
+        // Skip the update (and its `RootUnchanged` revert) when the proxy is already current.
+        if (newRoot != activeRoot()) _updateRoot(newRoot, updateProof);
+        _execute(implementation, params, submitterData, executeProof);
+    }
+
+    /// @notice Update `activeRoot`, proving `(address(this), newRoot)` is in the registry's upgrade tree.
+    /// @dev Permissionless. Root updates are best-effort — a proxy keeps its `activeRoot` until updated.
+    function updateRoot(bytes32 newRoot, bytes32[] calldata proof) external {
+        _updateRoot(newRoot, proof);
+    }
+
+    function _execute(
+        address implementation,
+        bytes calldata params,
+        bytes calldata submitterData,
+        bytes32[] calldata proof
+    ) private {
         // Double-hash to prevent leaf/internal-node ambiguity (OpenZeppelin standard).
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
         if (!MerkleProof.verify(proof, activeRoot(), leaf)) revert InvalidProof();
@@ -94,9 +123,7 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
         }
     }
 
-    /// @notice Update `activeRoot`, proving `(address(this), newRoot)` is in the registry's upgrade tree.
-    /// @dev Permissionless. Root updates are best-effort — a proxy keeps its `activeRoot` until updated.
-    function updateRoot(bytes32 newRoot, bytes32[] calldata proof) external {
+    function _updateRoot(bytes32 newRoot, bytes32[] calldata proof) private {
         CounterfactualStorage storage $ = _getStorage();
         if (newRoot == $.activeRoot) revert RootUnchanged();
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(address(this), newRoot))));

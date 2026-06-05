@@ -255,6 +255,15 @@ An executor calls `proxy.updateRoot(newRoot, proof)`; the proxy recomputes
 the leaf commits. There is no admin check on the proxy; the root update is gated **solely** by the
 registry proof.
 
+To **activate a newly-added route and use it in one transaction**, an executor can call
+`proxy.updateRootAndExecute(newRoot, updateProof, implementation, params, submitterData, executeProof)`:
+it runs `updateRoot` then `execute`, but **skips the update when the proxy is already at `newRoot`** (so it
+never reverts `RootUnchanged` for an already-current proxy). This is the only case where a proxy's stale
+`activeRoot` would otherwise block an `execute` (the route exists in the newer root but the proxy hasn't
+been bumped) — versioning was removed (D28), so `execute` is never blocked merely for being "old," only for
+the proven route not being in the current `activeRoot`. Internally `execute` / `updateRoot` /
+`updateRootAndExecute` share `_execute` / `_updateRoot` helpers, so the verification logic is not duplicated.
+
 > **How the proxy knows the registry.** Two ways, both pointing at the same `CounterfactualBeacon`: (1) the
 > `BeaconProxy` stores the registry as its **beacon** (it's the beacon address baked into the proxy at
 > construction — and thus in the address), used to resolve the implementation each call; and (2) the
@@ -728,3 +737,12 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   disables it and relies on the signer's signature over `outputAmount`, while still capping the executor's
   `executionFee`. The flag lives in the leaf `params`, so it flows into `routeParamsHash` (and thus the
   signature + merkle leaf) automatically — no EIP-712 typehash change. Per-route, signer/tree-controlled.
+- **D32 — Add `updateRootAndExecute` to the proxy (atomic root-update + execute).** Combines `updateRoot`
+  then `execute` in one tx, but **skips the update when the proxy is already at `newRoot`** (so it never
+  reverts `RootUnchanged` for an already-current proxy). `execute` / `updateRoot` / `updateRootAndExecute`
+  now share private `_execute` / `_updateRoot` helpers (no duplicated proof logic). _Why:_ with versioning
+  gone (D28), the only case a stale `activeRoot` blocks an `execute` is **newly-added-route activation**
+  (the route is in a newer root the proxy hasn't been bumped to); this lets an executor activate and use it
+  atomically instead of two txs, mirroring the factory's `deployAndExecute` ergonomics. A generic external
+  multicall isn't a full substitute — it resets `msg.sender` (wrong for the `msg.sender`-gated withdraw
+  flow) and can't make the update step idempotent. Both standalone entry points are retained.
