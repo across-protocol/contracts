@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualBeacon } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
@@ -90,6 +91,26 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
     function testSetUpgradeRootOnlyOwner() public {
         vm.expectRevert();
         beacon.setUpgradeRoot(keccak256("root"));
+    }
+
+    function testInitializeRejectsEoaImplementation() public {
+        address logic = address(new CounterfactualBeacon());
+        vm.expectRevert(CounterfactualBeacon.NotAContract.selector);
+        new ERC1967Proxy(logic, abi.encodeCall(CounterfactualBeacon.initialize, (owner, makeAddr("eoa"), bytes32(0))));
+    }
+
+    function testInitializeAllowsZeroImplementation() public {
+        // Lazy init (address(0)) is permitted; base `setUp` already relies on this.
+        address logic = address(new CounterfactualBeacon());
+        CounterfactualBeacon b = CounterfactualBeacon(
+            address(
+                new ERC1967Proxy(
+                    logic,
+                    abi.encodeCall(CounterfactualBeacon.initialize, (owner, address(0), bytes32(0)))
+                )
+            )
+        );
+        assertEq(b.implementation(), address(0));
     }
 
     // --- Deploy + dispatch ---

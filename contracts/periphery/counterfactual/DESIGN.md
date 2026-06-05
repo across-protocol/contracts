@@ -517,6 +517,13 @@ addresses in the generated address artifacts.
    `deployIfNeededAndExecute` deploys the `BeaconProxy` (already initialized + always-current via the
    beacon) and executes in one tx. A freshly deployed proxy starts at `initialRoot`; a route upgrade only
    applies after a later `updateRoot`. Confirm this ordering is acceptable.
+   - **Fee-signature replay (CCTP/OFT).** The local `_verifySignature` binds only
+     `(nonce, executionFee, signatureDeadline)`, not the (route, amount) tuple — that is bound only via the
+     periphery quote signature. So a reused fee signature (same `nonce`, within `signatureDeadline`) on a
+     re-funded proxy is blocked by the **periphery's nonce-uniqueness** check, not locally. This is safe
+     only because the impl pays the execution fee **before** the periphery call: the periphery reverts on
+     the duplicate nonce and atomically rolls back the fee. The ordering is therefore load-bearing and is
+     commented at the `safeTransfer` in both impls.
 3. ~~**Root replay / monotonicity.**~~ **RESOLVED (D25): no contract change.** Implementation is always
    current (beacon-resolved). For **roots**, downgrade is
    prevented off-chain: registry-root **rotation** invalidates old trees' proofs, and the tree
