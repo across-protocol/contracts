@@ -435,7 +435,7 @@ These **replace** the old immutable counterfactual contracts, reusing their name
 
 The three impls were updated by porting the **signed dynamic `executionFee`** scheme from the
 `taylor/counterfactual-route-policy` branch (EIP-712 `signer` + `counterfactualSignature` +
-`signatureDeadline`, leaf fee cap via `maxExecutionFee`, a separate forwarded periphery `signature` for
+`signatureDeadline`, leaf fee cap via `maxExecutionFee`, a separate forwarded `peripherySignature` for
 CCTP/OFT, EIP-712 `v2.0.0`), while keeping our **identity-in-`params`** model (2-arg `execute`, identity
 decoded from `params`, no `CloneIdentity.enforce`) and adding the **`sourceChainId` + `block.chainid`
 check** (D15). The route-params structs are named `*RouteParams` with descriptive locals

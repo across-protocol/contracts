@@ -99,7 +99,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
                     cctpDeadline: block.timestamp + 1 hours,
                     executionFee: executionFee,
                     signatureDeadline: signatureDeadline,
-                    signature: "periphery-sig",
+                    peripherySignature: "periphery-sig",
                     counterfactualSignature: cfSig
                 })
             );

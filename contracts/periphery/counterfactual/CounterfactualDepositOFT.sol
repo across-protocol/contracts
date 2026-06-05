@@ -49,7 +49,7 @@ struct OFTSubmitterData {
     uint256 oftDeadline;
     uint256 executionFee;
     uint32 signatureDeadline;
-    bytes signature;
+    bytes peripherySignature;
     bytes counterfactualSignature;
 }
 
@@ -189,7 +189,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
                     refundRecipient: routeParams.refundRecipient
                 })
             }),
-            submitterData.signature
+            submitterData.peripherySignature
         );
     }
 }

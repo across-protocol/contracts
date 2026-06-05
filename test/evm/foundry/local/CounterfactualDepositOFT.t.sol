@@ -104,7 +104,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
                     oftDeadline: block.timestamp + 1 hours,
                     executionFee: executionFee,
                     signatureDeadline: signatureDeadline,
-                    signature: "periphery-sig",
+                    peripherySignature: "periphery-sig",
                     counterfactualSignature: cfSig
                 })
             );

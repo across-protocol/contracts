@@ -49,7 +49,7 @@ struct CCTPSubmitterData {
     uint256 cctpDeadline;
     uint256 executionFee;
     uint32 signatureDeadline;
-    bytes signature;
+    bytes peripherySignature;
     bytes counterfactualSignature;
 }
 
@@ -186,7 +186,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
                 executionMode: routeParams.executionMode,
                 actionData: routeParams.actionData
             }),
-            submitterData.signature
+            submitterData.peripherySignature
         );
     }
 }
