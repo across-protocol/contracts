@@ -2,31 +2,31 @@
 pragma solidity ^0.8.0;
 
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import { CounterfactualBootstrap } from "./CounterfactualBootstrap.sol";
+import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import { CounterfactualDeposit } from "./CounterfactualDeposit.sol";
 
 /**
  * @title CounterfactualDepositFactory
- * @notice Deterministically deploys upgradeable counterfactual proxies. Each proxy is created against a
- *         fixed `BOOTSTRAP` implementation with the route root in its init code, then immediately
- *         finalized (synced to the registry's `currentImplementation`).
- * @dev The CREATE2 salt is fixed to `0`, so the address is purely `f(initialRoot)` — one destination
- *      identity ⇒ one address. Only the bootstrap (a constant) enters the preimage, so the real
- *      implementation never affects the address. The factory itself must be deployed deterministically
- *      at the same address on every chain for cross-chain address parity. `predictAddress` and the
- *      proxy init code are `virtual`/`internal` so chain-specific variants (e.g. Tron's 0x41 CREATE2
- *      prefix) can override prediction.
+ * @notice Deterministically deploys counterfactual `BeaconProxy` instances. Each proxy uses the global
+ *         `CounterfactualBeacon` as its beacon (so it always runs the registry's current implementation) and
+ *         is initialized with its route root in the constructor `data`.
+ * @dev The CREATE2 salt is fixed to `0`, and the `initialize(initialRoot)` call data is part of the
+ *      proxy's init code, so the address is purely `f(initialRoot)` — one destination identity ⇒ one
+ *      address, with `initialRoot` bound into the address. The factory and the beacon (registry) must be
+ *      deployed deterministically at identical addresses across chains for cross-chain address parity.
+ *      `predictAddress` / `_initCode` / `_computeProxyAddress` are `virtual`/`internal` so chain-specific
+ *      variants (e.g. Tron's 0x41 CREATE2 prefix) can override prediction.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositFactory {
-    /// @notice The permanent bootstrap implementation every proxy is deployed against.
-    address public immutable BOOTSTRAP;
+    /// @notice The beacon (the `CounterfactualBeacon`) every deployed proxy points at.
+    address public immutable BEACON;
 
-    /// @notice Emitted when a counterfactual proxy is deployed (and finalized).
+    /// @notice Emitted when a counterfactual proxy is deployed.
     event CounterfactualDeployed(address indexed counterfactual, bytes32 initialRoot);
 
-    constructor(address bootstrap) {
-        BOOTSTRAP = bootstrap;
+    constructor(address beacon) {
+        BEACON = beacon;
     }
 
     /// @notice Predict the proxy address for a given `initialRoot` (salt is fixed to 0).
@@ -34,20 +34,16 @@ contract CounterfactualDepositFactory {
         return _computeProxyAddress(keccak256(_initCode(initialRoot)));
     }
 
-    /// @notice Deploy and finalize the proxy for `initialRoot`. Reverts if already deployed.
+    /// @notice Deploy the proxy for `initialRoot` (already initialized + always-current via the beacon).
+    ///         Reverts if already deployed.
     function deploy(bytes32 initialRoot) public returns (address counterfactual) {
         counterfactual = address(
-            new ERC1967Proxy{ salt: bytes32(0) }(
-                BOOTSTRAP,
-                abi.encodeCall(CounterfactualBootstrap.initialize, (initialRoot))
-            )
+            new BeaconProxy{ salt: bytes32(0) }(BEACON, abi.encodeCall(CounterfactualDeposit.initialize, (initialRoot)))
         );
-        // Finalize: upgrade off the (deposit-less) bootstrap to the registry's current implementation.
-        CounterfactualBootstrap(payable(counterfactual)).syncImplementation();
         emit CounterfactualDeployed(counterfactual, initialRoot);
     }
 
-    /// @notice Deploy + finalize, then forward `executeCalldata` to the proxy. Reverts if already deployed.
+    /// @notice Deploy, then forward `executeCalldata` to the proxy. Reverts if already deployed.
     function deployAndExecute(
         bytes32 initialRoot,
         bytes calldata executeCalldata
@@ -56,7 +52,7 @@ contract CounterfactualDepositFactory {
         _execute(counterfactual, executeCalldata);
     }
 
-    /// @notice Deploy + finalize if needed (idempotent), then forward `executeCalldata` to the proxy.
+    /// @notice Deploy if needed (idempotent), then forward `executeCalldata` to the proxy.
     function deployIfNeededAndExecute(
         bytes32 initialRoot,
         bytes calldata executeCalldata
@@ -70,8 +66,8 @@ contract CounterfactualDepositFactory {
     function _initCode(bytes32 initialRoot) internal view virtual returns (bytes memory) {
         return
             abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(BOOTSTRAP, abi.encodeCall(CounterfactualBootstrap.initialize, (initialRoot)))
+                type(BeaconProxy).creationCode,
+                abi.encode(BEACON, abi.encodeCall(CounterfactualDeposit.initialize, (initialRoot)))
             );
     }
 

@@ -4,9 +4,9 @@ Status: design doc, not implementation. Author: Taylor (with Claude). Updated: 2
 
 > **Implementation target: this repo (`across-protocol/contracts`), branch
 > `taylor/counterfactual-upgradeable`.** This design supersedes earlier route-policy sketches: there
-> is **no `RoutePolicy` contract**. Each counterfactual is its own **UUPS upgradeable proxy** that
-> holds its route root in storage, and a single global **`UpgradeRegistry`** per chain governs how
-> those proxies may be upgraded.
+> is **no `RoutePolicy` contract**. Each counterfactual is a **`BeaconProxy`** that holds its route root
+> in storage; the single global **`CounterfactualBeacon`** per chain is its **beacon** (the one shared
+> implementation every proxy runs) and governs per-proxy root upgrades.
 
 ## Motivation
 
@@ -24,7 +24,7 @@ destinationChainId)`, so a user hands out one address and receives on it from an
 3. **Upgradeable implementation** — fix or extend the dispatch/bridge logic without changing the
    address.
 4. **No per-counterfactual admin key** — authorization comes from the counterfactual's own merkle
-   tree (deposits, withdraws) and the global `UpgradeRegistry` (a per-proxy root tree + a global
+   tree (deposits, withdraws) and the global `CounterfactualBeacon` (a per-proxy root tree + a global
    current implementation).
 5. **Trustless injection** of the per-user fields (recipient, output token, destination chain) into
    bridge calldata.
@@ -36,27 +36,29 @@ destinationChainId)`, so a user hands out one address and receives on it from an
 
 ## Core Idea
 
-Each counterfactual is a **UUPS upgradeable proxy** (ERC-1967) rather than an EIP-1167 minimal clone.
-It stores a single mutable variable, `activeRoot`, which is the merkle root authorizing its deposit
-routes. The proxy is deployed deterministically against a fixed, permanent **bootstrap
-implementation** (so the real/upgradeable implementation never enters its address — see _Bootstrap
-Deployment_), and `activeRoot` is initialized from an `initialRoot` passed in init code.
+Each counterfactual is a **`BeaconProxy`** (ERC-1967 beacon) rather than an EIP-1167 minimal clone. Its
+beacon is the global **`CounterfactualBeacon`**, so every proxy resolves and runs the registry's single
+**`implementation()`** live on each call — they are **always on the current implementation**, with no
+per-proxy upgrade step and no bootstrap. The proxy stores `activeRoot` (the merkle root authorizing its
+deposit routes), initialized from an `initialRoot` passed in the constructor `data` (which also binds
+`initialRoot` into the address — see _Address Determinism_).
 
 Two things are mutable post-deploy, and **neither enters address derivation**:
 
-- **`activeRoot`** — the live route set (changed by a per-proxy root update).
-- **the implementation** — the dispatch/bridge logic (synced to the registry's global
-  `currentImplementation()` by a UUPS upgrade).
+- **`activeRoot`** — the live route set (changed by a per-proxy `updateRoot`).
+- **the implementation** — the dispatch/bridge logic, changed **globally** by the admin setting the
+  beacon's `implementation`; every proxy picks it up **instantly**, with no per-proxy action.
 
-There is **no owner or admin** on the proxy. Authorization comes from the global `UpgradeRegistry`,
+There is **no owner or admin** on the proxy. Authorization comes from the global `CounterfactualBeacon`,
 split along "shared vs. per-proxy":
 
 - **Deposits** (and withdraws) dispatch by merkle proof against the counterfactual's own
   **`activeRoot`** — exactly as in the base system.
-- **Implementation** (shared logic) is synced **permissionlessly** to the registry's admin-set global
-  `currentImplementation()` — no proof, since a proxy can only ever land on the current canonical impl.
+- **Implementation** (shared logic) is the beacon's `implementation()` — the admin sets it once and
+  **every proxy uses it immediately** (resolved live per call). No per-proxy sync.
 - **Root updates** (per-proxy routes) are applied by an executor with a proof against the registry's
-  **upgrade tree** of `(proxy, latestRoot)` leaves.
+  **upgrade tree** of `(proxy, latestRoot)` leaves. They are best-effort — a proxy keeps its `activeRoot`
+  until updated; there is no execute-time version gate.
 
 ```
 ═══════════════════════════ DEPOSIT (per counterfactual) ═══════════════════════════
@@ -65,9 +67,9 @@ relayer
   │ proxy.execute(implementation, params, submitterData, proof)
   ▼
 ┌─────────────────────────────┐  proof vs activeRoot (storage)
-│ Counterfactual proxy (UUPS) │  verify leaf inclusion
-│  activeRoot  : storage      │  DELEGATECALL implementation
-│  implementation : ERC1967   │
+│ Counterfactual BeaconProxy  │  impl ← beacon.implementation()
+│  activeRoot  : storage      │  verify leaf, DELEGATECALL impl
+│  (impl resolved via beacon) │
 └──────────────┬──────────────┘
                │ delegatecall: address(this) == proxy (holds funds)
                ▼
@@ -79,18 +81,18 @@ relayer
    SpokePool.deposit / CCTP depositForBurn / OFT send  →  delivered natively on dest
 
 
-═══════════════════════════ UPGRADE (global registry, per chain) ═══════════════════════════
+═══════════════════ UPGRADE (global registry = beacon, per chain) ═══════════════════
 
-registry admin                            executor (permissionless)
- │ setCurrentImplementation(impl)          │ (a) proxy.syncImplementation()       impl ← currentImplementation()   [no proof]
- │ setRoot(treeOf (proxy,root))            │ (b) proxy.updateRoot(newRoot, proof) activeRoot ← newRoot             [proof vs tree]
- ▼                                         ▼
-┌──────────────────────────────┐  read /   ┌─────────────────────────────┐
-│ UpgradeRegistry              │  verify    │ Counterfactual proxy (UUPS) │
-│  currentImplementation : addr│ ◄───────── │  (a) pull current impl       │
-│  root : tree of (proxy,root) │            │  (b) leaf = keccak(this,     │
-│  (admin-curated)             │            │      newRoot); verify proof  │
-└──────────────────────────────┘            └─────────────────────────────┘
+registry admin                               executor (permissionless)
+ │ setImplementation(impl)  ← all proxies      │ updateRoot(newRoot, proof)  activeRoot ← newRoot  [proof vs tree]
+ │ setUpgradeRoot(tree)       use it instantly  │ (only roots are per-proxy; impl needs no per-proxy action)
+ ▼                                              ▼
+┌──────────────────────────────┐   beacon /   ┌─────────────────────────────┐
+│ CounterfactualBeacon (beacon)     │   proof      │ Counterfactual BeaconProxy  │
+│  implementation : addr       │ ◄─────────── │  every call: resolve impl   │
+│  upgradeRoot : (proxy,root)  │              │   from beacon, then delegate│
+│  (admin-curated)             │              │  updateRoot: verify proof   │
+└──────────────────────────────┘              └─────────────────────────────┘
 ```
 
 Because the impl runs under **delegatecall**, `address(this)` is the proxy — it holds the funds, is
@@ -122,58 +124,41 @@ destination identity  ──►  one canonical initialRoot  ──►  one addre
 ```
 
 The hard rule: **nothing mutable or chain-specific may enter address derivation** — not the live
-`activeRoot` (it changes), not the live implementation (it changes), not a per-chain root. The address
-commits only `initialRoot` (plus fixed deployment substrate: the factory, the salt, and the **bootstrap
-implementation**). This indirection is exactly what lets one address keep a stable identity while its
-routes and logic are upgraded underneath it.
+`activeRoot` (it changes), not the implementation (it changes globally via the beacon), not a per-chain
+root. The address commits only `initialRoot` (plus fixed deployment substrate: the factory, the salt,
+and the **beacon = `CounterfactualBeacon`**). This indirection is exactly what lets one address keep a stable
+identity while its routes and logic are upgraded underneath it.
 
-> The proxy's init code references a **bootstrap implementation, not the real one** (see _Bootstrap
-> Deployment_), so the upgradeable implementation never affects the address — it is the **only** piece
-> free to differ per chain. The **factory**, the **bootstrap**, and the **`UpgradeRegistry`** must all
-> be deployed deterministically at identical addresses on every chain: they are in (or transitively
-> baked into) the proxy's init code — the bootstrap embeds the registry as an immutable and the
-> bootstrap address is in the preimage, so `registry → bootstrap → proxy address`. They are permanent
-> constants, never versioned. Compile the counterfactual stack under the dedicated
-> `[profile.counterfactual]` (Phase 0) so the creation bytecode is byte-identical.
+> A `BeaconProxy`'s init code embeds the **beacon address** (the `CounterfactualBeacon`) and the
+> `initialize(initialRoot)` constructor `data` — **not** the implementation. So the implementation
+> (the beacon's target) never affects the address and is the **only** piece free to differ per chain.
+> The **factory** and the **`CounterfactualBeacon`** (as beacon) must be deployed deterministically at
+> identical addresses on every chain (they're in the proxy's init code: `registry(beacon) → proxy
+address`). They are permanent constants, never versioned. Compile the counterfactual stack under the
+> dedicated `[profile.counterfactual]` (Phase 0) so the creation bytecode is byte-identical.
 
 ---
 
-## Bootstrap Deployment (keeping the implementation out of the address)
+## How the implementation stays out of the address (beacon, no bootstrap)
 
-With a plain ERC-1967/UUPS proxy the implementation address sits in the init code, so it would enter
-the CREATE2 preimage. We don't want the _real_ (upgradeable, versioned) implementation to affect the
-address — only `initialRoot` should. So the proxy is deployed against a **fixed bootstrap
-implementation** and immediately finalized to the real one:
+A plain ERC-1967/UUPS proxy stores the implementation in its own init code, so the implementation would
+enter the CREATE2 preimage. A **`BeaconProxy`** instead stores only the **beacon** address and resolves
+the implementation from it **live on every call** — so the implementation is never in the proxy's code
+or address, and there is **no bootstrap and no finalize step**:
 
-- **`CounterfactualBootstrap`** — a tiny, permanent UUPS implementation deployed once per chain at a
-  deterministic, constant address (same everywhere, like the factory). It does only:
-  `initialize(bytes32 initialRoot)` (writes `activeRoot = initialRoot`), the permissionless
-  `syncImplementation()`, and an `_authorizeUpgrade` that requires the target equal
-  `UpgradeRegistry.currentImplementation()`. It has **no deposit logic**, so a proxy is unusable until
-  finalized — a useful invariant. It is never changed, so it stays a stable address anchor.
-- **The proxy commits to the bootstrap, not the real impl:**
+```solidity
+new BeaconProxy{ salt: 0 }(BEACON, abi.encodeCall(CounterfactualDeposit.initialize, (initialRoot)))
+// BEACON = the CounterfactualBeacon. Preimage = f(factory, 0, BeaconProxy.creationCode, BEACON, initialRoot)
+// ⇒ address = f(initialRoot); the implementation (beacon target) is never in it.
+```
 
-  ```solidity
-  new ERC1967Proxy{salt: 0}(BOOTSTRAP, abi.encodeCall(IBootstrap.initialize, (initialRoot)))
-  ```
-
-  Preimage = `f(factory, 0, ERC1967Proxy.creationCode, BOOTSTRAP, initialRoot)` — all constants except
-  `initialRoot`, so `address = f(initialRoot)`. The real/final implementation is never in it.
-
-- **The factory finalizes atomically.** Immediately after CREATE2 (same tx), the bootstrap's
-  permissionless `syncImplementation()` does `upgradeToAndCall(UpgradeRegistry.currentImplementation(),
-…)` — no proof needed, because the implementation address comes straight from the trusted registry's
-  admin-set global default. `deployIfNeededAndExecute` bootstraps → finalizes → executes the deposit
-  in one tx (also covering pre-funded counterfactual addresses).
-- **Finalize is just the first sync.** `syncImplementation()` is idempotent and permissionless: the
-  first call moves the proxy off the bootstrap; later calls move it to whatever
-  `currentImplementation()` currently is. Implementation upgrades are therefore **global** (see
-  _Upgrade Mechanism_), not in the per-proxy tree.
-
-So the address is anchored to the permanent `BOOTSTRAP` + `initialRoot`; the live implementation
-(seeded at finalize, changed by later upgrades) is storage-only and never re-enters address
-derivation. Bootstrap and all real impls must share the `activeRoot` storage slot — use an ERC-7201
-namespaced storage struct so the bootstrap's write is read correctly by every future implementation.
+The beacon is the **`CounterfactualBeacon`** (it implements `IBeacon.implementation()`). Setting the
+registry's `implementation` retargets **every** proxy instantly — implementation upgrades are global and
+free of per-proxy action (see _Upgrade Mechanism_). The `initialize(initialRoot)` in the constructor
+`data` writes `activeRoot` into the proxy's ERC-7201 storage; because that
+`data` is part of the init code, `initialRoot` is bound into the address. The implementation reads/writes
+that storage under delegatecall (`address(this)` = proxy); every implementation version must preserve the
+ERC-7201 layout.
 
 ---
 
@@ -227,46 +212,30 @@ tree (more/updated routes), while the address — fixed by `initialRoot` — is 
 
 ---
 
-## Upgrade Mechanism (`UpgradeRegistry` + executor)
+## Upgrade Mechanism (`CounterfactualBeacon` + executor)
 
 Upgrades are governed by the global registry, not by a per-proxy admin. The two mutable knobs are
 administered differently, along the "shared vs. per-proxy" split:
 
-- **`UpgradeRegistry`** — one global contract per chain, with an **admin** (the only admin in the
+- **`CounterfactualBeacon`** — one global contract per chain, with an **admin** (the only admin in the
   system) maintaining:
-  - `currentImplementation` — the canonical implementation **all** proxies run (shared logic).
-  - `root` — the root of an **upgrade merkle tree** of `(proxy, latestRoot)` leaves, authorizing
+  - `implementation` — the canonical implementation **all** proxies run (the beacon target; shared logic).
+  - `upgradeRoot` — the root of an **upgrade merkle tree** of `(proxy, latestRoot)` leaves, authorizing
     per-proxy **root** updates.
-  - `version` — a counter bumped on every `setUpgradeRoot`, and `minRequiredVersion (<= version)` —
-    together these let the admin **force** proxies onto a recent root (see _Enforcement_ below).
 
-### Enforcement — `execute` requires the proxy to be up to date (D13)
+Root updates are **best-effort**: a proxy keeps its `activeRoot` until someone calls `updateRoot`; there
+is no version counter and no execute-time freshness gate. (The admin therefore cannot _force_ a stale
+proxy off an old route set on-chain — to kill a route everywhere, change the implementation via the
+beacon, which is global and immediate; see _Open Questions_.)
 
-The deposit/withdraw path is gated by `_requireUpToDate()`: `execute` reverts unless the proxy runs the
-registry's `currentImplementation` (`StaleImplementation`) **and** its stored `rootVersion >=
-registry.minRequiredVersion()` (`StaleRoot`). So a stale proxy must first remediate — `syncImplementation()`
-for impl, `updateRoot()` for root (both permissionless and **un**gated) — before it can execute. This is
-what makes a security-critical impl fix or route retirement actually bite: a stale proxy can't keep
-depositing on old logic or a retired root. A proxy stamps its `rootVersion = registry.version()` on every
-`updateRoot` and at deploy (a fresh proxy is born current — D26). Cost: ~one registry read per `execute`,
-plus a sync/update before each proxy's next deposit after a bump.
+### Implementation — global, via the beacon (instant)
 
-### Implementation — global, permissionless sync
-
-Implementation is shared logic, so it is administered **once, globally**. The admin sets
-`currentImplementation`; thereafter **anyone** can push **any** proxy to it:
-
-```solidity
-function syncImplementation() external {
-  // permissionless, no proof
-  _upgradeToAndCallUUPS(UpgradeRegistry.currentImplementation(), "", false);
-}
-```
-
-No proof is needed because a proxy can only ever land on the admin-curated **current** value, and
-there is no old value to replay — a single slot makes the implementation version monotonic by
-construction. `syncImplementation()` is also the bootstrap's `finalize()` (the first sync); see
-_Bootstrap Deployment_. `_authorizeUpgrade` enforces the target equals `currentImplementation()`.
+Implementation is shared logic, so it is administered **once, globally**: the admin calls
+`setImplementation(impl)` on the registry (the beacon). Because every counterfactual is a `BeaconProxy`
+that resolves `beacon.implementation()` **live on each call**, all proxies use the new implementation
+**immediately** — there is **no per-proxy upgrade, no `syncImplementation`, and no bootstrap**. The
+registry validates the target is a contract (`NotAContract`); the admin is trusted (and timelocked-by-
+intent, D19) since setting it instantly retargets every proxy.
 
 ### Root — per-proxy, proof-gated
 
@@ -279,20 +248,19 @@ leaf = keccak256( abi.encode( proxyAddress, latestRoot ) )
 
 An executor calls `proxy.updateRoot(newRoot, proof)`; the proxy recomputes
 `leaf = keccak256(abi.encode(address(this), newRoot))`, verifies `proof` against
-`UpgradeRegistry.root()`, and on success sets `activeRoot = newRoot` — only the **exact** value the
-leaf commits. There is no admin check on the proxy; the root update is gated **solely** by the registry
-proof.
+`CounterfactualBeacon.upgradeRoot()`, and on success sets `activeRoot = newRoot` — only the **exact** value
+the leaf commits. There is no admin check on the proxy; the root update is gated **solely** by the
+registry proof.
 
-> **How the proxy knows the registry.** The `UpgradeRegistry` address is an **immutable in the
-> implementation bytecode** (the bootstrap and every real impl) — _not_ a proxy state variable. It is a
-> global per-chain constant (deployed deterministically at the same address on every chain), so
-> per-proxy storage would only waste an `SSTORE`/`SLOAD`, bloat init code, and needlessly enter the
-> CREATE2 preimage; an immutable lives in code, costs nothing at runtime, and never touches the proxy's
-> address (the preimage references the constant _bootstrap_ address, not the registry). For the
-> bootstrap, a hardcoded `constant` is also viable since the registry address is deterministic. If the
-> registry ever must be replaced, migration goes through the normal upgrade path — the old registry sets
-> `currentImplementation` to a new impl pointing at the new registry, adopted on the next
-> `syncImplementation()`.
+> **How the proxy knows the registry.** Two ways, both pointing at the same `CounterfactualBeacon`: (1) the
+> `BeaconProxy` stores the registry as its **beacon** (it's the beacon address baked into the proxy at
+> construction — and thus in the address), used to resolve the implementation each call; and (2) the
+> implementation embeds the registry as an **immutable** (for `updateRoot`'s `upgradeRoot` lookup). The
+> registry is a global per-chain constant, deployed deterministically
+> at the same address on every chain. If it ever must be replaced, the implementation's immutable would
+> change (a new impl pointing at the new registry, set as the beacon target); existing proxies' _beacon_
+> is fixed at construction, so replacing the registry effectively means a new proxy generation — a
+> deliberate, heavyweight migration.
 
 ---
 
@@ -368,22 +336,20 @@ Per-bridge typehash and binding:
 
 ## Trust Model
 
-- The **depositor** trusts the route set baked into `initialRoot`, and trusts the `UpgradeRegistry`
+- The **depositor** trusts the route set baked into `initialRoot`, and trusts the `CounterfactualBeacon`
   admin to authorize only safe upgrades for their proxy.
-- The **`UpgradeRegistry` admin** is the system's only admin: it sets the global
-  `currentImplementation` every proxy may run, and curates the `(proxy, latestRoot)` tree that
-  authorizes per-proxy root updates. Use `Ownable2Step` + multisig. This role is **effectively
-  all-powerful over funds**: because `syncImplementation()` is permissionless, a malicious or buggy
-  `currentImplementation` can be applied to any proxy and run with its balance. A **timelock** would
-  give users a window to withdraw before a new implementation takes effect, but is **omitted in this
-  implementation (D19)** — so this is a known residual risk, mitigated only by trusting the multisig
-  admin. (Revisit if a timelock is wanted later.)
-- The **executor** is untrusted and permissionless: it can only sync a proxy to the registry's current
-  implementation, or apply a root the registry's tree already authorizes (exact leaf value) — it
-  chooses neither the impl nor the root.
+- The **`CounterfactualBeacon` admin** is the system's only admin: it sets the global `implementation` (the
+  beacon target) every proxy runs, and curates the `(proxy, latestRoot)` tree that authorizes per-proxy
+  root updates. Use `Ownable2Step` + multisig. This role is **effectively all-powerful over funds**:
+  setting the beacon `implementation` to a malicious/buggy contract **instantly** retargets every proxy
+  (they resolve it live), and that impl runs with each proxy's balance. A **timelock** would give users
+  a window to withdraw before a new implementation takes effect, but is **omitted in this implementation
+  (D19)** — a known residual risk, mitigated only by trusting the multisig admin. (Revisit if a timelock
+  is wanted later — note a beacon makes upgrades immediate, so a timelock matters _more_ here.)
+- The **executor** is untrusted and permissionless: it can only apply a root the registry's tree already
+  authorizes (exact leaf value) — it chooses neither the implementation (beacon-set) nor the root.
 - The **per-bridge implementations** have full delegatecall power in the proxy's frame — the trusted
-  code to audit. A proxy can only ever run the implementation the registry admin set as
-  `currentImplementation`.
+  code to audit. A proxy can only ever run the implementation the registry admin set as the beacon target.
 - The **execution-fee `signer`** is trusted to authorize only fair runtime `executionFee` values
   (bounded by the leaf cap). It cannot redirect funds — the recipient is the pinned identity — only
   attest to the fee; an unsigned or expired fee reverts.
@@ -394,18 +360,18 @@ Per-bridge typehash and binding:
 
 ## Differences From the Base Counterfactual
 
-| Aspect                       | Base (immutable)                                  | Upgradeable (this design)                                                                     |
-| ---------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Proxy type                   | EIP-1167 minimal clone                            | ERC-1967 **UUPS upgradeable** proxy (deployed via a fixed bootstrap impl)                     |
-| Route root                   | Immutable clone arg                               | Mutable **`activeRoot`** storage (init from `initialRoot`)                                    |
-| Implementation               | Fixed dispatcher                                  | **Upgradeable** per proxy (UUPS); not in the address (bootstrap anchor)                       |
-| Who can change impl          | No one                                            | Anyone, via permissionless `syncImplementation()` → registry's global `currentImplementation` |
-| Who can change routes (root) | No one                                            | Permissionless **executor** with a proof vs the registry's `(proxy, latestRoot)` tree         |
-| Admin                        | None                                              | None on the proxy; the **`UpgradeRegistry`** has the only admin                               |
-| Cross-chain address          | Differs (root is chain-specific)                  | **Same** (`initialRoot` identical; all-source-chains tree)                                    |
-| Deposit dispatch             | Merkle proof vs root                              | **Same**, but proof is vs `activeRoot` in storage                                             |
-| Per-bridge impls             | `CounterfactualDeposit{CCTP,OFT,SpokePool}`       | **Same**, reused as leaf implementations                                                      |
-| Withdraw / rescue            | `AdminWithdrawManager` + `WithdrawImplementation` | **Same**, as the withdraw leaf                                                                |
+| Aspect                       | Base (immutable)                                  | Upgradeable (this design)                                                                      |
+| ---------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Proxy type                   | EIP-1167 minimal clone                            | ERC-1967 **`BeaconProxy`** (beacon = `CounterfactualBeacon`); no bootstrap                     |
+| Route root                   | Immutable clone arg                               | Mutable **`activeRoot`** storage (init from `initialRoot`)                                     |
+| Implementation               | Fixed dispatcher                                  | **Global** beacon target; not in the address; resolved live per call                           |
+| Who can change impl          | No one                                            | Admin only, via `registry.setImplementation` → **all** proxies instantly (no per-proxy action) |
+| Who can change routes (root) | No one                                            | Permissionless **executor** with a proof vs the registry's `(proxy, latestRoot)` tree          |
+| Admin                        | None                                              | None on the proxy; the **`CounterfactualBeacon`** has the only admin                           |
+| Cross-chain address          | Differs (root is chain-specific)                  | **Same** (`initialRoot` identical; all-source-chains tree)                                     |
+| Deposit dispatch             | Merkle proof vs root                              | **Same**, but proof is vs `activeRoot` in storage                                              |
+| Per-bridge impls             | `CounterfactualDeposit{CCTP,OFT,SpokePool}`       | **Same**, reused as leaf implementations                                                       |
+| Withdraw / rescue            | `AdminWithdrawManager` + `WithdrawImplementation` | **Same**, as the withdraw leaf                                                                 |
 
 ---
 
@@ -418,48 +384,44 @@ Per-bridge typehash and binding:
 **`bytecode_hash = "none"`** (strips the metadata hash so creation bytecode — and thus CREATE2
 addresses — stays stable across commits and chains). Build/deploy with `FOUNDRY_PROFILE=counterfactual`.
 
-The determinism-critical set that needs byte-identical bytecode is the **factory**, the **bootstrap**,
-and the **`UpgradeRegistry`** (they fix proxy addresses via `registry → bootstrap → proxy`); the **real
-implementation does not** (it is in no address). The profile _config_ is done, but the contracts it
+The determinism-critical set that needs byte-identical bytecode is the **factory** and the
+**`CounterfactualBeacon`** (the beacon) — they fix proxy addresses via `registry(beacon) → proxy`; the
+**implementation does not** (it is in no address). The profile _config_ is done, but the contracts it
 will build are new (Phases 1–2). Remaining Phase-0 work: pin a fixed solc/optimizer combination for
-those three contracts and add a `forge inspect <c> bytecode` cross-chain parity check once they exist.
+those contracts and add a `forge inspect <c> bytecode` cross-chain parity check once they exist.
 
-### Phase 1 — Upgradeable counterfactual proxy + bootstrap ✅ DONE (contracts compile)
+### Phase 1 — Counterfactual proxy (BeaconProxy) + implementation ✅ DONE (contracts compile)
 
 These **replace** the old immutable counterfactual contracts, reusing their names (D21). All live in
 `contracts/periphery/counterfactual/`:
 
-- **`CounterfactualBase`** (abstract) — the UUPS base storing `activeRoot` in an ERC-7201 namespaced
-  slot; the immutable `UPGRADE_REGISTRY`; permissionless `syncImplementation()` and
-  `updateRoot(newRoot, proof)`; `_authorizeUpgrade` gated to `currentImplementation`.
-- **`CounterfactualDeposit`** — the real implementation (the registry's `currentImplementation`): the
-  merkle dispatcher `execute(implementation, params, submitterData, proof)` verifying proofs against
-  `activeRoot`, then delegatecalling `ICounterfactualImplementation.execute(params, submitterData)` (the
-  impl decodes identity from `params`; **no** identity args). Implements `ICounterfactualDeposit`.
-- **`CounterfactualBootstrap`** — the permanent, minimal bootstrap implementation, embedding the
-  `UpgradeRegistry` as an immutable: `initialize(initialRoot)` + the inherited permissionless
-  `syncImplementation()` (its first call is the `finalize()`). No deposit logic. Deployed
-  deterministically (constant address per chain).
+- **`CounterfactualDeposit`** — the single implementation (the registry/beacon's `implementation()`). It
+  owns the proxy's ERC-7201 storage (`activeRoot`) and the immutable `BEACON`, and provides:
+  `initialize(initialRoot)` (run via the `BeaconProxy` constructor `data`, writing `activeRoot`); the
+  merkle dispatcher `execute(implementation, params, submitterData, proof)` (verifies vs `activeRoot`,
+  then delegatecalls `ICounterfactualImplementation.execute` — no version gate); permissionless
+  `updateRoot(newRoot, proof)`. Implements `ICounterfactualDeposit`. **No UUPS / no `syncImplementation`**
+  — the implementation is the beacon target, always current. (There is no separate base contract —
+  `CounterfactualBase` was folded in.)
 - **`CounterfactualDepositFactory`** — deterministic CREATE2 deployment of
-  `ERC1967Proxy(BOOTSTRAP, initialize(initialRoot))` at salt 0, finalizing atomically; `predictAddress`
-  / `deploy` / `deployAndExecute` / `deployIfNeededAndExecute`. `predictAddress` / `_initCode` are
-  `virtual` for a Tron override (Q12).
+  `BeaconProxy(BEACON = registry, initialize(initialRoot))` at salt 0 (no finalize); `predictAddress` /
+  `deploy` / `deployAndExecute` / `deployIfNeededAndExecute`. `predictAddress` / `_initCode` /
+  `_computeProxyAddress` are `virtual` for a Tron override (Q12).
 
-> The old immutable-system tooling (its tests, deploy scripts, and the Clones-based
-> `CounterfactualDepositFactoryTron`) is **superseded and currently left broken** — rebuilt in Phase 4
-> (tests) / Phase 5 (deploy) / Q12 (Tron).
+> No `CounterfactualBootstrap` — the beacon makes the implementation always-current with no bootstrap.
+> The old immutable-system tooling (its tests + deploy scripts) is **superseded and currently left
+> broken** — rebuilt in Phase 4 (tests) / Phase 5 (deploy).
 
-### Phase 2 — UpgradeRegistry + upgrade path
+### Phase 2 — CounterfactualBeacon (the beacon) + upgrade path
 
-- **`UpgradeRegistry`** — global per-chain contract with an admin-settable `currentImplementation`
-  (the impl all proxies sync to) and `root` (the `(proxy, latestRoot)` tree); `Ownable2Step` + multisig
-  (timelock omitted in this implementation — see D19 / Trust Model). **Itself a UUPS proxy** (upgradeable;
-  Q11 resolved). Deployed deterministically (same address per chain — required, since the bootstrap
-  embeds it).
-- **`syncImplementation()`** on the proxy — permissionless; upgrades to
-  `UpgradeRegistry.currentImplementation()`; `_authorizeUpgrade` requires the target equal that value.
+- **`CounterfactualBeacon`** — global per-chain contract and **`IBeacon`** for every proxy: admin-settable
+  `implementation` (the beacon target every proxy runs; `setImplementation` requires a contract) and
+  `upgradeRoot` (the `(proxy, latestRoot)` tree). `Ownable2Step` + multisig (timelock omitted — D19).
+  **Itself a UUPS proxy** (Q11). Deployed deterministically (same address per chain — required, since
+  every `BeaconProxy` embeds it as the beacon).
 - **`updateRoot(newRoot, proof)`** on the proxy — recompute `leaf = keccak(this, newRoot)`, verify
-  against `UpgradeRegistry.root()`, set `activeRoot`. No admin check.
+  against `CounterfactualBeacon.upgradeRoot()`, set `activeRoot`. No admin check; best-effort (no version gate).
+- **No per-proxy implementation upgrade** — impl changes are global via `registry.setImplementation`.
 
 ### Phase 3 — Per-bridge route implementations ✅ DONE (impls compile)
 
@@ -492,55 +454,56 @@ constructors as their parents and override `_safeTransfer` only.
 Written **after all contract changes are done** (Phases 1–3), as one consolidated suite rather than
 per-phase:
 
-- **Proxy / bootstrap / factory** — `initialRoot → activeRoot` init; deploy → finalize → deposit
-  dispatch; deposits revert before finalize; cross-chain address determinism (same `initialRoot` ⇒ same
-  address, independent of the real implementation).
-- **UpgradeRegistry / upgrades** — sync to a bumped `currentImplementation`; `updateRoot` via proof;
-  rejection of an unproven/forged root leaf; rejection once the registry root rotates (stale leaf
-  invalid); `_authorizeUpgrade` rejects any target other than `currentImplementation`.
+- **Proxy / factory** — `initialRoot → activeRoot` init via the `BeaconProxy` constructor; deploy →
+  deposit dispatch; cross-chain address determinism (same `initialRoot` ⇒ same address, independent of
+  the implementation); a proxy resolves the impl from the beacon (set `registry.implementation` then
+  confirm `execute` runs the new logic with no per-proxy action).
+- **CounterfactualBeacon / upgrades** — `setImplementation` retargets all proxies at once; `updateRoot` via
+  proof; rejection of an unproven/forged root leaf; rejection once the registry root rotates (stale leaf
+  invalid); no-op root (`newRoot == activeRoot`) reverts.
 - **Per-bridge verticals (SpokePool, CCTP, OFT)** — happy-path deposit per bridge; `block.chainid !=
 sourceChainId` rejection; valid / expired / forged fee signatures; over-cap fee rejection; native-ETH
   path where supported; the withdraw leaf (authorized vs. unauthorized).
 
 ### Phase 5 — Deployment
 
-Deterministically deploy the factory, the **bootstrap implementation**, and the `UpgradeRegistry` at
-identical addresses across chains (under `FOUNDRY_PROFILE=counterfactual`); deploy the real
-implementation(s) per chain and set the registry's `currentImplementation`. Publish the route trees and
-the initial upgrade tree. Verify same-address parity across chains (and that it is independent of the
-real implementation). Record addresses in the generated address artifacts.
+Deterministically deploy the **factory** and the **`CounterfactualBeacon`** (the beacon) at identical
+addresses across chains (under `FOUNDRY_PROFILE=counterfactual`); deploy the `CounterfactualDeposit`
+implementation per chain and `registry.setImplementation(it)`. Publish the route trees and the initial
+upgrade tree. Verify same-address parity across chains (independent of the implementation). Record
+addresses in the generated address artifacts.
 
 ---
 
 ## Open Questions
 
-1. **Factory / bootstrap / registry determinism.** Cross-chain address parity requires the
-   **factory**, the **bootstrap**, and the **`UpgradeRegistry`** to be at identical addresses on every
-   chain (`registry → bootstrap → proxy`). Lock this with deterministic deployment + the byte-identical
-   profile (Phase 0). The real implementation no longer needs to be deterministic for address parity
-   (it's not in any address), though it's still deployed deterministically for operational simplicity.
-2. **Pre-deployment / finalize ordering.** An address can receive funds before its proxy is deployed.
-   `deployIfNeededAndExecute` bootstraps → finalizes (to `currentImplementation()`) → executes the
-   deposit atomically, so a proxy is never used in its bootstrap (deposit-less) state. A freshly
-   finalized proxy starts at `initialRoot`; a registry-authorized route/impl upgrade only applies after
-   a later executor `upgrade` tx. Confirm this ordering is acceptable.
-3. ~~**Root replay / monotonicity.**~~ **RESOLVED (D25): no contract change.** Implementation is
-   monotonic by construction (single `currentImplementation` slot). For **roots**, downgrade is
+1. **Factory / registry (beacon) determinism.** Cross-chain address parity requires the **factory** and
+   the **`CounterfactualBeacon`** (the beacon) to be at identical addresses on every chain (`registry(beacon)
+→ proxy`). Lock this with deterministic deployment + the byte-identical profile (Phase 0). The
+   implementation (the beacon target) need not be deterministic for parity (it's in no address), though
+   it's still deployed deterministically for operational simplicity.
+2. **Pre-deployment ordering.** An address can receive funds before its proxy is deployed.
+   `deployIfNeededAndExecute` deploys the `BeaconProxy` (already initialized + always-current via the
+   beacon) and executes in one tx. A freshly deployed proxy starts at `initialRoot`; a route upgrade only
+   applies after a later `updateRoot`. Confirm this ordering is acceptable.
+3. ~~**Root replay / monotonicity.**~~ **RESOLVED (D25): no contract change.** Implementation is always
+   current (beacon-resolved). For **roots**, downgrade is
    prevented off-chain: registry-root **rotation** invalidates old trees' proofs, and the tree
    generator must enforce **at most one `(proxy, root)` leaf per proxy** per tree. Residual risk
    accepted: a tooling slip (duplicate/stale leaf) would be attacker-exploitable via the permissionless
    `updateRoot` — so the one-leaf-per-proxy invariant is a hard, tested requirement of the tree builder.
-4. **`UpgradeRegistry` admin controls.** `Ownable2Step` + multisig from the start (timelock omitted in
-   this implementation — D19); it is the only privileged role — it sets the global
-   `currentImplementation` (which any proxy can then sync to) and curates the per-proxy root tree.
-5. **UUPS upgrade safety.** Maintain storage-layout compatibility across implementations (`activeRoot`
-   slot, ERC-1967 slots); add upgrade-safety checks/tests.
+4. **`CounterfactualBeacon` admin controls.** `Ownable2Step` + multisig from the start (timelock omitted in
+   this implementation — D19); it is the only privileged role — it sets the global `implementation`
+   (the beacon target, used by all proxies instantly) and curates the per-proxy root tree.
+5. **Implementation storage-layout safety.** Every implementation the beacon points to must preserve the
+   ERC-7201 `activeRoot` storage layout (the proxy's storage). Add layout checks/tests; a bad impl set as
+   the beacon target would corrupt every proxy at once.
 6. ~~**`AdminWithdrawManager` replay.**~~ **RESOLVED (D24): accepted as-is.** `signedWithdraw` is
    replayable within its deadline (no nonce/used-marking) — a conscious decision, since the payout is
    forced to the committed user, so replays only re-pay the rightful user.
 7. **Admin actions via the counterfactual's own tree.** Beyond deposits/withdraws, decide whether any
    other privileged actions should be expressible as leaves in a proxy's `activeRoot` tree (vs. routed
-   exclusively through the `UpgradeRegistry`).
+   exclusively through the `CounterfactualBeacon`).
 8. ~~**Withdraws — what authorization, and is an admin needed?**~~ **RESOLVED (D12).** Withdraw is
    authorization-gated, not permissionless: `WithdrawImplementation` requires `msg.sender` to equal the
    `{admin, user}` committed in the leaf params (authenticated by the proof) — reused from v4 unchanged.
@@ -549,30 +512,25 @@ real implementation). Record addresses in the generated address artifacts.
    tree-config choice** (and, being leaf values, are part of the address) — not an open contract
    question. (Permissionless withdraw was rejected as a DoS vector; `signedWithdraw` replay accepted —
    D24.)
-9. ~~**Should being up-to-date be required to execute?**~~ **RESOLVED (D13): yes.** `execute` now gates
-   on `_requireUpToDate()`: the proxy must run the registry's `currentImplementation` (else
-   `StaleImplementation`) and have `rootVersion >= registry.minRequiredVersion()` (else `StaleRoot`).
-   Remediation is permissionless: `syncImplementation()` for impl, `updateRoot()` for root (neither is
-   gated). Reverses the earlier "optional" stance.
-10. ~~**Version counters on `UpgradeRegistry` and the proxy.**~~ **RESOLVED (D13): adopted (root only).**
-    The registry has a `version` (bumped on every `setUpgradeRoot`) and an admin-set
-    `minRequiredVersion (<= version)`; each proxy stores a `rootVersion` (stamped on `updateRoot`, and at
-    deploy — D26). No separate _implementation_ version is needed — impl freshness is an exact address
-    match against `currentImplementation`.
-11. ~~**Is the `UpgradeRegistry` itself upgradeable?**~~ **RESOLVED (D19): yes — UUPS proxy, no
-    timelock in this implementation.** It must have a permanent address anyway (the bootstrap embeds it,
-    anchoring every proxy via `registry → bootstrap → proxy`), so a UUPS proxy keeps the address fixed
-    while its logic can evolve (e.g. to add the version counters of #9/#10) — avoiding the awkward
-    alternative where a non-upgradeable registry is "replaced" only by leaving the old one alive as a
-    permanent redirector. Upgradeability doesn't widen the trust surface (the admin is already
-    all-powerful via `currentImplementation`); the dropped trade-off is that the authorization _rules_
-    (permissionless sync, proof-gated root) are no longer immutable.
+9. ~~**Should being up-to-date be required to execute?**~~ **RESOLVED (D28): no.** Implementation
+   freshness is automatic (beacon-resolved — D27); **root** freshness is **not** enforced — root updates
+   are best-effort (a proxy keeps its `activeRoot` until updated). The version/min-version gate was added
+   (D13) then removed (D28). To kill a route everywhere, change the implementation via the beacon (global).
+10. ~~**Version counters on `CounterfactualBeacon` and the proxy.**~~ **RESOLVED (D28): none.** No `version` /
+    `minRequiredVersion` on the registry, no `rootVersion` on the proxy. (Adopted briefly in D13, removed
+    in D28.) Impl freshness is automatic via the beacon (D27).
+11. ~~**Is the `CounterfactualBeacon` itself upgradeable?**~~ **RESOLVED (D19): yes — UUPS proxy, no
+    timelock in this implementation.** It must have a permanent address anyway (every `BeaconProxy`
+    embeds it as the beacon, anchoring proxy addresses via `registry(beacon) → proxy`), so a UUPS proxy
+    keeps the address fixed while its logic can evolve. Upgradeability doesn't widen the trust surface
+    (the admin is already all-powerful — setting the beacon `implementation` instantly retargets every
+    proxy); the dropped trade-off is that the registry's rules are no longer immutable.
 12. **Tron support.** Tron is **in scope (D18)**. **Resolved:** Tron addresses need **not** match the
     EVM addresses — a Tron deposit address is its own thing. So Tron gets a **separate Tron factory**
     (mirroring the base `CounterfactualDepositFactoryTron`) and **Tron-specific implementations where
     needed** — principally the USDT / `safeTransfer` issue (Tron USDT doesn't return a bool, so use the
     `SafeTransferERC20` / `TronTransferLib` pattern). The **Tron factory is reworked**:
-    `CounterfactualDepositFactoryTron` now extends the `ERC1967Proxy`-based factory and overrides only
+    `CounterfactualDepositFactoryTron` now extends the `BeaconProxy`-based factory and overrides only
     the `_computeProxyAddress` hook to predict with Tron's 0x41 prefix (`TronClones.computeAddress`);
     deployment via `deploy()` uses the native `create2` (0x41) so it works as-is.
 
@@ -587,27 +545,24 @@ real implementation). Record addresses in the generated address artifacts.
       the TVM `CHAINID` opcode returns a stable known value, and that Tron leaves' `sourceChainId` + the
       off-chain signer's EIP-712 chainId both equal it — else every deposit reverts.
     - **(c) Deterministic deployment of the substrate.** Tron lacks the standard EVM CREATE2 deployer;
-      decide how the factory / bootstrap / `UpgradeRegistry` reach known Tron addresses (so prediction
-      is meaningful), and deploy bootstrap + registry on Tron.
-    - **(d) UUPS / ERC-1967 upgrade semantics.** Conceptually fine (TVM has `delegatecall`,
-      `EXTCODESIZE`, the ERC-1967 slot) but unproven: deploy→finalize→upgrade must be tested on
-      Shasta/Nile, including the `ERC1967Utils` code-size check.
+      decide how the factory / `CounterfactualBeacon` reach known Tron addresses (so prediction is meaningful),
+      and deploy the registry on Tron.
+    - **(d) Beacon / ERC-1967 semantics.** Conceptually fine (TVM has `delegatecall`, `EXTCODESIZE`, the
+      ERC-1967 beacon slot) but unproven: `BeaconProxy` construction (which reads `beacon.implementation()`
+      and the `ERC1967Utils` code-size check) and live impl resolution must be tested on Shasta/Nile.
     - **(e) Native asset (TRX / WTRX).** The SpokePool `NATIVE_ASSET` path wraps to `wrappedNativeToken`
       (WTRX on Tron, 6-decimal TRX) — needs Tron-specific config, or disable native for Tron routes.
     - **Already handled:** 0x41 CREATE2 prefix (factory override); USDT non-standard `transfer` return
       (the `_safeTransfer` hook in the Tron route/withdraw variants); `ecrecover` (works, given the
       signer signs with Tron's chainId per (b)).
 
-13. **Beacon proxy instead of UUPS + bootstrap?** A `BeaconProxy` reading its implementation from the
-    `UpgradeRegistry` (as `IBeacon`) would eliminate the bootstrap, `syncImplementation`, the finalize
-    step, and version-counter machinery — proxies would run the latest impl by construction (the
-    strongest form of "require latest"). **Decided for now (D23): keep UUPS + bootstrap.** Blocker is
-    deploy cost: OZ's stock `BeaconProxy` runtime is ~287 bytes vs `ERC1967Proxy`'s ~100 (its
-    `_implementation()` is an external `STATICCALL`, not an `SLOAD`) → **~+37k gas per counterfactual
-    deployment** (200 gas/byte), only ~2k offset by skipping finalize; per-call cost is ~equal in a
-    "require-latest" design. Revisit if (a) we adopt a minimal custom beacon proxy (~80 bytes assembly,
-    which erases the deploy penalty), or (b) per-address deploy cost stops mattering. Note: switching
-    commits to mandatory/immediate/global impl upgrades (reverses D13).
+13. ~~**Beacon proxy instead of UUPS + bootstrap?**~~ **RESOLVED (D27): adopted — OZ `BeaconProxy`,
+    registry as beacon.** The `BeaconProxy` eliminates the bootstrap, `syncImplementation`, the finalize
+    step, and the impl-staleness gate — proxies run the current impl by construction. We accepted OZ's
+    stock `BeaconProxy` (~287-byte runtime ≈ +37k gas/deploy) over a minimal custom / Solady proxy (would
+    erase the cost but adds a dependency + binding plumbing). Impl upgrades are now immediate/global; the
+    per-proxy `minRequiredVersion` root gate (D13) remains. Revisit the proxy flavor (minimal/Solady)
+    only if per-deploy cost becomes a priority — it's isolated to the factory's init code.
 
 ---
 
@@ -626,36 +581,30 @@ calls are marked and cross-referenced to the relevant Open Question.)
   audited impls, and the destination is handled by the bridge itself — no Gateway/Executor/planner/
   Shape-A machinery (the earlier v5 generalization, dropped).
 - **D3 — No admin on the proxy.** Deposits/withdraws are authorized by the proxy's own `activeRoot` tree;
-  upgrades by the global `UpgradeRegistry`. _Why:_ removes a per-proxy trusted key and concentrates the
+  upgrades by the global `CounterfactualBeacon`. _Why:_ removes a per-proxy trusted key and concentrates the
   single trust point in the registry.
 - **D4 — Address = `f(initialRoot)`; identity baked into the tree.** `initialRoot` (in init code, written
   to `activeRoot`) commits a tree carrying every source chain's route to one destination identity
   `(finalRecipient, outputToken, destinationChainId)`. _Why:_ identical `initialRoot` on every chain ⇒
   same address everywhere for a destination identity; per-chain routes differ but share one root (the
   caller proves the leaf for its chain).
-- **D5 — Bootstrap deployment keeps the real impl out of the address.** Proxies deploy against a
-  permanent, minimal bootstrap impl, then `syncImplementation()` upgrades to the registry's
-  `currentImplementation()`. _Why:_ we don't want the versioned implementation to affect the address; the
-  bootstrap is a fixed anchor so the real impl can change freely. Only the bootstrap (a constant) is in
-  the CREATE2 preimage.
-- **D6 — Finalize via global `currentImplementation()`, no proof.** The first `syncImplementation()`
-  reads the registry's `currentImplementation()` directly. _Why:_ the value comes from the trusted
-  registry; requiring a per-proxy proof just to deploy would need a leaf for every (possibly
-  never-deployed) counterfactual.
-- **D7 — Implementation upgrades global; roots per-proxy.** Implementation is administered once globally
-  (`currentImplementation`); any proxy syncs to it permissionlessly (no proof — can only land on the
-  current value; monotonic via a single slot). Roots are per-proxy via `updateRoot(newRoot, proof)`
-  against the registry's `(proxy, latestRoot)` tree; the leaf carries **no** implementation. _Why:_
-  implementation is shared logic (per-proxy admin would mean republishing a leaf per proxy to bump it);
-  roots are inherently per-proxy (each encodes a unique identity's routes). _Rejected:_ a per-proxy impl
-  override for canary/staggered rollout, for simplicity.
-- **D8 — Registry handle is immutable in impl bytecode.** The `UpgradeRegistry` address is an
-  immutable/constant in the bootstrap and impls, not proxy state. _Why:_ it's a global per-chain
-  constant; per-proxy storage would waste an `SSTORE`/`SLOAD` and bloat init code. Migratable via the
-  normal upgrade path if ever needed.
-- **D9 — Registry (with factory + bootstrap) is same-address on every chain.** _Why:_ the bootstrap
-  embeds the registry and is itself in the proxy preimage (`registry → bootstrap → proxy`), so the
-  registry must be chain-invariant for address parity. (The real impl is the only piece exempt.)
+- ~~**D5 — Bootstrap deployment keeps the real impl out of the address.**~~ **Superseded by D27
+  (beacon).** The `BeaconProxy` keeps the implementation out of the address with no bootstrap.
+- ~~**D6 — Finalize via global `currentImplementation()`, no proof.**~~ **Superseded by D27 (beacon).**
+  There is no finalize step — the beacon resolves the implementation live.
+- **D7 — Implementation is global; roots per-proxy.** Implementation is administered once globally (the
+  beacon's `implementation`; D27) — set by the admin, used by all proxies instantly. Roots are per-proxy
+  via `updateRoot(newRoot, proof)` against the registry's `(proxy, latestRoot)` tree; the leaf carries
+  **no** implementation. _Why:_ implementation is shared logic; roots are inherently per-proxy (each
+  encodes a unique identity's routes). _Rejected:_ a per-proxy impl override for canary/staggered rollout.
+- **D8 — Registry handle is immutable in impl bytecode (and the proxy's beacon).** The `CounterfactualBeacon`
+  address is an immutable in `CounterfactualDeposit` (for `updateRoot`/the version gate) **and** the
+  `BeaconProxy`'s beacon (for live impl resolution). Not per-proxy state. _Why:_ it's a global per-chain
+  constant; storing it per-proxy would waste an `SSTORE`/`SLOAD` and bloat init code.
+- **D9 — Factory + registry (beacon) are same-address on every chain.** _Why:_ the `BeaconProxy` embeds
+  the registry as its beacon, and is deployed by the factory, both in the proxy preimage
+  (`registry(beacon) → proxy`), so both must be chain-invariant for address parity. (The implementation —
+  the beacon target — is the only piece exempt.)
 - **D10 — Dynamic, signed execution fees on all three impls.** Each impl accepts an `executionFee` from
   `submitterData`, authorized by an EIP-712 signature from an immutable `signer` and bounded by a
   leaf-committed cap — matching the `taylor/counterfactual-route-policy` branch. _Why:_ compensates the
@@ -672,30 +621,11 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   address live **only in the merkle tree** (never proxy state), per the in-tree model (D11). Exact
   committed `{admin, user}` are an off-chain tree-config choice (Q8, resolved). (`signedWithdraw`
   replayability accepted as-is — D24.)
-- **D13 — `execute` requires the proxy to be up to date (supersedes the earlier "optional" stance).**
-  `execute` (the deposit/withdraw path) gates on `_requireUpToDate()`:
-  - **Implementation must be current** — `ERC1967Utils.getImplementation() == registry.currentImplementation()`
-    (else `StaleImplementation`); exact address match, no impl version counter needed.
-  - **Root must be recent enough** — the registry has a `version` (bumped on every `setUpgradeRoot`) and an
-    admin-set `minRequiredVersion (<= version)`; each proxy stores a `rootVersion` and `execute` requires
-    `rootVersion >= minRequiredVersion` (else `StaleRoot`). `rootVersion` is stamped on `updateRoot`
-    (= `registry.version()`) and at deploy (D26).
-  - **Remediation is permissionless and ungated:** `syncImplementation()` (impl) and `updateRoot()` (root)
-    are never gated, so a stale proxy can always be brought current (then execute). The `updateRoot`
-    no-op guard is relaxed to allow re-applying the _same_ root when it advances the version (so an
-    unaffected proxy can still climb to a higher `minRequiredVersion`); only same-root-AND-same-version
-    reverts.
-    _Why:_ lets the admin force a security-critical impl fix or route retirement to actually take effect
-    (a stale proxy can't keep depositing on old logic / a retired root). _Cost:_ ~one registry read for
-    `(currentImplementation, minRequiredVersion)` per `execute`, plus the per-bump sync friction (each
-    proxy must be synced/updated before its next deposit). Resolves Q9 + Q10.
-- **D26 — Fresh proxy stamped at the registry's current `version` on deploy.** `initialize` sets
-  `rootVersion = registry.version()`. _Why:_ a freshly deployed proxy is in no published upgrade tree, so
-  it couldn't `updateRoot` to climb to `minRequiredVersion`; stamping it current makes it born executable
-  (and `minRequiredVersion <= version` always holds). _Accepted limitation:_ a proxy whose `initialRoot`
-  was _issued_ before a route was retired but _deployed_ after still executes that route once on
-  `initialRoot` (it's stamped current at deploy) — mitigated off-chain (don't issue `initialRoot`s with a
-  retired route) and, for a true emergency, by a route/impl-level disable rather than the version gate.
+- ~~**D13 — `execute` requires the proxy's root to be recent enough.**~~ **Reversed by D28.** The
+  `version` / `minRequiredVersion` / `rootVersion` gate was added here, then removed — root updates are
+  best-effort, no execute gate.
+- ~~**D26 — Fresh proxy stamped at the registry's current `version` on deploy.**~~ **Obsolete (D28).**
+  No `rootVersion` to stamp; `initialize` just writes `activeRoot`.
 - **D14 — Amounts come from signed `submitterData`, not live balance.** `inputAmount` / `outputAmount` /
   `executionFee` are supplied per-execution in `submitterData` and authorized by the `signer` (EIP-712
   for SpokePool; periphery quote sig for CCTP/OFT), matching the `taylor/counterfactual-route-policy`
@@ -719,39 +649,59 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   `safeTransfer` issue → `SafeTransferERC20` / `TronTransferLib`). _Why:_ Tron's create2/address format
   and solc fork differ; cross-Tron↔EVM parity isn't required, so a parallel Tron track is simpler than
   forcing one address scheme. Details tracked in Q12.
-- **D19 — `UpgradeRegistry` is upgradeable (UUPS); no timelock in this implementation.** It needs a
-  permanent address anyway (the bootstrap embeds it), so a UUPS proxy keeps the address fixed while
-  logic can evolve. _Why no timelock:_ explicit scope decision for this first implementation —
-  accepting that the admin is all-powerful (`currentImplementation` + permissionless sync) with no
-  on-chain user-exit window. Known residual risk; revisit later. Resolves Q11.
+- **D19 — `CounterfactualBeacon` is upgradeable (UUPS); no timelock in this implementation.** It needs a
+  permanent address anyway (every `BeaconProxy` embeds it as the beacon), so a UUPS proxy keeps the
+  address fixed while logic can evolve. _Why no timelock:_ explicit scope decision for this first
+  implementation — accepting that the admin is all-powerful (setting the beacon `implementation`
+  instantly retargets every proxy) with no on-chain user-exit window. Known residual risk; revisit later
+  (note: with the beacon, impl upgrades are immediate, so a timelock matters more). Resolves Q11.
 - **D20 — Token model: per-input-token leaves; native via `NATIVE_ASSET`.** A distinct input token on a
   source chain is its own route leaf; the impl sweeps that leaf's input token, with native ETH via the
   `NATIVE_ASSET` sentinel where the bridge supports it — following the
   `taylor/counterfactual-route-policy` branch. EIP-712 domain `version = "v2.0.0"` (same branch).
 - **D21 — The upgradeable contracts reuse the immutable names and replace that system.** No new
-  `Dispatcher`/`Upgradeable*` contract names: `CounterfactualBase` (the UUPS base),
-  `CounterfactualDeposit` (the dispatcher / registry `currentImplementation`), and
-  `CounterfactualDepositFactory` (the UUPS factory) take over the existing names, alongside
-  `CounterfactualBootstrap` + `UpgradeRegistry`; all in `contracts/periphery/counterfactual/`. _Why:_
-  this upgradeable design _is_ the counterfactual system, not a parallel variant. _Consequence:_ the old
-  immutable-system tests, deploy scripts, and the Clones-based `CounterfactualDepositFactoryTron` are
-  superseded and **left broken for now**, to be rebuilt in Phase 4 / Phase 5 / Q12.
-- **D22 — Reject no-op upgrades.** Both knobs revert if unchanged: `_authorizeUpgrade` reverts
-  `ImplementationUnchanged` if the target equals the in-use implementation (covers `syncImplementation`
-  and any direct `upgradeToAndCall`), and `updateRoot` reverts `RootUnchanged` if `newRoot == activeRoot`.
-  _Why:_ avoids redundant state writes, event spam, and a wasted upgrade call.
-- **D23 — Keep UUPS + bootstrap; don't switch to a beacon (provisional).** _Why:_ OZ's stock
-  `BeaconProxy` runtime is ~187 bytes larger than `ERC1967Proxy` (its `_implementation()` is an external
-  `STATICCALL`, not an `SLOAD`), ≈ +37k gas per counterfactual deployment — not worth the simplification
-  given deploys recur across many addresses. The beacon stays an open alternative (Q13), attractive only
-  with a minimal custom proxy.
+  `Dispatcher`/`Upgradeable*` contract names: `CounterfactualDeposit` (the single beacon-target
+  implementation, which also holds the proxy storage + `updateRoot`) and `CounterfactualDepositFactory`
+  (the `BeaconProxy` factory) take over the existing names, alongside `CounterfactualBeacon` (the beacon); all
+  in `contracts/periphery/counterfactual/`. _Why:_ this upgradeable design _is_ the counterfactual system,
+  not a parallel variant. _Consequence:_ the old immutable-system tests and deploy scripts are superseded
+  and **left broken for now**, rebuilt in Phase 4 / Phase 5.
+- **D22 — Reject no-op root updates.** `updateRoot` reverts `RootUnchanged` if neither the root nor the
+  version would change. _Why:_ avoids redundant state writes / event spam. (The impl no-op guard from the
+  UUPS era is gone — there is no per-proxy implementation upgrade under the beacon, D27.)
+- ~~**D23 — Keep UUPS + bootstrap; don't switch to a beacon (provisional).**~~ **Reversed by D27.**
+- **D27 — Adopt the beacon pattern (OZ `BeaconProxy`); the `CounterfactualBeacon` is the beacon.** Each
+  counterfactual is an OZ `BeaconProxy(registry, initialize(initialRoot))`; the registry implements
+  `IBeacon.implementation()`. _Why:_ the beacon makes the implementation **always-current** by
+  construction — deleting the bootstrap, `syncImplementation`/`_authorizeUpgrade`, and the finalize step.
+  (Require-latest via UUPS cost the same per-call registry read as the beacon but added sync friction the
+  beacon avoids.)
+  _Cost accepted:_ OZ's stock `BeaconProxy` runtime is ~187 bytes larger than `ERC1967Proxy` (≈ +37k
+  gas/deploy); chose OZ stock (audited, in-repo, binds `initialRoot`→address for free via constructor
+  `data`) over a minimal custom / Solady proxy (would erase the cost but adds a dependency + binding
+  plumbing). Resolves Q13; supersedes D5, D6, D23. Trust note: impl upgrades are now immediate-global, so
+  a timelock matters more (still omitted — D19).
 - **D24 — Accept `AdminWithdrawManager.signedWithdraw` replayability as-is.** No nonce / used-marking;
   the signature is replayable within its `deadline`. _Why:_ the recipient is forced to the committed
   `user`, so a replay can only re-pay the rightful user (not theft); not worth the extra storage/used-map.
   (Was Q6.)
-- **D25 — No on-chain root-version monotonicity; rely on an off-chain invariant.** `updateRoot` stays
+- **D25 — No on-chain root-version monotonicity; rely on an off-chain invariant.** `updateRoot` is
   permissionless and version-less. Downgrade-to-a-retired-root is prevented by (i) registry-root
   rotation invalidating old trees, and (ii) a tree-generator invariant of **≤1 `(proxy, root)` leaf per
-  proxy** per tree. _Why:_ the invariant is natural and the admin is already trusted; keeps version
-  counters out (D13). _Risk accepted:_ a tooling slip would let anyone roll a proxy back to a stale root
-  via the permissionless `updateRoot` — the tree builder must lint/enforce the invariant. (Was Q3.)
+  proxy** per tree. _Why:_ the invariant is natural and the admin is already trusted. _Risk accepted:_ a
+  tooling slip would let anyone roll a proxy back to a stale root via the permissionless `updateRoot` —
+  the tree builder must lint/enforce the invariant. (Was Q3.)
+- **D28 — Remove versioning entirely.** No `version` / `minRequiredVersion` on the registry and no
+  `rootVersion` on the proxy; `execute` has no root-freshness gate. Root updates are **best-effort** — a
+  proxy keeps its `activeRoot` until someone `updateRoot`s it. _Why:_ simpler (smaller registry + proxy,
+  one fewer registry read per `execute`); the implementation — which the beacon keeps always-current
+  (D27) — is the lever for any must-take-effect-everywhere change, so the route force-upgrade gate wasn't
+  worth its weight. _Consequence:_ the admin cannot force a stale proxy off an old route set on-chain;
+  retiring a route everywhere is done by changing the implementation (global, via the beacon) or
+  disabling the route's periphery, not by a per-proxy version bump. Reverses D13, obsoletes D26.
+- **D29 — Rename `UpgradeRegistry` → `CounterfactualBeacon` (interface `IUpgradeRegistry` →
+  `ICounterfactualBeacon`); the proxy's immutable handle is `BEACON`.** _Why:_ once versioning was
+  removed (D28) and the contract's only role is to be the proxies' `IBeacon` (current `implementation()`
+  plus the `upgradeRoot` source), "beacon" names what it is; "registry" overstated a curation role it no
+  longer has. Storage namespace moves to `across.counterfactual.beacon.storage`. Pure rename — no
+  behavior change. Renames the contract from D27/D19.

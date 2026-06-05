@@ -10,16 +10,16 @@ import { CounterfactualDepositFactory } from "./CounterfactualDepositFactory.sol
  *         proxies via CREATE2 on the TVM.
  * @dev Tron's TVM uses 0x41 instead of EVM's 0xff as the CREATE2 address derivation prefix. The
  *      `create2` opcode itself uses 0x41 natively, so deployment via the inherited `deploy(...)`
- *      (which uses `new ERC1967Proxy{ salt: 0 }(...)`) produces the correct address on Tron. Only
+ *      (which uses `new BeaconProxy{ salt: 0 }(...)`) produces the correct address on Tron. Only
  *      OZ's `Create2.computeAddress` — used for off-chain-style prediction — hardcodes 0xff and would
  *      return the wrong address. This variant overrides the `_computeProxyAddress` hook to predict
- *      with the 0x41 prefix; all other logic (deploy + atomic finalize) is inherited unchanged.
+ *      with the 0x41 prefix; all other logic is inherited unchanged.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositFactoryTron is CounterfactualDepositFactory {
-    constructor(address bootstrap) CounterfactualDepositFactory(bootstrap) {} // solhint-disable-line no-empty-blocks
+    constructor(address beacon) CounterfactualDepositFactory(beacon) {} // solhint-disable-line no-empty-blocks
 
-    /// @dev TRON OVERRIDE: predict the `ERC1967Proxy` CREATE2 address using the 0x41 prefix (salt 0).
+    /// @dev TRON OVERRIDE: predict the `BeaconProxy` CREATE2 address using the 0x41 prefix (salt 0).
     function _computeProxyAddress(bytes32 initCodeHash) internal view override returns (address) {
         return TronClones.computeAddress(bytes32(0), initCodeHash, address(this));
     }
