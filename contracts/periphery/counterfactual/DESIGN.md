@@ -371,10 +371,20 @@ Per-bridge typehash and binding:
 > the sponsored-bridge periphery unchanged — **two signatures per execute**. SpokePool calls
 > `SpokePool.deposit` directly (no periphery), so it has only the one EIP-712 fee signature and
 > therefore must bind the clone, route hash, and all runtime fields in its own typehash.
+>
+> **Trust split (CCTP/OFT).** The counterfactual `counterfactualSignature` authorizes **only** the
+> `(nonce, executionFee, signatureDeadline)` — i.e. the **fee**. The **route, amount, recipient, and
+> destination action** are authorized by the separate `peripherySignature` over the Sponsored quote
+> (committed in `SponsoredCCTPQuoteLib` / OFT `QuoteSignLib`). Neither signature alone authorizes a full
+> transfer — a complete execution requires **both**, and `nonce` uniqueness at the periphery prevents fee
+> replay (see Open Question #2).
 
-> Note for the upgradeable model: the impl is reachable via UUPS upgrade, so its constructor-immutable
-> `signer` lives in the implementation bytecode. For cross-chain address parity the implementation must
-> be deployed deterministically (Phase 0/5), which also keeps `signer` consistent across chains.
+> Note for the upgradeable model: the impl is the **beacon target** (swapped globally via
+> `setImplementation`, never via the proxy and never in the address), and its constructor-immutable
+> `signer` lives in the implementation bytecode. The impl need **not** be deterministic for _address_
+> parity (it is in no address — see _Address Determinism_), but the **same `signer` must be used on every
+> chain** for fee signatures to verify consistently; deploying the impl deterministically (Phase 0/5) is
+> the simplest way to guarantee that.
 
 ---
 
@@ -649,7 +659,7 @@ Decisions made so far, with reasoning. (Kept up to date as we decide things; pro
 calls are marked and cross-referenced to the relevant Open Question.)
 
 - **D1 — Upgradeable proxy with in-storage root; no `RoutePolicy`.** Each counterfactual is its own
-  ERC-1967 UUPS proxy storing `activeRoot`. _Why:_ routes and logic must be upgradeable without changing
+  ERC-1967 proxy (a `BeaconProxy`, per D27) storing `activeRoot`. _Why:_ routes and logic must be upgradeable without changing
   the user-facing address; an in-storage root indirected from the immutable address achieves this, and a
   separate policy contract is unnecessary indirection.
 - **D2 — Direct per-bridge bridging, native recipient; no Gateway.** Bridging is done by per-bridge
@@ -675,7 +685,7 @@ calls are marked and cross-referenced to the relevant Open Question.)
   **no** implementation. _Why:_ implementation is shared logic; roots are inherently per-proxy (each
   encodes a unique identity's routes). _Rejected:_ a per-proxy impl override for canary/staggered rollout.
 - **D8 — Registry handle is immutable in impl bytecode (and the proxy's beacon).** The `CounterfactualBeacon`
-  address is an immutable in `CounterfactualDeposit` (for `updateRoot`/the version gate) **and** the
+  address is an immutable in `CounterfactualDeposit` (for `updateRoot`'s `upgradeRoot` lookup) **and** the
   `BeaconProxy`'s beacon (for live impl resolution). Not per-proxy state. _Why:_ it's a global per-chain
   constant; storing it per-proxy would waste an `SSTORE`/`SLOAD` and bloat init code.
 - **D9 — Factory + registry (beacon) are same-address on every chain.** _Why:_ the `BeaconProxy` embeds
@@ -714,8 +724,9 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   `block.chainid == params.sourceChainId`. _Why:_ `initialRoot` is the same all-source-chains tree on
   every chain, so every leaf is provable everywhere — the check stops a leaf authored for one chain
   being used on another.
-- **D16 — CREATE2 `salt` fixed to `0`.** _Why:_ makes the address purely `f(initialRoot)` — one
-  destination identity ⇒ exactly one address, no vanity/duplicate variants.
+- ~~**D16 — CREATE2 `salt` fixed to `0`.**~~ **Superseded by D30 (caller-supplied `salt`; `0` remains the
+  recommended default).** _Original why:_ made the address purely `f(initialRoot)` — one destination
+  identity ⇒ exactly one address, no vanity/duplicate variants.
 - **D17 — `execute(params, submitterData)` impl interface.** The dispatcher is
   `execute(implementation, params, submitterData, proof)`; impls implement
   `ICounterfactualImplementation.execute(params, submitterData)` and decode identity from `params`
