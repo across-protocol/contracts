@@ -9,7 +9,8 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
  *         the **beacon** for every counterfactual `BeaconProxy`: `implementation()` (from `IBeacon`)
  *         returns the single canonical implementation all proxies run, so changing it upgrades every
  *         proxy at once (no per-proxy action). It also holds the `(proxy, latestRoot)` upgrade tree
- *         `root` and the `version` / `minRequiredVersion` that gate per-proxy root freshness.
+ *         `root` that authorizes per-proxy root updates. Root updates are best-effort — there is no
+ *         on-chain version/freshness gate.
  * @dev `implementation()` here is the **counterfactual** implementation (the beacon target) — distinct
  *      from the registry's own (UUPS) implementation.
  * @custom:security-contact bugs@across.to
