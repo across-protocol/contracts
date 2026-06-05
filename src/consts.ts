@@ -1,7 +1,6 @@
-import { ZERO_ADDRESS } from "@uma/common";
 import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
 
-export { ZERO_ADDRESS } from "@uma/common";
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
@@ -18,16 +17,6 @@ export const CIRCLE_UNINITIALIZED_DOMAIN_ID = 4294967295; // 2^32 - 1
 export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
 export const ZK_L2_GAS_LIMIT = 2000000;
 export const ZK_MAX_GASPRICE = "10000000000000"; // 10k gwei
-
-// Expected Safe address for Universal SpokePool
-export const EXPECTED_SAFE_ADDRESS = "0x0Fc8E2BB9bEd4FDb51a0d36f2415c4C7F9e75F6e";
-export const EXPECTED_SAFE_OWNERS = [
-  "0x868CF19464e17F76D6419ACC802B122c22D2FD34",
-  "0xcc400c09ecBAC3e0033e4587BdFAABB26223e37d",
-  "0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe",
-  "0x1d933Fd71FF07E69f066d50B39a7C34EB3b69F05",
-  "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9",
-];
 
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {

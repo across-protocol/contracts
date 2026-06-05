@@ -24,7 +24,37 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
     // Error thrown when the CCTP message transmitter receive message fails.
     error CCTPMessageTransmitterFailed();
 
+    // Error thrown when the amount actually minted into this contract by the CCTP call does not match
+    // the `amount - feeExecuted` encoded in the message.
+    error InvalidMintedAmount();
+
+    // Error thrown when the CCTP message's top-level `recipient` is not the configured TokenMessenger.
+    error InvalidRecipient();
+
+    // Error thrown when the TokenMinter does not link the message's remote burnToken to this periphery's
+    // `baseToken` on the local domain.
+    error InvalidMintedToken();
+
+    // Error thrown when direct flow destination handler is not a contract.
+    error InvalidDirectHandler();
+
+    // Error thrown when the burn token is invalid.
+    error InvalidBurnToken();
+
     event SponsoredDepositForBurn(
+        bytes32 indexed quoteNonce,
+        address indexed originSender,
+        bytes32 indexed finalRecipient,
+        uint256 quoteDeadline,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
+        bytes32 finalToken,
+        uint32 destinationDex,
+        uint8 accountCreationMode,
+        bytes signature
+    );
+
+    event SponsoredCCTPDirectExecution(
         bytes32 indexed quoteNonce,
         address indexed originSender,
         bytes32 indexed finalRecipient,

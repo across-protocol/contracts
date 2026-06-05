@@ -19,6 +19,7 @@ evm_version = "prague"
 
 [profile.zksync]
 src = "contracts/spoke-pools/Lens_SpokePool.sol"
+bytecode_hash = "none"
 
 [profile.zksync.zksync]
 compile = true
@@ -29,12 +30,11 @@ zksolc = "1.5.15"
 [profile.mintburn]
 # Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
 optimizer_runs = 300
-
-[profile.hyperevm-deploy]
-# HyperCoreFlowExecutor exceeds EIP-170 size limit at default optimizer runs
-optimizer_runs = 200
 revert_strings = "strip"
 src = "contracts/periphery/mintburn"
+
+[lint]
+lint_on_build = false
 
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"
@@ -77,17 +77,27 @@ ethereum = { key = "${ETHERSCAN_API_KEY}" }
 [profile.fork-test]
 test = "test/evm/foundry/fork"
 
+# Counterfactual profile. Strips metadata hash so CREATE2 addresses are stable across commits.
+# Run with `FOUNDRY_PROFILE=counterfactual forge script ...`
+[profile.counterfactual]
+src = "contracts/periphery/counterfactual"
+script = "script/counterfactual"
+cache_path = "cache-foundry-counterfactual"
+out = "out-counterfactual"
+bytecode_hash = "none"
+
 # Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
+# Tron-compatible profile. Uses Tron's solc fork (bin/solc-tron) to compile all Tron-targeted
+# contracts: counterfactual, UniversalSpokePool, and SP1Helios.
 # Run with `FOUNDRY_PROFILE=tron forge build`
 [profile.tron]
-solc_version = "0.8.25"
-solc = "0.8.25"
+solc = "bin/solc-tron"
 evm_version = "cancun"
-src = "contracts/periphery/counterfactual"
+src = "contracts/tron"
 test = "test/evm/foundry/tron"
-script = "script/counterfactual"
+script = "script/tron"
 cache_path = "cache-foundry-tron"
 out = "out-tron"
-skip = ["sp1-helios"]
+revert_strings = "default"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

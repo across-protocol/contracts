@@ -135,7 +135,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
   const messageTransmitter = new ethers.Contract(cctpMessageTransmitter, messageTransmitterAbi, ethersSigner);
 
   const evmChainId = (await ethersProvider.getNetwork()).chainId;
-  const usdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
+  const usdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId as keyof typeof TOKEN_SYMBOLS_MAP.USDC.addresses];
   const usdc = getBondTokenContract(usdcAddress, ethersProvider);
   const usdcBalanceBefore = await usdc.balanceOf(hubPoolAddress);
 

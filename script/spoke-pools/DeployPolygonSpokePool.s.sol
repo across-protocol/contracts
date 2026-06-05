@@ -28,8 +28,8 @@ contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
         // Get L2 addresses for Polygon
         address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
-        // Fee cap of 22K POL is roughly equivalent to $5K at current POL price of ~0.23
-        uint256 oftFeeCap = 22000 ether;
+        // Fee cap of 51658 POL is roughly equivalent to $5K at current POL price of ~0.09679
+        uint256 oftFeeCap = 51658 ether;
 
         vm.startBroadcast(deployerPrivateKey);
 

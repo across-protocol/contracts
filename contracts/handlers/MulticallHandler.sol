@@ -10,7 +10,13 @@ import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 /**
  * @title Across Multicall contract that allows a user to specify a series of calls that should be made by the handler
  * via the message field in the deposit.
- * @dev This contract makes the calls blindly. The contract will send any remaining tokens The caller should ensure that the tokens received by the handler are completely consumed.
+ * @dev This contract makes the calls blindly. The caller should ensure that the tokens received by the handler are
+ * completely consumed; otherwise leftover balances will be sent to the fallbackRecipient (when one is provided)
+ * or remain on this contract.
+ *
+ * @dev This contract is a stateless utility with no per-user accounting or admin rescue. Tokens delivered to it
+ * are expected to be consumed in the same transaction; any balances left on the contract can be claimed by any
+ * caller.
  */
 contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -103,7 +109,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
             // ERC20 token.
             uint256 amount = IERC20(token).balanceOf(address(this));
             if (amount > 0) {
-                IERC20(token).safeTransfer(destination, amount);
+                _safeTransfer(token, destination, amount);
                 emit DrainedTokens(destination, token, amount);
             }
         } else {
@@ -171,6 +177,10 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
 
         (bool success, ) = target.call{ value: value }(callData);
         if (!success) revert ReplacementCallFailed(callData);
+    }
+
+    function _safeTransfer(address token, address to, uint256 amount) internal virtual {
+        IERC20(token).safeTransfer(to, amount);
     }
 
     function _requireSelf() internal view {

@@ -211,11 +211,19 @@ contract Constants is Script {
     }
 
     function getOftEid(uint256 chainId) public view returns (uint256) {
-        int256 oftEid = vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".oftEid"));
+        int256 oftEid = _getOftEid(chainId);
         if (oftEid == -1) {
             revert("OFT EID not found");
         }
         return uint256(oftEid);
+    }
+
+    function hasOftEid(uint256 chainId) public view returns (bool) {
+        return _getOftEid(chainId) != -1;
+    }
+
+    function _getOftEid(uint256 chainId) internal view returns (int256) {
+        return vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".oftEid"));
     }
 
     function getChainFamily(uint256 chainId) public view returns (string memory) {

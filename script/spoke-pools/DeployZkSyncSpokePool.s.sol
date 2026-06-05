@@ -27,7 +27,6 @@ contract DeployZkSyncSpokePool is Script, Test, DeploymentUtils {
         address wrappedNativeToken = getWrappedNativeToken(info.spokeChainId);
 
         // Get L2 addresses for ZkSync
-        address zkErc20Bridge = getL2Address(info.spokeChainId, "zkErc20Bridge");
         address zkUSDCBridge = address(0);
         address cctpTokenMessenger = address(0);
 
@@ -49,6 +48,7 @@ contract DeployZkSyncSpokePool is Script, Test, DeploymentUtils {
             wrappedNativeToken, // _wrappedNativeTokenAddress
             usdcAddress, // _circleUSDC
             zkUSDCBridge, // _zkUSDCBridge
+            info.hubChainId, // _l1ChainId
             cctpTokenMessenger, // _cctpTokenMessenger
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
@@ -59,7 +59,6 @@ contract DeployZkSyncSpokePool is Script, Test, DeploymentUtils {
         bytes memory initArgs = abi.encodeWithSelector(
             ZkSync_SpokePool.initialize.selector,
             0, // _initialDepositId
-            zkErc20Bridge, // _zkErc20Bridge
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
         );
@@ -78,7 +77,6 @@ contract DeployZkSyncSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
         console.log("Wrapped Native Token address:", wrappedNativeToken);
         console.log("USDC address:", usdcAddress);
-        console.log("zkErc20Bridge:", zkErc20Bridge);
         console.log("zkUSDCBridge:", zkUSDCBridge);
         console.log("cctpTokenMessenger:", cctpTokenMessenger);
         console.log("ZkSync_SpokePool proxy deployed to:", result.proxy);

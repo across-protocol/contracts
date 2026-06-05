@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { BaseModuleHandler } from "../BaseModuleHandler.sol";
-import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
+import { IMessageTransmitterV2, ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
@@ -26,6 +26,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    /// @notice The CCTP token messenger contract that is the expected top-level recipient of MessageTransmitter
+    /// deliveries and owns the TokenMinter used to resolve burnToken -> local token for non-direct-deposit flows.
+    ITokenMessengerV2 public immutable cctpTokenMessenger;
 
     /// @notice Base token associated with this handler. The one we receive from the CCTP bridge
     address public immutable baseToken;
@@ -52,6 +56,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     /**
      * @notice Constructor for the SponsoredCCTPDstPeriphery contract.
      * @param _cctpMessageTransmitter The address of the CCTP message transmitter contract.
+     * @param _cctpTokenMessenger The address of the CCTP token messenger contract. Used to pin that a received
+     * message actually routed through the real mint flow and that the remote burnToken links to `baseToken`.
      * @param _signer The address of the signer that was used to sign the quotes.
      * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
      * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
@@ -59,6 +65,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
      */
     constructor(
         address _cctpMessageTransmitter,
+        address _cctpTokenMessenger,
         address _signer,
         address _donationBox,
         address _baseToken,
@@ -67,6 +74,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         baseToken = _baseToken;
 
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
+        cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
 
         MainStorage storage $ = _getMainStorage();
         $.signer = _signer;
@@ -127,10 +135,15 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         bytes memory message,
         bytes memory attestation
     ) external nonReentrant onlyRole(PERMISSIONED_BOT_ROLE) {
+        uint256 baseBalBefore = IERC20Metadata(baseToken).balanceOf(address(this));
         bool success = cctpMessageTransmitter.receiveMessage(message, attestation);
         if (!success) {
             return;
         }
+        // Forward only what the CCTP call actually credited to this contract, so a message that mints nothing
+        // (wrong recipient, unlinked burnToken, etc.) cannot drain this contract's prior `baseToken` balance.
+        uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
+        uint256 mintedAmount = baseBalAfter - baseBalBefore;
 
         // Use try-catch to handle potential abi.decode reverts gracefully
         try this.validateMessage(message) returns (bool isValid) {
@@ -141,19 +154,14 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             // Malformed message that causes abi.decode to revert then early return
             return;
         }
-        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
-            .getSponsoredCCTPQuoteData(message);
-
-        _getMainStorage().usedNonces[quote.nonce] = true;
-
-        IERC20Metadata(baseToken).safeTransfer(quote.finalRecipient.toAddress(), quote.amount - feeExecuted);
-
-        emit EmergencyReceiveMessage(
-            quote.nonce,
-            quote.finalRecipient.toAddress(),
-            baseToken,
-            quote.amount - feeExecuted
+        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, ) = SponsoredCCTPQuoteLib.getSponsoredCCTPQuoteData(
+            message
         );
+
+        address finalRecipient = quote.finalRecipient.toAddress();
+        IERC20Metadata(baseToken).safeTransfer(finalRecipient, mintedAmount);
+
+        emit EmergencyReceiveMessage(quote.nonce, finalRecipient, baseToken, mintedAmount);
     }
 
     /**
@@ -168,6 +176,20 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         bytes memory attestation,
         bytes memory signature
     ) external nonReentrant authorizeFundedFlow {
+        // Check that the CCTP message was actually routed through our TokenMessenger (which owns the mint flow),
+        // and that its TokenMinter links the remote burnToken to our `baseToken` on this domain.
+        if (SponsoredCCTPQuoteLib.extractRecipient(message).toAddressUnchecked() != address(cctpTokenMessenger)) {
+            revert InvalidRecipient();
+        }
+        address localToken = cctpTokenMessenger.localMinter().getLocalToken(
+            SponsoredCCTPQuoteLib.extractSourceDomain(message),
+            SponsoredCCTPQuoteLib.extractBurnToken(message)
+        );
+        if (localToken != baseToken) {
+            revert InvalidMintedToken();
+        }
+
+        uint256 baseBalBefore = IERC20Metadata(baseToken).balanceOf(address(this));
         bool success = cctpMessageTransmitter.receiveMessage(message, attestation);
         if (!success) {
             revert CCTPMessageTransmitterFailed();
@@ -188,20 +210,49 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
+        // Confirm the CCTP call actually minted `baseToken` to this contract.
+        uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
+        uint256 amountAfterFees = quote.amount - feeExecuted;
+        if (baseBalAfter - baseBalBefore != amountAfterFees) {
+            revert InvalidMintedAmount();
+        }
+
         // Validate the quote and the signature. Revert on invalid to prevent griefing attacks
         // where an attacker provides correct message/attestation but invalid signature.
         _validateQuoteOrRevert(quote, signature);
 
+        _executeQuote(quote, feeExecuted);
+    }
+
+    /**
+     * @notice Direct execution entrypoint for same-chain flows that bypass CCTP transport.
+     * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
+     * @param quote The quote that contains the data for the deposit.
+     */
+    function directReceiveMessage(
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
+    ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
+        if (quote.burnToken.toAddress() != baseToken) revert InvalidBurnToken();
+        MainStorage storage $ = _getMainStorage();
+        if ($.usedNonces[quote.nonce]) revert InvalidNonce();
+        $.usedNonces[quote.nonce] = true;
+        _executeQuote(quote, 0);
+    }
+
+    /**
+     * @notice Shared execution logic for both CCTP-bridged and direct flows.
+     * @param quote The validated quote.
+     * @param feeExecuted The CCTP fee deducted (0 for direct flows).
+     */
+    function _executeQuote(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) internal {
         uint256 amountAfterFees = quote.amount - feeExecuted;
 
         CommonFlowParams memory commonParams = CommonFlowParams({
             amountInEVM: amountAfterFees,
             quoteNonce: quote.nonce,
             finalRecipient: quote.finalRecipient.toAddress(),
-            // If the quote is invalid we don't want to swap, so we use the base token as the final token
             finalToken: quote.finalToken.toAddress(),
             destinationDex: quote.destinationDex,
-            // If the quote is invalid we don't sponsor the flow or the extra fees
             maxBpsToSponsor: quote.maxBpsToSponsor,
             extraFeesIncurred: feeExecuted,
             accountCreationMode: StructsAccountCreationMode(quote.accountCreationMode)

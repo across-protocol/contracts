@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { NATIVE_ASSET } from "./CounterfactualConstants.sol";
+import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
  * @notice Withdrawal parameters committed to in the merkle leaf.
@@ -22,9 +21,7 @@ struct WithdrawParams {
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. `address(this)` is the clone
  *      and `msg.sender` is the original caller.
  */
-contract WithdrawImplementation is ICounterfactualImplementation {
-    using SafeERC20 for IERC20;
-
+contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
     event Withdraw(address indexed token, address indexed to, uint256 amount);
 
     error Unauthorized();
@@ -46,7 +43,7 @@ contract WithdrawImplementation is ICounterfactualImplementation {
             (bool success, ) = to.call{ value: amount }("");
             if (!success) revert NativeTransferFailed();
         } else {
-            IERC20(token).safeTransfer(to, amount);
+            _safeTransfer(token, to, amount);
         }
 
         emit Withdraw(token, to, amount);
