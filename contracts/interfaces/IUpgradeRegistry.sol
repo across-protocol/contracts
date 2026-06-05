@@ -13,12 +13,22 @@ interface IUpgradeRegistry {
     /// @notice Emitted when the admin sets the global current implementation.
     event CurrentImplementationSet(address indexed implementation);
 
-    /// @notice Emitted when the admin sets the upgrade-tree root.
-    event UpgradeRootSet(bytes32 indexed upgradeRoot);
+    /// @notice Emitted when the admin sets the upgrade-tree root (carries the new monotonic version).
+    event UpgradeRootSet(bytes32 indexed upgradeRoot, uint256 indexed version);
+
+    /// @notice Emitted when the admin sets the minimum root version required to execute.
+    event MinRequiredVersionSet(uint256 minRequiredVersion);
 
     /// @notice The canonical implementation every counterfactual proxy may sync to.
     function currentImplementation() external view returns (address);
 
     /// @notice Root of the `(proxy, latestRoot)` merkle tree authorizing per-proxy root updates.
     function upgradeRoot() external view returns (bytes32);
+
+    /// @notice Monotonic counter, incremented on every upgrade-root update. A proxy stamps this value
+    ///         as its `rootVersion` whenever it updates its root (and at deploy).
+    function version() external view returns (uint256);
+
+    /// @notice Minimum `rootVersion` a proxy must have to `execute`. Admin-set, always `<= version`.
+    function minRequiredVersion() external view returns (uint256);
 }

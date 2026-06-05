@@ -233,10 +233,23 @@ Upgrades are governed by the global registry, not by a per-proxy admin. The two 
 administered differently, along the "shared vs. per-proxy" split:
 
 - **`UpgradeRegistry`** — one global contract per chain, with an **admin** (the only admin in the
-  system) maintaining two pieces of state:
+  system) maintaining:
   - `currentImplementation` — the canonical implementation **all** proxies run (shared logic).
   - `root` — the root of an **upgrade merkle tree** of `(proxy, latestRoot)` leaves, authorizing
     per-proxy **root** updates.
+  - `version` — a counter bumped on every `setUpgradeRoot`, and `minRequiredVersion (<= version)` —
+    together these let the admin **force** proxies onto a recent root (see _Enforcement_ below).
+
+### Enforcement — `execute` requires the proxy to be up to date (D13)
+
+The deposit/withdraw path is gated by `_requireUpToDate()`: `execute` reverts unless the proxy runs the
+registry's `currentImplementation` (`StaleImplementation`) **and** its stored `rootVersion >=
+registry.minRequiredVersion()` (`StaleRoot`). So a stale proxy must first remediate — `syncImplementation()`
+for impl, `updateRoot()` for root (both permissionless and **un**gated) — before it can execute. This is
+what makes a security-critical impl fix or route retirement actually bite: a stale proxy can't keep
+depositing on old logic or a retired root. A proxy stamps its `rootVersion = registry.version()` on every
+`updateRoot` and at deploy (a fresh proxy is born current — D26). Cost: ~one registry read per `execute`,
+plus a sync/update before each proxy's next deposit after a bump.
 
 ### Implementation — global, permissionless sync
 
@@ -460,8 +473,8 @@ check** (D15). The route-params structs are named `*RouteParams` with descriptiv
 comments are otherwise left untouched to keep the audit diff to functional changes only. The identity
 stays in the params struct (`(final)recipient`, `outputToken`, `destinationChainId`). The withdraw leaf
 reuses `AdminWithdrawManager` / `WithdrawImplementation`
-unchanged (authorizer committed in the leaf — Q8/D12). The Tron spoke variant
-(`CounterfactualDepositSpokePoolTr`) still compiles (same constructor; overrides `_safeTransfer`).
+unchanged (authorizer committed in the leaf — Q8/D12). The Tron variants still compile with the same
+constructors as their parents and override `_safeTransfer` only.
 
 > Spec (kept for reference): start from the base `CounterfactualDeposit{SpokePool,CCTP,OFT}` impls,
 > which already decode the route
@@ -511,57 +524,41 @@ real implementation). Record addresses in the generated address artifacts.
    deposit atomically, so a proxy is never used in its bootstrap (deposit-less) state. A freshly
    finalized proxy starts at `initialRoot`; a registry-authorized route/impl upgrade only applies after
    a later executor `upgrade` tx. Confirm this ordering is acceptable.
-3. **Root replay / monotonicity.** Implementation is monotonic by construction (single
-   `currentImplementation` slot — no old value to replay). For **roots**: a `(proxy, latestRoot)` leaf
-   is re-appliable while it is in the current registry tree, and stale leaves stop verifying once the
-   admin rotates the registry root. Decide whether to additionally enforce monotonic root versioning
-   (prevent re-applying a superseded-but-still-in-tree root).
+3. ~~**Root replay / monotonicity.**~~ **RESOLVED (D25): no contract change.** Implementation is
+   monotonic by construction (single `currentImplementation` slot). For **roots**, downgrade is
+   prevented off-chain: registry-root **rotation** invalidates old trees' proofs, and the tree
+   generator must enforce **at most one `(proxy, root)` leaf per proxy** per tree. Residual risk
+   accepted: a tooling slip (duplicate/stale leaf) would be attacker-exploitable via the permissionless
+   `updateRoot` — so the one-leaf-per-proxy invariant is a hard, tested requirement of the tree builder.
 4. **`UpgradeRegistry` admin controls.** `Ownable2Step` + multisig from the start (timelock omitted in
    this implementation — D19); it is the only privileged role — it sets the global
    `currentImplementation` (which any proxy can then sync to) and curates the per-proxy root tree.
 5. **UUPS upgrade safety.** Maintain storage-layout compatibility across implementations (`activeRoot`
    slot, ERC-1967 slots); add upgrade-safety checks/tests.
-6. **`AdminWithdrawManager` replay.** `signedWithdraw` is replayable within its deadline (no
-   nonce/used-marking). Severity is low (payout forced to the committed user). Decide: accept as-is, or
-   add a `mapping(bytes32 => bool used)`. Stays live if we keep an admin withdraw path — see #8
-   (withdraw authorization model).
+6. ~~**`AdminWithdrawManager` replay.**~~ **RESOLVED (D24): accepted as-is.** `signedWithdraw` is
+   replayable within its deadline (no nonce/used-marking) — a conscious decision, since the payout is
+   forced to the committed user, so replays only re-pay the rightful user.
 7. **Admin actions via the counterfactual's own tree.** Beyond deposits/withdraws, decide whether any
    other privileged actions should be expressible as leaves in a proxy's `activeRoot` tree (vs. routed
    exclusively through the `UpgradeRegistry`).
-8. **Withdraws — what authorization, and is an admin needed?** A **permissionless** withdraw is **not**
-   safe. Even though funds can only go to a pinned/committed recipient (so it is not _theft_), anyone
-   could sweep the balance out the source-chain refund path **before an executor bridges a pending
-   deposit** — a **DoS / griefing vector** that defeats the bridge intent (and could strand funds if the
-   recipient exists only on the destination). So withdraws **must be authorized**. Options:
-   - **User self-rescue** — gate on an authorizer **committed in the withdraw leaf** (this design has no
-     separate `userAddress`); only they can trigger it. No global admin.
-   - **Assisted rescue** — keep an admin/signer path (v4's `WithdrawImplementation` `{user, admin}` +
-     `AdminWithdrawManager`) for when the user cannot act, or a **registry-governed** rescue (the only
-     admin).
-     Decide: reuse v4's `{user, admin}` withdraw leaf as-is (keeps an admin; #6 stays live), or ship a
-     user-only committed-authorizer withdraw and drop `AdminWithdrawManager`. Sub-points: how the
-     authorizer / refund address is committed (it would enter address derivation via `initialRoot`); and
-     confirm withdraws stay bridge-independent (plain transfer) so rescue works mid-upgrade.
-     **Current direction (D12, still open):** keep `AdminWithdrawManager` for now, and the authorizer /
-     refund address live **only in the merkle tree** (never as proxy state) — consistent with the in-tree
-     identity model (D11). Left open pending the exact authorizer/refund-address encoding.
-9. **Should being up-to-date be required to execute?** **Decision (for now): no — upgrades stay
-   optional / best-effort.** A stale proxy keeps running its old (still-valid) impl/root;
-   `syncImplementation()` / `updateRoot()` are not enforced at `execute()`. Open for later: for
-   security-critical changes (disabling a compromised route, patching a bug) we may want to **block
-   `execute()` until current**. Implementation is cheap to gate via a version counter (#10) — the
-   executor syncs first or atomically (`syncImplementation()` is permissionless). Roots are harder
-   (per-proxy, proof-carrying; a killed route also needs the stale root retired, or an impl-level /
-   registry route-blocklist). Likely shape: optional by default, with an admin-set `minRequiredVersion`
-   that hard-blocks below it. Decide scope (impl-only vs impl+root) if/when adopted.
-10. **Version counters on `UpgradeRegistry` and the proxy.** **Decision (for now): omit.** Open for
-    later (enabler for #9): add `currentImplementationVersion` (bumped when the admin sets
-    `currentImplementation`) to the registry and `implementationVersion` to the proxy (set on
-    `syncImplementation()`); optionally a `rootVersion` (embedded in tree leaves, stored on
-    `updateRoot()`). Benefits: a cheap staleness check (`proxy.version < registry.version`) for
-    monitoring and for the gating in #9, plus a clean monotonic ordering. Costs: extra storage + a
-    registry `STATICCALL` per gated `execute()`. Versions live in storage, so they never enter address
-    derivation.
+8. ~~**Withdraws — what authorization, and is an admin needed?**~~ **RESOLVED (D12).** Withdraw is
+   authorization-gated, not permissionless: `WithdrawImplementation` requires `msg.sender` to equal the
+   `{admin, user}` committed in the leaf params (authenticated by the proof) — reused from v4 unchanged.
+   `user` = self-rescue (picks any `to`); `admin` = `AdminWithdrawManager` (assisted rescue, forces
+   payout to `user` on the signed path). The specific `user`/`admin` addresses are an **off-chain
+   tree-config choice** (and, being leaf values, are part of the address) — not an open contract
+   question. (Permissionless withdraw was rejected as a DoS vector; `signedWithdraw` replay accepted —
+   D24.)
+9. ~~**Should being up-to-date be required to execute?**~~ **RESOLVED (D13): yes.** `execute` now gates
+   on `_requireUpToDate()`: the proxy must run the registry's `currentImplementation` (else
+   `StaleImplementation`) and have `rootVersion >= registry.minRequiredVersion()` (else `StaleRoot`).
+   Remediation is permissionless: `syncImplementation()` for impl, `updateRoot()` for root (neither is
+   gated). Reverses the earlier "optional" stance.
+10. ~~**Version counters on `UpgradeRegistry` and the proxy.**~~ **RESOLVED (D13): adopted (root only).**
+    The registry has a `version` (bumped on every `setUpgradeRoot`) and an admin-set
+    `minRequiredVersion (<= version)`; each proxy stores a `rootVersion` (stamped on `updateRoot`, and at
+    deploy — D26). No separate _implementation_ version is needed — impl freshness is an exact address
+    match against `currentImplementation`.
 11. ~~**Is the `UpgradeRegistry` itself upgradeable?**~~ **RESOLVED (D19): yes — UUPS proxy, no
     timelock in this implementation.** It must have a permanent address anyway (the bootstrap embeds it,
     anchoring every proxy via `registry → bootstrap → proxy`), so a UUPS proxy keeps the address fixed
@@ -598,10 +595,8 @@ real implementation). Record addresses in the generated address artifacts.
     - **(e) Native asset (TRX / WTRX).** The SpokePool `NATIVE_ASSET` path wraps to `wrappedNativeToken`
       (WTRX on Tron, 6-decimal TRX) — needs Tron-specific config, or disable native for Tron routes.
     - **Already handled:** 0x41 CREATE2 prefix (factory override); USDT non-standard `transfer` return
-      (the `_safeTransfer` hook in `…SpokePoolTr` / `WithdrawImplementationTron`); `ecrecover` (works,
-      given the signer signs with Tron's chainId per (b)).
-    - **Nit:** `contracts/tron/TronCounterfactualImports.sol`'s header comment still says "OZ v4" — now
-      stale (the upgradeable contracts use OZ v5); fix when finalizing Tron.
+      (the `_safeTransfer` hook in the Tron route/withdraw variants); `ecrecover` (works, given the
+      signer signs with Tron's chainId per (b)).
 
 13. **Beacon proxy instead of UUPS + bootstrap?** A `BeaconProxy` reading its implementation from the
     `UpgradeRegistry` (as `IBeacon`) would eliminate the bootstrap, `syncImplementation`, the finalize
@@ -675,10 +670,32 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   the pinned recipient is a DoS/griefing vector — anyone could sweep funds to the source-chain refund
   path before a deposit is bridged. _For now:_ keep `AdminWithdrawManager`, and the authorizer / refund
   address live **only in the merkle tree** (never proxy state), per the in-tree model (D11). Exact
-  encoding still open — see Q8 (and Q6 stays live since we keep the admin path).
-- **D13 — Upgrades optional, no version counters — for now (provisional).** Syncing is best-effort
-  (execution is not blocked on staleness) and no version counters are added yet. _Why:_ keeps the hot
-  path simple. Revisit if security-critical forced upgrades are needed — see Q9 / Q10.
+  committed `{admin, user}` are an off-chain tree-config choice (Q8, resolved). (`signedWithdraw`
+  replayability accepted as-is — D24.)
+- **D13 — `execute` requires the proxy to be up to date (supersedes the earlier "optional" stance).**
+  `execute` (the deposit/withdraw path) gates on `_requireUpToDate()`:
+  - **Implementation must be current** — `ERC1967Utils.getImplementation() == registry.currentImplementation()`
+    (else `StaleImplementation`); exact address match, no impl version counter needed.
+  - **Root must be recent enough** — the registry has a `version` (bumped on every `setUpgradeRoot`) and an
+    admin-set `minRequiredVersion (<= version)`; each proxy stores a `rootVersion` and `execute` requires
+    `rootVersion >= minRequiredVersion` (else `StaleRoot`). `rootVersion` is stamped on `updateRoot`
+    (= `registry.version()`) and at deploy (D26).
+  - **Remediation is permissionless and ungated:** `syncImplementation()` (impl) and `updateRoot()` (root)
+    are never gated, so a stale proxy can always be brought current (then execute). The `updateRoot`
+    no-op guard is relaxed to allow re-applying the _same_ root when it advances the version (so an
+    unaffected proxy can still climb to a higher `minRequiredVersion`); only same-root-AND-same-version
+    reverts.
+    _Why:_ lets the admin force a security-critical impl fix or route retirement to actually take effect
+    (a stale proxy can't keep depositing on old logic / a retired root). _Cost:_ ~one registry read for
+    `(currentImplementation, minRequiredVersion)` per `execute`, plus the per-bump sync friction (each
+    proxy must be synced/updated before its next deposit). Resolves Q9 + Q10.
+- **D26 — Fresh proxy stamped at the registry's current `version` on deploy.** `initialize` sets
+  `rootVersion = registry.version()`. _Why:_ a freshly deployed proxy is in no published upgrade tree, so
+  it couldn't `updateRoot` to climb to `minRequiredVersion`; stamping it current makes it born executable
+  (and `minRequiredVersion <= version` always holds). _Accepted limitation:_ a proxy whose `initialRoot`
+  was _issued_ before a route was retired but _deployed_ after still executes that route once on
+  `initialRoot` (it's stamped current at deploy) — mitigated off-chain (don't issue `initialRoot`s with a
+  retired route) and, for a true emergency, by a route/impl-level disable rather than the version gate.
 - **D14 — Amounts come from signed `submitterData`, not live balance.** `inputAmount` / `outputAmount` /
   `executionFee` are supplied per-execution in `submitterData` and authorized by the `signer` (EIP-712
   for SpokePool; periphery quote sig for CCTP/OFT), matching the `taylor/counterfactual-route-policy`
@@ -728,3 +745,13 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   `STATICCALL`, not an `SLOAD`), ≈ +37k gas per counterfactual deployment — not worth the simplification
   given deploys recur across many addresses. The beacon stays an open alternative (Q13), attractive only
   with a minimal custom proxy.
+- **D24 — Accept `AdminWithdrawManager.signedWithdraw` replayability as-is.** No nonce / used-marking;
+  the signature is replayable within its `deadline`. _Why:_ the recipient is forced to the committed
+  `user`, so a replay can only re-pay the rightful user (not theft); not worth the extra storage/used-map.
+  (Was Q6.)
+- **D25 — No on-chain root-version monotonicity; rely on an off-chain invariant.** `updateRoot` stays
+  permissionless and version-less. Downgrade-to-a-retired-root is prevented by (i) registry-root
+  rotation invalidating old trees, and (ii) a tree-generator invariant of **≤1 `(proxy, root)` leaf per
+  proxy** per tree. _Why:_ the invariant is natural and the admin is already trusted; keeps version
+  counters out (D13). _Risk accepted:_ a tooling slip would let anyone roll a proxy back to a stale root
+  via the permissionless `updateRoot` — the tree builder must lint/enforce the invariant. (Was Q3.)

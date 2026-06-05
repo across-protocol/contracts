@@ -38,6 +38,10 @@ contract CounterfactualDeposit is CounterfactualBase, ICounterfactualDeposit {
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable {
+        // Gate: the proxy must run the registry's current implementation and a root version at or above
+        // the registry's `minRequiredVersion` (remediate via syncImplementation / updateRoot).
+        _requireUpToDate();
+
         // Double-hash to prevent leaf/internal-node ambiguity (OpenZeppelin standard).
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
         if (!MerkleProof.verify(proof, activeRoot(), leaf)) revert InvalidProof();

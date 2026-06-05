@@ -22,7 +22,12 @@ contract UpgradeRegistry is IUpgradeRegistry, Initializable, UUPSUpgradeable, Ow
     struct RegistryStorage {
         address currentImplementation;
         bytes32 upgradeRoot;
+        uint256 version;
+        uint256 minRequiredVersion;
     }
+
+    /// @dev `minRequiredVersion` would exceed the current `version`.
+    error InvalidMinRequiredVersion();
 
     // keccak256(abi.encode(uint256(keccak256("across.counterfactual.upgraderegistry.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x237629bb159bfdd51cc72374c7cbd02c7575875eb81b93d58b674b910c5a4600;
@@ -54,14 +59,32 @@ contract UpgradeRegistry is IUpgradeRegistry, Initializable, UUPSUpgradeable, Ow
         return _getStorage().upgradeRoot;
     }
 
+    /// @inheritdoc IUpgradeRegistry
+    function version() external view returns (uint256) {
+        return _getStorage().version;
+    }
+
+    /// @inheritdoc IUpgradeRegistry
+    function minRequiredVersion() external view returns (uint256) {
+        return _getStorage().minRequiredVersion;
+    }
+
     /// @notice Set the global current implementation that proxies sync to.
     function setCurrentImplementation(address implementation) external onlyOwner {
         _setCurrentImplementation(implementation);
     }
 
-    /// @notice Set the root of the `(proxy, latestRoot)` upgrade tree.
+    /// @notice Set the root of the `(proxy, latestRoot)` upgrade tree (bumps `version`).
     function setUpgradeRoot(bytes32 newUpgradeRoot) external onlyOwner {
         _setUpgradeRoot(newUpgradeRoot);
+    }
+
+    /// @notice Set the minimum `rootVersion` a proxy must have to execute. Must be `<= version`.
+    function setMinRequiredVersion(uint256 newMinRequiredVersion) external onlyOwner {
+        RegistryStorage storage $ = _getStorage();
+        if (newMinRequiredVersion > $.version) revert InvalidMinRequiredVersion();
+        $.minRequiredVersion = newMinRequiredVersion;
+        emit MinRequiredVersionSet(newMinRequiredVersion);
     }
 
     function _setCurrentImplementation(address implementation) internal {
@@ -70,8 +93,11 @@ contract UpgradeRegistry is IUpgradeRegistry, Initializable, UUPSUpgradeable, Ow
     }
 
     function _setUpgradeRoot(bytes32 newUpgradeRoot) internal {
-        _getStorage().upgradeRoot = newUpgradeRoot;
-        emit UpgradeRootSet(newUpgradeRoot);
+        RegistryStorage storage $ = _getStorage();
+        $.upgradeRoot = newUpgradeRoot;
+        uint256 newVersion = $.version + 1;
+        $.version = newVersion;
+        emit UpgradeRootSet(newUpgradeRoot, newVersion);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}

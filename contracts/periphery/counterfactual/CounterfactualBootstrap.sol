@@ -18,8 +18,12 @@ import { CounterfactualBase } from "./CounterfactualBase.sol";
 contract CounterfactualBootstrap is CounterfactualBase {
     constructor(IUpgradeRegistry registry) CounterfactualBase(registry) {}
 
-    /// @notice Set the proxy's initial route root. Called once, in the proxy's init code.
+    /// @notice Set the proxy's initial route root, and stamp `rootVersion` with the registry's current
+    ///         version (a fresh proxy isn't in any published upgrade tree, so it is born "current" and
+    ///         can execute immediately; `minRequiredVersion <= version` always holds). Called once, in
+    ///         the proxy's init code.
     function initialize(bytes32 initialRoot) external initializer {
         _setActiveRoot(initialRoot);
+        _setRootVersion(UPGRADE_REGISTRY.version());
     }
 }

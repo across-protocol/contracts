@@ -25,6 +25,7 @@ abstract contract CounterfactualBase is Initializable, UUPSUpgradeable {
     /// @custom:storage-location erc7201:across.counterfactual.upgradeable.storage
     struct CounterfactualStorage {
         bytes32 activeRoot;
+        uint256 rootVersion;
     }
 
     // keccak256(abi.encode(uint256(keccak256("across.counterfactual.upgradeable.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -33,8 +34,8 @@ abstract contract CounterfactualBase is Initializable, UUPSUpgradeable {
     /// @notice The global per-chain registry governing this proxy's implementation and root updates.
     IUpgradeRegistry public immutable UPGRADE_REGISTRY;
 
-    /// @notice Emitted when `activeRoot` is updated via the upgrade tree.
-    event RootUpdated(bytes32 newRoot);
+    /// @notice Emitted when `activeRoot` is updated via the upgrade tree (carries the stamped version).
+    event RootUpdated(bytes32 newRoot, uint256 rootVersion);
 
     /// @dev Merkle proof against the registry's `(proxy, latestRoot)` tree failed.
     error InvalidUpgradeProof();
@@ -42,8 +43,12 @@ abstract contract CounterfactualBase is Initializable, UUPSUpgradeable {
     error UnauthorizedImplementation();
     /// @dev Upgrade target equals the current implementation (no-op).
     error ImplementationUnchanged();
-    /// @dev New root equals the current `activeRoot` (no-op).
+    /// @dev Neither the root nor the version would change (no-op).
     error RootUnchanged();
+    /// @dev `execute` called while the proxy is not running the registry's `currentImplementation`.
+    error StaleImplementation();
+    /// @dev `execute` called while the proxy's `rootVersion` is below the registry's `minRequiredVersion`.
+    error StaleRoot();
 
     constructor(IUpgradeRegistry registry) {
         UPGRADE_REGISTRY = registry;
@@ -55,6 +60,11 @@ abstract contract CounterfactualBase is Initializable, UUPSUpgradeable {
         return _getStorage().activeRoot;
     }
 
+    /// @notice The registry version stamped on this proxy at its last root update (or at deploy).
+    function rootVersion() public view returns (uint256) {
+        return _getStorage().rootVersion;
+    }
+
     /// @notice Permissionlessly upgrade this proxy to the registry's `currentImplementation`.
     /// @dev No proof needed: a proxy can only ever land on the admin-curated current value, and there is
     ///      no old value to replay (a single registry slot makes the implementation monotonic).
@@ -62,17 +72,35 @@ abstract contract CounterfactualBase is Initializable, UUPSUpgradeable {
         upgradeToAndCall(UPGRADE_REGISTRY.currentImplementation(), "");
     }
 
-    /// @notice Update `activeRoot`, proving `(address(this), newRoot)` is in the registry's upgrade tree.
+    /// @notice Update `activeRoot`, proving `(address(this), newRoot)` is in the registry's upgrade tree,
+    ///         and stamp the proxy's `rootVersion` with the registry's current version.
+    /// @dev Re-applying the *same* root is allowed when it advances the version (lets an unaffected proxy
+    ///      climb to a higher `minRequiredVersion`); only a true no-op (same root AND same version) reverts.
     function updateRoot(bytes32 newRoot, bytes32[] calldata proof) external {
-        if (newRoot == _getStorage().activeRoot) revert RootUnchanged();
+        CounterfactualStorage storage $ = _getStorage();
+        uint256 newVersion = UPGRADE_REGISTRY.version();
+        if (newRoot == $.activeRoot && newVersion == $.rootVersion) revert RootUnchanged();
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(address(this), newRoot))));
         if (!MerkleProof.verify(proof, UPGRADE_REGISTRY.upgradeRoot(), leaf)) revert InvalidUpgradeProof();
-        _getStorage().activeRoot = newRoot;
-        emit RootUpdated(newRoot);
+        $.activeRoot = newRoot;
+        $.rootVersion = newVersion;
+        emit RootUpdated(newRoot, newVersion);
     }
 
     function _setActiveRoot(bytes32 root) internal {
         _getStorage().activeRoot = root;
+    }
+
+    function _setRootVersion(uint256 version) internal {
+        _getStorage().rootVersion = version;
+    }
+
+    /// @dev Gate for `execute` (the deposit/withdraw path). Reverts unless the proxy runs the registry's
+    ///      current implementation AND its `rootVersion >= minRequiredVersion`. NOT applied to
+    ///      `syncImplementation` / `updateRoot` — those are the remediation paths for a stale proxy.
+    function _requireUpToDate() internal view {
+        if (ERC1967Utils.getImplementation() != UPGRADE_REGISTRY.currentImplementation()) revert StaleImplementation();
+        if (_getStorage().rootVersion < UPGRADE_REGISTRY.minRequiredVersion()) revert StaleRoot();
     }
 
     /// @dev Gate upgrades on the registry: the only allowed target is the current global implementation,
