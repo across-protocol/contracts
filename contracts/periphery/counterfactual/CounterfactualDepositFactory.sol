@@ -1,112 +1,82 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
+import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { CounterfactualBootstrap } from "./CounterfactualBootstrap.sol";
 
 /**
  * @title CounterfactualDepositFactory
- * @notice Generic factory for deploying counterfactual deposit addresses via CREATE2
- * @dev Bridge-agnostic: takes a pre-computed paramsHash and stores it in the clone's immutable args.
- *      Each implementation defines its own immutables struct. The caller hashes the params off-chain.
+ * @notice Deterministically deploys upgradeable counterfactual proxies. Each proxy is created against a
+ *         fixed `BOOTSTRAP` implementation with the route root in its init code, then immediately
+ *         finalized (synced to the registry's `currentImplementation`).
+ * @dev The CREATE2 salt is fixed to `0`, so the address is purely `f(initialRoot)` — one destination
+ *      identity ⇒ one address. Only the bootstrap (a constant) enters the preimage, so the real
+ *      implementation never affects the address. The factory itself must be deployed deterministically
+ *      at the same address on every chain for cross-chain address parity. `predictAddress` and the
+ *      proxy init code are `virtual`/`internal` so chain-specific variants (e.g. Tron's 0x41 CREATE2
+ *      prefix) can override prediction.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
-    /**
-     * @notice Deploys a counterfactual deposit contract
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @return depositAddress Address of deployed contract
-     */
-    function deploy(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt
-    ) public returns (address depositAddress) {
-        depositAddress = Clones.cloneDeterministicWithImmutableArgs(
-            counterfactualDepositImplementation,
-            abi.encode(paramsHash),
-            salt
+contract CounterfactualDepositFactory {
+    /// @notice The permanent bootstrap implementation every proxy is deployed against.
+    address public immutable BOOTSTRAP;
+
+    /// @notice Emitted when a counterfactual proxy is deployed (and finalized).
+    event CounterfactualDeployed(address indexed counterfactual, bytes32 initialRoot);
+
+    constructor(address bootstrap) {
+        BOOTSTRAP = bootstrap;
+    }
+
+    /// @notice Predict the proxy address for a given `initialRoot` (salt is fixed to 0).
+    function predictAddress(bytes32 initialRoot) public view virtual returns (address) {
+        return Create2.computeAddress(bytes32(0), keccak256(_initCode(initialRoot)), address(this));
+    }
+
+    /// @notice Deploy and finalize the proxy for `initialRoot`. Reverts if already deployed.
+    function deploy(bytes32 initialRoot) public returns (address counterfactual) {
+        counterfactual = address(
+            new ERC1967Proxy{ salt: bytes32(0) }(
+                BOOTSTRAP,
+                abi.encodeCall(CounterfactualBootstrap.initialize, (initialRoot))
+            )
         );
-        emit DepositAddressCreated(depositAddress, counterfactualDepositImplementation, paramsHash, salt);
+        // Finalize: upgrade off the (deposit-less) bootstrap to the registry's current implementation.
+        CounterfactualBootstrap(payable(counterfactual)).syncImplementation();
+        emit CounterfactualDeployed(counterfactual, initialRoot);
     }
 
-    /**
-     * @notice Forwards calldata to a deployed clone, bubbling up any revert
-     * @param depositAddress Address of the deployed clone
-     * @param executeCalldata Calldata to forward (e.g. abi.encodeCall of executeDeposit)
-     */
-    function execute(address depositAddress, bytes calldata executeCalldata) external payable {
-        _execute(depositAddress, executeCalldata);
-    }
-
-    /**
-     * @notice Deploys and executes a deposit in one transaction
-     * @dev Reverts if the clone is already deployed. Use deployIfNeededAndExecute for idempotent behavior.
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
-     * @return depositAddress Address of deposit contract
-     */
+    /// @notice Deploy + finalize, then forward `executeCalldata` to the proxy. Reverts if already deployed.
     function deployAndExecute(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt,
+        bytes32 initialRoot,
         bytes calldata executeCalldata
-    ) external payable returns (address depositAddress) {
-        depositAddress = deploy(counterfactualDepositImplementation, paramsHash, salt);
-        _execute(depositAddress, executeCalldata);
+    ) external payable returns (address counterfactual) {
+        counterfactual = deploy(initialRoot);
+        _execute(counterfactual, executeCalldata);
     }
 
-    /**
-     * @notice Deploys (if not already deployed) and executes a deposit in one transaction
-     * @dev Unlike deployAndExecute, this does not revert if the clone already exists.
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
-     * @return depositAddress Address of deposit contract
-     */
+    /// @notice Deploy + finalize if needed (idempotent), then forward `executeCalldata` to the proxy.
     function deployIfNeededAndExecute(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt,
+        bytes32 initialRoot,
         bytes calldata executeCalldata
-    ) external payable returns (address depositAddress) {
-        depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, salt);
-        if (depositAddress.code.length == 0) deploy(counterfactualDepositImplementation, paramsHash, salt);
-        _execute(depositAddress, executeCalldata);
+    ) external payable returns (address counterfactual) {
+        counterfactual = predictAddress(initialRoot);
+        if (counterfactual.code.length == 0) deploy(initialRoot);
+        _execute(counterfactual, executeCalldata);
     }
 
-    /**
-     * @notice Predicts the address of a counterfactual deposit contract
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @return Predicted address
-     */
-    function predictDepositAddress(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt
-    ) public view virtual returns (address) {
+    /// @dev The proxy creation code (creation bytecode + constructor args) — `virtual` for Tron etc.
+    function _initCode(bytes32 initialRoot) internal view virtual returns (bytes memory) {
         return
-            Clones.predictDeterministicAddressWithImmutableArgs(
-                counterfactualDepositImplementation,
-                abi.encode(paramsHash),
-                salt
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(BOOTSTRAP, abi.encodeCall(CounterfactualBootstrap.initialize, (initialRoot)))
             );
     }
 
-    /**
-     * @dev Forwards calldata to a clone, bubbling up any revert.
-     * @param depositAddress Address of the deployed clone.
-     * @param executeCalldata Calldata to forward.
-     */
-    function _execute(address depositAddress, bytes calldata executeCalldata) private {
-        (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
+    function _execute(address counterfactual, bytes calldata executeCalldata) private {
+        (bool success, bytes memory returnData) = counterfactual.call{ value: msg.value }(executeCalldata);
         if (!success) {
             assembly {
                 revert(add(returnData, 32), mload(returnData))
