@@ -1,7 +1,5 @@
 # Upgradeable Counterfactuals — Design
 
-Status: design doc, not implementation. Author: Taylor (with Claude). Updated: 2026-06-04.
-
 > **Implementation target: this repo (`across-protocol/contracts`), branch
 > `taylor/counterfactual-upgradeable`.** This design supersedes earlier route-policy sketches: there
 > is **no `RoutePolicy` contract**. Each counterfactual is a **`BeaconProxy`** that holds its route root
@@ -9,12 +7,6 @@ Status: design doc, not implementation. Author: Taylor (with Claude). Updated: 2
 > implementation every proxy runs) and governs per-proxy root upgrades.
 
 ## Motivation
-
-The base counterfactual system (`contracts/periphery/counterfactual/`) gives users persistent,
-reusable deposit addresses via deterministic CREATE2: each address commits a merkle root, and callers
-prove a leaf to delegatecall a per-bridge implementation that bridges the address's balance. Today
-that root is **immutable** — baked into the clone forever — so a route set can never change without
-changing the user-facing address.
 
 This design keeps the deposit mechanism but makes each counterfactual **upgradeable**, adding:
 
@@ -30,7 +22,7 @@ destinationChainId)`, so a user hands out one address and receives on it from an
    bridge calldata.
 6. **Dynamic, signed execution fees** — all three bridge implementations accept an `executionFee`
    chosen at execution time via `submitterData`, authorized by an off-chain `signer` and verified
-   on-chain (matching the `taylor/counterfactual-route-policy` branch — see _Execution Fees_).
+   on-chain
 
 ---
 
@@ -465,10 +457,33 @@ constructors as their parents and override `_safeTransfer` only.
 > fee cap, and fee payout to `executionFeeRecipient` — matching the `taylor/counterfactual-route-policy`
 > branch. Add the route leaves (SpokePool, CCTP, OFT) plus the withdraw leaf.
 
-### Phase 4 — Tests
+### Phase 4 — Tests ✅ DONE (70 passing under `counterfactual` and `local-test` profiles)
 
-Written **after all contract changes are done** (Phases 1–3), as one consolidated suite rather than
-per-phase:
+Consolidated suite in `test/evm/foundry/local/`, all built on `CounterfactualTestBase.sol` (deploys the
+beacon as a UUPS proxy, wires `CounterfactualDeposit` as its target, exposes merkle / leaf / upgrade-tree /
+EIP-712 helpers):
+
+- `CounterfactualDeposit.t.sol` — beacon admin (`setImplementation`/`setUpgradeRoot` access + `NotAContract`),
+  deterministic deploy + `activeRoot` init, salted distinct addresses, dispatch (value forwarding, invalid
+  proof, wrong impl, revert bubbling, multi-leaf tree), `receive()`, `deployIfNeededAndExecute` idempotency,
+  withdraw gating, `updateRoot` (valid / forged / wrong-proxy / no-op `RootUnchanged`), `updateRootAndExecute`
+  (activate-new-route + skip-when-current), and `setImplementation` retargeting all live proxies via a
+  `CounterfactualDepositV2` marker.
+- `CounterfactualDepositSpokePool.t.sol` — ERC-20 + native deposit, `deployAndExecute`, zero fee, relayer-fee
+  cap, **`checkStableExchangeRate` on/off** (off skips the relayer-fee term but still bounds `executionFee`),
+  invalid/expired signature, cross-proxy replay, `sourceChainId` mismatch.
+- `CounterfactualDepositCCTP.t.sol` / `CounterfactualDepositOFT.t.sol` — happy-path deposit, zero fee,
+  `maxExecutionFee` cap, invalid/expired fee signature, cross-proxy replay, `sourceChainId` mismatch (OFT also
+  asserts `msg.value` forwarding for LayerZero fees).
+- `WithdrawImplementation.t.sol` / `AdminWithdrawManager.t.sol` — withdraw leaf (ERC-20/native, partial,
+  authorized vs. unauthorized) and the admin-manager direct / signed-to-user paths.
+- `Tron_Counterfactual.t.sol` — the Tron leaf-impl variants (`CounterfactualDepositSpokePoolTr`,
+  `WithdrawImplementationTron`) over `MockTronUSDT` (whose `transfer` returns `false` on success): the
+  balance-delta transfer succeeds where a return-value check would fail, and a blacklisted recipient reverts
+  `TronTransferCallReverted`. Runs under the EVM profile (the proxy/dispatcher are chain-agnostic; only the
+  delegatecalled leaf impls override transfer semantics).
+
+Coverage outline:
 
 - **Proxy / factory** — `initialRoot → activeRoot` init via the `BeaconProxy` constructor; deploy →
   deposit dispatch; cross-chain address determinism (same `initialRoot` ⇒ same address, independent of
