@@ -314,7 +314,11 @@ Mechanism (identical across the three impls):
   `InvalidSignature`).
 - The route leaf commits an **upper bound** on the fee, checked _after_ verification:
   `maxExecutionFee` for CCTP/OFT, or the combined `maxFeeFixed + maxFeeBps × inputAmount` cap for
-  SpokePool (which bounds the implicit relayer fee + execution fee together via `_checkFee`).
+  SpokePool (which bounds the implicit relayer fee + execution fee together via `_checkFee`). For
+  SpokePool, a leaf-committed `checkStableExchangeRate` bool gates the rate-derived relayer-fee term: when
+  `false` (e.g. non-stable pairs, where `stableExchangeRate` can't bound the relayer fee and `outputAmount`
+  is instead trusted via the signature), the relayer-fee term is dropped and only `executionFee` is bounded
+  by `maxFee`; when `true`, the existing relayer-fee + execution-fee bound applies.
 - Native-token deposits (SpokePool) pay the fee via a `call{value: executionFee}`; ERC-20 deposits via
   `safeTransfer`.
 
@@ -716,3 +720,11 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   automatic — it now requires the caller to reuse the same `salt` on every chain; `salt = 0` recovers
   the original "one identity ⇒ one canonical address, parity for free" behaviour and remains the default
   recommendation. Refines D-address-determinism (salt is no longer fixed to 0).
+- **D31 — SpokePool route leaf carries a `checkStableExchangeRate` bool gating the rate-derived relayer
+  fee.** When `true`, `_checkFee` is unchanged (`relayerFee` from `stableExchangeRate` + `executionFee`
+  bounded by `maxFee`). When `false`, the relayer-fee term is dropped (set to 0) and only `executionFee`
+  is bounded by `maxFee`. _Why:_ `stableExchangeRate` only bounds the relayer fee meaningfully for
+  stable/like-priced pairs; for volatile pairs the rate-derived bound is meaningless, so the route author
+  disables it and relies on the signer's signature over `outputAmount`, while still capping the executor's
+  `executionFee`. The flag lives in the leaf `params`, so it flows into `routeParamsHash` (and thus the
+  signature + merkle leaf) automatically — no EIP-712 typehash change. Per-route, signer/tree-controlled.

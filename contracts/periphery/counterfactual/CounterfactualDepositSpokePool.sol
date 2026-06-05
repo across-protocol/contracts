@@ -20,6 +20,7 @@ struct SpokePoolRouteParams {
     bytes32 outputToken;
     bytes32 recipient;
     bytes message;
+    bool checkStableExchangeRate;
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
@@ -191,8 +192,14 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         uint256 depositAmount,
         uint256 executionFee
     ) private pure {
-        uint256 outputInInputToken = (outputAmount * routeParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
-        uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
+        // When `checkStableExchangeRate` is false (e.g. non-stable pairs), the rate-derived relayer fee
+        // is not enforced — `outputAmount` is trusted via the signer's signature — but `executionFee`
+        // remains bounded by `maxFee` below.
+        uint256 relayerFee;
+        if (routeParams.checkStableExchangeRate) {
+            uint256 outputInInputToken = (outputAmount * routeParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
+            relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
+        }
         uint256 totalFee = relayerFee + executionFee;
         uint256 maxFee = routeParams.maxFeeFixed + (routeParams.maxFeeBps * inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
