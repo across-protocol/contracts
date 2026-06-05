@@ -406,8 +406,8 @@ pub mod svm_spoke {
     /// - repayment_chain_id: Chain of SpokePool where relayer wants to be refunded after the challenge window has
     ///   passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.
-    /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters. If None for any of these
-    /// is passed, the caller must load them via the instruction_params account.
+    /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters, but their presence must be
+    /// consistent. If None for these is passed, the caller must load them via the instruction_params account.
     pub fn fill_relay<'info>(
         ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
         relay_hash: [u8; 32],
@@ -715,8 +715,8 @@ pub mod svm_spoke {
     ///       this will be set higher to reimburse the recipient for waiting for the slow fill.
     /// - _root_bundle_id: Unique ID of root bundle containing slow relay root that this leaf is contained in.
     /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
-    /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters. If None for any of these is passed,
-    /// the caller must load them via the instruction_params account.
+    /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters, but their presence must be consistent.
+    /// If None for these parameters is passed, the caller must load them via the instruction_params account.
     /// Note: When verifying the slow fill leaf, the relay data is hashed using AnchorSerialize::serialize that encodes
     /// output token amounts to little-endian format while input token amount preserves its big-endian encoding as it
     /// is passed as [u8; 32] array.

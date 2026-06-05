@@ -7,7 +7,7 @@ use anchor_spl::{
 use crate::{
     common::RelayData,
     constants::DISCRIMINATOR_SIZE,
-    constraints::is_relay_hash_valid,
+    constraints::{has_valid_params_presence, is_relay_hash_valid},
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
@@ -16,7 +16,12 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
+#[instruction(
+    relay_hash: [u8; 32],
+    relay_data: Option<RelayData>,
+    repayment_chain_id: Option<u64>,
+    repayment_address: Option<Pubkey>
+)]
 pub struct FillRelay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -66,6 +71,10 @@ pub struct FillRelay<'info> {
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", relay_hash.as_ref()],
         bump,
+        // Validate optional parameters before they are unwrapped in other constraints by Anchor.
+        constraint = has_valid_params_presence(
+            &[relay_data.is_some(), repayment_chain_id.is_some(), repayment_address.is_some()],
+            instruction_params.is_some()) @ SvmError::InconsistentOptionalParameters,
         constraint = is_relay_hash_valid(
             &relay_hash,
             &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
@@ -187,7 +196,7 @@ fn unwrap_fill_relay_params(
                 repayment_chain_id: account.repayment_chain_id,
                 repayment_address: account.repayment_address,
             })
-            .unwrap(), // We do not expect this to panic here as missing instruction_params is unwrapped in context.
+            .unwrap(), // We do not expect this to panic here as optional parameters are validated in context.
     }
 }
 
