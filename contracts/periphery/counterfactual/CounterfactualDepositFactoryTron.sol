@@ -19,8 +19,8 @@ import { CounterfactualDepositFactory } from "./CounterfactualDepositFactory.sol
 contract CounterfactualDepositFactoryTron is CounterfactualDepositFactory {
     constructor(address beacon) CounterfactualDepositFactory(beacon) {} // solhint-disable-line no-empty-blocks
 
-    /// @dev TRON OVERRIDE: predict the `BeaconProxy` CREATE2 address using the 0x41 prefix (salt 0).
-    function _computeProxyAddress(bytes32 initCodeHash) internal view override returns (address) {
-        return TronClones.computeAddress(bytes32(0), initCodeHash, address(this));
+    /// @dev TRON OVERRIDE: predict the `BeaconProxy` CREATE2 address using the 0x41 prefix.
+    function _computeProxyAddress(bytes32 salt, bytes32 initCodeHash) internal view override returns (address) {
+        return TronClones.computeAddress(salt, initCodeHash, address(this));
     }
 }

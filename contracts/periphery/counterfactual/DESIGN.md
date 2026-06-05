@@ -106,11 +106,14 @@ involved.
 
 A proxy's address is `f(factory, proxy creation bytecode, salt, init args)`. The meaningful per-user
 input is **`initialRoot`**, which is passed in the proxy's init code and written to the `activeRoot`
-storage slot on initialization. The CREATE2 **`salt` is fixed to `0`**, so a given `initialRoot`
-resolves to exactly one address — one address per destination identity, no vanity/duplicate variants.
+storage slot on initialization. The CREATE2 **`salt` is caller-supplied**; passing **`salt = 0`** gives
+the canonical one-address-per-destination-identity behaviour (no vanity/duplicate variants). A non-zero
+`salt` is allowed and yields additional addresses for the same `initialRoot` — useful when one identity
+wants distinct deposit addresses — at the cost of moving cross-chain parity from automatic to a caller
+obligation (see below).
 
-For the address to match across chains, every input must be chain-invariant — in particular,
-`initialRoot` must be **identical on every chain**. The routes a deposit uses, however, are
+For the address to match across chains, every input must be chain-invariant — in particular, both
+`initialRoot` **and `salt`** must be **identical on every chain** (`salt = 0` satisfies this trivially). The routes a deposit uses, however, are
 source-chain-specific (Arbitrum deposits use Arbitrum's SpokePool, Base deposits use Base's, etc.). We
 reconcile this by having `initialRoot` commit a tree that **contains the routes for all source
 chains** to the one destination identity. On any given source chain, the relayer proves the leaf
@@ -125,8 +128,8 @@ destination identity  ──►  one canonical initialRoot  ──►  one addre
 
 The hard rule: **nothing mutable or chain-specific may enter address derivation** — not the live
 `activeRoot` (it changes), not the implementation (it changes globally via the beacon), not a per-chain
-root. The address commits only `initialRoot` (plus fixed deployment substrate: the factory, the salt,
-and the **beacon = `CounterfactualBeacon`**). This indirection is exactly what lets one address keep a stable
+root. The address commits only `initialRoot` and the caller-chosen `salt` (plus fixed deployment
+substrate: the factory and the **beacon = `CounterfactualBeacon`**). This indirection is exactly what lets one address keep a stable
 identity while its routes and logic are upgraded underneath it.
 
 > A `BeaconProxy`'s init code embeds the **beacon address** (the `CounterfactualBeacon`) and the
@@ -705,3 +708,11 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   plus the `upgradeRoot` source), "beacon" names what it is; "registry" overstated a curation role it no
   longer has. Storage namespace moves to `across.counterfactual.beacon.storage`. Pure rename — no
   behavior change. Renames the contract from D27/D19.
+- **D30 — Factory `salt` is caller-supplied, not hardcoded to `0`.** `deploy` / `predictAddress` /
+  `deployAndExecute` / `deployIfNeededAndExecute` (and the `_computeProxyAddress` hook) take a leading
+  `bytes32 salt`; the address is `f(salt, initialRoot)`. _Why:_ lets one destination identity have more
+  than one deposit address (e.g. segregating flows) without inventing distinct `initialRoot`s, and keeps
+  the factory a general CREATE2 deployer. _Consequence:_ cross-chain address parity is no longer
+  automatic — it now requires the caller to reuse the same `salt` on every chain; `salt = 0` recovers
+  the original "one identity ⇒ one canonical address, parity for free" behaviour and remains the default
+  recommendation. Refines D-address-determinism (salt is no longer fixed to 0).
