@@ -49,8 +49,19 @@ split along "shared vs. per-proxy":
 - **Implementation** (shared logic) is the beacon's `implementation()` — the admin sets it once and
   **every proxy uses it immediately** (resolved live per call). No per-proxy sync.
 - **Root updates** (per-proxy routes) are applied by an executor with a proof against the registry's
-  **upgrade tree** of `(proxy, latestRoot)` leaves. They are best-effort — a proxy keeps its `activeRoot`
+  **Upgrade Tree** of `(proxy, latestRoot)` leaves. They are best-effort — a proxy keeps its `activeRoot`
   until updated; there is no execute-time version gate.
+
+> **Terminology — the system has exactly two kinds of merkle tree. These names are used throughout:**
+>
+> - **Route Tree** — _per counterfactual._ Its root is the proxy's `activeRoot` (the `initialRoot` it was
+>   deployed with, until upgraded). Leaves are `keccak256(implementation, keccak256(params))` authorizing
+>   the per-bridge deposit/withdraw actions that proxy may perform. `execute` proves a leaf against it.
+> - **Upgrade Tree** — _per chain._ Its root is the `CounterfactualBeacon.upgradeRoot` on that chain.
+>   Leaves are `keccak256(proxy, newRoot)` authorizing each proxy to move its `activeRoot` to a new **Route
+>   Tree** root. `updateRoot` proves a leaf against it.
+>
+> A Route Tree root is therefore a _leaf value_ inside the Upgrade Tree.
 
 ```
 ═══════════════════════════ DEPOSIT (per counterfactual) ═══════════════════════════
@@ -107,9 +118,12 @@ obligation (see below).
 For the address to match across chains, every input must be chain-invariant — in particular, both
 `initialRoot` **and `salt`** must be **identical on every chain** (`salt = 0` satisfies this trivially). The routes a deposit uses, however, are
 source-chain-specific (Arbitrum deposits use Arbitrum's SpokePool, Base deposits use Base's, etc.). We
-reconcile this by having `initialRoot` commit a tree that **contains the routes for all source
-chains** to the one destination identity. On any given source chain, the relayer proves the leaf
-matching that chain's route; the root is the same everywhere.
+reconcile this by **requiring `initialRoot` to commit a tree that contains the routes for all source
+chains** to the one destination identity. This all-chains rule is what guarantees the **same address on
+every chain**: `initialRoot` is in the address, so it must be byte-identical everywhere, so it must
+already enumerate every chain's route up front. On any given source chain, the relayer proves the leaf
+matching that chain's route; the root is the same everywhere. (Contrast later **upgraded** roots, which
+are _not_ in the address and are therefore per-chain — see _Upgrade Mechanism_.)
 
 So for a destination identity `(finalRecipient, outputToken, destinationChainId)`:
 
@@ -246,6 +260,28 @@ An executor calls `proxy.updateRoot(newRoot, proof)`; the proxy recomputes
 `CounterfactualBeacon.upgradeRoot()`, and on success sets `activeRoot = newRoot` — only the **exact** value
 the leaf commits. There is no admin check on the proxy; the root update is gated **solely** by the
 registry proof.
+
+**Upgrade Tree construction (two rules).** The Upgrade Tree is maintained **per chain** — each chain's
+`CounterfactualBeacon` carries its own `upgradeRoot`:
+
+1. **Leaves cover every counterfactual that exists, not only ones recently touched on this chain.**
+   Because a counterfactual has the **same address on every chain** and can be funded on any of them,
+   chain X's Upgrade Tree should include a `(proxy, latestRoot)` leaf for **every counterfactual in the
+   system** (every issued address — each exists at the same address on every chain, regardless of where it
+   was created or funded), so any of them can be upgraded on X whenever needed. The leaf _set_ (by proxy)
+   is therefore the same on every chain.
+2. **Every leaf's `latestRoot` is a Route Tree for THIS chain only.** What differs per chain is the
+   _target_ root: a leaf in chain X's tree points to that proxy's **chain-X** Route Tree. The backend
+   **must not** place a leaf whose Route Tree targets a different source chain into chain X's Upgrade Tree.
+   Unlike `initialRoot` — which is baked into the address and must therefore enumerate routes for _all_
+   source chains (see _Address Determinism_) — an upgraded Route Tree is **not** part of the address, so it
+   is per-chain and lean.
+
+Because each chain's Upgrade Tree only ever targets that chain's Route Trees, a given proxy appears in it
+**at most once** — the no-downgrade invariant is simply **one leaf per proxy per (per-chain) Upgrade
+Tree** (D25). The execute-time `sourceChainId == block.chainid` check is retained purely as
+defense-in-depth (a stray foreign-chain leaf would be inert), but correctness does **not** rely on it:
+trees are built single-chain by construction.
 
 To **activate a newly-added route and use it in one transaction**, an executor can call
 `proxy.updateRootAndExecute(newRoot, updateProof, implementation, params, submitterData, executeProof)`:
@@ -527,9 +563,12 @@ addresses in the generated address artifacts.
 3. ~~**Root replay / monotonicity.**~~ **RESOLVED (D25): no contract change.** Implementation is always
    current (beacon-resolved). For **roots**, downgrade is
    prevented off-chain: registry-root **rotation** invalidates old trees' proofs, and the tree
-   generator must enforce **at most one `(proxy, root)` leaf per proxy** per tree. Residual risk
-   accepted: a tooling slip (duplicate/stale leaf) would be attacker-exploitable via the permissionless
-   `updateRoot` — so the one-leaf-per-proxy invariant is a hard, tested requirement of the tree builder.
+   generator must enforce **at most one leaf per proxy** per chain's Upgrade Tree (which is single-chain
+   by construction — see _Upgrade Mechanism_; the backend must never mix another chain's Route Trees in).
+   Residual risk accepted: a tooling slip (two competing leaves for one proxy) would be attacker-
+   exploitable via the permissionless `updateRoot` — so the one-leaf-per-proxy invariant is a hard, tested
+   requirement of the tree builder. The execute-time `sourceChainId == block.chainid` check is
+   defense-in-depth only (a stray foreign-chain leaf is inert), not a substitute for that invariant.
 4. **`CounterfactualBeacon` admin controls.** `Ownable2Step` + multisig from the start (timelock omitted in
    this implementation — D19); it is the only privileged role — it sets the global `implementation`
    (the beacon target, used by all proxies instantly) and curates the per-proxy root tree.
@@ -768,3 +807,21 @@ destinationChainId)` exists only in the `activeRoot` leaves; impls decode and us
   atomically instead of two txs, mirroring the factory's `deployAndExecute` ergonomics. A generic external
   multicall isn't a full substitute — it resets `msg.sender` (wrong for the `msg.sender`-gated withdraw
   flow) and can't make the update step idempotent. Both standalone entry points are retained.
+- **D33 — Two named merkle trees, with asymmetric construction.** The system has exactly two trees: the
+  **Route Tree** (per counterfactual; root = `activeRoot`/`initialRoot`; leaves
+  `keccak256(impl, keccak256(params))`) and the **Upgrade Tree** (per chain; root =
+  `CounterfactualBeacon.upgradeRoot`; leaves `keccak256(proxy, newRoot)`). A Route Tree root is a leaf
+  value inside an Upgrade Tree. Construction is deliberately asymmetric:
+  - A counterfactual's **`initialRoot` Route Tree must enumerate routes for _all_ source chains**, because
+    `initialRoot` is baked into the address — this is what gives a destination identity the **same address
+    on every chain**.
+  - Each chain's **Upgrade Tree is single-chain**: it carries a leaf for **every counterfactual that
+    exists** (the leaf set is identical on every chain), but each leaf **only ever targets that chain's
+    Route Trees**. The backend **must not** mix another source chain's Route Trees into a chain's Upgrade
+    Tree. (Upgraded roots are not in the address, so they are per-chain and lean — they need not carry
+    every chain's routes.)
+
+  _Consequence:_ a proxy appears in each chain's Upgrade Tree at most once, so the no-downgrade invariant is
+  **one leaf per proxy per (per-chain) Upgrade Tree** (D25). The execute-time
+  `sourceChainId == block.chainid` check is defense-in-depth only — it makes a stray foreign-chain leaf
+  inert — but tree construction does not rely on it.
