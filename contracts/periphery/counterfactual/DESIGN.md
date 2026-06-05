@@ -574,8 +574,35 @@ real implementation). Record addresses in the generated address artifacts.
     EVM addresses — a Tron deposit address is its own thing. So Tron gets a **separate Tron factory**
     (mirroring the base `CounterfactualDepositFactoryTron`) and **Tron-specific implementations where
     needed** — principally the USDT / `safeTransfer` issue (Tron USDT doesn't return a bool, so use the
-    `SafeTransferERC20` / `TronTransferLib` pattern). Remaining open: confirm UUPS / ERC-1967 + CREATE2
-    behave on Tron's solc fork, and which contracts need Tron variants vs. can be shared.
+    `SafeTransferERC20` / `TronTransferLib` pattern). The **Tron factory is reworked**:
+    `CounterfactualDepositFactoryTron` now extends the `ERC1967Proxy`-based factory and overrides only
+    the `_computeProxyAddress` hook to predict with Tron's 0x41 prefix (`TronClones.computeAddress`);
+    deployment via `deploy()` uses the native `create2` (0x41) so it works as-is.
+
+    **Remaining open — "compiles ≠ runs on the TVM" (validate on a Tron testnet before investing
+    further), roughly by severity:**
+    - **(a) Cancun/Shanghai opcodes the compiler emits.** The `tron` profile uses
+      `evm_version = "cancun"`, so `solc 0.8.25` may emit **`MCOPY`** (memory copies — our impls do many
+      via `abi.decode` of structs with dynamic `bytes` fields + struct copies) and **`PUSH0`**. If the
+      TVM doesn't implement these, contracts revert at runtime despite compiling. (We do **not** use
+      `TLOAD`/`TSTORE`.) Action: confirm TVM cancun support, or lower the tron profile's `evm_version`.
+    - **(b) `block.chainid`.** Used by the D15 `sourceChainId` check **and** the EIP-712 domain. Confirm
+      the TVM `CHAINID` opcode returns a stable known value, and that Tron leaves' `sourceChainId` + the
+      off-chain signer's EIP-712 chainId both equal it — else every deposit reverts.
+    - **(c) Deterministic deployment of the substrate.** Tron lacks the standard EVM CREATE2 deployer;
+      decide how the factory / bootstrap / `UpgradeRegistry` reach known Tron addresses (so prediction
+      is meaningful), and deploy bootstrap + registry on Tron.
+    - **(d) UUPS / ERC-1967 upgrade semantics.** Conceptually fine (TVM has `delegatecall`,
+      `EXTCODESIZE`, the ERC-1967 slot) but unproven: deploy→finalize→upgrade must be tested on
+      Shasta/Nile, including the `ERC1967Utils` code-size check.
+    - **(e) Native asset (TRX / WTRX).** The SpokePool `NATIVE_ASSET` path wraps to `wrappedNativeToken`
+      (WTRX on Tron, 6-decimal TRX) — needs Tron-specific config, or disable native for Tron routes.
+    - **Already handled:** 0x41 CREATE2 prefix (factory override); USDT non-standard `transfer` return
+      (the `_safeTransfer` hook in `…SpokePoolTr` / `WithdrawImplementationTron`); `ecrecover` (works,
+      given the signer signs with Tron's chainId per (b)).
+    - **Nit:** `contracts/tron/TronCounterfactualImports.sol`'s header comment still says "OZ v4" — now
+      stale (the upgradeable contracts use OZ v5); fix when finalizing Tron.
+
 13. **Beacon proxy instead of UUPS + bootstrap?** A `BeaconProxy` reading its implementation from the
     `UpgradeRegistry` (as `IBeacon`) would eliminate the bootstrap, `syncImplementation`, the finalize
     step, and version-counter machinery — proxies would run the latest impl by construction (the

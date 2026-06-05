@@ -31,7 +31,7 @@ contract CounterfactualDepositFactory {
 
     /// @notice Predict the proxy address for a given `initialRoot` (salt is fixed to 0).
     function predictAddress(bytes32 initialRoot) public view virtual returns (address) {
-        return Create2.computeAddress(bytes32(0), keccak256(_initCode(initialRoot)), address(this));
+        return _computeProxyAddress(keccak256(_initCode(initialRoot)));
     }
 
     /// @notice Deploy and finalize the proxy for `initialRoot`. Reverts if already deployed.
@@ -73,6 +73,14 @@ contract CounterfactualDepositFactory {
                 type(ERC1967Proxy).creationCode,
                 abi.encode(BOOTSTRAP, abi.encodeCall(CounterfactualBootstrap.initialize, (initialRoot)))
             );
+    }
+
+    /// @dev CREATE2 address derivation for the proxy init-code hash (salt fixed to 0). `virtual` so
+    ///      chain-specific variants (e.g. Tron's 0x41 prefix) can override the derivation. Deployment
+    ///      via `deploy()` uses the `create2` opcode directly, which is correct on every chain; this
+    ///      hook only governs off-chain-style prediction.
+    function _computeProxyAddress(bytes32 initCodeHash) internal view virtual returns (address) {
+        return Create2.computeAddress(bytes32(0), initCodeHash, address(this));
     }
 
     function _execute(address counterfactual, bytes calldata executeCalldata) private {
