@@ -7,6 +7,12 @@ import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/acc
 import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 
+/// @dev Minimal view used to verify a candidate beacon target is bound to this beacon — every
+///      counterfactual implementation embeds its beacon as the immutable `BEACON` (for `updateRoot`).
+interface IBeaconTarget {
+    function BEACON() external view returns (address);
+}
+
 /**
  * @title CounterfactualBeacon
  * @notice Global, per-chain registry governing counterfactual proxies. It is the **beacon** for every
@@ -27,8 +33,10 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         bytes32 upgradeRoot;
     }
 
-    /// @dev `setImplementation` target is not a contract.
+    /// @dev Implementation target is not a contract.
     error NotAContract();
+    /// @dev Implementation target's `BEACON()` does not point back at this beacon.
+    error WrongBeacon();
 
     // keccak256(abi.encode(uint256(keccak256("across.counterfactual.beacon.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xb8f0bb8c74633417634f6191ee000dac3f927914fa2e1d714b73a72668a01500;
@@ -47,9 +55,9 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
     function initialize(address owner_, address implementation_, bytes32 upgradeRoot_) external initializer {
         __Ownable_init(owner_);
         __Ownable2Step_init();
-        // Allow `address(0)` for lazy init, but reject a non-contract (e.g. a typo'd EOA), matching the
-        // `setImplementation` guard.
-        if (implementation_ != address(0) && implementation_.code.length == 0) revert NotAContract();
+        // Allow `address(0)` for lazy init (the standard deploy flow is beacon → impl → setImplementation);
+        // otherwise the target must be a contract bound to this beacon, matching `setImplementation`.
+        if (implementation_ != address(0)) _validateImplementation(implementation_);
         _setImplementation(implementation_);
         _setUpgradeRoot(upgradeRoot_);
     }
@@ -65,16 +73,29 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         return _getStorage().upgradeRoot;
     }
 
-    /// @notice Set the global implementation (the beacon target) every proxy runs. Must be a contract;
-    ///         setting it instantly retargets all counterfactual proxies.
+    /// @notice Set the global implementation (the beacon target) every proxy runs. Must be a contract
+    ///         bound to this beacon; setting it instantly retargets all counterfactual proxies.
     function setImplementation(address newImplementation) external onlyOwner {
-        if (newImplementation.code.length == 0) revert NotAContract();
+        _validateImplementation(newImplementation);
         _setImplementation(newImplementation);
     }
 
     /// @notice Set the root of the `(proxy, latestRoot)` upgrade tree.
     function setUpgradeRoot(bytes32 newUpgradeRoot) external onlyOwner {
         _setUpgradeRoot(newUpgradeRoot);
+    }
+
+    /// @dev A valid beacon target must be a contract whose immutable `BEACON()` points back at this
+    ///      beacon. Catches the catastrophic admin error of retargeting every proxy to logic bound to a
+    ///      different beacon (which would silently brick `updateRoot` and risk storage-layout drift). The
+    ///      `try` tolerates non-conforming targets — they leave `boundBeacon == address(0)` and revert below.
+    function _validateImplementation(address impl) private view {
+        if (impl.code.length == 0) revert NotAContract();
+        address boundBeacon;
+        try IBeaconTarget(impl).BEACON() returns (address b) {
+            boundBeacon = b;
+        } catch {}
+        if (boundBeacon != address(this)) revert WrongBeacon();
     }
 
     function _setImplementation(address newImplementation) internal {

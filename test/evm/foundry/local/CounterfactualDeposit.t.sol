@@ -88,6 +88,21 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         beacon.setImplementation(makeAddr("eoa"));
     }
 
+    function testSetImplementationRejectsWrongBeacon() public {
+        // A valid impl contract, but bound to a different beacon.
+        CounterfactualDeposit wrong = new CounterfactualDeposit(ICounterfactualBeacon(makeAddr("otherBeacon")));
+        vm.prank(owner);
+        vm.expectRevert(CounterfactualBeacon.WrongBeacon.selector);
+        beacon.setImplementation(address(wrong));
+    }
+
+    function testSetImplementationRejectsNonConformingContract() public {
+        // A contract with no `BEACON()` getter — the try/catch leaves it unbound and it is rejected.
+        vm.prank(owner);
+        vm.expectRevert(CounterfactualBeacon.WrongBeacon.selector);
+        beacon.setImplementation(address(mockImpl));
+    }
+
     function testSetUpgradeRootOnlyOwner() public {
         vm.expectRevert();
         beacon.setUpgradeRoot(keccak256("root"));
