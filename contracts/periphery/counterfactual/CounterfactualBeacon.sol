@@ -47,6 +47,9 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
     function initialize(address owner_, address implementation_, bytes32 upgradeRoot_) external initializer {
         __Ownable_init(owner_);
         __Ownable2Step_init();
+        // Allow `address(0)` for lazy init, but reject a non-contract (e.g. a typo'd EOA), matching the
+        // `setImplementation` guard.
+        if (implementation_ != address(0) && implementation_.code.length == 0) revert NotAContract();
         _setImplementation(implementation_);
         _setUpgradeRoot(upgradeRoot_);
     }
