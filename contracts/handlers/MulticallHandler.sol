@@ -109,7 +109,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
             // ERC20 token.
             uint256 amount = IERC20(token).balanceOf(address(this));
             if (amount > 0) {
-                IERC20(token).safeTransfer(destination, amount);
+                _safeTransfer(token, destination, amount);
                 emit DrainedTokens(destination, token, amount);
             }
         } else {
@@ -177,6 +177,10 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
 
         (bool success, ) = target.call{ value: value }(callData);
         if (!success) revert ReplacementCallFailed(callData);
+    }
+
+    function _safeTransfer(address token, address to, uint256 amount) internal virtual {
+        IERC20(token).safeTransfer(to, amount);
     }
 
     function _requireSelf() internal view {
