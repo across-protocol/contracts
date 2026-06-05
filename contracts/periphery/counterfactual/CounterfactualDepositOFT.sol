@@ -121,6 +121,10 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         _verifySignature(submitterData);
         if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
+        // The fee is paid BEFORE the periphery call, and this ordering is load-bearing: the local
+        // signature binds only `(nonce, executionFee, signatureDeadline)`, so replay protection for the
+        // (route, amount) tuple comes from the periphery's nonce-uniqueness check. A replayed fee
+        // signature reverts at `deposit`, atomically rolling back this fee transfer.
         if (submitterData.executionFee > 0)
             IERC20(routeParams.token).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
