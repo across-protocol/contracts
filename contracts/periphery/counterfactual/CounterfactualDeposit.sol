@@ -25,11 +25,12 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
  *      keeps its `activeRoot` until someone updates it; there is no on-chain version/min-version gate.
  *      **Every future implementation version MUST preserve this ERC-7201 storage layout.**
  *
- *      Note: some leaf implementations use authorization signatures that cover execution-time
- *      parameters (amounts, deadlines) but not the leaf's route `params`. If two leaves share the same
- *      implementation address, a caller could prove leaf A's params while submitting a signature meant
- *      for leaf B. A clone's tree must therefore never contain multiple leaves with the same
- *      implementation address.
+ *      Note: the CCTP/OFT leaf implementations authorize the runtime fee with a signature over
+ *      `(nonce, executionFee, signatureDeadline)` that does NOT bind the leaf's route `params` — the route
+ *      is bound only transitively, via the periphery quote signature. So if two such leaves shared one
+ *      implementation address, a caller could prove leaf A's params while submitting a fee signature meant
+ *      for leaf B. (SpokePool is unaffected: its typehash binds `routeParamsHash`.) As a belt-and-braces
+ *      rule, a clone's tree must never contain multiple leaves with the same implementation address.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
@@ -92,7 +93,8 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
         bytes calldata submitterData,
         bytes32[] calldata executeProof
     ) external payable {
-        // Skip the update (and its `RootUnchanged` revert) when the proxy is already current.
+        // Skip the update (and its `RootUnchanged` revert) when the proxy is already current. NOTE:
+        // `updateProof` is therefore NOT validated in that case — there is no root change to authorize.
         if (newRoot != activeRoot()) _updateRoot(newRoot, updateProof);
         _execute(implementation, params, submitterData, executeProof);
     }
