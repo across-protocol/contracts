@@ -144,7 +144,7 @@ identity while its routes and logic are upgraded underneath it.
 > The **factory** and the **`CounterfactualBeacon`** (as beacon) must be deployed deterministically at
 > identical addresses on every chain (they're in the proxy's init code: `registry(beacon) → proxy
 address`). They are permanent constants, never versioned. Compile the counterfactual stack under the
-> dedicated `[profile.counterfactual]` (Phase 0) so the creation bytecode is byte-identical.
+> dedicated `[profile.counterfactual]` so the creation bytecode is byte-identical.
 
 ---
 
@@ -235,7 +235,7 @@ administered differently, along the "shared vs. per-proxy" split:
 Root updates are **best-effort**: a proxy keeps its `activeRoot` until someone calls `updateRoot`; there
 is no version counter and no execute-time freshness gate. (The admin therefore cannot _force_ a stale
 proxy off an old route set on-chain — to kill a route everywhere, change the implementation via the
-beacon, which is global and immediate; see _Open Questions_.)
+beacon, which is global and immediate.)
 
 ### Implementation — global, via the beacon (instant)
 
@@ -246,8 +246,8 @@ that resolves `beacon.implementation()` **live on each call**, all proxies use t
 registry validates the target is a contract (`NotAContract`) **and that its immutable `BEACON()` points
 back at this beacon** (`WrongBeacon`) — catching the catastrophic error of retargeting every proxy to logic
 bound to a different beacon (which would silently brick `updateRoot`). (This guards the wrong-beacon
-footgun, **not** ERC-7201 storage-layout drift — see Open Question #5.) The admin is otherwise trusted (and
-timelocked-by-intent, D19) since setting it instantly retargets every proxy.
+footgun, **not** ERC-7201 storage-layout drift, which every beacon target must independently preserve.)
+The admin is otherwise trusted since setting it instantly retargets every proxy.
 
 ### Root — per-proxy, proof-gated
 
@@ -282,7 +282,7 @@ registry proof.
 
 Because each chain's Upgrade Tree only ever targets that chain's Route Trees, a given proxy appears in it
 **at most once** — the no-downgrade invariant is simply **one leaf per proxy per (per-chain) Upgrade
-Tree** (D25). The execute-time `sourceChainId == block.chainid` check is retained purely as
+Tree**. The execute-time `sourceChainId == block.chainid` check is retained purely as
 defense-in-depth (a stray foreign-chain leaf would be inert), but correctness does **not** rely on it:
 trees are built single-chain by construction.
 
@@ -291,7 +291,7 @@ To **activate a newly-added route and use it in one transaction**, an executor c
 it runs `updateRoot` then `execute`, but **skips the update when the proxy is already at `newRoot`** (so it
 never reverts `RootUnchanged` for an already-current proxy). This is the only case where a proxy's stale
 `activeRoot` would otherwise block an `execute` (the route exists in the newer root but the proxy hasn't
-been bumped) — versioning was removed (D28), so `execute` is never blocked merely for being "old," only for
+been bumped) — there is no versioning, so `execute` is never blocked merely for being "old," only for
 the proven route not being in the current `activeRoot`. Internally `execute` / `updateRoot` /
 `updateRootAndExecute` share `_execute` / `_updateRoot` helpers, so the verification logic is not duplicated.
 
@@ -380,13 +380,13 @@ Per-bridge typehash and binding:
 > destination action** are authorized by the separate `peripherySignature` over the Sponsored quote
 > (committed in `SponsoredCCTPQuoteLib` / OFT `QuoteSignLib`). Neither signature alone authorizes a full
 > transfer — a complete execution requires **both**, and `nonce` uniqueness at the periphery prevents fee
-> replay (see Open Question #2).
+> replay.
 
 > Note for the upgradeable model: the impl is the **beacon target** (swapped globally via
 > `setImplementation`, never via the proxy and never in the address), and its constructor-immutable
 > `signer` lives in the implementation bytecode. The impl need **not** be deterministic for _address_
 > parity (it is in no address — see _Address Determinism_), but the **same `signer` must be used on every
-> chain** for fee signatures to verify consistently; deploying the impl deterministically (Phase 0/5) is
+> chain** for fee signatures to verify consistently; deploying the impl deterministically is
 > the simplest way to guarantee that.
 
 ---
@@ -400,8 +400,8 @@ Per-bridge typehash and binding:
   root updates. Use `Ownable2Step` + multisig. This role is **effectively all-powerful over funds**:
   setting the beacon `implementation` to a malicious/buggy contract **instantly** retargets every proxy
   (they resolve it live), and that impl runs with each proxy's balance. A **timelock** would give users
-  a window to withdraw before a new implementation takes effect, but is **omitted in this implementation
-  (D19)** — a known residual risk, mitigated only by trusting the multisig admin. (Revisit if a timelock
+  a window to withdraw before a new implementation takes effect, but is **omitted in this implementation**
+  — a known residual risk, mitigated only by trusting the multisig admin. (Revisit if a timelock
   is wanted later — note a beacon makes upgrades immediate, so a timelock matters _more_ here.)
 - The **executor** is untrusted and permissionless: it can only apply a root the registry's tree already
   authorizes (exact leaf value) — it chooses neither the implementation (beacon-set) nor the root.
