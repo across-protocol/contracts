@@ -16,23 +16,25 @@ contract DeployCounterfactualDepositOFT is CounterfactualConfig {
         require(hasOftEid(block.chainid), "Chain does not support OFT");
         address oftSrcPeriphery = _resolveOftPeriphery();
         require(oftSrcPeriphery != address(0), "OFT periphery not deployed on this chain");
-        this.run(oftSrcPeriphery, uint32(getOftEid(block.chainid)));
+        this.run(oftSrcPeriphery, uint32(getOftEid(block.chainid)), _loadSigner());
     }
 
-    function run(address oftSrcPeriphery, uint32 srcEid) external {
+    function run(address oftSrcPeriphery, uint32 srcEid, address signer) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
         require(oftSrcPeriphery != address(0), "OFT SrcPeriphery cannot be zero address");
+        require(signer != address(0), "Signer cannot be zero address");
 
         bytes memory initCode = abi.encodePacked(
             type(CounterfactualDepositOFT).creationCode,
-            abi.encode(oftSrcPeriphery, srcEid)
+            abi.encode(oftSrcPeriphery, srcEid, signer)
         );
         console.log("Deploying CounterfactualDepositOFT via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("OFT SrcPeriphery:", oftSrcPeriphery);
         console.log("Source EID:", uint256(srcEid));
+        console.log("Signer:", signer);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);

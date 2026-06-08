@@ -5,12 +5,11 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
-import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
-import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { CounterfactualDepositVanillaCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // Deploys counterfactual contracts via CREATE2 using the deterministic deployment proxy
@@ -18,42 +17,51 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // so broadcast artifacts are recorded in each script's own folder.
 //
 // CREATE2 addresses are determined by (factory, salt, initCode). Contracts with identical initCode
-// across chains (no constructor args, or same constructor args) get the same address everywhere.
-// Contracts with chain-specific constructor args get chain-specific addresses.
+// across chains get the same address everywhere; contracts with chain-specific constructor args get
+// chain-specific addresses.
 //
-// Same address across all chains:
-//   - CounterfactualDeposit (no constructor args)
-//   - CounterfactualDepositFactory (no constructor args)
+// Same address across all chains (the cross-chain anchors):
+//   - CounterfactualBeacon implementation (no constructor args)
+//   - CounterfactualBeacon PROXY (ERC1967Proxy initialized with the chain-invariant deployer as owner —
+//     every counterfactual proxy and the factory embed it, so this MUST be identical across chains; see the
+//     determinism notes in CounterfactualConfig)
+//   - CounterfactualDeposit / dispatcher (constructor takes the chain-invariant beacon proxy)
+//   - CounterfactualDepositFactory (constructor takes the chain-invariant beacon proxy)
 //   - WithdrawImplementation (no constructor args)
 //   - AdminWithdrawManager (same constructor args on all chains)
 //
 // Chain-specific addresses (different constructor args per chain):
-//   - CounterfactualDepositSpokePool
-//   - CounterfactualDepositCCTP
-//   - CounterfactualDepositOFT
+//   - CounterfactualDepositSpokePool   (spokePool, signer, wrappedNativeToken)
+//   - CounterfactualDepositCCTP        (srcPeriphery, sourceDomain, signer)
+//   - CounterfactualDepositOFT         (oftPeriphery, srcEid, signer)
+//   - CounterfactualDepositVanillaCCTP (cctpV2TokenMessenger, signer)
+//
+// IMPORTANT: the same deployer (MNEMONIC index 0) must be used on every chain — it is the beacon proxy's
+// initial owner and therefore part of the beacon proxy address (and thus every counterfactual address).
 //
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
 //   - No nonce burning for skipped contracts
-//   - No ordering dependency — deploy in any order
 //   - Idempotent — already-deployed contracts are auto-skipped
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
-//   - Chain-specific params (spokePool, wrappedNativeToken, cctpPeriphery, cctpDomain,
-//     oftPeriphery, oftEid): auto-resolved from constants.json and deployed-addresses.json
+//   - Chain-specific params (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid,
+//     cctpV2TokenMessenger): auto-resolved from constants.json and deployed-addresses.json
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from
-//     config.toml. Role transfers (owner/directWithdrawer) are done directly by this script after
-//     all ffi deployments complete, with a safety check that directWithdrawer transferred
-//     successfully before transferring ownership
+//     config.toml. Role transfers are done by this script after all ffi deployments complete, with a
+//     safety check that directWithdrawer transferred before ownership. The beacon stack hands ownership to
+//     the multisig when `transferRoles` is set (Ownable2Step — the multisig accepts out of band).
 //
 // Always deployed:
-//   - CounterfactualDeposit, CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
+//   - Beacon stack (impl + proxy + dispatcher + setImplementation) via DeployCounterfactualBeacon
+//   - CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
 //
 // Optionally deployed (controlled by bool arguments):
-//   - CounterfactualDepositSpokePool (deploySpokePool)
-//   - CounterfactualDepositCCTP (deployCctp)
-//   - CounterfactualDepositOFT (deployOft)
+//   - CounterfactualDepositSpokePool   (deploySpokePool)
+//   - CounterfactualDepositCCTP        (deployCctp)
+//   - CounterfactualDepositOFT         (deployOft)
+//   - CounterfactualDepositVanillaCCTP (deployVanillaCctp)
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
@@ -63,17 +71,31 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-//      --sig "run(string,bool,bool,bool,bool,bool,string)" <rpcUrl> true true true true true counterfactual \
+//      --sig "run(string,bool,bool,bool,bool,bool,bool,string)" <rpcUrl> true true true true true true counterfactual \
 //      --rpc-url <rpcUrl> --ffi -vvvv
 // 4. Verify the logged predicted addresses and forge commands look correct
 contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     string constant SCRIPT_DIR = "script/counterfactual/";
 
+    // Grouped to keep the deploy flow under the stack-slot limit.
+    struct Predicted {
+        address beaconProxy;
+        address dispatcher;
+        address factory;
+        address withdraw;
+        address admin;
+        address spokePool;
+        address cctp;
+        address oft;
+        address vanillaCctp;
+    }
+
     /// @param rpcUrl RPC URL for the target chain.
     /// @param deploySpokePool If true, deploy CounterfactualDepositSpokePool.
-    /// @param deployCctp If true, deploy CounterfactualDepositCCTP.
+    /// @param deployCctp If true, deploy CounterfactualDepositCCTP (sponsored).
     /// @param deployOft If true, deploy CounterfactualDepositOFT.
-    /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.toml addresses.
+    /// @param deployVanillaCctp If true, deploy CounterfactualDepositVanillaCCTP (non-sponsored CCTP v2).
+    /// @param transferRoles If true, transfer AdminWithdrawManager + beacon ownership to config.toml addresses.
     /// @param broadcast If true, broadcast transactions on-chain.
     /// @param profile Foundry profile to use for sub-script invocations (e.g. "counterfactual").
     function run(
@@ -81,21 +103,22 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         bool deploySpokePool,
         bool deployCctp,
         bool deployOft,
+        bool deployVanillaCctp,
         bool transferRoles,
         bool broadcast,
         string calldata profile
     ) external {
         address signer = _loadSigner();
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
+        address deployer = vm.addr(deployerPrivateKey);
 
-        // Resolve chain-specific params from constants and deployed addresses.
+        // Resolve chain-specific params.
         address spokePool;
         address wrappedNativeToken;
         if (deploySpokePool) {
             spokePool = _resolveSpokePool();
             wrappedNativeToken = _resolveWrappedNativeToken();
         }
-
-        // CCTP: resolve or revert if requested but unsupported.
         address cctpPeriphery;
         uint32 cctpDomain;
         if (deployCctp) {
@@ -104,8 +127,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             require(cctpPeriphery != address(0), "CCTP periphery not deployed on this chain");
             cctpDomain = getCircleDomainId(block.chainid);
         }
-
-        // OFT: resolve or revert if requested but unsupported.
         address oftPeriphery;
         uint32 oftEid;
         if (deployOft) {
@@ -114,244 +135,221 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             require(oftPeriphery != address(0), "OFT periphery not deployed on this chain");
             oftEid = uint32(getOftEid(block.chainid));
         }
-
-        string memory mnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(mnemonic, 0);
-        address deployer = vm.addr(deployerPrivateKey);
-
-        // Log predicted addresses upfront so they can be verified before deploying.
-        console.log("============================================");
-        console.log("Counterfactual Contracts CREATE2 Deployment");
-        console.log("============================================");
-        console.log("Deployer:  ", deployer);
-        console.log("Chain ID:  ", block.chainid);
-        console.log("Broadcast: ", broadcast);
-        console.log("--------------------------------------------");
-        console.log("Resolved parameters:");
-        console.log("  Signer:             ", signer);
-        if (deploySpokePool) {
-            console.log("  SpokePool:          ", spokePool);
-            console.log("  WrappedNativeToken:  ", wrappedNativeToken);
+        address vanillaTokenMessenger;
+        if (deployVanillaCctp) {
+            vanillaTokenMessenger = _resolveCctpV2TokenMessenger();
+            require(vanillaTokenMessenger != address(0), "CCTP v2 TokenMessenger not available on this chain");
         }
-        if (deployCctp) {
-            console.log("  CCTP Periphery:     ", cctpPeriphery);
-            console.log("  CCTP Domain:        ", uint256(cctpDomain));
-        }
-        if (deployOft) {
-            console.log("  OFT Periphery:      ", oftPeriphery);
-            console.log("  OFT EID:            ", uint256(oftEid));
-        }
-        console.log("  Transfer roles:     ", transferRoles);
-        console.log("--------------------------------------------");
-        console.log("Predicted addresses:");
 
-        // Predict and log addresses for all contracts being deployed.
-        address predictedDeposit = _predictCreate2(bytes32(0), type(CounterfactualDeposit).creationCode);
-        address predictedFactory = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
-        address predictedWithdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
-        address predictedAdmin = _predictCreate2(
+        // Predict addresses (beacon proxy + dispatcher + factory derive from the chain-invariant deployer).
+        Predicted memory p;
+        p.beaconProxy = _predictBeaconProxy(deployer);
+        p.dispatcher = _predictCreate2(bytes32(0), _dispatcherInitCode(p.beaconProxy));
+        p.factory = _predictCreate2(bytes32(0), _factoryInitCode(p.beaconProxy));
+        p.withdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
+        p.admin = _predictCreate2(
             bytes32(0),
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
         );
-
-        _logPredicted("CounterfactualDeposit", predictedDeposit);
-        _logPredicted("CounterfactualDepositFactory", predictedFactory);
-        _logPredicted("WithdrawImplementation", predictedWithdraw);
-        _logPredicted("AdminWithdrawManager", predictedAdmin);
-
-        address predictedSpokePool;
-        if (deploySpokePool) {
-            predictedSpokePool = _predictCreate2(
+        if (deploySpokePool)
+            p.spokePool = _predictCreate2(
                 bytes32(0),
                 abi.encodePacked(
                     type(CounterfactualDepositSpokePool).creationCode,
                     abi.encode(spokePool, signer, wrappedNativeToken)
                 )
             );
-            _logPredicted("CounterfactualDepositSpokePool", predictedSpokePool);
-        }
-
-        address predictedCctp;
-        if (deployCctp) {
-            predictedCctp = _predictCreate2(
+        if (deployCctp)
+            p.cctp = _predictCreate2(
                 bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositCCTP).creationCode, abi.encode(cctpPeriphery, cctpDomain))
+                abi.encodePacked(
+                    type(CounterfactualDepositCCTP).creationCode,
+                    abi.encode(cctpPeriphery, cctpDomain, signer)
+                )
             );
-            _logPredicted("CounterfactualDepositCCTP", predictedCctp);
-        }
-
-        address predictedOft;
-        if (deployOft) {
-            predictedOft = _predictCreate2(
+        if (deployOft)
+            p.oft = _predictCreate2(
                 bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid))
+                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid, signer))
             );
-            _logPredicted("CounterfactualDepositOFT", predictedOft);
-        }
+        if (deployVanillaCctp)
+            p.vanillaCctp = _predictCreate2(
+                bytes32(0),
+                abi.encodePacked(
+                    type(CounterfactualDepositVanillaCCTP).creationCode,
+                    abi.encode(vanillaTokenMessenger, signer)
+                )
+            );
 
+        console.log("============================================");
+        console.log("Counterfactual Contracts CREATE2 Deployment");
+        console.log("============================================");
+        console.log("Deployer:  ", deployer);
+        console.log("Chain ID:  ", block.chainid);
+        console.log("Broadcast: ", broadcast);
+        console.log("Signer:    ", signer);
+        console.log("Transfer roles:", transferRoles);
+        console.log("--------------------------------------------");
+        console.log("Predicted addresses:");
+        _logPredicted("CounterfactualBeacon proxy", p.beaconProxy);
+        _logPredicted("CounterfactualDeposit (dispatcher)", p.dispatcher);
+        _logPredicted("CounterfactualDepositFactory", p.factory);
+        _logPredicted("WithdrawImplementation", p.withdraw);
+        _logPredicted("AdminWithdrawManager", p.admin);
+        if (deploySpokePool) _logPredicted("CounterfactualDepositSpokePool", p.spokePool);
+        if (deployCctp) _logPredicted("CounterfactualDepositCCTP", p.cctp);
+        if (deployOft) _logPredicted("CounterfactualDepositOFT", p.oft);
+        if (deployVanillaCctp) _logPredicted("CounterfactualDepositVanillaCCTP", p.vanillaCctp);
         console.log("============================================");
 
         string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
 
-        // --- CounterfactualDeposit (base implementation that all clones proxy to) ---
-        if (predictedDeposit.code.length > 0) {
-            console.log("CounterfactualDeposit: ALREADY DEPLOYED");
+        // --- Beacon stack (impl + proxy + dispatcher + setImplementation; the cross-chain anchor) ---
+        if (p.beaconProxy.code.length > 0 && p.dispatcher.code.length > 0) {
+            console.log("Beacon stack: ALREADY DEPLOYED");
         } else {
-            console.log("Deploying CounterfactualDeposit...");
+            console.log("Deploying beacon stack...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployCounterfactualDeposit.s.sol"),
-                "DeployCounterfactualDeposit",
-                "",
+                string.concat(SCRIPT_DIR, "DeployCounterfactualBeacon.s.sol"),
+                "DeployCounterfactualBeacon",
+                string.concat(' --sig "run(bool)" ', vm.toString(transferRoles)),
                 profile
             );
         }
 
-        // --- CounterfactualDepositFactory (factory that deploys deterministic clones via CREATE2) ---
-        if (predictedFactory.code.length > 0) {
-            console.log("CounterfactualDepositFactory: ALREADY DEPLOYED");
-        } else {
-            console.log("Deploying CounterfactualDepositFactory...");
-            _runForgeScript(
-                rpcUrl,
-                broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployCounterfactualDepositFactory.s.sol"),
-                "DeployCounterfactualDepositFactory",
-                "",
-                profile
-            );
-        }
+        // --- CounterfactualDepositFactory (mints deterministic clones; embeds the beacon proxy) ---
+        _deployIfNeeded(
+            p.factory,
+            "CounterfactualDepositFactory",
+            rpcUrl,
+            broadcastFlag,
+            "DeployCounterfactualDepositFactory",
+            "",
+            profile
+        );
 
         // --- WithdrawImplementation (withdraw logic, included as a merkle leaf in each clone) ---
-        if (predictedWithdraw.code.length > 0) {
-            console.log("WithdrawImplementation: ALREADY DEPLOYED");
-        } else {
-            console.log("Deploying WithdrawImplementation...");
-            _runForgeScript(
-                rpcUrl,
-                broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployWithdrawImplementation.s.sol"),
-                "DeployWithdrawImplementation",
-                "",
-                profile
-            );
-        }
+        _deployIfNeeded(
+            p.withdraw,
+            "WithdrawImplementation",
+            rpcUrl,
+            broadcastFlag,
+            "DeployWithdrawImplementation",
+            "",
+            profile
+        );
 
-        // --- CounterfactualDepositSpokePool (deposit implementation for Across SpokePool) ---
+        // --- CounterfactualDepositSpokePool ---
         if (deploySpokePool) {
-            if (predictedSpokePool.code.length > 0) {
-                console.log("CounterfactualDepositSpokePool: ALREADY DEPLOYED");
-            } else {
-                console.log("Deploying CounterfactualDepositSpokePool...");
-                _runForgeScript(
-                    rpcUrl,
-                    broadcastFlag,
-                    string.concat(SCRIPT_DIR, "DeployCounterfactualDepositSpokePool.s.sol"),
-                    "DeployCounterfactualDepositSpokePool",
-                    string.concat(
-                        ' --sig "run(address,address,address)" ',
-                        vm.toString(spokePool),
-                        " ",
-                        vm.toString(signer),
-                        " ",
-                        vm.toString(wrappedNativeToken)
-                    ),
-                    profile
-                );
-            }
-        }
-
-        // --- CounterfactualDepositCCTP (deposit implementation for Circle CCTP) ---
-        if (deployCctp) {
-            if (predictedCctp.code.length > 0) {
-                console.log("CounterfactualDepositCCTP: ALREADY DEPLOYED");
-            } else {
-                console.log("Deploying CounterfactualDepositCCTP...");
-                _runForgeScript(
-                    rpcUrl,
-                    broadcastFlag,
-                    string.concat(SCRIPT_DIR, "DeployCounterfactualDepositCCTP.s.sol"),
-                    "DeployCounterfactualDepositCCTP",
-                    string.concat(
-                        ' --sig "run(address,uint32)" ',
-                        vm.toString(cctpPeriphery),
-                        " ",
-                        vm.toString(uint256(cctpDomain))
-                    ),
-                    profile
-                );
-            }
-        }
-
-        // --- CounterfactualDepositOFT (deposit implementation for LayerZero OFT) ---
-        if (deployOft) {
-            if (predictedOft.code.length > 0) {
-                console.log("CounterfactualDepositOFT: ALREADY DEPLOYED");
-            } else {
-                console.log("Deploying CounterfactualDepositOFT...");
-                _runForgeScript(
-                    rpcUrl,
-                    broadcastFlag,
-                    string.concat(SCRIPT_DIR, "DeployCounterfactualDepositOFT.s.sol"),
-                    "DeployCounterfactualDepositOFT",
-                    string.concat(
-                        ' --sig "run(address,uint32)" ',
-                        vm.toString(oftPeriphery),
-                        " ",
-                        vm.toString(uint256(oftEid))
-                    ),
-                    profile
-                );
-            }
-        }
-
-        // --- AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
-        if (predictedAdmin.code.length > 0) {
-            console.log("AdminWithdrawManager: ALREADY DEPLOYED");
-        } else {
-            console.log("Deploying AdminWithdrawManager...");
-            _runForgeScript(
+            _deployIfNeeded(
+                p.spokePool,
+                "CounterfactualDepositSpokePool",
                 rpcUrl,
                 broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployAdminWithdrawManager.s.sol"),
-                "DeployAdminWithdrawManager",
-                "",
+                "DeployCounterfactualDepositSpokePool",
+                string.concat(
+                    ' --sig "run(address,address,address)" ',
+                    vm.toString(spokePool),
+                    " ",
+                    vm.toString(signer),
+                    " ",
+                    vm.toString(wrappedNativeToken)
+                ),
                 profile
             );
         }
+
+        // --- CounterfactualDepositCCTP ---
+        if (deployCctp) {
+            _deployIfNeeded(
+                p.cctp,
+                "CounterfactualDepositCCTP",
+                rpcUrl,
+                broadcastFlag,
+                "DeployCounterfactualDepositCCTP",
+                string.concat(
+                    ' --sig "run(address,uint32,address)" ',
+                    vm.toString(cctpPeriphery),
+                    " ",
+                    vm.toString(uint256(cctpDomain)),
+                    " ",
+                    vm.toString(signer)
+                ),
+                profile
+            );
+        }
+
+        // --- CounterfactualDepositOFT ---
+        if (deployOft) {
+            _deployIfNeeded(
+                p.oft,
+                "CounterfactualDepositOFT",
+                rpcUrl,
+                broadcastFlag,
+                "DeployCounterfactualDepositOFT",
+                string.concat(
+                    ' --sig "run(address,uint32,address)" ',
+                    vm.toString(oftPeriphery),
+                    " ",
+                    vm.toString(uint256(oftEid)),
+                    " ",
+                    vm.toString(signer)
+                ),
+                profile
+            );
+        }
+
+        // --- CounterfactualDepositVanillaCCTP ---
+        if (deployVanillaCctp) {
+            _deployIfNeeded(
+                p.vanillaCctp,
+                "CounterfactualDepositVanillaCCTP",
+                rpcUrl,
+                broadcastFlag,
+                "DeployCounterfactualDepositVanillaCCTP",
+                string.concat(
+                    ' --sig "run(address,address)" ',
+                    vm.toString(vanillaTokenMessenger),
+                    " ",
+                    vm.toString(signer)
+                ),
+                profile
+            );
+        }
+
+        // --- AdminWithdrawManager ---
+        _deployIfNeeded(
+            p.admin,
+            "AdminWithdrawManager",
+            rpcUrl,
+            broadcastFlag,
+            "DeployAdminWithdrawManager",
+            "",
+            profile
+        );
 
         // --- Transfer AdminWithdrawManager roles ---
         if (transferRoles) {
             address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
             require(ownerAndDirectWithdrawer != address(0), "config: ownerAndDirectWithdrawer is zero or missing");
-            AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
+            AdminWithdrawManager manager = AdminWithdrawManager(p.admin);
 
             console.log("--------------------------------------------");
             console.log("Transferring AdminWithdrawManager roles to:", ownerAndDirectWithdrawer);
 
             vm.startBroadcast(deployerPrivateKey);
-
             // Transfer directWithdrawer first, then verify before transferring ownership.
             if (ownerAndDirectWithdrawer != manager.directWithdrawer()) {
                 manager.setDirectWithdrawer(ownerAndDirectWithdrawer);
-
-                if (manager.directWithdrawer() != ownerAndDirectWithdrawer) {
-                    console.log("ERROR: directWithdrawer transfer failed. Skipping ownership transfer.");
-                    vm.stopBroadcast();
-                } else {
-                    if (ownerAndDirectWithdrawer != manager.owner()) {
-                        manager.transferOwnership(ownerAndDirectWithdrawer);
-                    }
-                    vm.stopBroadcast();
-                }
-            } else {
-                // directWithdrawer already correct, just transfer ownership if needed.
-                if (ownerAndDirectWithdrawer != manager.owner()) {
-                    manager.transferOwnership(ownerAndDirectWithdrawer);
-                }
-                vm.stopBroadcast();
             }
+            if (manager.directWithdrawer() != ownerAndDirectWithdrawer) {
+                console.log("ERROR: directWithdrawer transfer failed. Skipping ownership transfer.");
+            } else if (ownerAndDirectWithdrawer != manager.owner()) {
+                manager.transferOwnership(ownerAndDirectWithdrawer);
+            }
+            vm.stopBroadcast();
         }
 
         console.log("============================================");
@@ -364,6 +362,31 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("  %s%s: %s", name, status, predicted);
     }
 
+    /// @dev Invoke a sub-deploy script via ffi unless the predicted address already has code.
+    function _deployIfNeeded(
+        address predicted,
+        string memory name,
+        string memory rpcUrl,
+        string memory broadcastFlag,
+        string memory contractName,
+        string memory sigArgs,
+        string memory profile
+    ) internal {
+        if (predicted.code.length > 0) {
+            console.log(string.concat(name, ": ALREADY DEPLOYED"));
+            return;
+        }
+        console.log(string.concat("Deploying ", name, "..."));
+        _runForgeScript(
+            rpcUrl,
+            broadcastFlag,
+            string.concat(SCRIPT_DIR, contractName, ".s.sol"),
+            contractName,
+            sigArgs,
+            profile
+        );
+    }
+
     /// @dev Invokes a single deploy script via `forge script` using vm.ffi().
     function _runForgeScript(
         string memory rpcUrl,
@@ -373,8 +396,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string memory sigArgs,
         string memory profile
     ) internal {
-        // Append `|| true` so that non-fatal failures (e.g. etherscan verification
-        // timing out) don't cause ffi to revert and halt subsequent deployments.
+        // Append `|| true` so non-fatal failures (e.g. etherscan verification timing out) don't cause ffi
+        // to revert and halt subsequent deployments.
         string memory cmd = string.concat(
             "FOUNDRY_PROFILE=",
             profile,
