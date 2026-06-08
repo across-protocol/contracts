@@ -17,6 +17,17 @@ import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/acc
  *      `CounterfactualBeacon`. After the upgrade, set `implementation`/`upgradeRoot` via the owner setters
  *      (the `initializer` slot is already consumed here, so `CounterfactualBeacon.initialize` cannot run
  *      again). Shares the OZ `Ownable2Step`/`UUPS` storage layout, so the admin set here is preserved.
+ *
+ *      **Bytecode pinning (deploy-time concern).** The chain-invariant proxy address depends on this
+ *      Bootstrap's CREATE2 address, which depends on this contract's exact compiled creation code. Any
+ *      change that alters the bytecode — solc version bump, optimizer settings, import path resolution,
+ *      even a no-op source edit that changes the AST — moves the Bootstrap (and with it the beacon
+ *      proxy, the dispatcher, and every counterfactual proxy) to a different address. Once the
+ *      canonical Bootstrap lands on the first chain, every later chain MUST be deployed from the
+ *      **saved canonical creation code** (e.g. a committed bytecode artifact), NOT a recompile of this
+ *      source. Treat this contract as effectively frozen the moment its first canonical deployment
+ *      ships; surface any future PR that touches it (or its OZ imports, or the compiler profile it's
+ *      built under) so the bytecode-pinning workflow is followed.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualBeaconBootstrap is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable {
