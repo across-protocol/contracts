@@ -20,9 +20,14 @@ destinationChainId)`, so a user hands out one address and receives on it from an
    current implementation).
 5. **Trustless injection** of the per-user fields (recipient, output token, destination chain) into
    bridge calldata.
-6. **Dynamic, signed execution fees** — all three bridge implementations accept an `executionFee`
+6. **Dynamic, signed execution fees** — all four bridge implementations accept an `executionFee`
    chosen at execution time via `submitterData`, authorized by an off-chain `signer` and verified
    on-chain
+7. **Chain-agnostic leaves** — every chain-specific value (bridge endpoints, CCTP domain / OFT EID, the
+   fee `signer`, and token addresses) lives on the per-chain `CounterfactualBeacon` as a `public
+immutable`. Leaf implementations read those at runtime and name no chain-specific address themselves,
+   so a leaf is **byte-identical on every chain** and `initialRoot` carries **one leaf per route**, not
+   one per source chain (see _Chain Configuration_ and _Address Determinism_).
 
 ---
 
@@ -116,14 +121,18 @@ wants distinct deposit addresses — at the cost of moving cross-chain parity fr
 obligation (see below).
 
 For the address to match across chains, every input must be chain-invariant — in particular, both
-`initialRoot` **and `salt`** must be **identical on every chain** (`salt = 0` satisfies this trivially). The routes a deposit uses, however, are
-source-chain-specific (Arbitrum deposits use Arbitrum's SpokePool, Base deposits use Base's, etc.). We
-reconcile this by **requiring `initialRoot` to commit a tree that contains the routes for all source
-chains** to the one destination identity. This all-chains rule is what guarantees the **same address on
-every chain**: `initialRoot` is in the address, so it must be byte-identical everywhere, so it must
-already enumerate every chain's route up front. On any given source chain, the relayer proves the leaf
-matching that chain's route; the root is the same everywhere. (Contrast later **upgraded** roots, which
-are _not_ in the address and are therefore per-chain — see _Upgrade Mechanism_.)
+`initialRoot` **and `salt`** must be **identical on every chain** (`salt = 0` satisfies this trivially).
+A route's source-chain specifics (Arbitrum deposits use Arbitrum's SpokePool and Arbitrum USDC, Base
+deposits use Base's, etc.) **no longer leak into the leaf**: the leaf implementation reads those values
+from the per-chain `CounterfactualBeacon` at runtime, and the token is fixed by the implementation
+(`CounterfactualDepositSpokePoolUsdc` → `beacon.usdc()`, etc.), so the leaf names neither the chain nor
+the token (see _Chain Configuration_). A leaf is therefore **byte-identical on every chain**, and
+`initialRoot` is simply that one tree — **one leaf per route** (bridge × destination identity), not one
+leaf per source chain. The same `initialRoot` is trivially identical everywhere, which is what
+guarantees the **same address on every chain**. On any source chain the relayer proves the route's
+single leaf; if that chain's beacon has the route's endpoints/token configured the deposit proceeds,
+otherwise the implementation reverts `RouteNotConfigured` and the route is simply inert there. (Contrast
+later **upgraded** roots, which are _not_ in the address — see _Upgrade Mechanism_.)
 
 So for a destination identity `(finalRecipient, outputToken, destinationChainId)`:
 
@@ -171,6 +180,49 @@ ERC-7201 layout.
 
 ---
 
+## Chain Configuration (beacon-provided, immutable)
+
+Every chain-specific value the leaf implementations need lives on the per-chain `CounterfactualBeacon` as
+a **`public immutable`**, exposed by a named getter:
+
+```
+signer  spokePool  wrappedNativeToken
+cctpSrcPeriphery  cctpTokenMessenger  cctpSourceDomain
+oftSrcPeriphery  oftSrcEid
+usdc  usdt        (one named getter per supported token)
+```
+
+A leaf implementation runs under delegatecall, so `address(this)` is the proxy; it resolves the beacon
+from the proxy's standard **ERC-1967 beacon slot** (`ERC1967Utils.getBeacon()`) and reads what it needs —
+holding **no immutables of its own**. The **input token is fixed by which implementation** the leaf names
+(`CounterfactualDepositSpokePoolUsdc` → `beacon.usdc()`, `…SpokePoolNative` → native via
+`beacon.wrappedNativeToken()`, CCTP / Vanilla CCTP / OFT → `beacon.usdc()`). One token per implementation;
+to support another token on a bridge, deploy another variant. A getter that returns `address(0)` on a
+given chain means that route isn't live there — the implementation reverts `RouteNotConfigured`.
+
+**Why immutable, and how it changes.** `implementation` and `upgradeRoot` remain mutable storage (they are
+meant to change). The chain config does **not** use setters: each value is `immutable`, baked into the
+registry implementation's bytecode (correctly readable through the proxy under delegatecall). Changing a
+value — or adding a token — means deploying a new `CounterfactualBeacon` implementation and
+**`upgradeToAndCall`-ing** the proxy to it. This is heavier than a setter but more auditable (config can't
+be silently flipped) and keeps the proxy address constant.
+
+**Deploy parity (bootstrap → upgrade).** The beacon **proxy** address must be identical on every chain (it
+is embedded in every `BeaconProxy` and in the factory). But the chain-specific immutables make the registry
+_implementation_ address differ per chain, so the proxy can't be created pointing straight at it. Instead:
+deploy a chain-identical, no-arg `CounterfactualBeaconBootstrap` (same address everywhere), create the
+`ERC1967Proxy` against it with **chain-invariant init calldata** (initialize to the deterministic deployer,
+not the per-chain owner — then transfer ownership afterwards), then `upgradeToAndCall` to the chain-specific
+`CounterfactualBeacon` implementation. Identical proxy init code ⇒ identical proxy address. (The dispatcher
+and all leaf implementations are now constructor-arg-free or take only the chain-invariant beacon address,
+so they too share one address per chain — see _Execution Fees_.)
+
+> Note: a token's fixed fee cap (`maxFeeFixed`, an absolute amount) is only consistent across chains for
+> tokens with the same decimals everywhere (USDC/USDT/WETH are). Leaf builders should bear that in mind;
+> `maxFeeBps` is relative and unaffected.
+
+---
+
 ## The Counterfactual's Own Merkle Tree (`activeRoot`)
 
 This is the deposit-authorization tree — same leaf encoding as the base system:
@@ -181,22 +233,31 @@ leaf = keccak256( bytes.concat( keccak256( abi.encode(implementation, keccak256(
 
 Two kinds of leaves:
 
-### Route leaves (one per source-chain route)
+### Route leaves (one per route, chain-agnostic)
 
 Each names a **bridge-specific implementation** and a route-specific `params`:
 
 ```
-implementation = CounterfactualDepositSpokePool | CounterfactualDepositCCTP | CounterfactualDepositVanillaCCTP | CounterfactualDepositOFT
-params         = sourceChainId + bridge target + input token + fee caps + quote params + destination identity
+implementation = CounterfactualDepositSpokePoolUsdc | CounterfactualDepositSpokePoolNative
+               | CounterfactualDepositCCTP | CounterfactualDepositVanillaCCTP | CounterfactualDepositOFT
+params         = destination identity + fee caps + quote params   (no sourceChainId, no token address)
 ```
 
-Because `initialRoot` must be identical across chains, the tree holds one route leaf **per source
-chain** (and per bridge, and per input token) for this destination identity — e.g. "from Arbitrum via
-SpokePool", "from Base via CCTP", "from Optimism via OFT". At execution the caller proves the leaf for
-the chain it's on, and the impl **requires `block.chainid == params.sourceChainId`** — without it, the
-shared all-chains tree would let a leaf authored for one chain be proven on another (every leaf is
-provable everywhere). A distinct input token on the same source chain is its own leaf; the impl sweeps
-that leaf's input token (native ETH via the `NATIVE_ASSET` sentinel, where the bridge supports it).
+The leaf is **chain-agnostic**: it carries neither a source chain id nor a token address. The input
+token is fixed by **which implementation** the leaf names — each implementation reads one named token
+getter on the beacon (`…SpokePoolUsdc` → `beacon.usdc()`, `…SpokePoolNative` → native via
+`beacon.wrappedNativeToken()`, CCTP/Vanilla/OFT → `beacon.usdc()`) — and the bridge endpoints, CCTP
+domain / OFT EID and fee `signer` are likewise read from the beacon at runtime. So the same leaf is
+valid on every chain, and `initialRoot` holds **one leaf per route** (bridge variant × destination
+identity), not one per source chain. To support a second input token on a bridge, deploy another
+implementation variant (one token hardcoded per implementation) and add its leaf.
+
+Because a leaf is intentionally valid everywhere, there is **no `sourceChainId` / `block.chainid` check**:
+per-chain behaviour comes entirely from the beacon's config. A route that a given chain's beacon does
+not configure (zero endpoint or token) reverts `RouteNotConfigured` there — the leaf is inert, not
+exploitable. Two SpokePool variants delegatecalled by the same proxy could otherwise share a
+`routeParamsHash` (the token is no longer in `params`), so each variant uses a **distinct EIP-712 domain
+name** to keep a fee signature bound to one variant.
 
 The recipient is **not** chosen at runtime: this counterfactual is specific to one destination
 identity (it's baked into `initialRoot`), so `finalRecipient` is fixed and is injected into the
@@ -273,18 +334,16 @@ registry proof.
    ones created or funded there. Each chain's Upgrade Tree is maintained **independently**, so the proxy
    sets are **not required to match** across chains (and in practice will differ — by publish cadence and
    by which counterfactuals the operator chooses to include on each chain).
-2. **Every leaf's `latestRoot` is a Route Tree for THIS chain only.** What differs per chain is the
-   _target_ root: a leaf in chain X's tree points to that proxy's **chain-X** Route Tree. The backend
-   **must not** place a leaf whose Route Tree targets a different source chain into chain X's Upgrade Tree.
-   Unlike `initialRoot` — which is baked into the address and must therefore enumerate routes for _all_
-   source chains (see _Address Determinism_) — an upgraded Route Tree is **not** part of the address, so it
-   is per-chain and lean.
+2. **A proxy's `latestRoot` is now chain-invariant.** Route Trees are chain-agnostic (their leaves carry
+   no chain specifics — see _Route leaves_), so a given proxy's target root is the **same value on every
+   chain**. A `(proxy, latestRoot)` leaf is therefore identical across chains; the only per-chain freedom
+   is _which_ proxies each chain's Upgrade Tree includes. (This is simpler than the earlier model, where an
+   upgraded Route Tree was per-chain and the backend had to avoid cross-chain leaves.)
 
-Because each chain's Upgrade Tree only ever targets that chain's Route Trees, a given proxy appears in it
-**at most once** — the no-downgrade invariant is simply **one leaf per proxy per (per-chain) Upgrade
-Tree**. The execute-time `sourceChainId == block.chainid` check is retained purely as
-defense-in-depth (a stray foreign-chain leaf would be inert), but correctness does **not** rely on it:
-trees are built single-chain by construction.
+A given proxy appears in a chain's Upgrade Tree **at most once** — the no-downgrade invariant is simply
+**one leaf per proxy per Upgrade Tree**. There is no execute-time `sourceChainId == block.chainid`
+check to fall back on (leaves are intentionally chain-agnostic); a chain that hasn't configured a route's
+endpoints/token simply reverts `RouteNotConfigured` for it.
 
 To **activate a newly-added route and use it in one transaction**, an executor can call
 `proxy.updateRootAndExecute(newRoot, updateProof, implementation, params, submitterData, executeProof)`:
@@ -318,8 +377,10 @@ Per-execution values come from `submitterData`, authorized by the `signer` (see 
    `params` and used directly: `finalRecipient` goes into the bridge's **native recipient field**
    (`depositV3` recipient, CCTP `mintRecipient`, OFT `to`); `outputToken` / `destinationChainId` are
    set on the bridge call.
-3. **`sourceChainId`** — committed in `params`; the impl requires `block.chainid == params.sourceChainId`
-   so a leaf can't be replayed on the wrong chain (the all-chains tree is identical everywhere).
+3. **Chain-specific values (bridge endpoint, CCTP domain / OFT EID, input token, fee `signer`)** — _not_
+   in `params`; read from the per-chain `CounterfactualBeacon` at runtime (the token via the named getter
+   the implementation is hardwired to). This is what makes the leaf chain-agnostic; an unset value reverts
+   `RouteNotConfigured`. There is no `sourceChainId` and no `block.chainid` check (see _Chain Configuration_).
 4. **`inputAmount` / `outputAmount` / `executionFee`** — supplied in `submitterData` and **authorized by
    the `signer`** (bound in the EIP-712 fee signature for SpokePool; via the periphery quote signature
    for CCTP/OFT — see _Execution Fees_). The deposit bridges `inputAmount − executionFee`; the fee is
@@ -343,14 +404,16 @@ the submitter: the fee is paid in the input token to an `executionFeeRecipient`,
 
 Mechanism (identical across the four impls):
 
-- Each impl is an **`EIP712`** contract (`name = "CounterfactualDeposit<Bridge>"`,
-  `version = "v2.0.0"`) with an immutable **`signer`** set at construction. Under delegatecall the
-  EIP-712 domain's `verifyingContract` resolves to `address(this)` = the **counterfactual proxy**, so a
-  signature is bound to one proxy and cannot be replayed against another.
+- Each impl is an **`EIP712`** contract (`name = "CounterfactualDeposit<Bridge>"` — the SpokePool
+  variants use distinct names, `…SpokePoolUsdc` / `…SpokePoolNative`; `version = "v2.0.0"`). The
+  **`signer`** is **not** an impl immutable — it is read from `beacon.signer()` at verification time, so
+  rotating it is a beacon upgrade (no impl redeploy) and every impl on a chain shares one signer. Under
+  delegatecall the EIP-712 domain's `verifyingContract` resolves to `address(this)` = the
+  **counterfactual proxy**, so a signature is bound to one proxy and cannot be replayed against another.
 - `submitterData` carries the runtime `executionFee`, a `signatureDeadline`, and a
   `counterfactualSignature` (the fee authorization). `_verifySignature` reverts `SignatureExpired` if
   `block.timestamp > signatureDeadline`, then requires
-  `ECDSA.recover(_hashTypedDataV4(structHash), counterfactualSignature) == signer` (else
+  `ECDSA.recover(_hashTypedDataV4(structHash), counterfactualSignature) == beacon.signer()` (else
   `InvalidSignature`).
 - The route leaf commits an **upper bound** on the fee, checked _after_ verification:
   `maxExecutionFee` for CCTP/Vanilla CCTP/OFT, or the combined `maxFeeFixed + maxFeeBps × inputAmount` cap for
@@ -385,12 +448,12 @@ Per-bridge typehash and binding:
 > transfer — a complete execution requires **both**, and `nonce` uniqueness at the periphery prevents fee
 > replay.
 
-> Note for the upgradeable model: the impl is the **beacon target** (swapped globally via
-> `setImplementation`, never via the proxy and never in the address), and its constructor-immutable
-> `signer` lives in the implementation bytecode. The impl need **not** be deterministic for _address_
-> parity (it is in no address — see _Address Determinism_), but the **same `signer` must be used on every
-> chain** for fee signatures to verify consistently; deploying the impl deterministically is
-> the simplest way to guarantee that.
+> Note for the chain-agnostic model: the leaf implementations hold **no immutables** — neither the
+> `signer` nor any endpoint/token. The `signer` is a single per-chain value on the beacon
+> (`beacon.signer()`), so fee signatures verify consistently across chains by construction and rotating
+> it is a beacon upgrade, not an impl redeploy. With nothing to configure, each leaf implementation
+> compiles to **identical bytecode and deploys to one CREATE2 address on every chain** — which is exactly
+> what lets a single leaf (which names the impl by address) be valid everywhere.
 
 ---
 
@@ -401,7 +464,8 @@ Per-bridge typehash and binding:
 machinery. `CounterfactualDepositVanillaCCTP` is the **non-sponsored** alternative: it calls Circle's
 `ITokenMessengerV2` **directly**, so USDC mints natively on the destination with no Across destination
 contract involved. It is an ordinary per-bridge leaf implementation (named by the leaf's `implementation`
-field, delegatecalled by the dispatcher) — adding it needs no dispatcher / factory / beacon change.
+field, delegatecalled by the dispatcher) — adding it needs no dispatcher or factory change; it reads the
+CCTP TokenMessenger (`beacon.cctpTokenMessenger()`) and burn token (`beacon.usdc()`) from the beacon.
 
 **Two destination shapes, one branch on `hookData`:**
 
@@ -431,9 +495,9 @@ route and amount are **not** bound transitively. Instead the impl's own EIP-712 
 directly (mirroring SpokePool):
 `ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`,
 where `routeParamsHash = keccak256(params)` is the exact merkle-leaf params and `verifyingContract`
-resolves to the proxy. `signer` authorizes it, `executionFee ≤ maxExecutionFee` (the leaf cap) is checked
-afterward, and **replay protection is the short `signatureDeadline`** — there is no nonce, so a re-funded
-proxy could be re-executed within the signature window; keep deadlines short. ERC-20 (USDC) only.
+resolves to the proxy. `beacon.signer()` authorizes it, `executionFee ≤ maxExecutionFee` (the leaf cap) is
+checked afterward, and **replay protection is the short `signatureDeadline`** — there is no nonce, so a
+re-funded proxy could be re-executed within the signature window; keep deadlines short. ERC-20 (USDC) only.
 
 ---
 
@@ -449,12 +513,19 @@ proxy could be re-executed within the signature window; keep deadlines short. ER
   a window to withdraw before a new implementation takes effect, but is **omitted in this implementation**
   — a known residual risk, mitigated only by trusting the multisig admin. (Revisit if a timelock
   is wanted later — note a beacon makes upgrades immediate, so a timelock matters _more_ here.)
+  The admin **also owns the chain config** (bridge endpoints, CCTP domain / OFT EID, fee `signer`, token
+  addresses). Because those are `public immutable`, the admin cannot change them with a setter — a change
+  (or adding a token) is a **UUPS upgrade** of the registry implementation, which is more visible and
+  auditable than a setter, but still admin-gated: an upgrade to a registry that mis-maps a token or
+  endpoint could redirect a route's funds. Same trust class as `setImplementation`; mitigated by the
+  multisig (and, if added later, a timelock).
 - The **executor** is untrusted and permissionless: it can only apply a root the registry's tree already
   authorizes (exact leaf value) — it chooses neither the implementation (beacon-set) nor the root.
 - The **per-bridge implementations** have full delegatecall power in the proxy's frame — the trusted
   code to audit. A proxy can only ever run the implementation the registry admin set as the beacon target.
-- The **execution-fee `signer`** is trusted to authorize only fair runtime `executionFee` values
-  (bounded by the leaf cap). It cannot redirect funds — the recipient is the pinned identity — only
-  attest to the fee; an unsigned or expired fee reverts.
+- The **execution-fee `signer`** (a `public immutable` on the beacon, `beacon.signer()`, rotated via a
+  registry upgrade) is trusted to authorize only fair runtime `executionFee` values (bounded by the leaf
+  cap). It cannot redirect funds — the recipient is the pinned identity — only attest to the fee; an
+  unsigned or expired fee reverts.
 - The **relayer** is untrusted: it can only move the proxy's funds to the pinned `finalRecipient` via
   an authorized route.
