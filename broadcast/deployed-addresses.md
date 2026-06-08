@@ -66,24 +66,26 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Optimism (10)
 
-| Contract Name                  | Address                                                                                                                          |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1inch_SwapAndBridge            | [0x3E7448657409278C9d6E192b92F2b69B234FCc42](https://optimistic.etherscan.io/address/0x3E7448657409278C9d6E192b92F2b69B234FCc42) |
-| AcrossMerkleDistributor        | [0xc8b31410340d57417bE62672f6B53dfB9de30aC2](https://optimistic.etherscan.io/address/0xc8b31410340d57417bE62672f6B53dfB9de30aC2) |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://optimistic.etherscan.io/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://optimistic.etherscan.io/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP      | [0xA190B1DC265765be32Ecb4d25d37f5BCbbf684Bf](https://optimistic.etherscan.io/address/0xA190B1DC265765be32Ecb4d25d37f5BCbbf684Bf) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://optimistic.etherscan.io/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool | [0x47713F44A85fF0692B2d2A1C893D222c48221B23](https://optimistic.etherscan.io/address/0x47713F44A85fF0692B2d2A1C893D222c48221B23) |
-| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://optimistic.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://optimistic.etherscan.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SpokePool                      | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
-| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://optimistic.etherscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://optimistic.etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPSrcPeriphery      | [0x4d11A23E4408eF08Ae1216B3917560e0001CD000](https://optimistic.etherscan.io/address/0x4d11A23E4408eF08Ae1216B3917560e0001CD000) |
-| TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://optimistic.etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
-| UniswapV3_SwapAndBridge        | [0x6f4A733c7889f038D77D4f540182Dda17423CcbF](https://optimistic.etherscan.io/address/0x6f4A733c7889f038D77D4f540182Dda17423CcbF) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://optimistic.etherscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| Contract Name                    | Address                                                                                                                          |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1inch_SwapAndBridge              | [0x3E7448657409278C9d6E192b92F2b69B234FCc42](https://optimistic.etherscan.io/address/0x3E7448657409278C9d6E192b92F2b69B234FCc42) |
+| AcrossMerkleDistributor          | [0xc8b31410340d57417bE62672f6B53dfB9de30aC2](https://optimistic.etherscan.io/address/0xc8b31410340d57417bE62672f6B53dfB9de30aC2) |
+| AdminWithdrawManager             | [0x483b24C646B59537dAc194f13cCE69c16487db2B](https://optimistic.etherscan.io/address/0x483b24C646B59537dAc194f13cCE69c16487db2B) |
+| CounterfactualBeacon             | [0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24](https://optimistic.etherscan.io/address/0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24) |
+| CounterfactualDeposit            | [0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7](https://optimistic.etherscan.io/address/0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7) |
+| CounterfactualDepositCCTP        | [0x0aACd99029ae96A7725c8608EdF38D1b9c401014](https://optimistic.etherscan.io/address/0x0aACd99029ae96A7725c8608EdF38D1b9c401014) |
+| CounterfactualDepositFactory     | [0x3812a7A9022163b176fC3C794079dB7843A70a58](https://optimistic.etherscan.io/address/0x3812a7A9022163b176fC3C794079dB7843A70a58) |
+| CounterfactualDepositSpokePool   | [0x7985313182CBAB6bEc76C3A61854dbCf17A24627](https://optimistic.etherscan.io/address/0x7985313182CBAB6bEc76C3A61854dbCf17A24627) |
+| CounterfactualDepositVanillaCCTP | [0xa629cDCA38FF7a4F5F96C7c4bd622E72D3Fda8CB](https://optimistic.etherscan.io/address/0xa629cDCA38FF7a4F5F96C7c4bd622E72D3Fda8CB) |
+| MulticallHandler                 | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://optimistic.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| Safe                             | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://optimistic.etherscan.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SpokePool                        | [0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79](https://optimistic.etherscan.io/address/0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79) |
+| SpokePoolPeriphery               | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://optimistic.etherscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier                | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://optimistic.etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery        | [0x4d11A23E4408eF08Ae1216B3917560e0001CD000](https://optimistic.etherscan.io/address/0x4d11A23E4408eF08Ae1216B3917560e0001CD000) |
+| TransferProxy                    | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://optimistic.etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
+| UniswapV3_SwapAndBridge          | [0x6f4A733c7889f038D77D4f540182Dda17423CcbF](https://optimistic.etherscan.io/address/0x6f4A733c7889f038D77D4f540182Dda17423CcbF) |
+| WithdrawImplementation           | [0xc1e7a56941f7C91324b2345424AD968121b88b01](https://optimistic.etherscan.io/address/0xc1e7a56941f7C91324b2345424AD968121b88b01) |
 
 ## BNB Smart Chain (56)
 
@@ -222,11 +224,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                          | Address                                                                                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager                   | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://hyperevmscan.io//address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit                  | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://hyperevmscan.io//address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP              | [0xA45F9f1c963500a91ea87df6c30C2fc8548b944b](https://hyperevmscan.io//address/0xA45F9f1c963500a91ea87df6c30C2fc8548b944b) |
-| CounterfactualDepositFactory           | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://hyperevmscan.io//address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool         | [0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99](https://hyperevmscan.io//address/0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99) |
+| AdminWithdrawManager                   | [0x483b24C646B59537dAc194f13cCE69c16487db2B](https://hyperevmscan.io//address/0x483b24C646B59537dAc194f13cCE69c16487db2B) |
+| CounterfactualBeacon                   | [0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24](https://hyperevmscan.io//address/0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24) |
+| CounterfactualDeposit                  | [0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7](https://hyperevmscan.io//address/0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7) |
+| CounterfactualDepositCCTP              | [0x97211d3be4DF104D6eaE18a050B3866215F888ed](https://hyperevmscan.io//address/0x97211d3be4DF104D6eaE18a050B3866215F888ed) |
+| CounterfactualDepositFactory           | [0x3812a7A9022163b176fC3C794079dB7843A70a58](https://hyperevmscan.io//address/0x3812a7A9022163b176fC3C794079dB7843A70a58) |
+| CounterfactualDepositSpokePool         | [0x1CBa6A7C4b9CE54e060320fC138426d155302340](https://hyperevmscan.io//address/0x1CBa6A7C4b9CE54e060320fC138426d155302340) |
+| CounterfactualDepositVanillaCCTP       | [0xa629cDCA38FF7a4F5F96C7c4bd622E72D3Fda8CB](https://hyperevmscan.io//address/0xa629cDCA38FF7a4F5F96C7c4bd622E72D3Fda8CB) |
 | DonationBox_CCTP_USDC                  | [0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60](https://hyperevmscan.io//address/0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60) |
 | DonationBox_CCTP_USDC_EVM              | [0x64a0A69d16518E4544fAb83C624e01339DC36945](https://hyperevmscan.io//address/0x64a0A69d16518E4544fAb83C624e01339DC36945) |
 | DonationBox_CCTP_USDH                  | [0x35B7D6e007f499c806F6d6742d7285D285e17F29](https://hyperevmscan.io//address/0x35B7D6e007f499c806F6d6742d7285D285e17F29) |
@@ -239,7 +243,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | PermissionedMulticallHandler_OFT_USDT  | [0xeaa13e675Fb95821B99D34B9c94c3D60fecAdd4A](https://hyperevmscan.io//address/0xeaa13e675Fb95821B99D34B9c94c3D60fecAdd4A) |
 | Safe                                   | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://hyperevmscan.io//address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                              | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
-| SpokePool                              | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
+| SpokePool                              | [0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79](https://hyperevmscan.io//address/0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79) |
 | SpokePoolPeriphery                     | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://hyperevmscan.io//address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier                      | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery_CCTP_USDC    | [0x1CFE31eD57c2d2b4CB69c0298A1b586965b882d5](https://hyperevmscan.io//address/0x1CFE31eD57c2d2b4CB69c0298A1b586965b882d5) |
@@ -247,7 +251,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredCCTPSrcPeriphery              | [0xF4E32c4aC479f0B007BC005Ec0F481A2C78Ba1B4](https://hyperevmscan.io//address/0xF4E32c4aC479f0B007BC005Ec0F481A2C78Ba1B4) |
 | SponsoredOFTSrcPeriphery               | [0x93e1E5E9D840e758CC016F8b13cDf5dbAeca4b06](https://hyperevmscan.io//address/0x93e1E5E9D840e758CC016F8b13cDf5dbAeca4b06) |
 | TransferProxy                          | [0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF](https://hyperevmscan.io//address/0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF) |
-| WithdrawImplementation                 | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://hyperevmscan.io//address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation                 | [0xc1e7a56941f7C91324b2345424AD968121b88b01](https://hyperevmscan.io//address/0xc1e7a56941f7C91324b2345424AD968121b88b01) |
 
 ## Lisk (1135)
 
@@ -316,23 +320,25 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                          | Address                                                                                                               |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge                    | [0x7CFaBF2eA327009B39f40078011B0Fb714b65926](https://basescan.org/address/0x7CFaBF2eA327009B39f40078011B0Fb714b65926) |
-| AdminWithdrawManager                   | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://basescan.org/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit                  | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://basescan.org/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP              | [0xD000850Bfb56B61995eB777e0602b5032B4Dcf55](https://basescan.org/address/0xD000850Bfb56B61995eB777e0602b5032B4Dcf55) |
-| CounterfactualDepositFactory           | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://basescan.org/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool         | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://basescan.org/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
+| AdminWithdrawManager                   | [0x483b24C646B59537dAc194f13cCE69c16487db2B](https://basescan.org/address/0x483b24C646B59537dAc194f13cCE69c16487db2B) |
+| CounterfactualBeacon                   | [0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24](https://basescan.org/address/0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24) |
+| CounterfactualDeposit                  | [0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7](https://basescan.org/address/0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7) |
+| CounterfactualDepositCCTP              | [0x7aCf53df522853f3A641bc47FEc9340AA81A3826](https://basescan.org/address/0x7aCf53df522853f3A641bc47FEc9340AA81A3826) |
+| CounterfactualDepositFactory           | [0x3812a7A9022163b176fC3C794079dB7843A70a58](https://basescan.org/address/0x3812a7A9022163b176fC3C794079dB7843A70a58) |
+| CounterfactualDepositSpokePool         | [0xE7f176646950B955234F7064063862474D0240b0](https://basescan.org/address/0xE7f176646950B955234F7064063862474D0240b0) |
+| CounterfactualDepositVanillaCCTP       | [0xa629cDCA38FF7a4F5F96C7c4bd622E72D3Fda8CB](https://basescan.org/address/0xa629cDCA38FF7a4F5F96C7c4bd622E72D3Fda8CB) |
 | DonationBox_CCTP_USDC                  | [0x3ff139d8d5519555aA13b0eBd357B0Ba810f06Df](https://basescan.org/address/0x3ff139d8d5519555aA13b0eBd357B0Ba810f06Df) |
 | MulticallHandler                       | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | PermissionedMulticallHandler_CCTP_USDC | [0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4](https://basescan.org/address/0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4) |
 | Safe                                   | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://basescan.org/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SpokePool                              | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| SpokePool                              | [0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79](https://basescan.org/address/0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79) |
 | SpokePoolPeriphery                     | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://basescan.org/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier                      | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://basescan.org/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery_CCTP_USDC    | [0x8dEDA155E446F5d90579C3DCe560e5b00e93F773](https://basescan.org/address/0x8dEDA155E446F5d90579C3DCe560e5b00e93F773) |
 | SponsoredCCTPSrcPeriphery              | [0xa30968D3468316D957B9115EAad3C1c8E450116d](https://basescan.org/address/0xa30968D3468316D957B9115EAad3C1c8E450116d) |
 | TransferProxy                          | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://basescan.org/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge                | [0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4](https://basescan.org/address/0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4) |
-| WithdrawImplementation                 | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://basescan.org/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation                 | [0xc1e7a56941f7C91324b2345424AD968121b88b01](https://basescan.org/address/0xc1e7a56941f7C91324b2345424AD968121b88b01) |
 
 ## Plasma (9745)
 
