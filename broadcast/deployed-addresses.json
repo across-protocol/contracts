@@ -261,9 +261,8 @@
       "chain_name": "Optimism",
       "contracts": {
         "SpokePool": {
-          "address": "0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79",
-          "block_number": 152671805,
-          "transaction_hash": "0x63c663c6a37c6e60df19983143c3698550d8b7989b36d4755a67aa65b947ba84"
+          "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281",
+          "block_number": 93903076
         },
         "1inch_SwapAndBridge": {
           "address": "0x3E7448657409278C9d6E192b92F2b69B234FCc42",
@@ -295,10 +294,15 @@
           "block_number": 152671894,
           "transaction_hash": "0x620f970a969a89ebbbb36797eb6490c1d87d8f60c59a3d745f53876745cac501"
         },
-        "CounterfactualBeacon": {
+        "CounterfactualBeaconImpl": {
           "address": "0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24",
           "block_number": 152671804,
           "transaction_hash": "0xdd67b0b6f99803d37ec3bc00516129302de5c0f7600cbaa8782ab3ebfbbe7eab"
+        },
+        "CounterfactualBeacon": {
+          "address": "0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79",
+          "block_number": 152671805,
+          "transaction_hash": "0x63c663c6a37c6e60df19983143c3698550d8b7989b36d4755a67aa65b947ba84"
         },
         "CounterfactualDeposit": {
           "address": "0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7",
@@ -840,9 +844,8 @@
       "chain_name": "HyperEVM",
       "contracts": {
         "SpokePool": {
-          "address": "0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79",
-          "block_number": 37299680,
-          "transaction_hash": "0x86e9471d5339fb00c1db30a63aab852710fbdaeeabe20be9a3d34eae7bd251cd"
+          "address": "0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04",
+          "block_number": 13937805
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -866,10 +869,15 @@
           "block_number": 37300412,
           "transaction_hash": "0xfc253556b071f3a93174252dddc7780bcac7a0283051e4c81d1083a3dfaf0dfa"
         },
-        "CounterfactualBeacon": {
+        "CounterfactualBeaconImpl": {
           "address": "0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24",
           "block_number": 37299680,
           "transaction_hash": "0xf0c0020b9b5be510a44ba61df20214c969b30770830e40cbcf3d5e8a915f19b1"
+        },
+        "CounterfactualBeacon": {
+          "address": "0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79",
+          "block_number": 37299680,
+          "transaction_hash": "0x86e9471d5339fb00c1db30a63aab852710fbdaeeabe20be9a3d34eae7bd251cd"
         },
         "CounterfactualDeposit": {
           "address": "0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7",
@@ -1230,9 +1238,8 @@
       "chain_name": "Base",
       "contracts": {
         "SpokePool": {
-          "address": "0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79",
-          "block_number": 47076005,
-          "transaction_hash": "0x96196aa93bf643d8b0ca03cc2f096fe17e4096c78494190188a53eadbc147f1e"
+          "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64",
+          "block_number": 2164878
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -1260,10 +1267,15 @@
           "block_number": 47076109,
           "transaction_hash": "0x45dcd3533de7404a8c3af80c9418f12dee37a271ecfe9464b4cb64e864be18b4"
         },
-        "CounterfactualBeacon": {
+        "CounterfactualBeaconImpl": {
           "address": "0xa6726409b8a53B8fa51C0b414d3718Cc79f05E24",
           "block_number": 47076003,
           "transaction_hash": "0x2f374b5a3a7566f2974e9051d1c3110685bb48c78c39e80ca61af2c93b15a15e"
+        },
+        "CounterfactualBeacon": {
+          "address": "0x7a4Ae4fe9a7867bEF4C0E00A1D2E1Dc4A9666b79",
+          "block_number": 47076005,
+          "transaction_hash": "0x96196aa93bf643d8b0ca03cc2f096fe17e4096c78494190188a53eadbc147f1e"
         },
         "CounterfactualDeposit": {
           "address": "0xfdDE8FE6f4840ba2a32c0eD0339681a9611Dd3A7",
