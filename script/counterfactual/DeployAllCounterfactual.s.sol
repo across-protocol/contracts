@@ -6,13 +6,17 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
-import { CounterfactualBeacon } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import {
+    CounterfactualBeacon,
+    CounterfactualChainConfig
+} from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
 import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CounterfactualDepositSpokePoolTr } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { CounterfactualDepositVanillaCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
@@ -162,8 +166,17 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         address predictedSpokePool;
         if (deploySpokePool) {
-            predictedSpokePool = _predictCreate2(bytes32(0), type(CounterfactualDepositSpokePool).creationCode);
-            _logPredicted("CounterfactualDepositSpokePool", predictedSpokePool);
+            // On Tron, the sub-script deploys `CounterfactualDepositSpokePoolTr` (different bytecode ⇒
+            // different CREATE2 address) so the override for Tron USDT's non-standard `transfer` runs.
+            bool isTron = block.chainid == 728126428;
+            bytes memory spokePoolCode = isTron
+                ? type(CounterfactualDepositSpokePoolTr).creationCode
+                : type(CounterfactualDepositSpokePool).creationCode;
+            predictedSpokePool = _predictCreate2(bytes32(0), spokePoolCode);
+            _logPredicted(
+                isTron ? "CounterfactualDepositSpokePoolTr" : "CounterfactualDepositSpokePool",
+                predictedSpokePool
+            );
         }
 
         address predictedCctp;
@@ -197,6 +210,13 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             _beaconWiredTo(predictedProxy, predictedDispatcher)
         ) {
             console.log("Beacon stack (proxy + dispatcher): ALREADY DEPLOYED");
+            // The proxy resolves the dispatcher, but the chain config is baked into the beacon
+            // implementation's immutables. If constants.json/deployed-addresses.json changed since the
+            // beacon was last deployed (e.g. a missing usdt/cctpTokenMessenger/periphery filled in),
+            // those stale immutables remain — only fixable via a UUPS upgrade of the registry. Surface
+            // the mismatch loudly so the operator doesn't conclude everything is fine when a route is
+            // silently bricked.
+            _warnIfBeaconConfigStale(predictedProxy);
         } else {
             console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
             _runForgeScript(
@@ -393,6 +413,54 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         (bool ok, bytes memory ret) = proxy.staticcall(abi.encodeCall(CounterfactualBeacon.implementation, ()));
         if (!ok || ret.length != 32) return false;
         return abi.decode(ret, (address)) == expectedImpl;
+    }
+
+    /// @dev Compare the chain config baked into the live beacon implementation against the values the
+    ///      current resolvers (constants.json + deployed-addresses.json + config.toml) produce. Each
+    ///      mismatch is logged individually so the operator knows exactly which immutable is stale; a
+    ///      summary line points to the UUPS-upgrade remediation. Read-only — no broadcasts.
+    function _warnIfBeaconConfigStale(address proxy) internal {
+        CounterfactualChainConfig memory expected = _buildChainConfig();
+        CounterfactualBeacon beacon = CounterfactualBeacon(proxy);
+
+        bool stale = false;
+        if (_logStaleAddr("signer", beacon.signer(), expected.signer)) stale = true;
+        if (_logStaleAddr("spokePool", beacon.spokePool(), expected.spokePool)) stale = true;
+        if (_logStaleAddr("wrappedNativeToken", beacon.wrappedNativeToken(), expected.wrappedNativeToken)) {
+            stale = true;
+        }
+        if (_logStaleAddr("cctpSrcPeriphery", beacon.cctpSrcPeriphery(), expected.cctpSrcPeriphery)) stale = true;
+        if (_logStaleAddr("cctpTokenMessenger", beacon.cctpTokenMessenger(), expected.cctpTokenMessenger)) {
+            stale = true;
+        }
+        if (_logStaleUint("cctpSourceDomain", beacon.cctpSourceDomain(), expected.cctpSourceDomain)) stale = true;
+        if (_logStaleAddr("oftSrcPeriphery", beacon.oftSrcPeriphery(), expected.oftSrcPeriphery)) stale = true;
+        if (_logStaleUint("oftSrcEid", beacon.oftSrcEid(), expected.oftSrcEid)) stale = true;
+        if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
+        if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;
+
+        if (stale) {
+            console.log("--------------------------------------------");
+            console.log("WARNING: the beacon implementation's baked chain config is stale.");
+            console.log("Routes using the mismatched fields will revert RouteNotConfigured until the");
+            console.log("registry is UUPS-upgraded: deploy `new CounterfactualBeacon(<current cfg>)` and");
+            console.log('call `CounterfactualBeacon(proxy).upgradeToAndCall(newImpl, "")` as owner.');
+            console.log("--------------------------------------------");
+        } else {
+            console.log("Beacon chain config: matches current resolvers");
+        }
+    }
+
+    function _logStaleAddr(string memory field, address actual, address expected) internal view returns (bool) {
+        if (actual == expected) return false;
+        console.log("  stale beacon.%s: actual=%s expected=%s", field, actual, expected);
+        return true;
+    }
+
+    function _logStaleUint(string memory field, uint256 actual, uint256 expected) internal view returns (bool) {
+        if (actual == expected) return false;
+        console.log("  stale beacon.%s: actual=%d expected=%d", field, actual, expected);
+        return true;
     }
 
     function _logPredicted(string memory name, address predicted) internal view {
