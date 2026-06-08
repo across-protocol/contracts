@@ -11,10 +11,7 @@ import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactua
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import {
-    CounterfactualDepositSpokePoolUsdc,
-    CounterfactualDepositSpokePoolNative
-} from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { CounterfactualDepositVanillaCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
@@ -38,7 +35,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - CounterfactualDepositFactory (no constructor args)
 //   - WithdrawImplementation (no constructor args)
 //   - CounterfactualDepositCCTP / OFT / VanillaCCTP (no constructor args)
-//   - CounterfactualDepositSpokePoolUsdc / CounterfactualDepositSpokePoolNative (no constructor args)
+//   - CounterfactualDepositSpokePool (no constructor args; input-token-agnostic via leaf getter selector)
 //   - AdminWithdrawManager (same constructor args on all chains)
 //
 // CHAIN-SPECIFIC address (intentionally):
@@ -66,7 +63,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //     AdminWithdrawManager
 //
 // Optionally deployed (controlled by bool arguments):
-//   - CounterfactualDepositSpokePoolUsdc + CounterfactualDepositSpokePoolNative (deploySpokePool)
+//   - CounterfactualDepositSpokePool (deploySpokePool)
 //   - CounterfactualDepositCCTP (deployCctp)
 //   - CounterfactualDepositOFT (deployOft)
 //
@@ -85,7 +82,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     string constant SCRIPT_DIR = "script/counterfactual/";
 
     /// @param rpcUrl RPC URL for the target chain.
-    /// @param deploySpokePool If true, deploy the CounterfactualDepositSpokePool USDC + native variants.
+    /// @param deploySpokePool If true, deploy CounterfactualDepositSpokePool.
     /// @param deployCctp If true, deploy CounterfactualDepositCCTP.
     /// @param deployOft If true, deploy CounterfactualDepositOFT.
     /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.toml addresses.
@@ -158,16 +155,10 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         _logPredicted("CounterfactualDepositVanillaCCTP", predictedVanilla);
         _logPredicted("AdminWithdrawManager", predictedAdmin);
 
-        address predictedSpokePoolUsdc;
-        address predictedSpokePoolNative;
+        address predictedSpokePool;
         if (deploySpokePool) {
-            predictedSpokePoolUsdc = _predictCreate2(bytes32(0), type(CounterfactualDepositSpokePoolUsdc).creationCode);
-            predictedSpokePoolNative = _predictCreate2(
-                bytes32(0),
-                type(CounterfactualDepositSpokePoolNative).creationCode
-            );
-            _logPredicted("CounterfactualDepositSpokePoolUsdc", predictedSpokePoolUsdc);
-            _logPredicted("CounterfactualDepositSpokePoolNative", predictedSpokePoolNative);
+            predictedSpokePool = _predictCreate2(bytes32(0), type(CounterfactualDepositSpokePool).creationCode);
+            _logPredicted("CounterfactualDepositSpokePool", predictedSpokePool);
         }
 
         address predictedCctp;
@@ -234,12 +225,12 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         }
 
-        // --- CounterfactualDepositSpokePool variants (USDC + native) ---
+        // --- CounterfactualDepositSpokePool (input-token-agnostic) ---
         if (deploySpokePool) {
-            if (predictedSpokePoolUsdc.code.length > 0 && predictedSpokePoolNative.code.length > 0) {
-                console.log("CounterfactualDepositSpokePool variants: ALREADY DEPLOYED");
+            if (predictedSpokePool.code.length > 0) {
+                console.log("CounterfactualDepositSpokePool: ALREADY DEPLOYED");
             } else {
-                console.log("Deploying CounterfactualDepositSpokePool variants...");
+                console.log("Deploying CounterfactualDepositSpokePool...");
                 _runForgeScript(
                     rpcUrl,
                     broadcastFlag,

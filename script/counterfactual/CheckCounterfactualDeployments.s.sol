@@ -82,14 +82,13 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
     // --- Bytecode-only contracts (chain-identical; presence is all we verify on-chain) ---
 
     function _checkBytecodeContracts(uint256 chainId) internal {
-        string[7] memory names = [
+        string[6] memory names = [
             string("CounterfactualBeacon"),
             "CounterfactualDeposit",
             "CounterfactualDepositFactory",
             "WithdrawImplementation",
             "CounterfactualDepositVanillaCCTP",
-            "CounterfactualDepositSpokePoolUsdc",
-            "CounterfactualDepositSpokePoolNative"
+            "CounterfactualDepositSpokePool"
         ];
         for (uint256 i = 0; i < names.length; i++) {
             address addr = _getDeployed(names[i], chainId);

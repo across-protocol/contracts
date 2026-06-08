@@ -9,6 +9,7 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
 import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
@@ -54,8 +55,8 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
     MockTronUSDT internal usdt;
     address internal recipient;
 
-    // EIP-712 domain name is the Tron USDT variant's own name.
-    string constant NAME = "CounterfactualDepositSpokePoolUsdtTr";
+    // EIP-712 domain name is inherited from the mainline `CounterfactualDepositSpokePool`.
+    string constant NAME = "CounterfactualDepositSpokePool";
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
             "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
@@ -81,6 +82,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
     function _routeParams() internal view returns (SpokePoolRouteParams memory) {
         return
             SpokePoolRouteParams({
+                inputTokenGetter: ICounterfactualBeacon.usdt.selector,
                 destinationChainId: 1,
                 outputToken: bytes32(uint256(uint160(address(usdt)))),
                 recipient: bytes32(uint256(uint160(recipient))),

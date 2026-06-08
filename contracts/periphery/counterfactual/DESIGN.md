@@ -194,11 +194,13 @@ usdc  usdt        (one named getter per supported token)
 
 A leaf implementation runs under delegatecall, so `address(this)` is the proxy; it resolves the beacon
 from the proxy's standard **ERC-1967 beacon slot** (`ERC1967Utils.getBeacon()`) and reads what it needs —
-holding **no immutables of its own**. The **input token is fixed by which implementation** the leaf names
-(`CounterfactualDepositSpokePoolUsdc` → `beacon.usdc()`, `…SpokePoolNative` → native via
-`beacon.wrappedNativeToken()`, CCTP / Vanilla CCTP / OFT → `beacon.usdc()`). One token per implementation;
-to support another token on a bridge, deploy another variant. A getter that returns `address(0)` on a
-given chain means that route isn't live there — the implementation reverts `RouteNotConfigured`.
+holding **no immutables of its own**. Token resolution differs by bridge: **SpokePool is input-token-
+agnostic** — its leaf carries the beacon getter selector (`inputTokenGetter`, with `bytes4(0)` ⇒ native via
+`beacon.wrappedNativeToken()`), which it resolves with a guarded staticcall, so one implementation serves
+every registered token. **CCTP / Vanilla CCTP / OFT** read `beacon.usdc()` directly (USDC-only bridges).
+A getter that returns `address(0)` on a given chain means that route isn't live there — the implementation
+reverts `RouteNotConfigured`. Adding a token to the registry (a new named getter) is a beacon upgrade, but
+existing SpokePool leaves can then name it with no impl change.
 
 **Why immutable, and how it changes.** `implementation` and `upgradeRoot` remain mutable storage (they are
 meant to change). The chain config does **not** use setters: each value is `immutable`, baked into the
@@ -238,26 +240,33 @@ Two kinds of leaves:
 Each names a **bridge-specific implementation** and a route-specific `params`:
 
 ```
-implementation = CounterfactualDepositSpokePoolUsdc | CounterfactualDepositSpokePoolNative
+implementation = CounterfactualDepositSpokePool
                | CounterfactualDepositCCTP | CounterfactualDepositVanillaCCTP | CounterfactualDepositOFT
-params         = destination identity + fee caps + quote params   (no sourceChainId, no token address)
+params         = destination identity + fee caps + quote params [+ inputTokenGetter for SpokePool]
+                 (no sourceChainId, no raw token address)
 ```
 
-The leaf is **chain-agnostic**: it carries neither a source chain id nor a token address. The input
-token is fixed by **which implementation** the leaf names — each implementation reads one named token
-getter on the beacon (`…SpokePoolUsdc` → `beacon.usdc()`, `…SpokePoolNative` → native via
-`beacon.wrappedNativeToken()`, CCTP/Vanilla/OFT → `beacon.usdc()`) — and the bridge endpoints, CCTP
-domain / OFT EID and fee `signer` are likewise read from the beacon at runtime. So the same leaf is
-valid on every chain, and `initialRoot` holds **one leaf per route** (bridge variant × destination
-identity), not one per source chain. To support a second input token on a bridge, deploy another
-implementation variant (one token hardcoded per implementation) and add its leaf.
+The leaf is **chain-agnostic**: it carries no source chain id and no raw token address. How the input
+token is named depends on the bridge:
+
+- **SpokePool** is **input-token-agnostic**: the leaf carries an `inputTokenGetter` — the 4-byte selector
+  of the beacon getter that resolves the per-chain token (e.g. `beacon.usdc.selector`), with `bytes4(0)`
+  meaning a native deposit (wrapped via `beacon.wrappedNativeToken()`). The selector is chain-invariant
+  and resolves to the chain's token, so one implementation serves every token and the leaf stays valid
+  everywhere.
+- **CCTP / Vanilla CCTP / OFT** bridge USDC, so their implementations read `beacon.usdc()` directly — no
+  token field in the leaf.
+
+In all cases the bridge endpoints, CCTP domain / OFT EID and fee `signer` are read from the beacon at
+runtime, so `initialRoot` holds **one leaf per route**, not one per source chain.
 
 Because a leaf is intentionally valid everywhere, there is **no `sourceChainId` / `block.chainid` check**:
-per-chain behaviour comes entirely from the beacon's config. A route that a given chain's beacon does
-not configure (zero endpoint or token) reverts `RouteNotConfigured` there — the leaf is inert, not
-exploitable. Two SpokePool variants delegatecalled by the same proxy could otherwise share a
-`routeParamsHash` (the token is no longer in `params`), so each variant uses a **distinct EIP-712 domain
-name** to keep a fee signature bound to one variant.
+per-chain behaviour comes entirely from the beacon's config. A route that a given chain's beacon does not
+configure (zero endpoint or token) reverts `RouteNotConfigured` there — the leaf is inert, not
+exploitable. SpokePool needs **no per-token implementation variants and no per-variant EIP-712 name**:
+`inputTokenGetter` lives in `params`, so it is committed in `routeParamsHash` (which the SpokePool fee
+signature binds), meaning a signature for one token never validates for another; cross-chain replay is
+independently prevented by the `chainId` in the EIP-712 domain.
 
 The recipient is **not** chosen at runtime: this counterfactual is specific to one destination
 identity (it's baked into `initialRoot`), so `finalRecipient` is fixed and is injected into the
