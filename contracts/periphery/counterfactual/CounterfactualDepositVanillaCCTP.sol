@@ -87,19 +87,11 @@ contract CounterfactualDepositVanillaCCTP is ICounterfactualImplementation, EIP7
     /// @notice Circle CCTP v2 TokenMessenger (immutable, same for all deposits on this chain).
     ITokenMessengerV2 public immutable tokenMessenger;
 
-    /// @notice CCTP source domain ID for this chain.
-    uint32 public immutable sourceDomain;
-
     /// @notice Signer that authorizes the runtime execution fee (and, here, the route + amount).
     address public immutable signer;
 
-    constructor(
-        address _tokenMessenger,
-        uint32 _sourceDomain,
-        address _signer
-    ) EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {
+    constructor(address _tokenMessenger, address _signer) EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {
         tokenMessenger = ITokenMessengerV2(_tokenMessenger);
-        sourceDomain = _sourceDomain;
         signer = _signer;
     }
 

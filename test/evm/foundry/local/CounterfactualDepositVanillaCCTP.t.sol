@@ -79,7 +79,6 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     MockTokenMessengerV2 internal messenger;
     MintableERC20 internal token;
 
-    uint32 constant SOURCE_DOMAIN = 0;
     uint32 constant HYPEREVM_DOMAIN = 19;
     bytes32 constant EXECUTE_VANILLA_CCTP_TYPEHASH =
         keccak256(
@@ -89,7 +88,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     function setUp() public {
         _setUpCore();
         messenger = new MockTokenMessengerV2();
-        vanillaImpl = new CounterfactualDepositVanillaCCTP(address(messenger), SOURCE_DOMAIN, signer);
+        vanillaImpl = new CounterfactualDepositVanillaCCTP(address(messenger), signer);
         token = new MintableERC20("USDC", "USDC", 6);
         token.mint(user, 1000e6);
     }
