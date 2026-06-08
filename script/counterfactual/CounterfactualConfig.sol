@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { Variable, TypeKind } from "forge-std/LibVariable.sol";
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { CounterfactualBeacon } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
@@ -13,6 +14,10 @@ import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactua
 /// from Constants and DeployedAddresses.
 abstract contract CounterfactualConfig is DeploymentUtils {
     string constant CONFIG_PATH = "./script/counterfactual/config.toml";
+
+    /// @dev Reserved "any chain" section id for global (chain-invariant) config values. StdConfig keys
+    ///      everything by chain, so globals live under `[0]` (a sentinel that is never a real chain).
+    uint256 internal constant GLOBAL_CONFIG_CHAIN_ID = 0;
 
     struct OperationalConfig {
         address signer;
@@ -32,6 +37,19 @@ abstract contract CounterfactualConfig is DeploymentUtils {
             cfg.ownerAndDirectWithdrawer != address(0),
             "config: ownerAndDirectWithdrawer is zero or missing for chain"
         );
+    }
+
+    /// @dev Reads the global CREATE2 salt for the counterfactual stack from config.toml.
+    ///      Stored under the reserved `[0]` ("any chain") section as `[0.bytes32] salt` — StdConfig is
+    ///      chain-keyed and rejects bare top-level keys, so globals must live under a chain section. The
+    ///      salt MUST be identical on every chain for cross-chain address parity (the beacon proxy, and
+    ///      thus every counterfactual address, derive from it). Reverts (via `toBytes32`'s type check) if
+    ///      `[0.bytes32] salt` is missing — the salt is required, not defaulted.
+    function _loadSalt() internal returns (bytes32) {
+        _loadCounterfactualConfig();
+        Variable memory v = config.get(GLOBAL_CONFIG_CHAIN_ID, "salt");
+        require(v.ty.kind == TypeKind.Bytes32, "config: missing global salt ([0.bytes32] salt in config.toml)");
+        return v.toBytes32();
     }
 
     /// @dev Reads the signer address from config.toml for the current chain.
@@ -75,36 +93,37 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     //
     // The beacon PROXY address anchors every counterfactual address (each BeaconProxy embeds it), so it must
     // be identical on every chain. That holds because (a) the beacon implementation has no constructor args
-    // (chain-identical creationCode) and (b) the proxy is initialized with the chain-invariant `deployer` as
-    // owner and a zero implementation/upgradeRoot (set after deploy). The same `deployer` MUST be used on
-    // every chain — it is part of the proxy init code and therefore of the address.
+    // (chain-identical creationCode), (b) the proxy is initialized with the chain-invariant `deployer` as
+    // owner and a zero implementation/upgradeRoot (set after deploy), and (c) the CREATE2 `salt` is the
+    // global value from config.toml. The same `deployer` AND `salt` MUST be used on every chain — both are
+    // part of the (proxy init code, salt) CREATE2 preimage and therefore of the address.
 
-    /// @dev Beacon implementation init code (no constructor args ⇒ same address on every chain).
+    /// @dev Beacon implementation init code (no constructor args ⇒ same address on every chain for a salt).
     function _beaconImplInitCode() internal pure returns (bytes memory) {
         return type(CounterfactualBeacon).creationCode;
     }
 
-    /// @dev Predicted (chain-invariant) beacon implementation address.
-    function _predictBeaconImpl() internal pure returns (address) {
-        return _predictCreate2(bytes32(0), _beaconImplInitCode());
+    /// @dev Predicted beacon implementation address for `salt` (chain-invariant when `salt` is).
+    function _predictBeaconImpl(bytes32 salt) internal pure returns (address) {
+        return _predictCreate2(salt, _beaconImplInitCode());
     }
 
     /// @dev Beacon proxy init code: an ERC1967Proxy over the beacon impl, initialized with `deployer` as
-    ///      owner and zero implementation/upgradeRoot. Chain-invariant when `deployer` is chain-invariant.
-    function _beaconProxyInitCode(address deployer) internal pure returns (bytes memory) {
+    ///      owner and zero implementation/upgradeRoot. Chain-invariant when `deployer` and `salt` are.
+    function _beaconProxyInitCode(address deployer, bytes32 salt) internal pure returns (bytes memory) {
         return
             abi.encodePacked(
                 type(ERC1967Proxy).creationCode,
                 abi.encode(
-                    _predictBeaconImpl(),
+                    _predictBeaconImpl(salt),
                     abi.encodeCall(CounterfactualBeacon.initialize, (deployer, address(0), bytes32(0)))
                 )
             );
     }
 
     /// @dev Predicted beacon proxy address — the chain-invariant anchor every dispatcher/factory/clone embeds.
-    function _predictBeaconProxy(address deployer) internal pure returns (address) {
-        return _predictCreate2(bytes32(0), _beaconProxyInitCode(deployer));
+    function _predictBeaconProxy(address deployer, bytes32 salt) internal pure returns (address) {
+        return _predictCreate2(salt, _beaconProxyInitCode(deployer, salt));
     }
 
     /// @dev Dispatcher (CounterfactualDeposit) init code, bound to the beacon proxy.

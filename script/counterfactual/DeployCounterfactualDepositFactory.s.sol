@@ -16,7 +16,8 @@ import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 contract DeployCounterfactualDepositFactory is CounterfactualConfig {
     function run() external {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
-        address beaconProxy = _predictBeaconProxy(vm.addr(deployerPrivateKey));
+        bytes32 salt = _loadSalt();
+        address beaconProxy = _predictBeaconProxy(vm.addr(deployerPrivateKey), salt);
 
         bytes memory initCode = _factoryInitCode(beaconProxy);
 
@@ -25,7 +26,7 @@ contract DeployCounterfactualDepositFactory is CounterfactualConfig {
         console.log("Beacon proxy:", beaconProxy);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(salt, initCode);
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositFactory deployed to:", deployed);

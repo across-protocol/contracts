@@ -53,8 +53,9 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //     safety check that directWithdrawer transferred before ownership. The beacon stack hands ownership to
 //     the multisig when `transferRoles` is set (Ownable2Step — the multisig accepts out of band).
 //
-// Always deployed:
-//   - Beacon stack (impl + proxy + dispatcher + setImplementation) via DeployCounterfactualBeacon
+// Always deployed (in order — the dispatcher precedes the beacon so the beacon can wire it):
+//   - CounterfactualDeposit (dispatcher) via DeployCounterfactualDeposit
+//   - CounterfactualBeacon (impl + proxy) + setImplementation(dispatcher) via DeployCounterfactualBeacon
 //   - CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
 //
 // Optionally deployed (controlled by bool arguments):
@@ -109,6 +110,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string calldata profile
     ) external {
         address signer = _loadSigner();
+        bytes32 salt = _loadSalt();
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
 
@@ -143,17 +145,17 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         // Predict addresses (beacon proxy + dispatcher + factory derive from the chain-invariant deployer).
         Predicted memory p;
-        p.beaconProxy = _predictBeaconProxy(deployer);
-        p.dispatcher = _predictCreate2(bytes32(0), _dispatcherInitCode(p.beaconProxy));
-        p.factory = _predictCreate2(bytes32(0), _factoryInitCode(p.beaconProxy));
-        p.withdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
+        p.beaconProxy = _predictBeaconProxy(deployer, salt);
+        p.dispatcher = _predictCreate2(salt, _dispatcherInitCode(p.beaconProxy));
+        p.factory = _predictCreate2(salt, _factoryInitCode(p.beaconProxy));
+        p.withdraw = _predictCreate2(salt, type(WithdrawImplementation).creationCode);
         p.admin = _predictCreate2(
-            bytes32(0),
+            salt,
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
         );
         if (deploySpokePool)
             p.spokePool = _predictCreate2(
-                bytes32(0),
+                salt,
                 abi.encodePacked(
                     type(CounterfactualDepositSpokePool).creationCode,
                     abi.encode(spokePool, signer, wrappedNativeToken)
@@ -161,7 +163,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         if (deployCctp)
             p.cctp = _predictCreate2(
-                bytes32(0),
+                salt,
                 abi.encodePacked(
                     type(CounterfactualDepositCCTP).creationCode,
                     abi.encode(cctpPeriphery, cctpDomain, signer)
@@ -169,12 +171,12 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         if (deployOft)
             p.oft = _predictCreate2(
-                bytes32(0),
+                salt,
                 abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid, signer))
             );
         if (deployVanillaCctp)
             p.vanillaCctp = _predictCreate2(
-                bytes32(0),
+                salt,
                 abi.encodePacked(
                     type(CounterfactualDepositVanillaCCTP).creationCode,
                     abi.encode(vanillaTokenMessenger, signer)
@@ -204,11 +206,23 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
 
-        // --- Beacon stack (impl + proxy + dispatcher + setImplementation; the cross-chain anchor) ---
-        if (p.beaconProxy.code.length > 0 && p.dispatcher.code.length > 0) {
-            console.log("Beacon stack: ALREADY DEPLOYED");
+        // --- CounterfactualDeposit (dispatcher) — deployed first so the beacon can wire it (and so it gets
+        //     its own broadcast artifact). Bound to the deterministic beacon proxy, which needn't exist yet. ---
+        _deployIfNeeded(
+            p.dispatcher,
+            "CounterfactualDeposit",
+            rpcUrl,
+            broadcastFlag,
+            "DeployCounterfactualDeposit",
+            "",
+            profile
+        );
+
+        // --- Beacon (impl + proxy) + setImplementation(dispatcher) — wires the dispatcher deployed above. ---
+        if (p.beaconProxy.code.length > 0) {
+            console.log("CounterfactualBeacon: ALREADY DEPLOYED");
         } else {
-            console.log("Deploying beacon stack...");
+            console.log("Deploying + wiring beacon...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,

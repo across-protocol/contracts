@@ -1,3 +1,14 @@
+# Global (chain-invariant) configuration, keyed under the reserved "any chain" id 0. The config loader
+# (forge-std StdConfig) keys every section by chain and rejects bare top-level keys, so global values live
+# here. The CREATE2 `salt` for the whole counterfactual stack (beacon impl + proxy, dispatcher, factory,
+# withdraw/admin, per-bridge impls) MUST be identical on every chain for cross-chain address parity, so it
+# is declared once here rather than per-chain. `0x0..0` reproduces the original hardcoded salt. The
+# endpoint_url is a never-dialed placeholder ([0] is a config-only sentinel, not a real chain).
+[0]
+endpoint_url = "https://global.invalid"
+[0.bytes32]
+salt = "0x0000000000000000000000000000000000000000000000000000000000000002"
+
 [1]
 endpoint_url = "${NODE_URL_1}"
 [1.address]

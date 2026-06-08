@@ -39,8 +39,9 @@ contract DeployCounterfactualDepositVanillaCCTP is CounterfactualConfig {
         console.log("TokenMessenger:", tokenMessenger);
         console.log("Signer:", signer);
 
+        bytes32 salt = _loadSalt();
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(salt, initCode);
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositVanillaCCTP deployed to:", deployed);

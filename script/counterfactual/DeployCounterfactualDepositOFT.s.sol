@@ -36,8 +36,9 @@ contract DeployCounterfactualDepositOFT is CounterfactualConfig {
         console.log("Source EID:", uint256(srcEid));
         console.log("Signer:", signer);
 
+        bytes32 salt = _loadSalt();
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(salt, initCode);
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositOFT deployed to:", deployed);
