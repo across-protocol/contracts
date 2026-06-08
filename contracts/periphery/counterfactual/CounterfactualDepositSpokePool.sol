@@ -16,9 +16,11 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
  * @notice Route parameters committed to in the merkle leaf.
  * @dev Chain-agnostic: it names no source chain and no token address. The input token is named indirectly
  *      by `inputTokenGetter` — the 4-byte selector of the beacon getter that resolves the per-chain token
- *      address (e.g. `CounterfactualBeacon.usdc.selector`). A reserved value of `bytes4(0)` means a native
- *      deposit (input via `msg.value`; the SpokePool input token is `beacon.wrappedNativeToken()`). Because
- *      the selector is chain-invariant and resolves to the chain's token, the same leaf works everywhere.
+ *      address (e.g. `CounterfactualBeacon.usdc.selector`). "Native" is not a special selector: the leaf
+ *      always resolves the getter, and the returned address itself signals native (the well-known sentinel
+ *      `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) vs ERC-20. The same leaf can name e.g.
+ *      `beacon.nativeToken.selector` and behave as a native deposit on chains where the beacon returns the
+ *      sentinel and as an ERC-20 deposit on chains where the beacon returns a token address.
  *      `destinationChainId`, `outputToken` and `recipient` are the (chain-invariant) destination identity.
  */
 struct SpokePoolRouteParams {
@@ -54,9 +56,12 @@ struct SpokePoolSubmitterData {
  * @notice Implementation for counterfactual deposits via Across SpokePool, agnostic to the input token.
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The SpokePool, wrapped native
  *      token and fee signer are resolved from the `CounterfactualBeacon` at runtime; the input token is
- *      resolved from whichever beacon getter the leaf's `inputTokenGetter` selector names (or native, for
- *      `bytes4(0)`). So this implementation holds no chain-specific values, has one address on every chain,
- *      and a single leaf works everywhere (see `CounterfactualImplementationBase`).
+ *      resolved from whichever beacon getter the leaf's `inputTokenGetter` selector names. Native vs ERC-20
+ *      is decided by the resolved value (`NATIVE_SENTINEL` ⇒ msg.value path, SpokePool input is
+ *      `beacon.wrappedNativeToken()`; otherwise ⇒ ERC-20 transferFrom path). This decouples the leaf from
+ *      whether a given chain's "native route" actually has a native gas token, so this implementation
+ *      holds no chain-specific values, has one address on every chain, and a single leaf works everywhere
+ *      (see `CounterfactualImplementationBase`).
  *
  *      No per-token implementation variants and no per-variant EIP-712 names are needed: `inputTokenGetter`
  *      is part of `params`, so it is committed in `routeParamsHash` — which this contract's EIP-712 fee
@@ -76,8 +81,10 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
 
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
 
-    /// @dev Reserved `inputTokenGetter` value selecting a native (ETH) deposit.
-    bytes4 internal constant NATIVE_GETTER = bytes4(0);
+    /// @notice Well-known sentinel address that signals "treat this route as native" when returned by the
+    ///         beacon getter named in `inputTokenGetter`. Same value used by Aave/Compound/many bridges to
+    ///         stand in for the native gas token at an address-typed slot.
+    address public constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /**
      * @notice Emitted after a SpokePool deposit is successfully executed.
@@ -120,7 +127,8 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
      * @inheritdoc ICounterfactualImplementation
      * @dev Deposits into the Across SpokePool. `routeParamsEncoded` is ABI-encoded as `SpokePoolRouteParams`;
      *      `submitterDataEncoded` as `SpokePoolSubmitterData` (includes an EIP-712 signature from the beacon's
-     *      `signer`). Supports native deposits (`inputTokenGetter == bytes4(0)`). Reverts: `SignatureExpired`,
+     *      `signer`). Native vs ERC-20 is decided by the value resolved from `inputTokenGetter`:
+     *      `NATIVE_SENTINEL` ⇒ native (msg.value); any other address ⇒ ERC-20. Reverts: `SignatureExpired`,
      *      `InvalidSignature`, `MaxFee`, `NativeTransferFailed`, `RouteNotConfigured`.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
@@ -142,13 +150,17 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
         ICounterfactualBeacon beacon = _beacon();
         address spokePool = _requireConfigured(beacon.spokePool());
 
-        bool isNative = routeParams.inputTokenGetter == NATIVE_GETTER;
+        // The leaf names a regular beacon getter; the chain's beacon decides whether this route is paid
+        // in native (returns `NATIVE_SENTINEL`) or in an ERC-20 (returns the token address). Branching on
+        // the value — not on the selector — lets the same merkle leaf serve both flavors.
+        address resolved = _requireConfigured(_resolveInputToken(beacon, routeParams.inputTokenGetter));
+        bool isNative = resolved == NATIVE_SENTINEL;
         address inputToken; // ERC-20 to approve/sweep (unused for native)
         bytes32 spokePoolInputToken;
         if (isNative) {
             spokePoolInputToken = bytes32(uint256(uint160(_requireConfigured(beacon.wrappedNativeToken()))));
         } else {
-            inputToken = _requireConfigured(_resolveInputToken(beacon, routeParams.inputTokenGetter));
+            inputToken = resolved;
             IERC20(inputToken).forceApprove(spokePool, depositAmount);
             spokePoolInputToken = bytes32(uint256(uint160(inputToken)));
         }

@@ -49,6 +49,23 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
+    /// @dev Standard Aave/Compound-style native sentinel address — returned by `beacon.nativeToken()` on
+    ///      chains whose "native or equivalent" SpokePool route is paid in `msg.value` (the SpokePool input
+    ///      token is then `beacon.wrappedNativeToken()`). Mirrors the constant in
+    ///      `CounterfactualDepositSpokePool.NATIVE_SENTINEL`.
+    address internal constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    /// @dev Resolves the "native or equivalent" SpokePool input token for this chain. Defaults to
+    ///      `NATIVE_SENTINEL` (every supported chain today has a native gas token; the SpokePool wraps it
+    ///      to `wrappedNativeToken` on deposit). A future chain whose canonical gas-token route is actually
+    ///      an ERC-20 can add a `.NATIVE_TOKEN.<chainId>` override in constants.json that returns the
+    ///      ERC-20 address — the SpokePool leaf will then bypass the msg.value path.
+    function _resolveNativeToken() internal view returns (address) {
+        string memory path = string.concat(".NATIVE_TOKEN.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return NATIVE_SENTINEL;
+    }
+
     /// @dev Tries both casings to handle inconsistency in deployed-addresses.json.
     function _resolveCctpPeriphery() internal view returns (address) {
         address addr = getDeployedAddress("SponsoredCCTPSrcPeriphery", block.chainid, false);
@@ -99,6 +116,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.signer = _loadSigner();
         cfg.spokePool = _resolveSpokePool();
         cfg.wrappedNativeToken = _resolveWrappedNativeToken();
+        cfg.nativeToken = _resolveNativeToken();
         cfg.cctpSrcPeriphery = _resolveCctpPeriphery();
         cfg.cctpSourceDomain = hasCctpDomain(block.chainid) ? getCircleDomainId(block.chainid) : 0;
         cfg.cctpTokenMessenger = _resolveCctpTokenMessenger();

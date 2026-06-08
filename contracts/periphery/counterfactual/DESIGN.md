@@ -195,15 +195,20 @@ usdc  usdt        (one named getter per supported token)
 A leaf implementation runs under delegatecall, so `address(this)` is the proxy; it resolves the beacon
 from the proxy's standard **ERC-1967 beacon slot** (`ERC1967Utils.getBeacon()`) and reads what it needs —
 holding **no immutables of its own**. Token resolution differs by bridge: **SpokePool is input-token-
-agnostic** — its leaf carries the beacon getter selector (`inputTokenGetter`, with `bytes4(0)` ⇒ native via
-`beacon.wrappedNativeToken()`), which it resolves with a guarded staticcall, so one implementation serves
-every registered token. **CCTP / Vanilla CCTP** read `beacon.usdc()` directly (USDC-only bridges). **OFT**
-reads the input token from the periphery's own immutable `TOKEN()` (the periphery is single-token by
-construction; on Across today every deployed `SponsoredOFTSrcPeriphery` is USDT0), so the OFT impl is
-token-agnostic across periphery deployments. A getter that returns `address(0)` on a given chain means
-that route isn't live there — the implementation reverts `RouteNotConfigured`. Adding a token to the
-registry (a new named getter) is a beacon upgrade, but existing SpokePool leaves can then name it with
-no impl change.
+agnostic** — its leaf carries the beacon getter selector (`inputTokenGetter`, e.g. `beacon.usdc.selector`
+or `beacon.nativeToken.selector`), which it resolves with a guarded staticcall. Native vs ERC-20 is
+decided by the **resolved value**, not the selector: the well-known sentinel
+`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` ⇒ native deposit (the SpokePool input token is
+`beacon.wrappedNativeToken()`); any other address ⇒ ERC-20. So one implementation serves every registered
+token and one leaf can serve both flavors — on a chain whose `beacon.nativeToken()` returns the sentinel
+it behaves as a native route; on a chain whose `beacon.nativeToken()` returns an ERC-20 (because that
+chain has no native gas token to route through), the same leaf behaves as an ERC-20 route.
+**CCTP / Vanilla CCTP** read `beacon.usdc()` directly (USDC-only bridges). **OFT** reads the input token
+from the periphery's own immutable `TOKEN()` (the periphery is single-token by construction; on Across
+today every deployed `SponsoredOFTSrcPeriphery` is USDT0), so the OFT impl is token-agnostic across
+periphery deployments. A getter that returns `address(0)` on a given chain means that route isn't live
+there — the implementation reverts `RouteNotConfigured`. Adding a token to the registry (a new named
+getter) is a beacon upgrade, but existing SpokePool leaves can then name it with no impl change.
 
 **Why immutable, and how it changes.** `implementation` and `upgradeRoot` remain mutable storage (they are
 meant to change). The chain config does **not** use setters: each value is `immutable`, baked into the
@@ -253,10 +258,12 @@ The leaf is **chain-agnostic**: it carries no source chain id and no raw token a
 token is named depends on the bridge:
 
 - **SpokePool** is **input-token-agnostic**: the leaf carries an `inputTokenGetter` — the 4-byte selector
-  of the beacon getter that resolves the per-chain token (e.g. `beacon.usdc.selector`), with `bytes4(0)`
-  meaning a native deposit (wrapped via `beacon.wrappedNativeToken()`). The selector is chain-invariant
-  and resolves to the chain's token, so one implementation serves every token and the leaf stays valid
-  everywhere.
+  of the beacon getter that resolves the per-chain token (e.g. `beacon.usdc.selector` or
+  `beacon.nativeToken.selector`). The selector is chain-invariant; native vs ERC-20 is decided by the
+  **resolved value** (`NATIVE_SENTINEL = 0xEeee…EEeE` ⇒ native, wrapped via
+  `beacon.wrappedNativeToken()`; otherwise ⇒ ERC-20). One leaf can name `beacon.nativeToken.selector` and
+  behave as native on chains that return the sentinel and as ERC-20 on chains whose `nativeToken()`
+  returns a token address.
 - **CCTP / Vanilla CCTP** bridge USDC, so their implementations read `beacon.usdc()` directly — no
   token field in the leaf.
 - **OFT** reads the input token from the periphery's immutable `TOKEN()`. The periphery is single-token

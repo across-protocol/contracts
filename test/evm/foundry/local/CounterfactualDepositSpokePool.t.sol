@@ -62,10 +62,12 @@ contract MockSpokePool {
 
 /**
  * @notice Tests the input-token-agnostic SpokePool counterfactual implementation. The leaf carries the
- *         beacon getter selector for its input token (`inputTokenGetter`); `bytes4(0)` selects a native
- *         deposit (wrapped via `beacon.wrappedNativeToken()`). The SpokePool and fee signer come from the
- *         beacon. One implementation handles every token, so there is a single EIP-712 domain name and the
- *         token selector — committed in `routeParamsHash` — keeps a fee signature bound to one token.
+ *         beacon getter selector for its input token (`inputTokenGetter`); native vs ERC-20 is decided by
+ *         the value the getter resolves to (`NATIVE_SENTINEL` ⇒ native deposit wrapped via
+ *         `beacon.wrappedNativeToken()`; any other address ⇒ ERC-20). The SpokePool and fee signer come
+ *         from the beacon. One implementation handles every token, so there is a single EIP-712 domain
+ *         name and the token selector — committed in `routeParamsHash` — keeps a fee signature bound to
+ *         one token.
  */
 contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
     CounterfactualDepositSpokePool internal spokeImpl;
@@ -77,7 +79,10 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
 
     bytes4 constant USDC_GETTER = ICounterfactualBeacon.usdc.selector;
     bytes4 constant USDT_GETTER = ICounterfactualBeacon.usdt.selector;
-    bytes4 constant NATIVE_GETTER = bytes4(0);
+    bytes4 constant NATIVE_GETTER = ICounterfactualBeacon.nativeToken.selector;
+    /// @dev Mirrors `CounterfactualDepositSpokePool.NATIVE_SENTINEL` — Solidity won't let us dot-access
+    ///      a contract's public constant in a struct-field assignment, so we redeclare the value here.
+    address constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     string constant NAME = "CounterfactualDepositSpokePool";
 
@@ -97,6 +102,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.spokePool = address(spokePool);
         cfg.wrappedNativeToken = weth;
+        cfg.nativeToken = NATIVE_SENTINEL;
         cfg.usdc = address(token);
         cfg.usdt = address(altToken);
         _deployBeacon(cfg);
@@ -267,6 +273,49 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         assertEq(spokePool.lastInputAmount(), e.inputAmount - e.executionFee);
         assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(weth))));
         assertEq(relayer.balance, e.executionFee);
+    }
+
+    /// @dev On a chain whose `beacon.nativeToken()` returns an ERC-20 (not the native sentinel), the
+    ///      SAME leaf — naming `nativeToken.selector` as its `inputTokenGetter` — must take the ERC-20
+    ///      path (transferFrom, no msg.value), proving the leaf's behavior is decided by the resolved
+    ///      value rather than the selector.
+    function testNativeGetterResolvingToErc20UsesErc20Path() public {
+        // Redeploy the beacon with `nativeToken` set to an ERC-20 instead of the sentinel.
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.spokePool = address(spokePool);
+        cfg.wrappedNativeToken = weth;
+        cfg.nativeToken = address(token); // ERC-20 stand-in for "native" on this chain
+        cfg.usdc = address(token);
+        cfg.usdt = address(altToken);
+        _deployBeacon(cfg);
+        CounterfactualDepositSpokePool impl = new CounterfactualDepositSpokePool();
+
+        bytes memory route = abi.encode(_routeParams(NATIVE_GETTER));
+        bytes32[] memory leaves = new bytes32[](4);
+        leaves[0] = _leaf(address(impl), route);
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(WithdrawParams({ admin: admin, user: user })));
+        leaves[2] = keccak256("pad-a");
+        leaves[3] = keccak256("pad-b");
+        bytes32 root = merkle.getRoot(leaves);
+        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        address proxy = factory.deploy(bytes32(0), root);
+
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
+
+        vm.prank(user);
+        token.transfer(proxy, e.inputAmount);
+
+        bytes memory exec = abi.encodeCall(CounterfactualDeposit.execute, (address(impl), route, submitter, proof));
+        vm.prank(relayer);
+        (bool ok, ) = proxy.call(exec);
+        assertTrue(ok);
+
+        // ERC-20 path: SpokePool received the ERC-20 (not WETH), no msg.value forwarded, fee in ERC-20.
+        assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(address(token)))));
+        assertEq(spokePool.lastMsgValue(), 0);
+        assertEq(token.balanceOf(relayer), e.executionFee);
+        assertEq(token.balanceOf(proxy), 0);
     }
 
     function testDeployAndExecuteViaFactory() public {

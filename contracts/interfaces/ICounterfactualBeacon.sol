@@ -46,6 +46,14 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Wrapped native token (e.g. WETH) used as the SpokePool input token for native deposits.
     function wrappedNativeToken() external view returns (address);
 
+    /// @notice Resolved value of the "native or equivalent" SpokePool input-token route. Returns the
+    ///         well-known native sentinel (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) on chains where
+    ///         the deposit comes in as `msg.value` (and is wrapped to `wrappedNativeToken()` as the
+    ///         SpokePool input), or an ERC-20 address on chains where the canonical gas-token route is
+    ///         actually an ERC-20. The SpokePool leaf names this via `inputTokenGetter` and branches on
+    ///         whether the returned value equals the sentinel — so one leaf serves both flavors.
+    function nativeToken() external view returns (address);
+
     /// @notice SponsoredCCTPSrcPeriphery on this chain (sponsored CCTP route).
     function cctpSrcPeriphery() external view returns (address);
 

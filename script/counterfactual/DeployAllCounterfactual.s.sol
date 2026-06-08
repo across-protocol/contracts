@@ -55,9 +55,11 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
-//   - Chain-specific params (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, USDC/USDT,
-//     cctpTokenMessenger): auto-resolved from constants.json and deployed-addresses.json and baked into the
-//     CounterfactualBeacon implementation by DeployCounterfactualBeacon
+//   - Chain-specific params (spokePool, wrappedNativeToken, nativeToken, cctp/oft periphery +
+//     domain/eid, USDC/USDT, cctpTokenMessenger): auto-resolved from constants.json and
+//     deployed-addresses.json and baked into the CounterfactualBeacon implementation by
+//     DeployCounterfactualBeacon. `nativeToken` defaults to the well-known native sentinel; chains whose
+//     canonical "gas-token route" should resolve to an ERC-20 can override at `.NATIVE_TOKEN.<chainId>`.
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from config.toml.
 //     Role transfers (owner/directWithdrawer) are done directly by this script after all ffi deployments
 //     complete, with a safety check that directWithdrawer transferred successfully before ownership.

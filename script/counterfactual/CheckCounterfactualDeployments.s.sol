@@ -180,6 +180,11 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             }
         }
 
+        // nativeToken vs constants.json: defaults to NATIVE_SENTINEL when no `.NATIVE_TOKEN.<chainId>`
+        // override exists (matching `_resolveNativeToken` in CounterfactualConfig). Mismatches surface
+        // when an override was added/removed without redeploying the registry implementation.
+        _assertAddrEq("CounterfactualBeacon", "nativeToken", beacon.nativeToken(), _getNativeToken(chainId));
+
         // cctpSrcPeriphery vs deployed-addresses.json
         _assertAddrEq(
             "CounterfactualBeacon",
@@ -328,6 +333,14 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         string memory path = string.concat(".USDT.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
+    }
+
+    /// @dev Mirrors `CounterfactualConfig._resolveNativeToken`: defaults to `NATIVE_SENTINEL` and accepts
+    ///      a per-chain ERC-20 override at `.NATIVE_TOKEN.<chainId>`.
+    function _getNativeToken(uint256 chainId) internal view returns (address) {
+        string memory path = string.concat(".NATIVE_TOKEN.", vm.toString(chainId));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return NATIVE_SENTINEL;
     }
 
     // --- Multisig lookup ---

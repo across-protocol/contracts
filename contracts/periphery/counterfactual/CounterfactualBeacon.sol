@@ -24,6 +24,13 @@ struct CounterfactualChainConfig {
     address signer;
     address spokePool;
     address wrappedNativeToken;
+    /// @dev Resolved value of the "native or equivalent" SpokePool route: the `NATIVE_SENTINEL` address
+    ///      (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) on chains where the SpokePool deposit should
+    ///      come in as `msg.value` (and `wrappedNativeToken` is the SpokePool input token after wrapping),
+    ///      or a chain-specific ERC-20 address on chains where the canonical "gas-token route" is actually
+    ///      an ERC-20. The SpokePool leaf names this getter via `inputTokenGetter` and branches on the
+    ///      sentinel — so one leaf works for both flavors without baking the choice into the merkle commit.
+    address nativeToken;
     address cctpSrcPeriphery;
     address cctpTokenMessenger;
     uint32 cctpSourceDomain;
@@ -77,6 +84,8 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
     /// @inheritdoc ICounterfactualBeacon
     address public immutable wrappedNativeToken;
     /// @inheritdoc ICounterfactualBeacon
+    address public immutable nativeToken;
+    /// @inheritdoc ICounterfactualBeacon
     address public immutable cctpSrcPeriphery;
     /// @inheritdoc ICounterfactualBeacon
     address public immutable cctpTokenMessenger;
@@ -97,6 +106,7 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         signer = config.signer;
         spokePool = config.spokePool;
         wrappedNativeToken = config.wrappedNativeToken;
+        nativeToken = config.nativeToken;
         cctpSrcPeriphery = config.cctpSrcPeriphery;
         cctpTokenMessenger = config.cctpTokenMessenger;
         cctpSourceDomain = config.cctpSourceDomain;
