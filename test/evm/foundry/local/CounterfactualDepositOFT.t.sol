@@ -15,11 +15,14 @@ import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounte
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/// @notice Mock SponsoredOFTSrcPeriphery: pulls `token`, asserts the quote's srcEid, and records the quote.
+/// @notice Mock SponsoredOFTSrcPeriphery: pulls `TOKEN`, asserts the quote's srcEid, and records the quote.
+/// @dev Exposes `TOKEN()` (uppercase) to match the real periphery's immutable getter, which the leaf
+///      impl reads to resolve the input token.
 contract MockOFTPeriphery {
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable token;
+    // solhint-disable-next-line var-name-mixedcase
+    address public immutable TOKEN;
     uint32 public immutable expectedSrcEid;
     uint256 public lastAmount;
     bytes32 public lastNonce;
@@ -27,13 +30,13 @@ contract MockOFTPeriphery {
     uint256 public callCount;
 
     constructor(IERC20 _token, uint32 _expectedSrcEid) {
-        token = _token;
+        TOKEN = address(_token);
         expectedSrcEid = _expectedSrcEid;
     }
 
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata) external payable {
         require(quote.signedParams.srcEid == expectedSrcEid, "unexpected srcEid");
-        token.safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
+        IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
         lastAmount = quote.signedParams.amountLD;
         lastNonce = quote.signedParams.nonce;
         lastMsgValue = msg.value;
@@ -61,7 +64,8 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.oftSrcPeriphery = address(periphery);
         cfg.oftSrcEid = SRC_EID;
-        cfg.usdc = address(token); // the impl resolves the input token as beacon.usdc()
+        // The impl resolves the input token from the periphery's immutable `TOKEN`, so it does not depend
+        // on `beacon.usdc()`.
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);

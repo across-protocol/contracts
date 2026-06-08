@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
+import { CounterfactualBeacon } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
 import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
@@ -100,12 +101,16 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         address signer = _loadSigner();
 
         // CCTP / OFT support gating (the leaf impls are chain-identical, but we still only deploy them on
-        // chains where the route is configured, matching the per-script guards).
+        // chains where the route is configured, matching the per-script guards). We also require the
+        // upstream periphery to be deployed so the beacon does not bake `address(0)`, which would silently
+        // brick every leaf execution with `RouteNotConfigured` after the impl is deployed.
         if (deployCctp) {
             require(hasCctpDomain(block.chainid), "CCTP not supported on this chain");
+            require(_resolveCctpPeriphery() != address(0), "CCTP periphery not deployed on this chain");
         }
         if (deployOft) {
             require(hasOftEid(block.chainid), "OFT not supported on this chain");
+            require(_resolveOftPeriphery() != address(0), "OFT periphery not deployed on this chain");
         }
 
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
@@ -306,13 +311,28 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         }
 
-        // --- Transfer AdminWithdrawManager roles ---
+        // --- Transfer beacon + AdminWithdrawManager roles ---
         if (transferRoles) {
             address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
             require(ownerAndDirectWithdrawer != address(0), "config: ownerAndDirectWithdrawer is zero or missing");
-            AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
 
             console.log("--------------------------------------------");
+
+            // The beacon admin can retarget every counterfactual proxy and UUPS-upgrade the registry — it
+            // must end up on the per-chain multisig, not the deployer EOA. Ownable2Step: the new owner
+            // accepts out of band. Done in its own broadcast scope so the AdminWithdrawManager block below
+            // (which has its own failure handling) stays unchanged.
+            CounterfactualBeacon beacon = CounterfactualBeacon(predictedProxy);
+            if (beacon.owner() != ownerAndDirectWithdrawer && beacon.pendingOwner() != ownerAndDirectWithdrawer) {
+                console.log("Transferring beacon ownership to:", ownerAndDirectWithdrawer);
+                vm.startBroadcast(deployerPrivateKey);
+                beacon.transferOwnership(ownerAndDirectWithdrawer);
+                vm.stopBroadcast();
+            } else {
+                console.log("Beacon ownership: already transferred or pending acceptance");
+            }
+
+            AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
             console.log("Transferring AdminWithdrawManager roles to:", ownerAndDirectWithdrawer);
 
             vm.startBroadcast(deployerPrivateKey);

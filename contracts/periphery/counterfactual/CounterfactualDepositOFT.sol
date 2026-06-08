@@ -10,18 +10,23 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 
 /**
- * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
+ * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery, plus reading its
+ *         immutable `TOKEN`.
  * @custom:security-contact bugs@across.to
  */
 interface ISponsoredOFTSrcPeriphery {
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
+
+    /// @notice The single ERC-20 this periphery deposits — `safeTransferFrom`-pulled from `msg.sender`.
+    function TOKEN() external view returns (address);
 }
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
- * @dev Chain-agnostic: it names no source chain and no token address. The input token is USDC, resolved
- *      per chain from `beacon.usdc()`; the source EID and periphery come from `beacon.oftSrcEid()` /
- *      `beacon.oftSrcPeriphery()`.
+ * @dev Chain-agnostic: it names no source chain and no token address. The source EID and periphery come
+ *      from `beacon.oftSrcEid()` / `beacon.oftSrcPeriphery()`, and the input token is resolved at runtime
+ *      from the periphery's immutable `TOKEN` — so the leaf works for any token the chain's periphery is
+ *      deployed for (USDC, USDT0, …) without baking the token into the merkle commitment.
  */
 struct OFTRouteParams {
     uint32 dstEid;
@@ -58,11 +63,12 @@ struct OFTSubmitterData {
 /**
  * @title CounterfactualDepositOFT
  * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The periphery, source EID,
- *      input token (USDC) and fee signer are resolved from the `CounterfactualBeacon` at runtime, so this
- *      implementation holds no chain-specific values and has one address on every chain — a single leaf
- *      works everywhere (see `CounterfactualImplementationBase`). `msg.value` covers LayerZero native
- *      messaging fees.
+ * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The periphery, source EID and
+ *      fee signer are resolved from the `CounterfactualBeacon` at runtime; the input token is resolved
+ *      from the periphery's immutable `TOKEN` (so the impl is token-agnostic and works with USDT0/USDC/etc.
+ *      peripheries equally). This implementation holds no chain-specific values and has one address on
+ *      every chain — a single leaf works everywhere (see `CounterfactualImplementationBase`). `msg.value`
+ *      covers LayerZero native messaging fees.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
@@ -98,7 +104,8 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
      * @inheritdoc ICounterfactualImplementation
      * @dev Bridges tokens via SponsoredOFT (LayerZero). `routeParamsEncoded` is ABI-encoded as `OFTRouteParams`;
      *      `submitterDataEncoded` as `OFTSubmitterData` (includes a signature forwarded to the OFT periphery).
-     *      ERC-20 (USDC) only. Forwards `msg.value` for LayerZero messaging fees. No local route verification.
+     *      ERC-20 only — the token is the periphery's immutable `TOKEN`. Forwards `msg.value` for LayerZero
+     *      messaging fees. No local route verification.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         OFTRouteParams memory routeParams = abi.decode(routeParamsEncoded, (OFTRouteParams));
@@ -108,7 +115,10 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
         address oftSrcPeriphery = _requireConfigured(_beacon().oftSrcPeriphery());
-        address inputToken = _requireConfigured(_beacon().usdc());
+        // Pull the input token from the periphery's immutable `TOKEN` so the leaf works for whichever
+        // ERC-20 the chain's periphery was deployed for (USDC, USDT0, etc.). The periphery enforces
+        // non-zero `_token` at construction, so we don't re-check here.
+        address inputToken = ISponsoredOFTSrcPeriphery(oftSrcPeriphery).TOKEN();
 
         // The fee is paid BEFORE the periphery call, and this ordering is load-bearing: the local
         // signature binds only `(nonce, executionFee, signatureDeadline)`, so replay protection for the

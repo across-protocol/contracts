@@ -197,10 +197,13 @@ from the proxy's standard **ERC-1967 beacon slot** (`ERC1967Utils.getBeacon()`) 
 holding **no immutables of its own**. Token resolution differs by bridge: **SpokePool is input-token-
 agnostic** — its leaf carries the beacon getter selector (`inputTokenGetter`, with `bytes4(0)` ⇒ native via
 `beacon.wrappedNativeToken()`), which it resolves with a guarded staticcall, so one implementation serves
-every registered token. **CCTP / Vanilla CCTP / OFT** read `beacon.usdc()` directly (USDC-only bridges).
-A getter that returns `address(0)` on a given chain means that route isn't live there — the implementation
-reverts `RouteNotConfigured`. Adding a token to the registry (a new named getter) is a beacon upgrade, but
-existing SpokePool leaves can then name it with no impl change.
+every registered token. **CCTP / Vanilla CCTP** read `beacon.usdc()` directly (USDC-only bridges). **OFT**
+reads the input token from the periphery's own immutable `TOKEN()` (the periphery is single-token by
+construction; on Across today every deployed `SponsoredOFTSrcPeriphery` is USDT0), so the OFT impl is
+token-agnostic across periphery deployments. A getter that returns `address(0)` on a given chain means
+that route isn't live there — the implementation reverts `RouteNotConfigured`. Adding a token to the
+registry (a new named getter) is a beacon upgrade, but existing SpokePool leaves can then name it with
+no impl change.
 
 **Why immutable, and how it changes.** `implementation` and `upgradeRoot` remain mutable storage (they are
 meant to change). The chain config does **not** use setters: each value is `immutable`, baked into the
@@ -254,8 +257,10 @@ token is named depends on the bridge:
   meaning a native deposit (wrapped via `beacon.wrappedNativeToken()`). The selector is chain-invariant
   and resolves to the chain's token, so one implementation serves every token and the leaf stays valid
   everywhere.
-- **CCTP / Vanilla CCTP / OFT** bridge USDC, so their implementations read `beacon.usdc()` directly — no
+- **CCTP / Vanilla CCTP** bridge USDC, so their implementations read `beacon.usdc()` directly — no
   token field in the leaf.
+- **OFT** reads the input token from the periphery's immutable `TOKEN()`. The periphery is single-token
+  by construction, so this is unambiguous and the leaf carries no token field.
 
 In all cases the bridge endpoints, CCTP domain / OFT EID and fee `signer` are read from the beacon at
 runtime, so `initialRoot` holds **one leaf per route**, not one per source chain.
