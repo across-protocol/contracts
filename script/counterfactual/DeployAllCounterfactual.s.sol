@@ -4,54 +4,69 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
+import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
+import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import {
+    CounterfactualDepositSpokePoolUsdc,
+    CounterfactualDepositSpokePoolNative
+} from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { CounterfactualDepositVanillaCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // Deploys counterfactual contracts via CREATE2 using the deterministic deployment proxy
 // (0x4e59b44847b379578588920cA78FbF26c0B4956C). Each individual deploy script is invoked via ffi
 // so broadcast artifacts are recorded in each script's own folder.
 //
-// CREATE2 addresses are determined by (factory, salt, initCode). Contracts with identical initCode
-// across chains (no constructor args, or same constructor args) get the same address everywhere.
-// Contracts with chain-specific constructor args get chain-specific addresses.
+// CREATE2 addresses are determined by (factory, salt, initCode). With the refactored architecture all
+// chain-specific values (bridge endpoints, fee signer, token addresses) live on the per-chain
+// CounterfactualBeacon implementation, so the dispatcher and every leaf implementation are byte-identical
+// across chains and therefore land at the SAME CREATE2 address on every chain.
 //
-// Same address across all chains:
-//   - CounterfactualDeposit (no constructor args)
+// SAME address across all chains:
+//   - CounterfactualBeacon PROXY (an ERC1967Proxy over the chain-identical bootstrap, owned by the
+//     chain-invariant deployer => identical init code => identical address; it is the anchor every
+//     counterfactual proxy and the factory embed)
+//   - CounterfactualBeaconBootstrap (no constructor args)
+//   - CounterfactualDeposit / dispatcher (constructor takes the chain-invariant beacon proxy)
 //   - CounterfactualDepositFactory (no constructor args)
 //   - WithdrawImplementation (no constructor args)
+//   - CounterfactualDepositCCTP / OFT / VanillaCCTP (no constructor args)
+//   - CounterfactualDepositSpokePoolUsdc / CounterfactualDepositSpokePoolNative (no constructor args)
 //   - AdminWithdrawManager (same constructor args on all chains)
 //
-// Chain-specific addresses (different constructor args per chain):
-//   - CounterfactualDepositSpokePool
-//   - CounterfactualDepositCCTP
-//   - CounterfactualDepositOFT
+// CHAIN-SPECIFIC address (intentionally):
+//   - CounterfactualBeacon IMPLEMENTATION (bakes the chain's ChainConfig in as immutables). It sits behind
+//     the address-stable proxy, so the proxy — which everything embeds — stays identical everywhere.
 //
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
 //   - No nonce burning for skipped contracts
-//   - No ordering dependency — deploy in any order
+//   - No ordering dependency — deploy in any order (except the beacon stack, which is one atomic script)
 //   - Idempotent — already-deployed contracts are auto-skipped
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
-//   - Chain-specific params (spokePool, wrappedNativeToken, cctpPeriphery, cctpDomain,
-//     oftPeriphery, oftEid): auto-resolved from constants.json and deployed-addresses.json
-//   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from
-//     config.toml. Role transfers (owner/directWithdrawer) are done directly by this script after
-//     all ffi deployments complete, with a safety check that directWithdrawer transferred
-//     successfully before transferring ownership
+//   - Chain-specific params (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, USDC/USDT,
+//     cctpTokenMessenger): auto-resolved from constants.json and deployed-addresses.json and baked into the
+//     CounterfactualBeacon implementation by DeployCounterfactualBeacon
+//   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from config.toml.
+//     Role transfers (owner/directWithdrawer) are done directly by this script after all ffi deployments
+//     complete, with a safety check that directWithdrawer transferred successfully before ownership.
 //
 // Always deployed:
-//   - CounterfactualDeposit, CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
+//   - Beacon stack (bootstrap + proxy + chain-specific impl + dispatcher) via DeployCounterfactualBeacon
+//   - CounterfactualDepositFactory, WithdrawImplementation, CounterfactualDepositVanillaCCTP,
+//     AdminWithdrawManager
 //
 // Optionally deployed (controlled by bool arguments):
-//   - CounterfactualDepositSpokePool (deploySpokePool)
+//   - CounterfactualDepositSpokePoolUsdc + CounterfactualDepositSpokePoolNative (deploySpokePool)
 //   - CounterfactualDepositCCTP (deployCctp)
 //   - CounterfactualDepositOFT (deployOft)
 //
@@ -70,7 +85,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     string constant SCRIPT_DIR = "script/counterfactual/";
 
     /// @param rpcUrl RPC URL for the target chain.
-    /// @param deploySpokePool If true, deploy CounterfactualDepositSpokePool.
+    /// @param deploySpokePool If true, deploy the CounterfactualDepositSpokePool USDC + native variants.
     /// @param deployCctp If true, deploy CounterfactualDepositCCTP.
     /// @param deployOft If true, deploy CounterfactualDepositOFT.
     /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.toml addresses.
@@ -87,37 +102,28 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     ) external {
         address signer = _loadSigner();
 
-        // Resolve chain-specific params from constants and deployed addresses.
-        address spokePool;
-        address wrappedNativeToken;
-        if (deploySpokePool) {
-            spokePool = _resolveSpokePool();
-            wrappedNativeToken = _resolveWrappedNativeToken();
-        }
-
-        // CCTP: resolve or revert if requested but unsupported.
-        address cctpPeriphery;
-        uint32 cctpDomain;
+        // CCTP / OFT support gating (the leaf impls are chain-identical, but we still only deploy them on
+        // chains where the route is configured, matching the per-script guards).
         if (deployCctp) {
             require(hasCctpDomain(block.chainid), "CCTP not supported on this chain");
-            cctpPeriphery = _resolveCctpPeriphery();
-            require(cctpPeriphery != address(0), "CCTP periphery not deployed on this chain");
-            cctpDomain = getCircleDomainId(block.chainid);
         }
-
-        // OFT: resolve or revert if requested but unsupported.
-        address oftPeriphery;
-        uint32 oftEid;
         if (deployOft) {
             require(hasOftEid(block.chainid), "OFT not supported on this chain");
-            oftPeriphery = _resolveOftPeriphery();
-            require(oftPeriphery != address(0), "OFT periphery not deployed on this chain");
-            oftEid = uint32(getOftEid(block.chainid));
         }
 
-        string memory mnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(mnemonic, 0);
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
+
+        // Predict the chain-invariant beacon proxy + dispatcher addresses (same way DeployCounterfactualBeacon
+        // does) so we can log and idempotency-check them.
+        address predictedProxy = _predictBeaconProxy(deployer);
+        address predictedDispatcher = _predictCreate2(
+            bytes32(0),
+            abi.encodePacked(
+                type(CounterfactualDeposit).creationCode,
+                abi.encode(ICounterfactualBeacon(predictedProxy))
+            )
+        );
 
         // Log predicted addresses upfront so they can be verified before deploying.
         console.log("============================================");
@@ -129,63 +135,50 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("--------------------------------------------");
         console.log("Resolved parameters:");
         console.log("  Signer:             ", signer);
-        if (deploySpokePool) {
-            console.log("  SpokePool:          ", spokePool);
-            console.log("  WrappedNativeToken:  ", wrappedNativeToken);
-        }
-        if (deployCctp) {
-            console.log("  CCTP Periphery:     ", cctpPeriphery);
-            console.log("  CCTP Domain:        ", uint256(cctpDomain));
-        }
-        if (deployOft) {
-            console.log("  OFT Periphery:      ", oftPeriphery);
-            console.log("  OFT EID:            ", uint256(oftEid));
-        }
+        console.log("  Deploy SpokePool:   ", deploySpokePool);
+        console.log("  Deploy CCTP:        ", deployCctp);
+        console.log("  Deploy OFT:         ", deployOft);
         console.log("  Transfer roles:     ", transferRoles);
         console.log("--------------------------------------------");
         console.log("Predicted addresses:");
 
-        // Predict and log addresses for all contracts being deployed.
-        address predictedDeposit = _predictCreate2(bytes32(0), type(CounterfactualDeposit).creationCode);
+        // Beacon stack + always-on contracts.
         address predictedFactory = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
         address predictedWithdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
+        address predictedVanilla = _predictCreate2(bytes32(0), type(CounterfactualDepositVanillaCCTP).creationCode);
         address predictedAdmin = _predictCreate2(
             bytes32(0),
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
         );
 
-        _logPredicted("CounterfactualDeposit", predictedDeposit);
+        _logPredicted("CounterfactualBeacon (proxy)", predictedProxy);
+        _logPredicted("CounterfactualDeposit (dispatcher)", predictedDispatcher);
         _logPredicted("CounterfactualDepositFactory", predictedFactory);
         _logPredicted("WithdrawImplementation", predictedWithdraw);
+        _logPredicted("CounterfactualDepositVanillaCCTP", predictedVanilla);
         _logPredicted("AdminWithdrawManager", predictedAdmin);
 
-        address predictedSpokePool;
+        address predictedSpokePoolUsdc;
+        address predictedSpokePoolNative;
         if (deploySpokePool) {
-            predictedSpokePool = _predictCreate2(
+            predictedSpokePoolUsdc = _predictCreate2(bytes32(0), type(CounterfactualDepositSpokePoolUsdc).creationCode);
+            predictedSpokePoolNative = _predictCreate2(
                 bytes32(0),
-                abi.encodePacked(
-                    type(CounterfactualDepositSpokePool).creationCode,
-                    abi.encode(spokePool, signer, wrappedNativeToken)
-                )
+                type(CounterfactualDepositSpokePoolNative).creationCode
             );
-            _logPredicted("CounterfactualDepositSpokePool", predictedSpokePool);
+            _logPredicted("CounterfactualDepositSpokePoolUsdc", predictedSpokePoolUsdc);
+            _logPredicted("CounterfactualDepositSpokePoolNative", predictedSpokePoolNative);
         }
 
         address predictedCctp;
         if (deployCctp) {
-            predictedCctp = _predictCreate2(
-                bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositCCTP).creationCode, abi.encode(cctpPeriphery, cctpDomain))
-            );
+            predictedCctp = _predictCreate2(bytes32(0), type(CounterfactualDepositCCTP).creationCode);
             _logPredicted("CounterfactualDepositCCTP", predictedCctp);
         }
 
         address predictedOft;
         if (deployOft) {
-            predictedOft = _predictCreate2(
-                bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid))
-            );
+            predictedOft = _predictCreate2(bytes32(0), type(CounterfactualDepositOFT).creationCode);
             _logPredicted("CounterfactualDepositOFT", predictedOft);
         }
 
@@ -193,16 +186,19 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
 
-        // --- CounterfactualDeposit (base implementation that all clones proxy to) ---
-        if (predictedDeposit.code.length > 0) {
-            console.log("CounterfactualDeposit: ALREADY DEPLOYED");
+        // --- Beacon stack (bootstrap + proxy + chain-specific impl + upgrade + dispatcher + setImplementation) ---
+        // NOTE: This single sub-script is the one ordering-dependent step — it must run before the dispatcher
+        // is usable. The dispatcher (CounterfactualDeposit) is deployed by DeployCounterfactualBeacon, not by
+        // a standalone script here, because it must be bound to the freshly-deployed beacon proxy.
+        if (predictedDispatcher.code.length > 0 && predictedProxy.code.length > 0) {
+            console.log("Beacon stack (proxy + dispatcher): ALREADY DEPLOYED");
         } else {
-            console.log("Deploying CounterfactualDeposit...");
+            console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployCounterfactualDeposit.s.sol"),
-                "DeployCounterfactualDeposit",
+                string.concat(SCRIPT_DIR, "DeployCounterfactualBeacon.s.sol"),
+                "DeployCounterfactualBeacon",
                 "",
                 profile
             );
@@ -238,31 +234,24 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         }
 
-        // --- CounterfactualDepositSpokePool (deposit implementation for Across SpokePool) ---
+        // --- CounterfactualDepositSpokePool variants (USDC + native) ---
         if (deploySpokePool) {
-            if (predictedSpokePool.code.length > 0) {
-                console.log("CounterfactualDepositSpokePool: ALREADY DEPLOYED");
+            if (predictedSpokePoolUsdc.code.length > 0 && predictedSpokePoolNative.code.length > 0) {
+                console.log("CounterfactualDepositSpokePool variants: ALREADY DEPLOYED");
             } else {
-                console.log("Deploying CounterfactualDepositSpokePool...");
+                console.log("Deploying CounterfactualDepositSpokePool variants...");
                 _runForgeScript(
                     rpcUrl,
                     broadcastFlag,
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositSpokePool.s.sol"),
                     "DeployCounterfactualDepositSpokePool",
-                    string.concat(
-                        ' --sig "run(address,address,address)" ',
-                        vm.toString(spokePool),
-                        " ",
-                        vm.toString(signer),
-                        " ",
-                        vm.toString(wrappedNativeToken)
-                    ),
+                    "",
                     profile
                 );
             }
         }
 
-        // --- CounterfactualDepositCCTP (deposit implementation for Circle CCTP) ---
+        // --- CounterfactualDepositCCTP (sponsored Circle CCTP) ---
         if (deployCctp) {
             if (predictedCctp.code.length > 0) {
                 console.log("CounterfactualDepositCCTP: ALREADY DEPLOYED");
@@ -273,18 +262,13 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     broadcastFlag,
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositCCTP.s.sol"),
                     "DeployCounterfactualDepositCCTP",
-                    string.concat(
-                        ' --sig "run(address,uint32)" ',
-                        vm.toString(cctpPeriphery),
-                        " ",
-                        vm.toString(uint256(cctpDomain))
-                    ),
+                    "",
                     profile
                 );
             }
         }
 
-        // --- CounterfactualDepositOFT (deposit implementation for LayerZero OFT) ---
+        // --- CounterfactualDepositOFT (LayerZero OFT) ---
         if (deployOft) {
             if (predictedOft.code.length > 0) {
                 console.log("CounterfactualDepositOFT: ALREADY DEPLOYED");
@@ -295,15 +279,25 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     broadcastFlag,
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositOFT.s.sol"),
                     "DeployCounterfactualDepositOFT",
-                    string.concat(
-                        ' --sig "run(address,uint32)" ',
-                        vm.toString(oftPeriphery),
-                        " ",
-                        vm.toString(uint256(oftEid))
-                    ),
+                    "",
                     profile
                 );
             }
+        }
+
+        // --- CounterfactualDepositVanillaCCTP (vanilla, non-sponsored Circle CCTP v2) ---
+        if (predictedVanilla.code.length > 0) {
+            console.log("CounterfactualDepositVanillaCCTP: ALREADY DEPLOYED");
+        } else {
+            console.log("Deploying CounterfactualDepositVanillaCCTP...");
+            _runForgeScript(
+                rpcUrl,
+                broadcastFlag,
+                string.concat(SCRIPT_DIR, "DeployCounterfactualDepositVanillaCCTP.s.sol"),
+                "DeployCounterfactualDepositVanillaCCTP",
+                "",
+                profile
+            );
         }
 
         // --- AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
@@ -357,6 +351,18 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("============================================");
         console.log("All deployments complete!");
         console.log("============================================");
+    }
+
+    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
+    /// @dev Mirrors DeployCounterfactualBeacon: an ERC1967Proxy over the chain-identical bootstrap, with the
+    ///      deployer as the bootstrap owner (chain-invariant => identical init code => identical address).
+    function _predictBeaconProxy(address deployer) internal pure returns (address) {
+        address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
+        bytes memory proxyInitCode = abi.encodePacked(
+            type(ERC1967Proxy).creationCode,
+            abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
+        );
+        return _predictCreate2(bytes32(0), proxyInitCode);
     }
 
     function _logPredicted(string memory name, address predicted) internal view {

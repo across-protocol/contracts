@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
+import { CounterfactualChainConfig } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 
 /// @notice Shared config loader and resolver for counterfactual deploy scripts.
 /// Reads operational params from config.toml and resolves chain-specific values
@@ -38,11 +39,14 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     }
 
     function _resolveSpokePool() internal view returns (address) {
-        return getDeployedAddress("SpokePool", block.chainid, true);
+        return getDeployedAddress("SpokePool", block.chainid, false);
     }
 
     function _resolveWrappedNativeToken() internal view returns (address) {
-        return getWrappedNativeToken(block.chainid);
+        if (vm.keyExists(file, string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(block.chainid)))) {
+            return getWrappedNativeToken(block.chainid);
+        }
+        return address(0);
     }
 
     /// @dev Tries both casings to handle inconsistency in deployed-addresses.json.
@@ -54,5 +58,51 @@ abstract contract CounterfactualConfig is DeploymentUtils {
 
     function _resolveOftPeriphery() internal view returns (address) {
         return getDeployedAddress("SponsoredOFTSrcPeriphery", block.chainid, false);
+    }
+
+    /// @dev Resolves the Circle CCTP v2 TokenMessenger for this chain from constants.json. Lives under
+    ///      `.L2_ADDRESS_MAP.<chainId>.cctpV2TokenMessenger` for L2s and `.L1_ADDRESS_MAP.<chainId>` for L1.
+    ///      Returns address(0) when not present (chain simply won't have the vanilla CCTP route configured).
+    function _resolveCctpTokenMessenger() internal view returns (address) {
+        string memory chainIdStr = vm.toString(block.chainid);
+        string memory l2Path = string.concat(".L2_ADDRESS_MAP.", chainIdStr, ".cctpV2TokenMessenger");
+        if (vm.keyExists(file, l2Path)) return vm.parseJsonAddress(file, l2Path);
+        string memory l1Path = string.concat(".L1_ADDRESS_MAP.", chainIdStr, ".cctpV2TokenMessenger");
+        if (vm.keyExists(file, l1Path)) return vm.parseJsonAddress(file, l1Path);
+        return address(0);
+    }
+
+    /// @dev Resolves USDC for this chain from constants.json (`.USDC.<chainId>`); address(0) if absent.
+    function _resolveUsdc() internal view returns (address) {
+        if (vm.keyExists(file, string.concat(".USDC.", vm.toString(block.chainid)))) {
+            return getUSDCAddress(block.chainid);
+        }
+        return address(0);
+    }
+
+    /// @dev Resolves USDT for this chain from constants.json (`.USDT.<chainId>`); address(0) if absent.
+    ///      USDT is mainly needed for Tron; 0 elsewhere is fine. constants.json has no USDT section today,
+    ///      so this returns address(0) on every chain until one is added.
+    function _resolveUsdt() internal view returns (address) {
+        string memory path = string.concat(".USDT.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    /// @notice Builds the per-chain `CounterfactualChainConfig` baked into the chain-specific
+    ///         `CounterfactualBeacon` implementation. Missing values resolve to 0 (the chain simply won't
+    ///         have that route configured). `_loadCounterfactualConfig()` must have been called first (it is,
+    ///         inside `_loadSigner`, which this calls).
+    function _buildChainConfig() internal returns (CounterfactualChainConfig memory cfg) {
+        cfg.signer = _loadSigner();
+        cfg.spokePool = _resolveSpokePool();
+        cfg.wrappedNativeToken = _resolveWrappedNativeToken();
+        cfg.cctpSrcPeriphery = _resolveCctpPeriphery();
+        cfg.cctpSourceDomain = hasCctpDomain(block.chainid) ? getCircleDomainId(block.chainid) : 0;
+        cfg.cctpTokenMessenger = _resolveCctpTokenMessenger();
+        cfg.oftSrcPeriphery = _resolveOftPeriphery();
+        cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
+        cfg.usdc = _resolveUsdc();
+        cfg.usdt = _resolveUsdt();
     }
 }
