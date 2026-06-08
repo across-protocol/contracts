@@ -9,25 +9,30 @@ import {
     OFTRouteParams,
     OFTSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
+import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/// @notice Mock SponsoredOFTSrcPeriphery: pulls `token` and records the quote.
+/// @notice Mock SponsoredOFTSrcPeriphery: pulls `token`, asserts the quote's srcEid, and records the quote.
 contract MockOFTPeriphery {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable token;
+    uint32 public immutable expectedSrcEid;
     uint256 public lastAmount;
     bytes32 public lastNonce;
     uint256 public lastMsgValue;
     uint256 public callCount;
 
-    constructor(IERC20 _token) {
+    constructor(IERC20 _token, uint32 _expectedSrcEid) {
         token = _token;
+        expectedSrcEid = _expectedSrcEid;
     }
 
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata) external payable {
+        require(quote.signedParams.srcEid == expectedSrcEid, "unexpected srcEid");
         token.safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
         lastAmount = quote.signedParams.amountLD;
         lastNonce = quote.signedParams.nonce;
@@ -47,19 +52,26 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
 
     function setUp() public {
         _setUpCore();
+
+        // Mocks must exist before the beacon is deployed, since the beacon config points at them.
         token = new MintableERC20("USDC", "USDC", 6);
-        periphery = new MockOFTPeriphery(IERC20(address(token)));
-        oftImpl = new CounterfactualDepositOFT(address(periphery), SRC_EID, signer);
+        periphery = new MockOFTPeriphery(IERC20(address(token)), SRC_EID);
+        oftImpl = new CounterfactualDepositOFT();
+
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.oftSrcPeriphery = address(periphery);
+        cfg.oftSrcEid = SRC_EID;
+        cfg.usdc = address(token); // the impl resolves the input token as beacon.usdc()
+        _deployBeacon(cfg);
+
         token.mint(user, 1000e6);
     }
 
     function _routeParams() internal returns (OFTRouteParams memory) {
         return
             OFTRouteParams({
-                sourceChainId: block.chainid,
                 dstEid: 30362,
                 destinationHandler: bytes32(uint256(uint160(makeAddr("handler")))),
-                token: address(token),
                 maxOftFeeBps: 100,
                 lzReceiveGasLimit: 200000,
                 lzComposeGasLimit: 500000,
@@ -206,27 +218,6 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         vm.warp(block.timestamp + 101);
         vm.prank(relayer);
         vm.expectRevert(CounterfactualDepositOFT.SignatureExpired.selector);
-        ICounterfactualDeposit(proxy).execute(address(oftImpl), route, submitter, proof);
-    }
-
-    function testSourceChainMismatchReverts() public {
-        OFTRouteParams memory rp = _routeParams();
-        rp.sourceChainId = block.chainid + 1;
-        bytes memory route = abi.encode(rp);
-        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(
-            proxy,
-            100e6,
-            keccak256("n"),
-            1e6,
-            uint32(block.timestamp) + 3600,
-            signerPk
-        );
-
-        vm.prank(user);
-        token.transfer(proxy, 100e6);
-        vm.prank(relayer);
-        vm.expectRevert(CounterfactualDepositOFT.SourceChainMismatch.selector);
         ICounterfactualDeposit(proxy).execute(address(oftImpl), route, submitter, proof);
     }
 

@@ -9,6 +9,8 @@ import {
     VanillaCCTPRouteParams,
     VanillaCCTPSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
+import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
+import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
@@ -87,9 +89,16 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
 
     function setUp() public {
         _setUpCore();
+        // Mocks must exist before deploying the beacon, which reads them from the chain config.
         messenger = new MockTokenMessengerV2();
-        vanillaImpl = new CounterfactualDepositVanillaCCTP(address(messenger), signer);
         token = new MintableERC20("USDC", "USDC", 6);
+        vanillaImpl = new CounterfactualDepositVanillaCCTP();
+
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.cctpTokenMessenger = address(messenger); // the mock CCTP v2 messenger
+        cfg.usdc = address(token); // the mock USDC token (burn token)
+        _deployBeacon(cfg);
+
         token.mint(user, 1000e6);
     }
 
@@ -97,10 +106,8 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     function _routeParams() internal returns (VanillaCCTPRouteParams memory) {
         return
             VanillaCCTPRouteParams({
-                sourceChainId: block.chainid,
                 destinationDomain: 3,
                 mintRecipient: bytes32(uint256(uint160(makeAddr("mintRecipient")))),
-                burnToken: bytes32(uint256(uint160(address(token)))),
                 destinationCaller: bytes32(uint256(uint160(makeAddr("caller")))),
                 cctpMaxFeeBps: 100,
                 minFinalityThreshold: 1000,
@@ -203,6 +210,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         assertEq(messenger.lastAmount(), amount - fee);
         assertEq(messenger.lastDestinationDomain(), HYPEREVM_DOMAIN);
         assertEq(messenger.lastMintRecipient(), rp.mintRecipient);
+        assertEq(messenger.lastBurnToken(), address(token));
         assertEq(messenger.lastMaxFee(), 0);
         assertEq(messenger.lastHookData(), rp.hookData);
         assertEq(token.balanceOf(proxy), 0);
@@ -277,17 +285,22 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 
-    function testSourceChainMismatchReverts() public {
-        VanillaCCTPRouteParams memory rp = _routeParams();
-        rp.sourceChainId = block.chainid + 1;
-        bytes memory route = abi.encode(rp);
+    /// @dev When the beacon resolves USDC (the burn token) to the zero address, the route is not live on this
+    ///      chain and execution reverts cleanly via `RouteNotConfigured` instead of acting on a zero address.
+    function testRouteNotConfiguredReverts() public {
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.cctpTokenMessenger = address(messenger);
+        cfg.usdc = address(0); // unconfigured burn token
+        _deployBeacon(cfg);
+
+        bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(proxy, route, 100e6, 1e6, uint32(block.timestamp) + 3600, signerPk);
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
         vm.prank(relayer);
-        vm.expectRevert(CounterfactualDepositVanillaCCTP.SourceChainMismatch.selector);
+        vm.expectRevert(CounterfactualImplementationBase.RouteNotConfigured.selector);
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 

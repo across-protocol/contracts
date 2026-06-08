@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    CounterfactualDepositSpokePool,
     SpokePoolRouteParams,
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
+import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
 import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
@@ -54,7 +54,8 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
     MockTronUSDT internal usdt;
     address internal recipient;
 
-    // EIP-712 domain name is inherited from the mainline `CounterfactualDepositSpokePool`.
+    // EIP-712 domain name is the Tron USDT variant's own name.
+    string constant NAME = "CounterfactualDepositSpokePoolUsdtTr";
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
             "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
@@ -65,7 +66,14 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
         usdt = new MockTronUSDT();
         spokePool = new MockSpokePool();
         recipient = makeAddr("recipient");
-        spokeImpl = new CounterfactualDepositSpokePoolTr(address(spokePool), signer, makeAddr("weth"));
+
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.spokePool = address(spokePool);
+        cfg.wrappedNativeToken = makeAddr("weth");
+        cfg.usdt = address(usdt);
+        _deployBeacon(cfg);
+
+        spokeImpl = new CounterfactualDepositSpokePoolTr();
         withdrawTron = new WithdrawImplementationTron();
         usdt.mint(user, 1000e6);
     }
@@ -73,9 +81,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
     function _routeParams() internal view returns (SpokePoolRouteParams memory) {
         return
             SpokePoolRouteParams({
-                sourceChainId: block.chainid,
                 destinationChainId: 1,
-                inputToken: bytes32(uint256(uint160(address(usdt)))),
                 outputToken: bytes32(uint256(uint160(address(usdt)))),
                 recipient: bytes32(uint256(uint160(recipient))),
                 message: "",
@@ -123,7 +129,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
                 executionFee
             )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositSpokePool", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator(NAME, proxy), structHash);
         return
             abi.encode(
                 SpokePoolSubmitterData({

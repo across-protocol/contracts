@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
-import { CounterfactualBeacon } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import {
+    CounterfactualBeacon,
+    CounterfactualChainConfig
+} from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../../../contracts/interfaces/ICounterfactualImplementation.sol";
@@ -53,6 +56,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
 
     function setUp() public {
         _setUpCore();
+        _deployBeacon(_baseConfig());
         mockImpl = new MockImplementation();
         revertImpl = new RevertingImplementation();
         token = new MintableERC20("USDC", "USDC", 6);
@@ -109,14 +113,14 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
     }
 
     function testInitializeRejectsEoaImplementation() public {
-        address logic = address(new CounterfactualBeacon());
+        address logic = address(new CounterfactualBeacon(_baseConfig()));
         vm.expectRevert(CounterfactualBeacon.NotAContract.selector);
         new ERC1967Proxy(logic, abi.encodeCall(CounterfactualBeacon.initialize, (owner, makeAddr("eoa"), bytes32(0))));
     }
 
     function testInitializeAllowsZeroImplementation() public {
         // Lazy init (address(0)) is permitted; base `setUp` already relies on this.
-        address logic = address(new CounterfactualBeacon());
+        address logic = address(new CounterfactualBeacon(_baseConfig()));
         CounterfactualBeacon b = CounterfactualBeacon(
             address(
                 new ERC1967Proxy(
