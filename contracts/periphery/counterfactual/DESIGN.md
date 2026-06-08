@@ -186,7 +186,7 @@ Two kinds of leaves:
 Each names a **bridge-specific implementation** and a route-specific `params`:
 
 ```
-implementation = CounterfactualDepositSpokePool | CounterfactualDepositCCTP | CounterfactualDepositOFT
+implementation = CounterfactualDepositSpokePool | CounterfactualDepositCCTP | CounterfactualDepositVanillaCCTP | CounterfactualDepositOFT
 params         = sourceChainId + bridge target + input token + fee caps + quote params + destination identity
 ```
 
@@ -334,14 +334,14 @@ delivery mechanism.
 
 ## Execution Fees (dynamic, signed)
 
-All three bridge implementations (`CounterfactualDepositSpokePool` / `CounterfactualDepositCCTP` /
-`CounterfactualDepositOFT`) **must** support a **dynamic execution fee** chosen at execution time by
+All four bridge implementations (`CounterfactualDepositSpokePool` / `CounterfactualDepositCCTP` /
+`CounterfactualDepositVanillaCCTP` / `CounterfactualDepositOFT`) **must** support a **dynamic execution fee** chosen at execution time by
 the submitter: the fee is paid in the input token to an `executionFeeRecipient`, and only
 `amount − executionFee` is bridged. Because the fee is not committed in the route leaf, it must be
 **authorized by an off-chain `signer` and verified on-chain**. We reproduce the scheme used on the
 `taylor/counterfactual-route-policy` branch verbatim so off-chain quoting/tooling stays compatible.
 
-Mechanism (identical across the three impls):
+Mechanism (identical across the four impls):
 
 - Each impl is an **`EIP712`** contract (`name = "CounterfactualDeposit<Bridge>"`,
   `version = "v2.0.0"`) with an immutable **`signer`** set at construction. Under delegatecall the
@@ -353,7 +353,7 @@ Mechanism (identical across the three impls):
   `ECDSA.recover(_hashTypedDataV4(structHash), counterfactualSignature) == signer` (else
   `InvalidSignature`).
 - The route leaf commits an **upper bound** on the fee, checked _after_ verification:
-  `maxExecutionFee` for CCTP/OFT, or the combined `maxFeeFixed + maxFeeBps × inputAmount` cap for
+  `maxExecutionFee` for CCTP/Vanilla CCTP/OFT, or the combined `maxFeeFixed + maxFeeBps × inputAmount` cap for
   SpokePool (which bounds the implicit relayer fee + execution fee together via `_checkFee`). For
   SpokePool, a leaf-committed `checkStableExchangeRate` bool gates the rate-derived relayer-fee term: when
   `false` (e.g. non-stable pairs, where `stableExchangeRate` can't bound the relayer fee and `outputAmount`
@@ -364,16 +364,19 @@ Mechanism (identical across the three impls):
 
 Per-bridge typehash and binding:
 
-| Impl          | EIP-712 typehash                                                                                                                                                                                                                             | Route / amount binding                                                                                                                                                                                             |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **SpokePool** | `ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)` | Binds **everything explicitly** — `clone`, `routeParamsHash`, and all runtime fields — because there is no separate periphery quote signature.                                                                     |
-| **CCTP**      | `ExecuteCCTP(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                                                   | Clone bound via the domain; amount/route bound **transitively** through the periphery quote signature (which commits `(route, nonce)`); `nonce` gives single-use replay protection once the periphery consumes it. |
-| **OFT**       | `ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                                                    | Same as CCTP.                                                                                                                                                                                                      |
+| Impl             | EIP-712 typehash                                                                                                                                                                                                                             | Route / amount binding                                                                                                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **SpokePool**    | `ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)` | Binds **everything explicitly** — `clone`, `routeParamsHash`, and all runtime fields — because there is no separate periphery quote signature.                                                                     |
+| **CCTP**         | `ExecuteCCTP(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                                                   | Clone bound via the domain; amount/route bound **transitively** through the periphery quote signature (which commits `(route, nonce)`); `nonce` gives single-use replay protection once the periphery consumes it. |
+| **Vanilla CCTP** | `ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                   | No periphery, so binds **everything explicitly** — `routeParamsHash` (the leaf), `amount`, and the fee; clone bound via the EIP-712 domain. Replay protection is the short `signatureDeadline` (no nonce).         |
+| **OFT**          | `ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                                                    | Same as CCTP.                                                                                                                                                                                                      |
 
 > CCTP and OFT additionally forward a **separate periphery quote signature** (`peripherySignature`) to
 > the sponsored-bridge periphery unchanged — **two signatures per execute**. SpokePool calls
 > `SpokePool.deposit` directly (no periphery), so it has only the one EIP-712 fee signature and
-> therefore must bind the clone, route hash, and all runtime fields in its own typehash.
+> therefore must bind the clone, route hash, and all runtime fields in its own typehash. **Vanilla CCTP**
+> likewise calls `ITokenMessengerV2` directly (no periphery), so it too is single-signature and binds the
+> route hash + amount in its own typehash (see _Vanilla CCTP route_).
 >
 > **Trust split (CCTP/OFT).** The counterfactual `counterfactualSignature` authorizes **only** the
 > `(nonce, executionFee, signatureDeadline)` — i.e. the **fee**. The **route, amount, recipient, and
@@ -388,6 +391,49 @@ Per-bridge typehash and binding:
 > parity (it is in no address — see _Address Determinism_), but the **same `signer` must be used on every
 > chain** for fee signatures to verify consistently; deploying the impl deterministically is
 > the simplest way to guarantee that.
+
+---
+
+## Vanilla CCTP route (`CounterfactualDepositVanillaCCTP`)
+
+`CounterfactualDepositCCTP` bridges through the **sponsored** path (`SponsoredCCTPSrcPeriphery` →
+`SponsoredCCTPDstPeriphery`), whose destination periphery runs Across's HyperCore / relayer-sponsorship
+machinery. `CounterfactualDepositVanillaCCTP` is the **non-sponsored** alternative: it calls Circle's
+`ITokenMessengerV2` **directly**, so USDC mints natively on the destination with no Across destination
+contract involved. It is an ordinary per-bridge leaf implementation (named by the leaf's `implementation`
+field, delegatecalled by the dispatcher) — adding it needs no dispatcher / factory / beacon change.
+
+**Two destination shapes, one branch on `hookData`:**
+
+- **Plain CCTP v2 (fast or standard)** — `hookData` empty ⇒ `depositForBurn`. USDC mints to `mintRecipient`
+  on `destinationDomain`. Fast vs standard is `minFinalityThreshold` (+ a `maxFee` derived from
+  `cctpMaxFeeBps`); a standard transfer sets `cctpMaxFeeBps = 0`.
+- **HyperCore** ([Circle docs](https://developers.circle.com/cctp/concepts/cctp-on-hypercore)) — `hookData`
+  non-empty ⇒ `depositForBurnWithHook`. A HyperCore transfer is just a CCTP burn to **HyperEVM (domain 19)** where `mintRecipient` is Circle's **`CctpForwarder`** proxy and `hookData` is its envelope; the
+  forwarder mints on HyperEVM, then routes through `CoreDepositWallet` to the HyperCore account. The
+  contract treats `mintRecipient` and `hookData` as **opaque** — the forwarder address and hook bytes are
+  built off-chain into the route leaf, so the contract carries no HyperCore-specific logic.
+
+  Circle's `CctpForwarderHookData` envelope (built off-chain; documented here for the leaf builder):
+
+  ```
+  bytes 0–23   bytes24  magic "cctp-forward"
+  bytes 24–27  uint32   hook version (0)
+  bytes 28–31  uint32   hook data length (24 = 20-byte recipient + 4-byte destinationId)
+  bytes 32–51  address  forwardRecipient (the HyperCore recipient)
+  bytes 52–55  uint32   destinationId (CoreDepositWallet routing id)
+  ```
+
+  (Arbitrum → HyperCore has no fast-transfer fee.)
+
+**Authorization.** There is no periphery quote signature, so — unlike the sponsored CCTP/OFT impls — the
+route and amount are **not** bound transitively. Instead the impl's own EIP-712 signature binds them
+directly (mirroring SpokePool):
+`ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`,
+where `routeParamsHash = keccak256(params)` is the exact merkle-leaf params and `verifyingContract`
+resolves to the proxy. `signer` authorizes it, `executionFee ≤ maxExecutionFee` (the leaf cap) is checked
+afterward, and **replay protection is the short `signatureDeadline`** — there is no nonce, so a re-funded
+proxy could be re-executed within the signature window; keep deadlines short. ERC-20 (USDC) only.
 
 ---
 
