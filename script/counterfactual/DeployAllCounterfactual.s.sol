@@ -431,6 +431,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (_logStaleAddr("wrappedNativeToken", beacon.wrappedNativeToken(), expected.wrappedNativeToken)) {
             stale = true;
         }
+        if (_logStaleAddr("nativeToken", beacon.nativeToken(), expected.nativeToken)) stale = true;
         if (_logStaleAddr("cctpSrcPeriphery", beacon.cctpSrcPeriphery(), expected.cctpSrcPeriphery)) stale = true;
         if (_logStaleAddr("cctpTokenMessenger", beacon.cctpTokenMessenger(), expected.cctpTokenMessenger)) {
             stale = true;

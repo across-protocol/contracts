@@ -82,13 +82,19 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
     // --- Bytecode-only contracts (chain-identical; presence is all we verify on-chain) ---
 
     function _checkBytecodeContracts(uint256 chainId) internal {
+        // On Tron the SpokePool deploy script branches to `CounterfactualDepositSpokePoolTr` (Tron USDT's
+        // non-standard `transfer` return value), and `yarn extract-addresses` records it under that name.
+        // Match the deploy script's branch here so a correct Tron deployment doesn't read as "missing".
+        string memory spokePoolImpl = chainId == 728126428
+            ? string("CounterfactualDepositSpokePoolTr")
+            : string("CounterfactualDepositSpokePool");
         string[6] memory names = [
             string("CounterfactualBeacon"),
             "CounterfactualDeposit",
             "CounterfactualDepositFactory",
             "WithdrawImplementation",
             "CounterfactualDepositVanillaCCTP",
-            "CounterfactualDepositSpokePool"
+            spokePoolImpl
         ];
         for (uint256 i = 0; i < names.length; i++) {
             address addr = _getDeployed(names[i], chainId);
@@ -144,6 +150,17 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         }
 
         ICounterfactualBeacon beacon = ICounterfactualBeacon(addr);
+
+        // Verify the beacon's `implementation()` resolves to the dispatcher. A beacon deploy that stops
+        // after the proxy is upgraded to `CounterfactualBeacon` but before `setImplementation(dispatcher)`
+        // leaves the slot at zero (or stale), so every counterfactual `BeaconProxy` resolves the wrong
+        // target — config getters can otherwise pass while no clone is actually executable.
+        address dispatcher = _getDeployed("CounterfactualDeposit", chainId);
+        if (dispatcher == address(0)) {
+            _fail("CounterfactualBeacon", "implementation", "CounterfactualDeposit not in deployed-addresses.json");
+        } else {
+            _assertAddrEq("CounterfactualBeacon", "implementation", beacon.implementation(), dispatcher);
+        }
 
         // spokePool vs deployed-addresses.json
         address expectedSpokePool = _getDeployed("SpokePool", chainId);
@@ -335,11 +352,15 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         return address(0);
     }
 
-    /// @dev Mirrors `CounterfactualConfig._resolveNativeToken`: defaults to `NATIVE_SENTINEL` and accepts
-    ///      a per-chain ERC-20 override at `.NATIVE_TOKEN.<chainId>`.
+    /// @dev Mirrors `CounterfactualConfig._resolveNativeToken`: per-chain ERC-20 override at
+    ///      `.NATIVE_TOKEN.<chainId>` wins; otherwise defaults to `NATIVE_SENTINEL` when a wrapped native
+    ///      token exists for the chain, and to `address(0)` when none does (so the sentinel-but-no-wrapper
+    ///      footgun doesn't sneak through).
     function _getNativeToken(uint256 chainId) internal view returns (address) {
         string memory path = string.concat(".NATIVE_TOKEN.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        string memory wntPath = string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId));
+        if (!vm.keyExists(file, wntPath)) return address(0);
         return NATIVE_SENTINEL;
     }
 

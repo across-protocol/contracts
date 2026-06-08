@@ -56,13 +56,17 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     address internal constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /// @dev Resolves the "native or equivalent" SpokePool input token for this chain. Defaults to
-    ///      `NATIVE_SENTINEL` (every supported chain today has a native gas token; the SpokePool wraps it
-    ///      to `wrappedNativeToken` on deposit). A future chain whose canonical gas-token route is actually
-    ///      an ERC-20 can add a `.NATIVE_TOKEN.<chainId>` override in constants.json that returns the
-    ///      ERC-20 address — the SpokePool leaf will then bypass the msg.value path.
+    ///      `NATIVE_SENTINEL` (every chain with a wrapped native token supports the msg.value-wrap path).
+    ///      A chain whose canonical gas-token route is actually an ERC-20 can add a `.NATIVE_TOKEN.<chainId>`
+    ///      override in constants.json that returns the ERC-20 address — the SpokePool leaf will then
+    ///      bypass the msg.value path. On chains without a `.WRAPPED_NATIVE_TOKENS.<chainId>` entry, the
+    ///      sentinel would brick at execution (wrapped native is 0 → `RouteNotConfigured` from
+    ///      `_requireConfigured(beacon.wrappedNativeToken())`), so the default falls back to `address(0)`
+    ///      and a `nativeToken.selector` leaf cleanly RouteNotConfigured's there instead.
     function _resolveNativeToken() internal view returns (address) {
         string memory path = string.concat(".NATIVE_TOKEN.", vm.toString(block.chainid));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        if (_resolveWrappedNativeToken() == address(0)) return address(0);
         return NATIVE_SENTINEL;
     }
 
