@@ -224,6 +224,22 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // Manual review: signer (no second source)
         address configSigner = config.get("signer").toAddress();
         _review("CounterfactualBeacon", "signer", beacon.signer(), configSigner, "config.toml");
+
+        // Manual review: owner — the beacon admin can UUPS-upgrade the registry and retarget every
+        // counterfactual proxy, so it must end up on the per-chain multisig (Ownable2Step: a pending
+        // transfer is not yet effective). `pendingOwner` is reported separately so the operator can
+        // distinguish "already on the multisig" from "transfer initiated, awaiting acceptance".
+        CounterfactualBeacon ownableBeacon = CounterfactualBeacon(addr);
+        address configOwner = config.get("ownerAndDirectWithdrawer").toAddress();
+        address multisig = _getMultisig(chainId);
+        _reviewWithMultisig("CounterfactualBeacon", "owner", ownableBeacon.owner(), configOwner, multisig);
+        _reviewWithMultisig(
+            "CounterfactualBeacon",
+            "pendingOwner",
+            ownableBeacon.pendingOwner(),
+            configOwner,
+            multisig
+        );
     }
 
     // --- AdminWithdrawManager ---

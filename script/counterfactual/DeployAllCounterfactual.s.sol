@@ -186,7 +186,16 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         // NOTE: This single sub-script is the one ordering-dependent step — it must run before the dispatcher
         // is usable. The dispatcher (CounterfactualDeposit) is deployed by DeployCounterfactualBeacon, not by
         // a standalone script here, because it must be bound to the freshly-deployed beacon proxy.
-        if (predictedDispatcher.code.length > 0 && predictedProxy.code.length > 0) {
+        //
+        // Code at both addresses is necessary but not sufficient: a previous broadcast may have stopped
+        // between deploying the proxy/dispatcher and calling `setImplementation(dispatcher)`, leaving the
+        // proxy on the bootstrap (no `implementation()` selector ⇒ staticcall reverts) or pointing at a
+        // stale target. Skip only when the proxy actually resolves the dispatcher.
+        if (
+            predictedDispatcher.code.length > 0 &&
+            predictedProxy.code.length > 0 &&
+            _beaconWiredTo(predictedProxy, predictedDispatcher)
+        ) {
             console.log("Beacon stack (proxy + dispatcher): ALREADY DEPLOYED");
         } else {
             console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
@@ -374,6 +383,16 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
         );
         return _predictCreate2(bytes32(0), proxyInitCode);
+    }
+
+    /// @dev True when the beacon proxy's `implementation()` already resolves to the expected dispatcher.
+    ///      Falls back to false when the staticcall reverts — either the proxy is still pointing at the
+    ///      bootstrap (no `implementation()` selector) or it returned malformed data — both of which mean
+    ///      `setImplementation` has not yet been called and the beacon sub-script still needs to run.
+    function _beaconWiredTo(address proxy, address expectedImpl) internal view returns (bool) {
+        (bool ok, bytes memory ret) = proxy.staticcall(abi.encodeCall(CounterfactualBeacon.implementation, ()));
+        if (!ok || ret.length != 32) return false;
+        return abi.decode(ret, (address)) == expectedImpl;
     }
 
     function _logPredicted(string memory name, address predicted) internal view {

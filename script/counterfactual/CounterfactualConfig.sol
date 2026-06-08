@@ -106,6 +106,13 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();
+        // SpokePool is the foundational route — baking `spokePool = 0` would silently brick every
+        // SpokePool leaf, and the only fix afterwards is a registry UUPS upgrade (the value is immutable
+        // on the beacon implementation). Refuse to deploy on a chain without a SpokePool entry.
+        require(
+            cfg.spokePool != address(0),
+            "config: SpokePool must be deployed on this chain (add to deployed-addresses.json)"
+        );
         // Tron's `CounterfactualDepositSpokePoolTr` is USDT-only — silently baking `usdt = 0` here would
         // brick every Tron SpokePool route at execution time. Require an explicit `.USDT.728126428` entry
         // in constants.json before deploying the Tron beacon.
