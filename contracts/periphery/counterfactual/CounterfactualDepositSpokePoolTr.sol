@@ -6,26 +6,22 @@ import { TronTransferLib } from "../../libraries/TronTransferLib.sol";
 
 /**
  * @title CounterfactualDepositSpokePoolTr
- * @notice Tron-specific variant of `CounterfactualDepositSpokePool` for chains where the
- *         input token may be Tron USDT (whose `transfer` returns false on success).
- * @dev Inherits everything from the mainline implementation and overrides the
- *      `_safeTransfer` hook to use a balance-delta success check that tolerates
- *      Tron USDT's non-standard return value. `forceApprove` is unaffected — `approve`
+ * @notice Tron-specific SpokePool counterfactual deposit whose input token is Tron USDT (whose `transfer`
+ *         returns false on success), resolved from `beacon.usdt()`.
+ * @dev Fixes the input token to USDT and overrides the `_safeTransfer` hook to use a balance-delta success
+ *      check that tolerates Tron USDT's non-standard return value. `forceApprove` is unaffected — `approve`
  *      returns true correctly on Tron USDT.
  *
- *      The EIP-712 domain name is inherited from the parent (`CounterfactualDepositSpokePool`).
- *      Cross-implementation signature replay is already prevented by the `verifyingContract`
- *      field of the EIP-712 domain: each clone's address is derived via CREATE2 from its
- *      implementation address, so a signature for a mainline clone does not verify against
- *      a Tron-variant clone.
+ *      The EIP-712 domain name is distinct from the mainline variants so a fee signature is bound to this
+ *      (USDT, Tron) variant; cross-clone replay is additionally prevented by the `verifyingContract` field.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePoolTr is CounterfactualDepositSpokePool {
-    constructor(
-        address _spokePool,
-        address _signer,
-        address _wrappedNativeToken
-    ) CounterfactualDepositSpokePool(_spokePool, _signer, _wrappedNativeToken) {} // solhint-disable-line no-empty-blocks
+    constructor() CounterfactualDepositSpokePool("CounterfactualDepositSpokePoolUsdtTr") {} // solhint-disable-line no-empty-blocks
+
+    function _inputToken() internal view override returns (address) {
+        return _beacon().usdt();
+    }
 
     /// @dev TRON OVERRIDE: was `IERC20(token).safeTransfer(to, amount)` in the parent.
     ///      `TronTransferLib._safeTransferBalanceCheck` uses a balance-delta success check so it

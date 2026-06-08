@@ -7,16 +7,19 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
+ * @dev Chain-agnostic: it names no source chain and no input token. The input token is fixed by the
+ *      concrete implementation (one token per implementation, resolved per chain from the beacon), so the
+ *      same leaf works on every chain. `destinationChainId`, `outputToken` and `recipient` are the
+ *      (chain-invariant) destination identity.
  */
 struct SpokePoolRouteParams {
-    uint256 sourceChainId;
     uint256 destinationChainId;
-    bytes32 inputToken;
     bytes32 outputToken;
     bytes32 recipient;
     bytes message;
@@ -44,17 +47,26 @@ struct SpokePoolSubmitterData {
 
 /**
  * @title CounterfactualDepositSpokePool
- * @notice Implementation contract for counterfactual deposits via Across SpokePool.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. EIP-712 domain separator uses
- *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
- *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
+ * @notice Abstract implementation for counterfactual deposits via Across SpokePool. Concrete subclasses fix
+ *         the input token (one token per implementation) via `_inputToken`.
+ * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The SpokePool, wrapped native
+ *      token and fee signer are resolved from the `CounterfactualBeacon` at runtime; the input token is
+ *      fixed by the concrete subclass. So an implementation holds no chain-specific values and has one
+ *      address on every chain — a single leaf works everywhere (see `CounterfactualImplementationBase`).
  *
- *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
- *      `address(this)` (the clone), which has no private key and does not implement EIP-1271, and therefore
- *      cannot sign `speedUpV3Deposit` messages.
+ *      The EIP-712 domain `name` is set per subclass so a fee signature is bound to one token variant: two
+ *      variants delegatecalled by the same proxy share `verifyingContract`, and (with the token no longer
+ *      in `params`) could otherwise share a `routeParamsHash`, which would let a signature for one variant
+ *      be replayed against another. Distinct names prevent that.
+ *
+ *      EIP-712 domain separator uses `address(this)` (the clone address) to prevent cross-clone replay.
+ *      No nonce is needed: token balance is consumed on execution (natural replay protection), and short
+ *      deadlines bound the window. Depositor-driven speed-ups are not supported: the `depositor` passed to
+ *      `SpokePool.deposit()` is `address(this)` (the clone), which has no private key and does not
+ *      implement EIP-1271, and therefore cannot sign `speedUpV3Deposit` messages.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferERC20 {
+abstract contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP712, SafeTransferERC20 {
     // Restrict the `using` attachment to `forceApprove` only. All `safeTransfer` calls must go
     // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
     // variants can override transfer semantics in one place.
@@ -90,7 +102,6 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     error InvalidSignature();
     error SignatureExpired();
     error NativeTransferFailed();
-    error SourceChainMismatch();
 
     /// @notice EIP-712 typehash for execute deposit signature verification.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
@@ -98,41 +109,28 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
             "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
-    /// @notice Across SpokePool contract
-    address public immutable spokePool;
+    /// @param name The EIP-712 domain name; set per token variant so signatures are variant-specific.
+    constructor(string memory name) EIP712(name, "v2.0.0") {} // solhint-disable-line no-empty-blocks
 
-    /// @notice Signer that authorizes execution parameters
-    address public immutable signer;
-
-    /// @notice Wrapped native token address (e.g. WETH) passed to SpokePool for native deposits.
-    address public immutable wrappedNativeToken;
-
-    constructor(
-        address _spokePool,
-        address _signer,
-        address _wrappedNativeToken
-    ) EIP712("CounterfactualDepositSpokePool", "v2.0.0") {
-        spokePool = _spokePool;
-        signer = _signer;
-        wrappedNativeToken = _wrappedNativeToken;
-    }
+    /// @dev The input token this implementation deposits. Returns `NATIVE_ASSET` for native variants;
+    ///      otherwise the ERC-20 resolved from the beacon (e.g. `_beacon().usdc()`).
+    function _inputToken() internal view virtual returns (address);
 
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Deposits into the Across SpokePool. `routeParamsEncoded` is ABI-encoded as `SpokePoolRouteParams`;
-     *      `submitterDataEncoded` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
-     *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
-     *      `NativeTransferFailed`.
+     *      `submitterDataEncoded` as `SpokePoolSubmitterData` (includes an EIP-712 signature from the beacon's
+     *      `signer`). Supports native-token deposits (native variants). Reverts: `SignatureExpired`,
+     *      `InvalidSignature`, `MaxFee`, `NativeTransferFailed`, `RouteNotConfigured`.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         SpokePoolRouteParams memory routeParams = abi.decode(routeParamsEncoded, (SpokePoolRouteParams));
         SpokePoolSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (SpokePoolSubmitterData));
 
-        if (block.chainid != routeParams.sourceChainId) revert SourceChainMismatch();
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         _verifySignature(keccak256(routeParamsEncoded), submitterData);
 
-        address inputToken = address(uint160(uint256(routeParams.inputToken)));
+        address inputToken = _inputToken();
         uint256 depositAmount = submitterData.inputAmount - submitterData.executionFee;
 
         _checkFee(
@@ -143,10 +141,16 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
             submitterData.executionFee
         );
 
+        address spokePool = _requireConfigured(_beacon().spokePool());
         bool isNative = inputToken == NATIVE_ASSET;
-        if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
+        bytes32 spokePoolInputToken;
+        if (isNative) {
+            spokePoolInputToken = bytes32(uint256(uint160(_requireConfigured(_beacon().wrappedNativeToken()))));
+        } else {
+            IERC20(_requireConfigured(inputToken)).forceApprove(spokePool, depositAmount);
+            spokePoolInputToken = bytes32(uint256(uint160(inputToken)));
+        }
 
-        bytes32 spokePoolInputToken = isNative ? bytes32(uint256(uint160(wrappedNativeToken))) : routeParams.inputToken;
         V3SpokePoolInterface(spokePool).deposit{ value: isNative ? depositAmount : 0 }(
             bytes32(uint256(uint160(address(this)))),
             routeParams.recipient,
@@ -221,6 +225,34 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 submitterData.executionFee
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.signature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.signature) != _beacon().signer())
+            revert InvalidSignature();
+    }
+}
+
+/**
+ * @title CounterfactualDepositSpokePoolUsdc
+ * @notice SpokePool counterfactual deposit whose input token is USDC (resolved from `beacon.usdc()`).
+ * @custom:security-contact bugs@across.to
+ */
+contract CounterfactualDepositSpokePoolUsdc is CounterfactualDepositSpokePool {
+    constructor() CounterfactualDepositSpokePool("CounterfactualDepositSpokePoolUsdc") {} // solhint-disable-line no-empty-blocks
+
+    function _inputToken() internal view override returns (address) {
+        return _beacon().usdc();
+    }
+}
+
+/**
+ * @title CounterfactualDepositSpokePoolNative
+ * @notice SpokePool counterfactual deposit whose input is the native asset (wrapped via
+ *         `beacon.wrappedNativeToken()` for the SpokePool input token).
+ * @custom:security-contact bugs@across.to
+ */
+contract CounterfactualDepositSpokePoolNative is CounterfactualDepositSpokePool {
+    constructor() CounterfactualDepositSpokePool("CounterfactualDepositSpokePoolNative") {} // solhint-disable-line no-empty-blocks
+
+    function _inputToken() internal pure override returns (address) {
+        return NATIVE_ASSET;
     }
 }

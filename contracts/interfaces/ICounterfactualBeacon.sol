@@ -13,6 +13,13 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
  *         on-chain version/freshness gate.
  * @dev `implementation()` here is the **counterfactual** implementation (the beacon target) — distinct
  *      from the registry's own (UUPS) implementation.
+ *
+ *      Beyond the beacon role, this registry is the single source of every **chain-specific value** the
+ *      leaf implementations need (bridge endpoints, domains/EIDs, the fee `signer`, and token addresses).
+ *      These are exposed as `public immutable` getters so leaf implementations stay byte-identical across
+ *      chains — a leaf names no chain-specific address itself. Because they are `immutable`, changing any
+ *      of them (or adding a token) means deploying a new registry implementation and UUPS-upgrading to it;
+ *      the proxy address — embedded in every `BeaconProxy` — never changes.
  * @custom:security-contact bugs@across.to
  */
 interface ICounterfactualBeacon is IBeacon {
@@ -27,4 +34,36 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Root of the `(proxy, latestRoot)` merkle tree authorizing per-proxy root updates.
     function upgradeRoot() external view returns (bytes32);
+
+    // --- Chain-specific config (immutable; read by leaf implementations under delegatecall) ---
+
+    /// @notice Off-chain signer that authorizes runtime execution fees for every leaf implementation.
+    function signer() external view returns (address);
+
+    /// @notice Across SpokePool on this chain.
+    function spokePool() external view returns (address);
+
+    /// @notice Wrapped native token (e.g. WETH) used as the SpokePool input token for native deposits.
+    function wrappedNativeToken() external view returns (address);
+
+    /// @notice SponsoredCCTPSrcPeriphery on this chain (sponsored CCTP route).
+    function cctpSrcPeriphery() external view returns (address);
+
+    /// @notice Circle CCTP v2 TokenMessenger on this chain (vanilla CCTP route).
+    function cctpTokenMessenger() external view returns (address);
+
+    /// @notice Circle CCTP source domain id for this chain (sponsored CCTP route).
+    function cctpSourceDomain() external view returns (uint32);
+
+    /// @notice SponsoredOFTSrcPeriphery on this chain (OFT route).
+    function oftSrcPeriphery() external view returns (address);
+
+    /// @notice LayerZero OFT source endpoint id for this chain.
+    function oftSrcEid() external view returns (uint32);
+
+    /// @notice USDC token address on this chain.
+    function usdc() external view returns (address);
+
+    /// @notice USDT token address on this chain.
+    function usdt() external view returns (address);
 }

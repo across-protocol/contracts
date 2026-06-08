@@ -7,6 +7,7 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
@@ -19,12 +20,13 @@ interface ISponsoredCCTPSrcPeriphery {
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
+ * @dev Chain-agnostic: it names no source chain and no token address. The burn token is always USDC,
+ *      resolved per chain from `beacon.usdc()`; the source domain and periphery come from
+ *      `beacon.cctpSourceDomain()` / `beacon.cctpSrcPeriphery()`.
  */
 struct CCTPRouteParams {
-    uint256 sourceChainId;
     uint32 destinationDomain;
     bytes32 mintRecipient;
-    bytes32 burnToken;
     bytes32 destinationCaller;
     uint256 cctpMaxFeeBps;
     uint32 minFinalityThreshold;
@@ -56,10 +58,13 @@ struct CCTPSubmitterData {
 /**
  * @title CounterfactualDepositCCTP
  * @notice Implementation contract for counterfactual deposits via SponsoredCCTP.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The periphery, source domain,
+ *      burn token (USDC) and fee signer are resolved from the `CounterfactualBeacon` at runtime, so this
+ *      implementation holds no chain-specific values and has one address on every chain — a single leaf
+ *      works everywhere (see `CounterfactualImplementationBase`).
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
+contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
     using SafeERC20 for IERC20;
 
     /**
@@ -81,46 +86,28 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     error InvalidSignature();
     error SignatureExpired();
     error MaxExecutionFee();
-    error SourceChainMismatch();
 
     /// @notice EIP-712 typehash binding the local fee signature to (nonce, runtime fee, deadline).
     bytes32 public constant EXECUTE_CCTP_TYPEHASH =
         keccak256("ExecuteCCTP(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
-    /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
-    address public immutable srcPeriphery;
-
-    /// @notice CCTP source domain ID for this chain
-    uint32 public immutable sourceDomain;
-
-    /// @notice Signer that authorizes the runtime execution fee.
-    address public immutable signer;
-
-    constructor(
-        address _srcPeriphery,
-        uint32 _sourceDomain,
-        address _signer
-    ) EIP712("CounterfactualDepositCCTP", "v2.0.0") {
-        srcPeriphery = _srcPeriphery;
-        sourceDomain = _sourceDomain;
-        signer = _signer;
-    }
+    constructor() EIP712("CounterfactualDepositCCTP", "v2.0.0") {}
 
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Bridges tokens via SponsoredCCTP. `routeParamsEncoded` is ABI-encoded as `CCTPRouteParams`;
      *      `submitterDataEncoded` as `CCTPSubmitterData` (includes a signature forwarded to the CCTP periphery).
-     *      ERC-20 only (no native tokens). No local signature verification — delegated to `srcPeriphery`.
+     *      ERC-20 (USDC) only. No local route/amount verification — delegated to `srcPeriphery`.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         CCTPRouteParams memory routeParams = abi.decode(routeParamsEncoded, (CCTPRouteParams));
         CCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (CCTPSubmitterData));
 
-        if (block.chainid != routeParams.sourceChainId) revert SourceChainMismatch();
         _verifySignature(submitterData);
         if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
-        address inputToken = address(uint160(uint256(routeParams.burnToken)));
+        address srcPeriphery = _requireConfigured(_beacon().cctpSrcPeriphery());
+        address inputToken = _requireConfigured(_beacon().usdc());
 
         // The fee is paid BEFORE the periphery call, and this ordering is load-bearing: the local
         // signature binds only `(nonce, executionFee, signatureDeadline)`, so replay protection for the
@@ -133,7 +120,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
 
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
-        _depositForBurn(routeParams, submitterData, depositAmount);
+        _depositForBurn(srcPeriphery, inputToken, routeParams, submitterData, depositAmount);
 
         emit CCTPDepositExecuted(
             submitterData.amount,
@@ -154,28 +141,32 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != signer)
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
             revert InvalidSignature();
     }
 
     /**
      * @notice Calls depositForBurn on the SponsoredCCTPSrcPeriphery with the constructed quote.
+     * @param srcPeriphery The sponsored CCTP source periphery (resolved from the beacon).
+     * @param inputToken The burn token, USDC (resolved from the beacon).
      * @param routeParams Route parameters from the merkle leaf.
      * @param submitterData Submitter-provided execution data.
      * @param depositAmount Amount to deposit after deducting the execution fee.
      */
     function _depositForBurn(
+        address srcPeriphery,
+        address inputToken,
         CCTPRouteParams memory routeParams,
         CCTPSubmitterData memory submitterData,
         uint256 depositAmount
     ) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
-                sourceDomain: sourceDomain,
+                sourceDomain: _beacon().cctpSourceDomain(),
                 destinationDomain: routeParams.destinationDomain,
                 mintRecipient: routeParams.mintRecipient,
                 amount: depositAmount,
-                burnToken: routeParams.burnToken,
+                burnToken: bytes32(uint256(uint160(inputToken))),
                 destinationCaller: routeParams.destinationCaller,
                 maxFee: (depositAmount * routeParams.cctpMaxFeeBps) / BPS_SCALAR,
                 minFinalityThreshold: routeParams.minFinalityThreshold,

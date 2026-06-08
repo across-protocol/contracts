@@ -7,21 +7,22 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ITokenMessengerV2 } from "../../external/interfaces/CCTPInterfaces.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
- * @dev `hookData` selects the CCTP entrypoint: empty ⇒ `depositForBurn` (plain CCTP, USDC mints to
- *      `mintRecipient`); non-empty ⇒ `depositForBurnWithHook` (e.g. HyperCore, where `mintRecipient` is
- *      Circle's `CctpForwarder` and `hookData` is its envelope encoding the HyperCore recipient — both
- *      opaque here and built off-chain into the leaf). `cctpMaxFeeBps`/`minFinalityThreshold` choose the
- *      fast vs standard transfer (standard ⇒ `cctpMaxFeeBps = 0`).
+ * @dev Chain-agnostic: it names no source chain and no token address. The burn token is always USDC,
+ *      resolved per chain from `beacon.usdc()`; the CCTP TokenMessenger comes from
+ *      `beacon.cctpTokenMessenger()`. `hookData` selects the CCTP entrypoint: empty ⇒ `depositForBurn`
+ *      (plain CCTP, USDC mints to `mintRecipient`); non-empty ⇒ `depositForBurnWithHook` (e.g. HyperCore,
+ *      where `mintRecipient` is Circle's `CctpForwarder` and `hookData` is its envelope encoding the
+ *      HyperCore recipient — both opaque here and built off-chain into the leaf). `cctpMaxFeeBps`/
+ *      `minFinalityThreshold` choose the fast vs standard transfer (standard ⇒ `cctpMaxFeeBps = 0`).
  */
 struct VanillaCCTPRouteParams {
-    uint256 sourceChainId;
     uint32 destinationDomain;
     bytes32 mintRecipient;
-    bytes32 burnToken;
     bytes32 destinationCaller;
     uint256 cctpMaxFeeBps;
     uint32 minFinalityThreshold;
@@ -50,13 +51,17 @@ struct VanillaCCTPSubmitterData {
  *      on the destination. An empty `hookData` uses `depositForBurn` (plain CCTP); a non-empty `hookData`
  *      uses `depositForBurnWithHook` (e.g. HyperCore via Circle's `CctpForwarder`).
  *
+ *      The TokenMessenger and burn token (USDC) are resolved from the `CounterfactualBeacon` at runtime, so
+ *      this implementation holds no chain-specific values and has one address on every chain — a single
+ *      leaf works everywhere (see `CounterfactualImplementationBase`).
+ *
  *      Because there is no periphery quote signature to bind the route/amount, the local EIP-712 fee
  *      signature binds the full route (`routeParamsHash`), the `amount`, the `executionFee`, and a
  *      `signatureDeadline`, and resolves `verifyingContract` to this proxy. Replay protection is the short
  *      `signatureDeadline` (no nonce). ERC-20 only (no native tokens).
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositVanillaCCTP is ICounterfactualImplementation, EIP712 {
+contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, EIP712 {
     using SafeERC20 for IERC20;
 
     /**
@@ -76,7 +81,6 @@ contract CounterfactualDepositVanillaCCTP is ICounterfactualImplementation, EIP7
     error InvalidSignature();
     error SignatureExpired();
     error MaxExecutionFee();
-    error SourceChainMismatch();
 
     /// @notice EIP-712 typehash binding the fee signature to the route, amount, runtime fee, and deadline.
     bytes32 public constant EXECUTE_VANILLA_CCTP_TYPEHASH =
@@ -84,33 +88,24 @@ contract CounterfactualDepositVanillaCCTP is ICounterfactualImplementation, EIP7
             "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
         );
 
-    /// @notice Circle CCTP v2 TokenMessenger (immutable, same for all deposits on this chain).
-    ITokenMessengerV2 public immutable tokenMessenger;
-
-    /// @notice Signer that authorizes the runtime execution fee (and, here, the route + amount).
-    address public immutable signer;
-
-    constructor(address _tokenMessenger, address _signer) EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {
-        tokenMessenger = ITokenMessengerV2(_tokenMessenger);
-        signer = _signer;
-    }
+    constructor() EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {}
 
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Bridges tokens via Circle CCTP v2. `routeParamsEncoded` is ABI-encoded as `VanillaCCTPRouteParams`;
-     *      `submitterDataEncoded` as `VanillaCCTPSubmitterData`. ERC-20 only.
+     *      `submitterDataEncoded` as `VanillaCCTPSubmitterData`. ERC-20 (USDC) only.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         VanillaCCTPRouteParams memory routeParams = abi.decode(routeParamsEncoded, (VanillaCCTPRouteParams));
         VanillaCCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (VanillaCCTPSubmitterData));
 
-        if (block.chainid != routeParams.sourceChainId) revert SourceChainMismatch();
         // Binds the exact merkle leaf (`keccak256(params)` is the leaf's params component), the amount, and
         // the fee — the sole authorization of this transfer, since there is no periphery quote signature.
         _verifySignature(keccak256(routeParamsEncoded), submitterData);
         if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
-        address inputToken = address(uint160(uint256(routeParams.burnToken)));
+        ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(_beacon().cctpTokenMessenger()));
+        address inputToken = _requireConfigured(_beacon().usdc());
 
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
@@ -164,7 +159,7 @@ contract CounterfactualDepositVanillaCCTP is ICounterfactualImplementation, EIP7
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != signer)
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
             revert InvalidSignature();
     }
 }
