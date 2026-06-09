@@ -25,7 +25,9 @@ struct VanillaCCTPRouteParams {
     uint256 cctpMaxFeeBps;
     uint32 minFinalityThreshold;
     bytes hookData;
-    uint256 maxExecutionFee;
+    /// @dev Selector of the beacon getter for this route's per-chain execution-fee cap (e.g.
+    ///      `beacon.usdcCctpMaxExecutionFee.selector`).
+    bytes4 maxExecutionFeeGetter;
 }
 
 /**
@@ -92,7 +94,8 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
 
         // Sole authorization (no periphery sig): binds the exact leaf params, amount, and fee.
         _verifySignature(keccak256(routeParamsEncoded), submitterData);
-        if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
+        if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
+            revert MaxExecutionFee();
 
         ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(_beacon().cctpTokenMessenger()));
         address inputToken = _requireConfigured(_beacon().usdc());

@@ -72,6 +72,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
         cfg.spokePool = address(spokePool);
         cfg.wrappedNativeToken = makeAddr("weth");
         cfg.usdt = address(usdt);
+        cfg.usdtSpokePoolMaxExecutionFee = 1e6;
         _deployBeacon(cfg);
 
         spokeImpl = new CounterfactualDepositSpokePoolTr();
@@ -89,7 +90,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
                 message: "",
                 checkStableExchangeRate: true,
                 stableExchangeRate: 1e18,
-                maxFeeFixed: 1e6,
+                maxExecutionFeeGetter: ICounterfactualBeacon.usdtSpokePoolMaxExecutionFee.selector,
                 maxFeeBps: 500
             });
     }

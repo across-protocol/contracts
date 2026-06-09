@@ -11,6 +11,7 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
 import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
 import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
@@ -97,6 +98,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.cctpTokenMessenger = address(messenger);
         cfg.usdc = address(token); // burn token
+        cfg.usdcCctpMaxExecutionFee = 5e6;
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);
@@ -112,7 +114,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 cctpMaxFeeBps: 100,
                 minFinalityThreshold: 1000,
                 hookData: "",
-                maxExecutionFee: 5e6
+                maxExecutionFeeGetter: ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector
             });
     }
 
@@ -291,6 +293,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.cctpTokenMessenger = address(messenger);
         cfg.usdc = address(0); // unset burn token
+        cfg.usdcCctpMaxExecutionFee = 5e6; // set so the fee check passes; the revert is from usdc = 0
         _deployBeacon(cfg);
 
         bytes memory route = abi.encode(_routeParams());

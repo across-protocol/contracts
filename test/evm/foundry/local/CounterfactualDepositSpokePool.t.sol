@@ -104,6 +104,9 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         cfg.nativeToken = NATIVE_SENTINEL;
         cfg.usdc = address(token);
         cfg.usdt = address(altToken);
+        cfg.usdcSpokePoolMaxExecutionFee = 1e6;
+        cfg.usdtSpokePoolMaxExecutionFee = 1e6;
+        cfg.wethSpokePoolMaxExecutionFee = 0.01 ether;
         _deployBeacon(cfg);
 
         spokeImpl = new CounterfactualDepositSpokePool();
@@ -112,6 +115,12 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
     }
 
     function _routeParams(bytes4 inputTokenGetter) internal view returns (SpokePoolRouteParams memory) {
+        // The fixed fee cap getter pairs with the input token (USDC/USDT/native→WETH).
+        bytes4 maxFeeGetter = inputTokenGetter == USDC_GETTER
+            ? ICounterfactualBeacon.usdcSpokePoolMaxExecutionFee.selector
+            : inputTokenGetter == USDT_GETTER
+                ? ICounterfactualBeacon.usdtSpokePoolMaxExecutionFee.selector
+                : ICounterfactualBeacon.wethSpokePoolMaxExecutionFee.selector;
         return
             SpokePoolRouteParams({
                 inputTokenGetter: inputTokenGetter,
@@ -121,7 +130,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
                 message: "",
                 checkStableExchangeRate: true,
                 stableExchangeRate: 1e18,
-                maxFeeFixed: 1e6,
+                maxExecutionFeeGetter: maxFeeGetter,
                 maxFeeBps: 500
             });
     }
@@ -254,9 +263,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
     }
 
     function testNativeDeposit() public {
-        SpokePoolRouteParams memory rp = _routeParams(NATIVE_GETTER);
-        rp.maxFeeFixed = 0.01 ether;
-        bytes memory route = abi.encode(rp);
+        bytes memory route = abi.encode(_routeParams(NATIVE_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
 
         Exec memory e = _defaultExec();
@@ -285,6 +292,9 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         cfg.nativeToken = address(token); // ERC-20 stand-in for "native"
         cfg.usdc = address(token);
         cfg.usdt = address(altToken);
+        cfg.usdcSpokePoolMaxExecutionFee = 1e6;
+        cfg.usdtSpokePoolMaxExecutionFee = 1e6;
+        cfg.wethSpokePoolMaxExecutionFee = 0.01 ether;
         _deployBeacon(cfg);
         CounterfactualDepositSpokePool impl = new CounterfactualDepositSpokePool();
 

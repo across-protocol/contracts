@@ -241,6 +241,38 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // usdt vs constants.json (best-effort; 0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdt", beacon.usdt(), _getUsdt(chainId));
 
+        // Per-(token, bridge) execution-fee caps vs config.toml (0 when unset).
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "usdcCctpMaxExecutionFee",
+            beacon.usdcCctpMaxExecutionFee(),
+            _resolveFeeCap("usdcCctpMaxExecutionFee")
+        );
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "usdtOftMaxExecutionFee",
+            beacon.usdtOftMaxExecutionFee(),
+            _resolveFeeCap("usdtOftMaxExecutionFee")
+        );
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "usdcSpokePoolMaxExecutionFee",
+            beacon.usdcSpokePoolMaxExecutionFee(),
+            _resolveFeeCap("usdcSpokePoolMaxExecutionFee")
+        );
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "usdtSpokePoolMaxExecutionFee",
+            beacon.usdtSpokePoolMaxExecutionFee(),
+            _resolveFeeCap("usdtSpokePoolMaxExecutionFee")
+        );
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "wethSpokePoolMaxExecutionFee",
+            beacon.wethSpokePoolMaxExecutionFee(),
+            _resolveFeeCap("wethSpokePoolMaxExecutionFee")
+        );
+
         // Manual review: signer (no second source)
         address configSigner = config.get("signer").toAddress();
         _review("CounterfactualBeacon", "signer", beacon.signer(), configSigner, "config.toml");

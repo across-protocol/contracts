@@ -430,6 +430,32 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (_logStaleUint("oftSrcEid", beacon.oftSrcEid(), expected.oftSrcEid)) stale = true;
         if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
         if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;
+        if (
+            _logStaleUint("usdcCctpMaxExecutionFee", beacon.usdcCctpMaxExecutionFee(), expected.usdcCctpMaxExecutionFee)
+        ) stale = true;
+        if (_logStaleUint("usdtOftMaxExecutionFee", beacon.usdtOftMaxExecutionFee(), expected.usdtOftMaxExecutionFee))
+            stale = true;
+        if (
+            _logStaleUint(
+                "usdcSpokePoolMaxExecutionFee",
+                beacon.usdcSpokePoolMaxExecutionFee(),
+                expected.usdcSpokePoolMaxExecutionFee
+            )
+        ) stale = true;
+        if (
+            _logStaleUint(
+                "usdtSpokePoolMaxExecutionFee",
+                beacon.usdtSpokePoolMaxExecutionFee(),
+                expected.usdtSpokePoolMaxExecutionFee
+            )
+        ) stale = true;
+        if (
+            _logStaleUint(
+                "wethSpokePoolMaxExecutionFee",
+                beacon.wethSpokePoolMaxExecutionFee(),
+                expected.wethSpokePoolMaxExecutionFee
+            )
+        ) stale = true;
 
         if (stale) {
             console.log("--------------------------------------------");

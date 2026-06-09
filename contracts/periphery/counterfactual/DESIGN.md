@@ -229,9 +229,10 @@ not the per-chain owner — then transfer ownership afterwards), then `upgradeTo
 and all leaf implementations are now constructor-arg-free or take only the chain-invariant beacon address,
 so they too share one address per chain — see _Execution Fees_.)
 
-> Note: a token's fixed fee cap (`maxFeeFixed`, an absolute amount) is only consistent across chains for
-> tokens with the same decimals everywhere (USDC/USDT/WETH are). Leaf builders should bear that in mind;
-> `maxFeeBps` is relative and unaffected.
+> Note: absolute fee caps are **per-chain, per-token** beacon values, not leaf constants. A leaf names a
+> cap via a `bytes4 maxExecutionFeeGetter` selector (e.g. `beacon.usdcCctpMaxExecutionFee.selector`,
+> `beacon.usdcSpokePoolMaxExecutionFee.selector`); the impl resolves it with `_resolveBeaconUint`. So the
+> same leaf carries the right cap on every chain. (`maxFeeBps`, being relative, stays in the SpokePool leaf.)
 
 ---
 
@@ -252,9 +253,9 @@ Each names a **bridge-specific implementation** and a route-specific `params`:
 ```
 implementation = CounterfactualDepositSpokePool
                | CounterfactualDepositCCTP | CounterfactualDepositVanillaCCTP | CounterfactualDepositOFT
-params         = destination identity + fee caps + quote params
+params         = destination identity + quote params + maxExecutionFeeGetter (+ maxFeeBps for SpokePool)
                  [+ inputTokenGetter for SpokePool] [+ peripheryGetter for OFT]
-                 (no sourceChainId, no raw token address)
+                 (no sourceChainId, no raw token address, no absolute fee cap)
 ```
 
 The leaf is **chain-agnostic**: it carries no source chain id and no raw token address. How the input
@@ -441,9 +442,11 @@ Mechanism (identical across the four impls):
   `block.timestamp > signatureDeadline`, then requires
   `ECDSA.recover(_hashTypedDataV4(structHash), counterfactualSignature) == beacon.signer()` (else
   `InvalidSignature`).
-- The route leaf commits an **upper bound** on the fee, checked _after_ verification:
-  `maxExecutionFee` for CCTP/Vanilla CCTP/OFT, or the combined `maxFeeFixed + maxFeeBps × inputAmount` cap for
-  SpokePool (which bounds the implicit relayer fee + execution fee together via `_checkFee`). For
+- The fee's **upper bound** is **per-chain, per-token**: the leaf carries a `bytes4 maxExecutionFeeGetter`
+  selector and the impl resolves the cap from the beacon (`_resolveBeaconUint`). For CCTP/Vanilla CCTP/OFT
+  that resolved value is the `maxExecutionFee`; for SpokePool it is the fixed component of the combined
+  `maxFee = cap + maxFeeBps × inputAmount` cap (which bounds the implicit relayer fee + execution fee
+  together via `_checkFee`, with `maxFeeBps` still in the leaf). For
   SpokePool, a leaf-committed `checkStableExchangeRate` bool gates the rate-derived relayer-fee term: when
   `false` (e.g. non-stable pairs, where `stableExchangeRate` can't bound the relayer fee and `outputAmount`
   is instead trusted via the signature), the relayer-fee term is dropped and only `executionFee` is bounded
@@ -521,8 +524,9 @@ route and amount are **not** bound transitively. Instead the impl's own EIP-712 
 directly (mirroring SpokePool):
 `ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`,
 where `routeParamsHash = keccak256(params)` is the exact merkle-leaf params and `verifyingContract`
-resolves to the proxy. `beacon.signer()` authorizes it, `executionFee ≤ maxExecutionFee` (the leaf cap) is
-checked afterward, and **replay protection is the short `signatureDeadline`** — there is no nonce, so a
+resolves to the proxy. `beacon.signer()` authorizes it, `executionFee ≤ beacon.<maxExecutionFeeGetter>()`
+(the per-chain cap the leaf names) is checked afterward, and **replay protection is the short
+`signatureDeadline`** — there is no nonce, so a
 re-funded proxy could be re-executed within the signature window; keep deadlines short. ERC-20 (USDC) only.
 
 ---

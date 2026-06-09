@@ -28,7 +28,9 @@ struct SpokePoolRouteParams {
     bytes message;
     bool checkStableExchangeRate;
     uint256 stableExchangeRate;
-    uint256 maxFeeFixed;
+    /// @dev Selector of the beacon getter for this route's per-chain fixed fee cap (e.g.
+    ///      `beacon.usdcSpokePoolMaxExecutionFee.selector`); added to the `maxFeeBps` term below.
+    bytes4 maxExecutionFeeGetter;
     uint256 maxFeeBps;
 }
 
@@ -131,7 +133,8 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
             submitterData.inputAmount,
             submitterData.outputAmount,
             depositAmount,
-            submitterData.executionFee
+            submitterData.executionFee,
+            _resolveBeaconUint(routeParams.maxExecutionFeeGetter)
         );
 
         ICounterfactualBeacon beacon = _beacon();
@@ -194,7 +197,8 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 depositAmount,
-        uint256 executionFee
+        uint256 executionFee,
+        uint256 maxFeeFixed
     ) private pure {
         // With `checkStableExchangeRate` false (non-stable pairs), the rate-derived relayer fee isn't
         // enforced (`outputAmount` is trusted via the signature); `executionFee` is still bounded by `maxFee`.
@@ -204,7 +208,8 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
             relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
         }
         uint256 totalFee = relayerFee + executionFee;
-        uint256 maxFee = routeParams.maxFeeFixed + (routeParams.maxFeeBps * inputAmount) / BPS_SCALAR;
+        // `maxFeeFixed` is the per-chain fixed cap resolved from the beacon; `maxFeeBps` stays in the leaf.
+        uint256 maxFee = maxFeeFixed + (routeParams.maxFeeBps * inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
     }
 

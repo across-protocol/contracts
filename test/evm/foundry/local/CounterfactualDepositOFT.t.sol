@@ -69,6 +69,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.oftSrcPeriphery = address(periphery);
         cfg.oftSrcEid = SRC_EID;
+        cfg.usdtOftMaxExecutionFee = 5e6;
         // The impl resolves the input token from the periphery's `TOKEN`, not `beacon.usdc()`.
         _deployBeacon(cfg);
 
@@ -93,7 +94,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
                 executionMode: 0,
                 refundRecipient: makeAddr("refund"),
                 actionData: "",
-                maxExecutionFee: 5e6
+                maxExecutionFeeGetter: ICounterfactualBeacon.usdtOftMaxExecutionFee.selector
             });
     }
 
@@ -158,6 +159,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         // Redeploy the beacon with the OFT periphery unset.
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.oftSrcEid = SRC_EID;
+        cfg.usdtOftMaxExecutionFee = 5e6; // set so the fee check passes; the revert is from the unset periphery
         _deployBeacon(cfg);
 
         bytes memory route = abi.encode(_routeParams(OFT_GETTER));

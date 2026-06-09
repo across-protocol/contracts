@@ -34,6 +34,14 @@ struct CounterfactualChainConfig {
     uint32 oftSrcEid;
     address usdc;
     address usdt;
+    /// @dev Per-(token, bridge) execution-fee caps, in input-token units. A leaf names which to enforce via
+    ///      a `bytes4` selector (its `maxExecutionFeeGetter`). Illustrative set — add more as routes need them.
+    ///      For SpokePool this is the fixed component of the fee cap (added to the leaf's `maxFeeBps` term).
+    uint256 usdcCctpMaxExecutionFee;
+    uint256 usdtOftMaxExecutionFee;
+    uint256 usdcSpokePoolMaxExecutionFee;
+    uint256 usdtSpokePoolMaxExecutionFee;
+    uint256 wethSpokePoolMaxExecutionFee;
 }
 
 /**
@@ -48,6 +56,10 @@ struct CounterfactualChainConfig {
  *      the chain-specific implementation. `Ownable2Step` admin (no timelock) — it can retarget every proxy
  *      instantly, so use a trusted multisig. `implementation()` is the beacon target, not the registry's
  *      own UUPS implementation.
+ *
+ *      NOTE: the `immutable` config values (endpoints, tokens, domains/EIDs, signer, fee caps) are **pure
+ *      configuration**. A new implementation that changes only these values is a configuration change and
+ *      is **not subject to audit** — only changes to this contract's *logic* are audited.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgradeable, Ownable2StepUpgradeable {
@@ -87,6 +99,16 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
     address public immutable usdc;
     /// @inheritdoc ICounterfactualBeacon
     address public immutable usdt;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcCctpMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdtOftMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdtSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable wethSpokePoolMaxExecutionFee;
 
     /// @param config The chain-specific configuration baked into this implementation (see
     ///        `CounterfactualChainConfig`). Each field becomes an immutable, named getter.
@@ -102,6 +124,11 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         oftSrcEid = config.oftSrcEid;
         usdc = config.usdc;
         usdt = config.usdt;
+        usdcCctpMaxExecutionFee = config.usdcCctpMaxExecutionFee;
+        usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;
+        usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
+        usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
+        wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
         _disableInitializers();
     }
 

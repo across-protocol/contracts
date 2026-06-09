@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
+import { Variable, TypeKind } from "forge-std/LibVariable.sol";
 import { CounterfactualChainConfig } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 
 /// @notice Shared config loader/resolver for counterfactual deploy scripts: operational params from
@@ -27,6 +28,13 @@ abstract contract CounterfactualConfig is DeploymentUtils {
             cfg.ownerAndDirectWithdrawer != address(0),
             "config: ownerAndDirectWithdrawer is zero or missing for chain"
         );
+    }
+
+    /// @dev Optional per-(token, bridge) execution-fee cap from config.toml for the current chain; 0 if the
+    ///      key is absent. These are operational economic params (input-token units), tuned per chain.
+    function _resolveFeeCap(string memory key) internal view returns (uint256) {
+        Variable memory v = config.get(key);
+        return v.ty.kind == TypeKind.Uint256 ? v.toUint256() : 0;
     }
 
     /// @dev Reads the signer address from config.toml.
@@ -120,6 +128,13 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();
+        // Per-(token, bridge) execution-fee caps from config.toml (operational; 0 if unset). A leaf names
+        // which cap to enforce via its `maxExecutionFeeGetter` selector.
+        cfg.usdcCctpMaxExecutionFee = _resolveFeeCap("usdcCctpMaxExecutionFee");
+        cfg.usdtOftMaxExecutionFee = _resolveFeeCap("usdtOftMaxExecutionFee");
+        cfg.usdcSpokePoolMaxExecutionFee = _resolveFeeCap("usdcSpokePoolMaxExecutionFee");
+        cfg.usdtSpokePoolMaxExecutionFee = _resolveFeeCap("usdtSpokePoolMaxExecutionFee");
+        cfg.wethSpokePoolMaxExecutionFee = _resolveFeeCap("wethSpokePoolMaxExecutionFee");
         // SpokePool is the foundational route. Baking `spokePool = 0` silently bricks every SpokePool leaf,
         // fixable only by a registry UUPS upgrade (the value is immutable on the impl). Refuse to deploy
         // without a SpokePool entry.

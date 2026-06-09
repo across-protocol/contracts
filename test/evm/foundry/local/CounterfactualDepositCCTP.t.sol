@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {
@@ -55,6 +56,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
         cfg.cctpSrcPeriphery = address(periphery);
         cfg.cctpSourceDomain = SRC_DOMAIN;
         cfg.usdc = address(token);
+        cfg.usdcCctpMaxExecutionFee = 5e6;
         _deployBeacon(cfg);
     }
 
@@ -74,7 +76,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
                 accountCreationMode: 0,
                 executionMode: 0,
                 actionData: "",
-                maxExecutionFee: 5e6
+                maxExecutionFeeGetter: ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector
             });
     }
 

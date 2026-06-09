@@ -34,6 +34,15 @@ abstract contract CounterfactualImplementationBase is ICounterfactualImplementat
         return abi.decode(ret, (address));
     }
 
+    /// @dev Resolve a uint from a no-arg `() -> uint256` beacon getter named by `getter`'s selector (carried
+    ///      in the leaf, e.g. `beacon.usdcCctpMaxExecutionFee.selector`). Reverts `RouteNotConfigured` if the
+    ///      getter doesn't exist; a configured value of 0 is valid and returned as-is. Merkle/signature-bound.
+    function _resolveBeaconUint(bytes4 getter) internal view returns (uint256) {
+        (bool ok, bytes memory ret) = address(_beacon()).staticcall(abi.encodeWithSelector(getter));
+        if (!ok || ret.length != 32) revert RouteNotConfigured();
+        return abi.decode(ret, (uint256));
+    }
+
     /// @dev Revert `RouteNotConfigured` if a beacon-resolved address is unset; otherwise pass it through.
     function _requireConfigured(address addr) internal pure returns (address) {
         if (addr == address(0)) revert RouteNotConfigured();

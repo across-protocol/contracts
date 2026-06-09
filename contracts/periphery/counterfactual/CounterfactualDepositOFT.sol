@@ -40,7 +40,9 @@ struct OFTRouteParams {
     uint8 executionMode;
     address refundRecipient;
     bytes actionData;
-    uint256 maxExecutionFee;
+    /// @dev Selector of the beacon getter for this route's per-chain execution-fee cap (e.g.
+    ///      `beacon.usdtOftMaxExecutionFee.selector`).
+    bytes4 maxExecutionFeeGetter;
 }
 
 /**
@@ -107,7 +109,8 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         OFTSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (OFTSubmitterData));
 
         _verifySignature(submitterData);
-        if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
+        if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
+            revert MaxExecutionFee();
 
         // Periphery chosen by the leaf's selector; input token is that periphery's immutable `TOKEN`.
         address oftSrcPeriphery = _requireConfigured(_resolveBeaconAddress(routeParams.peripheryGetter));

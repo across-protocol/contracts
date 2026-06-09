@@ -34,7 +34,9 @@ struct CCTPRouteParams {
     uint8 accountCreationMode;
     uint8 executionMode;
     bytes actionData;
-    uint256 maxExecutionFee;
+    /// @dev Selector of the beacon getter for this route's per-chain execution-fee cap (e.g.
+    ///      `beacon.usdcCctpMaxExecutionFee.selector`).
+    bytes4 maxExecutionFeeGetter;
 }
 
 /**
@@ -98,7 +100,8 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         CCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (CCTPSubmitterData));
 
         _verifySignature(submitterData);
-        if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
+        if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
+            revert MaxExecutionFee();
 
         address srcPeriphery = _requireConfigured(_beacon().cctpSrcPeriphery());
         address inputToken = _requireConfigured(_beacon().usdc());
