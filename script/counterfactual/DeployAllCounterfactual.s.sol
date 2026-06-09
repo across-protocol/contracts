@@ -4,16 +4,12 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBase } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
-import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
-import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
-import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
@@ -117,17 +113,12 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
+        bytes32 salt = _deploySalt();
 
         // Predict the chain-invariant beacon proxy + dispatcher addresses (like DeployCounterfactualBeacon)
         // for logging and idempotency checks.
         address predictedProxy = _predictBeaconProxy(deployer);
-        address predictedDispatcher = _predictCreate2(
-            bytes32(0),
-            abi.encodePacked(
-                type(CounterfactualDeposit).creationCode,
-                abi.encode(ICounterfactualBeacon(predictedProxy))
-            )
-        );
+        address predictedDispatcher = _predictDispatcher(predictedProxy);
 
         // Log predicted addresses upfront so they can be verified before deploying.
         console.log("============================================");
@@ -147,11 +138,14 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("Predicted addresses:");
 
         // Beacon stack + always-on contracts.
-        address predictedFactory = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
-        address predictedWithdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
-        address predictedVanilla = _predictCreate2(bytes32(0), type(CounterfactualDepositVanillaCCTP).creationCode);
+        address predictedFactory = _predictCreate2(
+            salt,
+            abi.encodePacked(type(CounterfactualDepositFactory).creationCode, abi.encode(predictedProxy))
+        );
+        address predictedWithdraw = _predictCreate2(salt, type(WithdrawImplementation).creationCode);
+        address predictedVanilla = _predictCreate2(salt, type(CounterfactualDepositVanillaCCTP).creationCode);
         address predictedAdmin = _predictCreate2(
-            bytes32(0),
+            salt,
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
         );
 
@@ -170,7 +164,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             bytes memory spokePoolCode = isTron
                 ? type(CounterfactualDepositSpokePoolTr).creationCode
                 : type(CounterfactualDepositSpokePool).creationCode;
-            predictedSpokePool = _predictCreate2(bytes32(0), spokePoolCode);
+            predictedSpokePool = _predictCreate2(salt, spokePoolCode);
             _logPredicted(
                 isTron ? "CounterfactualDepositSpokePoolTr" : "CounterfactualDepositSpokePool",
                 predictedSpokePool
@@ -179,13 +173,13 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         address predictedCctp;
         if (deployCctp) {
-            predictedCctp = _predictCreate2(bytes32(0), type(CounterfactualDepositCCTP).creationCode);
+            predictedCctp = _predictCreate2(salt, type(CounterfactualDepositCCTP).creationCode);
             _logPredicted("CounterfactualDepositCCTP", predictedCctp);
         }
 
         address predictedOft;
         if (deployOft) {
-            predictedOft = _predictCreate2(bytes32(0), type(CounterfactualDepositOFT).creationCode);
+            predictedOft = _predictCreate2(salt, type(CounterfactualDepositOFT).creationCode);
             _logPredicted("CounterfactualDepositOFT", predictedOft);
         }
 
@@ -385,18 +379,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("============================================");
         console.log("All deployments complete!");
         console.log("============================================");
-    }
-
-    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
-    /// @dev Mirrors DeployCounterfactualBeacon: ERC1967Proxy over the chain-identical bootstrap with the
-    ///      deployer as owner (chain-invariant => identical init code => identical address).
-    function _predictBeaconProxy(address deployer) internal pure returns (address) {
-        address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
-        bytes memory proxyInitCode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
-        );
-        return _predictCreate2(bytes32(0), proxyInitCode);
     }
 
     /// @dev True when the beacon proxy's `implementation()` already resolves to the expected dispatcher.

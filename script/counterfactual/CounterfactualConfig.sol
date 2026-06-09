@@ -3,12 +3,21 @@ pragma solidity ^0.8.0;
 
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { Variable, TypeKind } from "forge-std/LibVariable.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualChainConfig } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
+import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
+import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 
 /// @notice Shared config loader/resolver for counterfactual deploy scripts: operational params from
 /// config.toml, chain-specific values from Constants and DeployedAddresses.
 abstract contract CounterfactualConfig is DeploymentUtils {
     string constant CONFIG_PATH = "./script/counterfactual/config.toml";
+
+    /// @dev Synthetic "globals" section in config.toml. Top-level TOML keys must resolve to a chain id
+    ///      (StdConfig reverts otherwise), so chain id 0 — not a real chain — hosts cross-chain-global
+    ///      values like the deploy salt. See the `[0]` section in config.toml.
+    uint256 internal constant GLOBALS_CHAIN_ID = 0;
 
     struct OperationalConfig {
         address signer;
@@ -17,6 +26,47 @@ abstract contract CounterfactualConfig is DeploymentUtils {
 
     function _loadCounterfactualConfig() internal {
         _loadConfig(CONFIG_PATH, false);
+    }
+
+    // --- Global CREATE2 salt + deterministic-address helpers for the singleton infra contracts ------------
+    // Factory, bootstrap, beacon proxy and dispatcher are deployed via CREATE2 with this single salt so they
+    // land at identical addresses on every chain — the foundation of the chain-agnostic-leaf design. Reading
+    // it from one global config value keeps every script (and every chain) in lockstep; bump it to coordinate
+    // a fresh cross-chain redeploy.
+
+    /// @notice Global CREATE2 salt shared by all counterfactual infra deployments. Read from the `[0]`
+    ///         globals section of config.toml (`[0.bytes32] deploySalt`); defaults to `bytes32(0)` if unset.
+    function _deploySalt() internal returns (bytes32) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(GLOBALS_CHAIN_ID, "deploySalt");
+        return v.ty.kind == TypeKind.Bytes32 ? v.toBytes32() : bytes32(0);
+    }
+
+    /// @dev CREATE2 init code for the beacon proxy: an ERC1967Proxy over the chain-identical bootstrap,
+    ///      initialized with `deployer` as bootstrap owner. Chain-invariant (bootstrap address + deployer
+    ///      both are), so the proxy address is identical everywhere.
+    function _beaconProxyInitCode(address deployer) internal returns (bytes memory) {
+        address bootstrap = _predictCreate2(_deploySalt(), type(CounterfactualBeaconBootstrap).creationCode);
+        return
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
+            );
+    }
+
+    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
+    function _predictBeaconProxy(address deployer) internal returns (address) {
+        return _predictCreate2(_deploySalt(), _beaconProxyInitCode(deployer));
+    }
+
+    /// @dev CREATE2 init code for the dispatcher (CounterfactualDeposit) bound to the beacon proxy.
+    function _dispatcherInitCode(address proxy) internal pure returns (bytes memory) {
+        return abi.encodePacked(type(CounterfactualDeposit).creationCode, abi.encode(ICounterfactualBeacon(proxy)));
+    }
+
+    /// @notice Predicts the chain-invariant dispatcher address bound to the given beacon proxy.
+    function _predictDispatcher(address proxy) internal returns (address) {
+        return _predictCreate2(_deploySalt(), _dispatcherInitCode(proxy));
     }
 
     function _loadOperationalConfig() internal returns (OperationalConfig memory cfg) {

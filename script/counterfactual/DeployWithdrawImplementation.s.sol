@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { console } from "forge-std/console.sol";
-import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
+import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 
 // How to run:
@@ -10,7 +10,7 @@ import { WithdrawImplementation } from "../../contracts/periphery/counterfactual
 // 2. forge script script/counterfactual/DeployWithdrawImplementation.s.sol:DeployWithdrawImplementation --rpc-url $NODE_URL -vvvv
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployWithdrawImplementation is DeploymentUtils {
+contract DeployWithdrawImplementation is CounterfactualConfig {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
@@ -21,7 +21,7 @@ contract DeployWithdrawImplementation is DeploymentUtils {
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(_deploySalt(), initCode);
         vm.stopBroadcast();
 
         console.log("WithdrawImplementation deployed to:", deployed);

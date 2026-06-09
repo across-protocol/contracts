@@ -41,7 +41,7 @@ contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), creationCode);
+        address deployed = _deployCreate2(_deploySalt(), creationCode);
         vm.stopBroadcast();
 
         console.log("%s deployed to:", implName);

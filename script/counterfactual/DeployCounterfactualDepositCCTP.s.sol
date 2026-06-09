@@ -26,7 +26,7 @@ contract DeployCounterfactualDepositCCTP is CounterfactualConfig {
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(_deploySalt(), initCode);
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositCCTP deployed to:", deployed);

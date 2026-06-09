@@ -2,15 +2,12 @@
 pragma solidity ^0.8.0;
 
 import { console } from "forge-std/console.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
-import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
-import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 
 // Deploys the full counterfactual beacon stack so the beacon **proxy** lands at the SAME address on every
 // chain (every counterfactual proxy and the factory embed it):
@@ -49,9 +46,10 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         address deployer = vm.addr(deployerPrivateKey);
 
         CounterfactualChainConfig memory chainConfig = _buildChainConfig();
+        bytes32 salt = _deploySalt();
         bytes memory proxyInitCode = _beaconProxyInitCode(deployer);
-        address proxy = _predictCreate2(bytes32(0), proxyInitCode);
-        address dispatcher = _predictCreate2(bytes32(0), _dispatcherInitCode(proxy));
+        address proxy = _predictCreate2(salt, proxyInitCode);
+        address dispatcher = _predictDispatcher(proxy);
 
         console.log("============================================");
         console.log("Counterfactual Beacon stack deployment");
@@ -64,11 +62,11 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         vm.startBroadcast(deployerPrivateKey);
 
         // 1. Bootstrap (chain-identical init code).
-        address bootstrap = _deployCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
+        address bootstrap = _deployCreate2(salt, type(CounterfactualBeaconBootstrap).creationCode);
         console.log("Bootstrap:          ", bootstrap);
 
         // 2. Beacon proxy over the bootstrap (chain-identical init code => same address).
-        address deployedProxy = _deployCreate2(bytes32(0), proxyInitCode);
+        address deployedProxy = _deployCreate2(salt, proxyInitCode);
         require(deployedProxy == proxy, "proxy address mismatch");
         console.log("Beacon proxy:       ", deployedProxy);
 
@@ -82,7 +80,7 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         CounterfactualBeaconBootstrap(payable(deployedProxy)).upgradeToAndCall(beaconImpl, "");
 
         // 5. Dispatcher (CounterfactualDeposit), bound to the chain-invariant proxy => same address.
-        address deployedDispatcher = _deployCreate2(bytes32(0), _dispatcherInitCode(deployedProxy));
+        address deployedDispatcher = _deployCreate2(salt, _dispatcherInitCode(deployedProxy));
         require(deployedDispatcher == dispatcher, "dispatcher address mismatch");
         console.log("Dispatcher:         ", deployedDispatcher);
 
@@ -105,27 +103,5 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         console.log("============================================");
         console.log("Beacon stack deployed.");
         console.log("============================================");
-    }
-
-    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
-    /// @dev For scripts that need the proxy address before/without deploying it.
-    function _predictBeaconProxy(address deployer) internal pure returns (address) {
-        return _predictCreate2(bytes32(0), _beaconProxyInitCode(deployer));
-    }
-
-    /// @dev CREATE2 init code for the beacon proxy: an ERC1967Proxy over the bootstrap, initialized with the
-    ///      deployer as owner. Chain-invariant because both the bootstrap address and `deployer` are.
-    function _beaconProxyInitCode(address deployer) internal pure returns (bytes memory) {
-        address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
-        return
-            abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
-            );
-    }
-
-    /// @dev CREATE2 init code for the dispatcher (CounterfactualDeposit) bound to the beacon proxy.
-    function _dispatcherInitCode(address proxy) internal pure returns (bytes memory) {
-        return abi.encodePacked(type(CounterfactualDeposit).creationCode, abi.encode(ICounterfactualBeacon(proxy)));
     }
 }

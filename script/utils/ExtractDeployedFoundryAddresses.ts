@@ -61,6 +61,22 @@ interface JsonOutput {
 }
 
 /**
+ * `ERC1967Proxy` is a generic contract name, so the broadcast can't tell us what a given proxy *is*.
+ * Historically every proxy in this repo was a SpokePool, so the extractor blanket-labeled them "SpokePool".
+ * Now other stacks deploy their own proxies (e.g. the counterfactual beacon), so we disambiguate by the
+ * deploying script: an explicit mapping here wins, otherwise SpokePool-named scripts → "SpokePool",
+ * otherwise a name derived from the script.
+ */
+const PROXY_LOGICAL_NAME_BY_SCRIPT: Record<string, string> = {
+  "DeployCounterfactualBeacon.s.sol": "CounterfactualBeacon",
+};
+
+/** Scripts whose deployed ERC1967Proxy is the canonical Across SpokePool (e.g. DeployBaseSpokePool.s.sol). */
+function isSpokePoolDeployScript(scriptName: string): boolean {
+  return /SpokePool\.s\.sol$/.test(scriptName);
+}
+
+/**
  * Get the git repository root directory.
  */
 function getGitRoot(): string {
@@ -218,25 +234,26 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = (tx.contractName as string | null) ?? "";
 
-          // Special-case the CounterfactualBeacon deploy: the ERC1967Proxy is the canonical, address-
-          // stable registry (every BeaconProxy embeds it). The per-chain CounterfactualBeacon
-          // implementation that lives behind that proxy is not the address callers should resolve, so
-          // skip it. Without this branch the generic `ERC1967Proxy → SpokePool` rewrite below would
-          // misfile the beacon proxy as SpokePool, and `CounterfactualBeacon` in deployed-addresses.json
-          // would point at the per-chain implementation.
-          if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol") {
-            if (contractName === "ERC1967Proxy") {
-              contractName = "CounterfactualBeacon";
-            } else if (contractName === "CounterfactualBeacon") {
-              continue;
-            }
-          }
-
           if (contractName === "ERC1967Proxy") {
-            contractName = "SpokePool";
+            // Resolve which contract this proxy represents by the deploying script (see comment above).
+            const mappedProxyName = PROXY_LOGICAL_NAME_BY_SCRIPT[broadcastFile.scriptName];
+            if (mappedProxyName) {
+              contractName = mappedProxyName;
+            } else if (isSpokePoolDeployScript(broadcastFile.scriptName)) {
+              contractName = "SpokePool";
+            } else {
+              contractName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "") || "UnknownProxy";
+            }
           } else if (contractName.endsWith("_SpokePool")) {
-            // skip
+            // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
             continue;
+          } else if (
+            broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" &&
+            contractName === "CounterfactualBeacon"
+          ) {
+            // The canonical `CounterfactualBeacon` is the proxy (named above); this is the implementation
+            // behind it, which changes on upgrade — record it under a distinct name to avoid colliding.
+            contractName = "CounterfactualBeaconImpl";
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;
             let oftDstEid: string | undefined = undefined;
