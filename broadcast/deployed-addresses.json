@@ -170,10 +170,15 @@
           "block_number": 25282395,
           "transaction_hash": "0x2602135ba4091602604401978af95958e1397050f859f44aa9fe8cef1d8e813f"
         },
+        "CounterfactualBeaconImpl": {
+          "address": "0x323a5dD47b6329eE081c3D3bF7115aa245b16568",
+          "block_number": 25282628,
+          "transaction_hash": "0x8244c965a9cad20f2dba69f51cacf1bbb8196b4fbcb9f4b0d1c91739fc513550"
+        },
         "CounterfactualDeposit": {
-          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
-          "block_number": 24745908,
-          "transaction_hash": "0x06ecc5b872078b00f3a154476701f66c98cbeff9211b00d6c46a9079c118ed93"
+          "address": "0x715658bb6CEFa4e8a44a56A8c67a31C91fecf861",
+          "block_number": 25282631,
+          "transaction_hash": "0xcb845addebb06772ae3834484164f9b7ac0ba9b590825b374741272368fee811"
         },
         "CounterfactualDepositCCTP": {
           "address": "0x9aAAAD96875e889Eed49A32d195B15E9cB4e546c",
@@ -192,7 +197,13 @@
         },
         "CounterfactualDepositSpokePool": {
           "address": "0xAA381FE88deD91b9Ad5A77038eb3fbeC28f2dd55",
-          "transaction_hash": null
+          "block_number": 25282636,
+          "transaction_hash": "0x85e011be2afc17c94e1cd695338a49330ba5eb08d9a7479c74c32ea28e578bb0"
+        },
+        "CounterfactualDepositVanillaCCTP": {
+          "address": "0x584EDa5BAf09dF30D760ae7EA51F11ACBD5746EC",
+          "block_number": 25282524,
+          "transaction_hash": "0x3626d85521dcb6fb8258ed3251ea94c354afcf897da73820480a6c56af8d56f7"
         },
         "DonationBox_CCTP_USDC": {
           "address": "0x109Db572e719Fa363dC53Fbaf3617422159060c9",

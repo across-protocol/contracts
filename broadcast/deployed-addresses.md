@@ -20,11 +20,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Boba_Adapter                           | [0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3](https://etherscan.io/address/0x33B0Ec794c15D6Cc705818E70d4CaCe7bCfB5Af3) |
 | BondToken                              | [0xee1DC6BCF1Ee967a350e9aC6CaaAA236109002ea](https://etherscan.io/address/0xee1DC6BCF1Ee967a350e9aC6CaaAA236109002ea) |
 | Cher_Adapter                           | [0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2](https://etherscan.io/address/0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2) |
-| CounterfactualDeposit                  | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://etherscan.io/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualBeaconImpl               | [0x323a5dD47b6329eE081c3D3bF7115aa245b16568](https://etherscan.io/address/0x323a5dD47b6329eE081c3D3bF7115aa245b16568) |
+| CounterfactualDeposit                  | [0x715658bb6CEFa4e8a44a56A8c67a31C91fecf861](https://etherscan.io/address/0x715658bb6CEFa4e8a44a56A8c67a31C91fecf861) |
 | CounterfactualDepositCCTP              | [0x9aAAAD96875e889Eed49A32d195B15E9cB4e546c](https://etherscan.io/address/0x9aAAAD96875e889Eed49A32d195B15E9cB4e546c) |
 | CounterfactualDepositFactory           | [0xe6E6D4962B7D837268c892fE8470ba17c32D17dF](https://etherscan.io/address/0xe6E6D4962B7D837268c892fE8470ba17c32D17dF) |
 | CounterfactualDepositOFT               | [0x0EF63a0Ff296e9D4480C5fb7F9E5211d279b8553](https://etherscan.io/address/0x0EF63a0Ff296e9D4480C5fb7F9E5211d279b8553) |
 | CounterfactualDepositSpokePool         | [0xAA381FE88deD91b9Ad5A77038eb3fbeC28f2dd55](https://etherscan.io/address/0xAA381FE88deD91b9Ad5A77038eb3fbeC28f2dd55) |
+| CounterfactualDepositVanillaCCTP       | [0x584EDa5BAf09dF30D760ae7EA51F11ACBD5746EC](https://etherscan.io/address/0x584EDa5BAf09dF30D760ae7EA51F11ACBD5746EC) |
 | DoctorWho_Adapter                      | [0x8956eFa31572E1d7ed5c8e36772F214A57DFA0D1](https://etherscan.io/address/0x8956eFa31572E1d7ed5c8e36772F214A57DFA0D1) |
 | DonationBox_CCTP_USDC                  | [0x109Db572e719Fa363dC53Fbaf3617422159060c9](https://etherscan.io/address/0x109Db572e719Fa363dC53Fbaf3617422159060c9) |
 | Ethereum_Adapter                       | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
