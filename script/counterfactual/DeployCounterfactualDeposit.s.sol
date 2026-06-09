@@ -29,12 +29,16 @@ contract DeployCounterfactualDeposit is CounterfactualConfig {
         require(beacon != address(0), "Beacon cannot be zero address");
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
 
+        // Resolve the salt (which lazily loads config via file-reading cheatcodes) BEFORE startBroadcast;
+        // constructing the StdConfig helper inside the broadcast region breaks forge's on-chain simulation.
+        bytes32 salt = _deploySalt();
+
         console.log("Deploying CounterfactualDeposit via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("Beacon:  ", beacon);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(_deploySalt(), _dispatcherInitCode(beacon));
+        address deployed = _deployCreate2(salt, _dispatcherInitCode(beacon));
         vm.stopBroadcast();
 
         console.log("CounterfactualDeposit deployed to:", deployed);

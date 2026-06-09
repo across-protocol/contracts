@@ -37,11 +37,15 @@ contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
             : type(CounterfactualDepositSpokePool).creationCode;
         string memory implName = isTron ? "CounterfactualDepositSpokePoolTr" : "CounterfactualDepositSpokePool";
 
+        // Resolve the salt (which lazily loads config via file-reading cheatcodes) BEFORE startBroadcast;
+        // constructing the StdConfig helper inside the broadcast region breaks forge's on-chain simulation.
+        bytes32 salt = _deploySalt();
+
         console.log("Deploying %s via CREATE2...", implName);
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(_deploySalt(), creationCode);
+        address deployed = _deployCreate2(salt, creationCode);
         vm.stopBroadcast();
 
         console.log("%s deployed to:", implName);

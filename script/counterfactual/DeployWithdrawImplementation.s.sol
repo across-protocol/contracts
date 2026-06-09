@@ -15,13 +15,16 @@ contract DeployWithdrawImplementation is CounterfactualConfig {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
+        // Resolve the salt (which lazily loads config via file-reading cheatcodes) BEFORE startBroadcast.
+        // Constructing the StdConfig helper inside the broadcast region breaks forge's on-chain simulation.
+        bytes32 salt = _deploySalt();
         bytes memory initCode = type(WithdrawImplementation).creationCode;
 
         console.log("Deploying WithdrawImplementation via CREATE2...");
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(_deploySalt(), initCode);
+        address deployed = _deployCreate2(salt, initCode);
         vm.stopBroadcast();
 
         console.log("WithdrawImplementation deployed to:", deployed);

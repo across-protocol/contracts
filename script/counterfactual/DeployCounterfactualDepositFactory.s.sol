@@ -20,6 +20,9 @@ contract DeployCounterfactualDepositFactory is CounterfactualConfig {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
 
+        // Resolve salt + beacon (both lazily load config via file-reading cheatcodes) BEFORE startBroadcast;
+        // constructing the StdConfig helper inside the broadcast region breaks forge's on-chain simulation.
+        bytes32 salt = _deploySalt();
         address beacon = _predictBeaconProxy(deployer);
         bytes memory initCode = abi.encodePacked(type(CounterfactualDepositFactory).creationCode, abi.encode(beacon));
 
@@ -28,7 +31,7 @@ contract DeployCounterfactualDepositFactory is CounterfactualConfig {
         console.log("Beacon:  ", beacon);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(_deploySalt(), initCode);
+        address deployed = _deployCreate2(salt, initCode);
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositFactory deployed to:", deployed);
