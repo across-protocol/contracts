@@ -188,7 +188,11 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         console.log("============================================");
 
-        string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
+        // `--slow` sends each tx in a sub-script's broadcast batch sequentially, waiting for each receipt.
+        // The beacon stack is multi-tx (impl deploy -> upgradeToAndCall -> dispatcher -> setImplementation);
+        // without --slow, forge fires them with rapid sequential nonces and the txs after the first get
+        // dropped against an RPC whose nonce view lags, leaving the proxy stuck on the bootstrap.
+        string memory broadcastFlag = broadcast ? " --broadcast --slow --verify --retries 5 --delay 10" : "";
 
         // --- Beacon stack (bootstrap + proxy + chain-specific impl + upgrade + dispatcher + setImplementation) ---
         // The one ordering-dependent step: must run before the dispatcher is usable. The dispatcher is
