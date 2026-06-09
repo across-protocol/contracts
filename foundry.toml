@@ -59,6 +59,7 @@ zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"
 zora = "${NODE_URL_7777777}"
+tron = "${NODE_URL_728126428}"
 
 # testnet
 arbitrum_sepolia = "${NODE_URL_421614}"
