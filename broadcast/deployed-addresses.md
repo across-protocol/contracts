@@ -323,11 +323,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                          | Address                                                                                                               |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge                    | [0x7CFaBF2eA327009B39f40078011B0Fb714b65926](https://basescan.org/address/0x7CFaBF2eA327009B39f40078011B0Fb714b65926) |
-| AdminWithdrawManager                   | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://basescan.org/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit                  | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://basescan.org/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP              | [0xD000850Bfb56B61995eB777e0602b5032B4Dcf55](https://basescan.org/address/0xD000850Bfb56B61995eB777e0602b5032B4Dcf55) |
-| CounterfactualDepositFactory           | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://basescan.org/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool         | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://basescan.org/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
+| AdminWithdrawManager                   | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://basescan.org/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon                   | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://basescan.org/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualBeaconBootstrap          | [0x0D31470a39aA6272b711C8c34e8DDF2F05A16EbD](https://basescan.org/address/0x0D31470a39aA6272b711C8c34e8DDF2F05A16EbD) |
+| CounterfactualBeaconImpl               | [0x5444cD07cF309eC88a71E57Ded035EcF4A896C9a](https://basescan.org/address/0x5444cD07cF309eC88a71E57Ded035EcF4A896C9a) |
+| CounterfactualDeposit                  | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://basescan.org/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositCCTP              | [0x26cc007E3d658719F8A44B6109cE6341EB0010cD](https://basescan.org/address/0x26cc007E3d658719F8A44B6109cE6341EB0010cD) |
+| CounterfactualDepositFactory           | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://basescan.org/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositSpokePool         | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://basescan.org/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
+| CounterfactualDepositVanillaCCTP       | [0xE66E59Ac7813Ab313aaa39A8853071B49Cf66FfF](https://basescan.org/address/0xE66E59Ac7813Ab313aaa39A8853071B49Cf66FfF) |
 | DonationBox_CCTP_USDC                  | [0x3ff139d8d5519555aA13b0eBd357B0Ba810f06Df](https://basescan.org/address/0x3ff139d8d5519555aA13b0eBd357B0Ba810f06Df) |
 | MulticallHandler                       | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | PermissionedMulticallHandler_CCTP_USDC | [0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4](https://basescan.org/address/0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4) |
@@ -339,7 +343,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredCCTPSrcPeriphery              | [0xa30968D3468316D957B9115EAad3C1c8E450116d](https://basescan.org/address/0xa30968D3468316D957B9115EAad3C1c8E450116d) |
 | TransferProxy                          | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://basescan.org/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge                | [0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4](https://basescan.org/address/0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4) |
-| WithdrawImplementation                 | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://basescan.org/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation                 | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://basescan.org/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Plasma (9745)
 

@@ -1268,29 +1268,49 @@
           "transaction_hash": "0xd365e90a95c6cb42dbe3e0a92526ae1942ce194019eb6204cff174e2345fba5b"
         },
         "AdminWithdrawManager": {
-          "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",
-          "block_number": 43894666,
-          "transaction_hash": "0x07a17017d04db48132dfac1c360cdcbd302f773d42f8b6d904626d23c8e7f3d9"
+          "address": "0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689",
+          "block_number": 47128808,
+          "transaction_hash": "0xfdb0df6266cefd8a94bb65c8a7358d2e3bca9f1c3dbc3b544d5fd9bd73e11180"
+        },
+        "CounterfactualBeaconBootstrap": {
+          "address": "0x0D31470a39aA6272b711C8c34e8DDF2F05A16EbD",
+          "block_number": 47128690,
+          "transaction_hash": "0x386b2feaea5df8c74c6e5c6d304d41f56d0b7813c72e5ea18ab084bbbf909b4e"
+        },
+        "CounterfactualBeacon": {
+          "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
+          "block_number": 47128694,
+          "transaction_hash": "0x45c82dff3c1d16b812e126039687a5d9d5fb8a63a1a7eedafce49c71550ed76a"
+        },
+        "CounterfactualBeaconImpl": {
+          "address": "0x5444cD07cF309eC88a71E57Ded035EcF4A896C9a",
+          "block_number": 47128693,
+          "transaction_hash": "0x3590cbcb5acbaef242ba889c2a8ccc5c1eef2e1e55e8a130b84fd9967736feb7"
         },
         "CounterfactualDeposit": {
-          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
-          "block_number": 43894579,
-          "transaction_hash": "0x4e77eaa1973c670d1e69e9f49ed5a7462b15f4d0141b2b98ac22e75d8f5a1992"
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 47128695,
+          "transaction_hash": "0xfa17b2d58a3d634df1ecd50bffebe78a942830344979119df6b4b86612b68a81"
         },
         "CounterfactualDepositCCTP": {
-          "address": "0xD000850Bfb56B61995eB777e0602b5032B4Dcf55",
-          "block_number": 43894650,
-          "transaction_hash": "0x375aea70a275cd6445c939463fe60513a563b8803c8e4a60468340030255761d"
+          "address": "0x26cc007E3d658719F8A44B6109cE6341EB0010cD",
+          "block_number": 47128777,
+          "transaction_hash": "0x52e1c7e2666dd25902c9b4e15fee2a7ae0f7d40365fd1fba23f5d82d324ef417"
         },
         "CounterfactualDepositFactory": {
-          "address": "0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772",
-          "block_number": 43894596,
-          "transaction_hash": "0xb0fe9683cfec0573b3cb319be6b54d645a9405f267eac6348509230f5f995f01"
+          "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
+          "block_number": 47128731,
+          "transaction_hash": "0xe2798d784a257f326c6e36f3b2e5fa40e4ac21b1c3959c4947b21c25e16f9a0d"
         },
         "CounterfactualDepositSpokePool": {
-          "address": "0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C",
-          "block_number": 43894633,
-          "transaction_hash": "0x28b429aae286cfb5f09ce924514384b64203a62def3fbb61296a93e1bb3636eb"
+          "address": "0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2",
+          "block_number": 47128762,
+          "transaction_hash": "0xdbb3a6ab6f10bb48918d8506556e4da7811bc751ab76a298c88974c64e62b6ec"
+        },
+        "CounterfactualDepositVanillaCCTP": {
+          "address": "0xE66E59Ac7813Ab313aaa39A8853071B49Cf66FfF",
+          "block_number": 47128792,
+          "transaction_hash": "0x104083feb8ce2c7fc429b45661b46a1d6c4c4140ee53da546b3b3dda788cb3ea"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -1323,9 +1343,9 @@
           "transaction_hash": "0x352688caf5f983b644fd9002250c74312e033e160c599d5c59b785d3d18256ef"
         },
         "WithdrawImplementation": {
-          "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
-          "block_number": 43894616,
-          "transaction_hash": "0xdd9fc83fcdd470ed7d55a246aa3167b77b654599129f71722f1438e5f056f597"
+          "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
+          "block_number": 47128746,
+          "transaction_hash": "0x4ff574d191d79ded93bb10b4cfe08ad0e0e3b9ac7ef5ad9655a8ca0331b0f3a4"
         }
       }
     },
