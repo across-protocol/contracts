@@ -229,11 +229,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                          | Address                                                                                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager                   | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://hyperevmscan.io//address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit                  | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://hyperevmscan.io//address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositCCTP              | [0xA45F9f1c963500a91ea87df6c30C2fc8548b944b](https://hyperevmscan.io//address/0xA45F9f1c963500a91ea87df6c30C2fc8548b944b) |
-| CounterfactualDepositFactory           | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://hyperevmscan.io//address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool         | [0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99](https://hyperevmscan.io//address/0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99) |
+| AdminWithdrawManager                   | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://hyperevmscan.io//address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon                   | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://hyperevmscan.io//address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualBeaconBootstrap          | [0x0D31470a39aA6272b711C8c34e8DDF2F05A16EbD](https://hyperevmscan.io//address/0x0D31470a39aA6272b711C8c34e8DDF2F05A16EbD) |
+| CounterfactualBeaconImpl               | [0xFcb61e1E76189938344CdcCc4F777119eA49Ab70](https://hyperevmscan.io//address/0xFcb61e1E76189938344CdcCc4F777119eA49Ab70) |
+| CounterfactualDeposit                  | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://hyperevmscan.io//address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositCCTP              | [0x26cc007E3d658719F8A44B6109cE6341EB0010cD](https://hyperevmscan.io//address/0x26cc007E3d658719F8A44B6109cE6341EB0010cD) |
+| CounterfactualDepositFactory           | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://hyperevmscan.io//address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositOFT               | [0x9966fD5432ba1D085D23D4cda8fd6188d796D722](https://hyperevmscan.io//address/0x9966fD5432ba1D085D23D4cda8fd6188d796D722) |
+| CounterfactualDepositSpokePool         | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://hyperevmscan.io//address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
+| CounterfactualDepositVanillaCCTP       | [0xE66E59Ac7813Ab313aaa39A8853071B49Cf66FfF](https://hyperevmscan.io//address/0xE66E59Ac7813Ab313aaa39A8853071B49Cf66FfF) |
 | DonationBox_CCTP_USDC                  | [0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60](https://hyperevmscan.io//address/0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60) |
 | DonationBox_CCTP_USDC_EVM              | [0x64a0A69d16518E4544fAb83C624e01339DC36945](https://hyperevmscan.io//address/0x64a0A69d16518E4544fAb83C624e01339DC36945) |
 | DonationBox_CCTP_USDH                  | [0x35B7D6e007f499c806F6d6742d7285D285e17F29](https://hyperevmscan.io//address/0x35B7D6e007f499c806F6d6742d7285D285e17F29) |
@@ -254,7 +259,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredCCTPSrcPeriphery              | [0xF4E32c4aC479f0B007BC005Ec0F481A2C78Ba1B4](https://hyperevmscan.io//address/0xF4E32c4aC479f0B007BC005Ec0F481A2C78Ba1B4) |
 | SponsoredOFTSrcPeriphery               | [0x93e1E5E9D840e758CC016F8b13cDf5dbAeca4b06](https://hyperevmscan.io//address/0x93e1E5E9D840e758CC016F8b13cDf5dbAeca4b06) |
 | TransferProxy                          | [0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF](https://hyperevmscan.io//address/0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF) |
-| WithdrawImplementation                 | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://hyperevmscan.io//address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation                 | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://hyperevmscan.io//address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Lisk (1135)
 
