@@ -80,13 +80,6 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         );
     }
 
-    /// @dev Optional per-(token, bridge) execution-fee cap from config.toml for the current chain; 0 if the
-    ///      key is absent. These are operational economic params (input-token units), tuned per chain.
-    function _resolveFeeCap(string memory key) internal view returns (uint256) {
-        Variable memory v = config.get(key);
-        return v.ty.kind == TypeKind.Uint256 ? v.toUint256() : 0;
-    }
-
     /// @dev Reads the signer address from config.toml.
     function _loadSigner() internal returns (address) {
         _loadCounterfactualConfig();
@@ -178,13 +171,15 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();
-        // Per-(token, bridge) execution-fee caps from config.toml (operational; 0 if unset). A leaf names
-        // which cap to enforce via its `maxExecutionFeeGetter` selector.
-        cfg.usdcCctpMaxExecutionFee = _resolveFeeCap("usdcCctpMaxExecutionFee");
-        cfg.usdtOftMaxExecutionFee = _resolveFeeCap("usdtOftMaxExecutionFee");
-        cfg.usdcSpokePoolMaxExecutionFee = _resolveFeeCap("usdcSpokePoolMaxExecutionFee");
-        cfg.usdtSpokePoolMaxExecutionFee = _resolveFeeCap("usdtSpokePoolMaxExecutionFee");
-        cfg.wethSpokePoolMaxExecutionFee = _resolveFeeCap("wethSpokePoolMaxExecutionFee");
+        // Per-(token, bridge) execution-fee caps. Hardcoded to `type(uint256).max` (effectively no on-chain
+        // cap) for now: the leaf's execution fee is already authorized by the beacon `signer`'s EIP-712
+        // signature, which is the real bound. Revisit (e.g. resolve per-chain from config.toml) before relying
+        // on the cap as a defense-in-depth limit.
+        cfg.usdcCctpMaxExecutionFee = type(uint256).max;
+        cfg.usdtOftMaxExecutionFee = type(uint256).max;
+        cfg.usdcSpokePoolMaxExecutionFee = type(uint256).max;
+        cfg.usdtSpokePoolMaxExecutionFee = type(uint256).max;
+        cfg.wethSpokePoolMaxExecutionFee = type(uint256).max;
         // SpokePool is the foundational route. Baking `spokePool = 0` silently bricks every SpokePool leaf,
         // fixable only by a registry UUPS upgrade (the value is immutable on the impl). Refuse to deploy
         // without a SpokePool entry.
