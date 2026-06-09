@@ -1,17 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
-
-/// @dev Minimal view used to verify a candidate beacon target is bound to this beacon — every
-///      counterfactual implementation embeds its beacon as the immutable `BEACON` (for `updateRoot`).
-interface IBeaconTarget {
-    function BEACON() external view returns (address);
-}
+import { CounterfactualBeaconBase } from "./CounterfactualBeaconBase.sol";
 
 /**
  * @notice Chain-specific config baked into a `CounterfactualBeacon` implementation as `public immutable`s,
@@ -46,37 +37,21 @@ struct CounterfactualChainConfig {
 
 /**
  * @title CounterfactualBeacon
- * @notice Per-chain registry and **beacon** for every counterfactual `BeaconProxy`. Holds the
- *         `implementation` all proxies run, the `upgradeRoot` authorizing per-proxy root updates, and the
- *         chain config (endpoints, domains/EIDs, fee signer, tokens) that leaves read under delegatecall.
- * @dev A UUPS proxy, so its address is permanent (anchoring every `BeaconProxy`) while its logic evolves.
- *      `implementation`/`upgradeRoot` are mutable storage; the chain config is `public immutable` (in code,
- *      readable through the proxy), so changing a value or adding a token is a UUPS upgrade. For an
- *      identical proxy address across chains, deploy against a uniform bootstrap then `upgradeToAndCall` to
- *      the chain-specific implementation. `Ownable2Step` admin (no timelock) — it can retarget every proxy
- *      instantly, so use a trusted multisig. `implementation()` is the beacon target, not the registry's
- *      own UUPS implementation.
+ * @notice The **configuration** of the per-chain counterfactual registry/beacon: every chain-specific value
+ *         (bridge endpoints, domains/EIDs, fee signer, token addresses, fee caps) as a `public immutable`,
+ *         named getter. All logic — root/implementation management, UUPS, ownership — lives in
+ *         `CounterfactualBeaconBase`.
+ * @dev The config is `public immutable` (in code, readable through the proxy under delegatecall), so changing
+ *      a value or adding a token/cap means deploying a new implementation and `upgradeToAndCall`-ing to it.
+ *      For an identical proxy address across chains, deploy against a uniform bootstrap then upgrade to the
+ *      chain-specific implementation.
  *
- *      NOTE: the `immutable` config values (endpoints, tokens, domains/EIDs, signer, fee caps) are **pure
- *      configuration**. A new implementation that changes only these values is a configuration change and
- *      is **not subject to audit** — only changes to this contract's *logic* are audited.
+ *      NOTE: these `immutable` values are **pure configuration**. A new implementation that changes only
+ *      them (this contract's constructor wiring, with no change to `CounterfactualBeaconBase`) is a
+ *      configuration change and is **not subject to audit** — only changes to the base's *logic* are audited.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgradeable, Ownable2StepUpgradeable {
-    /// @custom:storage-location erc7201:across.counterfactual.beacon.storage
-    struct RegistryStorage {
-        address implementation;
-        bytes32 upgradeRoot;
-    }
-
-    /// @dev Implementation target is not a contract.
-    error NotAContract();
-    /// @dev Implementation target's `BEACON()` does not point back at this beacon.
-    error WrongBeacon();
-
-    // keccak256(abi.encode(uint256(keccak256("across.counterfactual.beacon.storage")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_LOCATION = 0xb8f0bb8c74633417634f6191ee000dac3f927914fa2e1d714b73a72668a01500;
-
+contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     address public immutable signer;
     /// @inheritdoc ICounterfactualBeacon
@@ -130,76 +105,5 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
         wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
         _disableInitializers();
-    }
-
-    /**
-     * @notice Initialize the registry's mutable storage (chain config comes from the constructor).
-     * @dev With the bootstrap→upgrade deploy the proxy is initialized by the bootstrap and this is never
-     *      reached (initializer already consumed); set `implementation`/`upgradeRoot` via the owner setters.
-     * @param owner_ The admin (use a multisig).
-     * @param implementation_ Initial beacon target (may be address(0), set later via `setImplementation`).
-     * @param upgradeRoot_ Initial upgrade-tree root (may be 0, set later).
-     */
-    function initialize(address owner_, address implementation_, bytes32 upgradeRoot_) external initializer {
-        __Ownable_init(owner_);
-        __Ownable2Step_init();
-        // Allow `address(0)` for lazy init (the standard deploy flow is beacon → impl → setImplementation);
-        // otherwise the target must be a contract bound to this beacon, matching `setImplementation`.
-        if (implementation_ != address(0)) _validateImplementation(implementation_);
-        _setImplementation(implementation_);
-        _setUpgradeRoot(upgradeRoot_);
-    }
-
-    /// @inheritdoc IBeacon
-    /// @dev The counterfactual implementation every `BeaconProxy` resolves and delegatecalls.
-    function implementation() external view returns (address) {
-        return _getStorage().implementation;
-    }
-
-    /// @inheritdoc ICounterfactualBeacon
-    function upgradeRoot() external view returns (bytes32) {
-        return _getStorage().upgradeRoot;
-    }
-
-    /// @notice Set the global implementation (the beacon target) every proxy runs. Must be a contract
-    ///         bound to this beacon; setting it instantly retargets all counterfactual proxies.
-    function setImplementation(address newImplementation) external onlyOwner {
-        _validateImplementation(newImplementation);
-        _setImplementation(newImplementation);
-    }
-
-    /// @notice Set the root of the `(proxy, latestRoot)` upgrade tree.
-    function setUpgradeRoot(bytes32 newUpgradeRoot) external onlyOwner {
-        _setUpgradeRoot(newUpgradeRoot);
-    }
-
-    /// @dev A valid target is a contract whose immutable `BEACON()` points back here — guarding against
-    ///      retargeting every proxy to logic bound to a different beacon (which would brick `updateRoot`).
-    ///      The `try` tolerates non-conforming targets: they leave `boundBeacon == 0` and revert below.
-    function _validateImplementation(address impl) private view {
-        if (impl.code.length == 0) revert NotAContract();
-        address boundBeacon;
-        try IBeaconTarget(impl).BEACON() returns (address b) {
-            boundBeacon = b;
-        } catch {}
-        if (boundBeacon != address(this)) revert WrongBeacon();
-    }
-
-    function _setImplementation(address newImplementation) internal {
-        _getStorage().implementation = newImplementation;
-        emit ImplementationSet(newImplementation);
-    }
-
-    function _setUpgradeRoot(bytes32 newUpgradeRoot) internal {
-        _getStorage().upgradeRoot = newUpgradeRoot;
-        emit UpgradeRootSet(newUpgradeRoot);
-    }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
-    function _getStorage() private pure returns (RegistryStorage storage $) {
-        assembly {
-            $.slot := STORAGE_LOCATION
-        }
     }
 }

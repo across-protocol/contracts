@@ -8,6 +8,7 @@ import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { CounterfactualBeaconBase } from "../../../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
@@ -70,7 +71,7 @@ abstract contract CounterfactualTestBase is Test {
             address(
                 new ERC1967Proxy(
                     address(new CounterfactualBeacon(config)),
-                    abi.encodeCall(CounterfactualBeacon.initialize, (owner, address(0), bytes32(0)))
+                    abi.encodeCall(CounterfactualBeaconBase.initialize, (owner, address(0), bytes32(0)))
                 )
             )
         );

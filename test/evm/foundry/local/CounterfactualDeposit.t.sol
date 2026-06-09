@@ -8,6 +8,7 @@ import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { CounterfactualBeaconBase } from "../../../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
 import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../../../contracts/interfaces/ICounterfactualImplementation.sol";
@@ -88,7 +89,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
 
     function testSetImplementationRejectsEOA() public {
         vm.prank(owner);
-        vm.expectRevert(CounterfactualBeacon.NotAContract.selector);
+        vm.expectRevert(CounterfactualBeaconBase.NotAContract.selector);
         beacon.setImplementation(makeAddr("eoa"));
     }
 
@@ -96,14 +97,14 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         // A valid impl contract, but bound to a different beacon.
         CounterfactualDeposit wrong = new CounterfactualDeposit(ICounterfactualBeacon(makeAddr("otherBeacon")));
         vm.prank(owner);
-        vm.expectRevert(CounterfactualBeacon.WrongBeacon.selector);
+        vm.expectRevert(CounterfactualBeaconBase.WrongBeacon.selector);
         beacon.setImplementation(address(wrong));
     }
 
     function testSetImplementationRejectsNonConformingContract() public {
         // No `BEACON()` getter: the try/catch leaves it unbound, so it is rejected.
         vm.prank(owner);
-        vm.expectRevert(CounterfactualBeacon.WrongBeacon.selector);
+        vm.expectRevert(CounterfactualBeaconBase.WrongBeacon.selector);
         beacon.setImplementation(address(mockImpl));
     }
 
@@ -114,8 +115,11 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
 
     function testInitializeRejectsEoaImplementation() public {
         address logic = address(new CounterfactualBeacon(_baseConfig()));
-        vm.expectRevert(CounterfactualBeacon.NotAContract.selector);
-        new ERC1967Proxy(logic, abi.encodeCall(CounterfactualBeacon.initialize, (owner, makeAddr("eoa"), bytes32(0))));
+        vm.expectRevert(CounterfactualBeaconBase.NotAContract.selector);
+        new ERC1967Proxy(
+            logic,
+            abi.encodeCall(CounterfactualBeaconBase.initialize, (owner, makeAddr("eoa"), bytes32(0)))
+        );
     }
 
     function testInitializeAllowsZeroImplementation() public {
@@ -125,7 +129,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
             address(
                 new ERC1967Proxy(
                     logic,
-                    abi.encodeCall(CounterfactualBeacon.initialize, (owner, address(0), bytes32(0)))
+                    abi.encodeCall(CounterfactualBeaconBase.initialize, (owner, address(0), bytes32(0)))
                 )
             )
         );

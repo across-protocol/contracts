@@ -10,6 +10,7 @@ import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { CounterfactualBeaconBase } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
 import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
 import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
@@ -402,7 +403,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     ///      False when the staticcall reverts/returns malformed data (proxy still on the bootstrap, no
     ///      `implementation()` selector) — meaning `setImplementation` hasn't run and the beacon sub-script must.
     function _beaconWiredTo(address proxy, address expectedImpl) internal view returns (bool) {
-        (bool ok, bytes memory ret) = proxy.staticcall(abi.encodeCall(CounterfactualBeacon.implementation, ()));
+        (bool ok, bytes memory ret) = proxy.staticcall(abi.encodeCall(CounterfactualBeaconBase.implementation, ()));
         if (!ok || ret.length != 32) return false;
         return abi.decode(ret, (address)) == expectedImpl;
     }
