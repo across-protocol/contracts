@@ -91,9 +91,9 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
     error SignatureExpired();
     error MaxExecutionFee();
 
-    /// @notice EIP-712 typehash binding the local fee signature to (nonce, runtime fee, deadline).
+    /// @notice EIP-712 typehash binding the local fee signature to the route, nonce, runtime fee, and deadline.
     bytes32 public constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
     constructor() EIP712("CounterfactualDepositOFT", "v2.0.0") {}
 
@@ -102,13 +102,14 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
      * @dev Bridges tokens via SponsoredOFT (LayerZero). `routeParamsEncoded` is ABI-encoded as `OFTRouteParams`;
      *      `submitterDataEncoded` as `OFTSubmitterData` (includes a signature forwarded to the OFT periphery).
      *      ERC-20 only — the token is the periphery's immutable `TOKEN`. Forwards `msg.value` for LayerZero
-     *      messaging fees. No local route verification.
+     *      messaging fees. The local fee signature binds the route (`routeParamsHash`, which includes the
+     *      `peripheryGetter`); `amount` is bound transitively via the periphery quote signature.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         OFTRouteParams memory routeParams = abi.decode(routeParamsEncoded, (OFTRouteParams));
         OFTSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (OFTSubmitterData));
 
-        _verifySignature(submitterData);
+        _verifySignature(keccak256(routeParamsEncoded), submitterData);
         if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
             revert MaxExecutionFee();
 
@@ -116,9 +117,9 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         address oftSrcPeriphery = _requireConfigured(_resolveBeaconAddress(routeParams.peripheryGetter));
         address inputToken = ISponsoredOFTSrcPeriphery(oftSrcPeriphery).TOKEN();
 
-        // Fee paid before the periphery call (load-bearing): the local signature binds only
-        // (nonce, fee, deadline), so (route, amount) replay protection is the periphery's nonce check —
-        // a replayed fee reverts at `deposit` and rolls back this transfer.
+        // Fee paid before the periphery call (load-bearing): the local signature binds the route and
+        // (nonce, fee, deadline) but not `amount`, so amount-replay protection is the periphery's nonce
+        // check — a replayed fee reverts at `deposit` and rolls back this transfer.
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
@@ -137,11 +138,12 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         );
     }
 
-    function _verifySignature(OFTSubmitterData memory submitterData) private view {
+    function _verifySignature(bytes32 routeParamsHash, OFTSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_OFT_TYPEHASH,
+                routeParamsHash,
                 submitterData.nonce,
                 submitterData.executionFee,
                 submitterData.signatureDeadline

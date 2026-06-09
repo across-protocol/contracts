@@ -56,7 +56,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
 
     uint32 constant SRC_EID = 30101;
     bytes32 constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
     function setUp() public {
         _setUpCore();
@@ -109,13 +109,16 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
 
     function _submitter(
         address proxy,
+        bytes memory route,
         uint256 amount,
         bytes32 nonce,
         uint256 executionFee,
         uint32 signatureDeadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 structHash = keccak256(abi.encode(EXECUTE_OFT_TYPEHASH, nonce, executionFee, signatureDeadline));
+        bytes32 structHash = keccak256(
+            abi.encode(EXECUTE_OFT_TYPEHASH, keccak256(route), nonce, executionFee, signatureDeadline)
+        );
         bytes memory cfSig = _sign(pk, _domainSeparator("CounterfactualDepositOFT", proxy), structHash);
         return
             abi.encode(
@@ -138,7 +141,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         uint256 amount = 100e6;
         uint256 fee = 1e6;
         bytes32 nonce = keccak256("n1");
-        bytes memory submitter = _submitter(proxy, amount, nonce, fee, uint32(block.timestamp) + 3600, signerPk);
+        bytes memory submitter = _submitter(proxy, route, amount, nonce, fee, uint32(block.timestamp) + 3600, signerPk);
 
         vm.prank(user);
         token.transfer(proxy, amount);
@@ -166,6 +169,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(
             proxy,
+            route,
             100e6,
             keccak256("n"),
             1e6,
@@ -185,6 +189,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(
             proxy,
+            route,
             100e6,
             keccak256("n"),
             1e6,
@@ -204,7 +209,15 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     function testZeroExecutionFee() public {
         bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 0, uint32(block.timestamp) + 3600, signerPk);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            0,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -220,6 +233,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(
             proxy,
+            route,
             100e6,
             keccak256("n"),
             6e6,
@@ -237,7 +251,15 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     function testInvalidSignatureReverts() public {
         bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 1e6, uint32(block.timestamp) + 3600, 0xBEEF);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 3600,
+            0xBEEF
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -249,7 +271,15 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     function testExpiredSignatureReverts() public {
         bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 1e6, uint32(block.timestamp) + 100, signerPk);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 100,
+            signerPk
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -265,6 +295,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         (address proxyB, bytes32[] memory proofB) = _deploy(route, keccak256("b"));
         bytes memory submitter = _submitter(
             proxyA,
+            route,
             100e6,
             keccak256("n"),
             1e6,
@@ -283,5 +314,41 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         vm.prank(relayer);
         vm.expectRevert(CounterfactualDepositOFT.InvalidSignature.selector);
         ICounterfactualDeposit(proxyB).execute(address(oftImpl), route, submitter, proofB);
+    }
+
+    /// @dev A fee signature for one OFT route does not validate for a different route on the SAME proxy:
+    ///      `routeParamsHash` (which includes `peripheryGetter`) is bound in the fee signature. This is what
+    ///      lets one tree safely hold multiple OFT leaves — e.g. different input tokens via different
+    ///      periphery getters — to a single destination identity.
+    function testCrossRouteSignatureReverts() public {
+        OFTRouteParams memory rpA = _routeParams(OFT_GETTER);
+        OFTRouteParams memory rpB = _routeParams(OFT_GETTER);
+        rpB.dstEid = rpA.dstEid + 1; // distinct route, same impl
+        bytes memory routeA = abi.encode(rpA);
+        bytes memory routeB = abi.encode(rpB);
+
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _leaf(address(oftImpl), routeA);
+        leaves[1] = _leaf(address(oftImpl), routeB);
+        bytes32 root = merkle.getRoot(leaves);
+        bytes32[] memory proofB = merkle.getProof(leaves, 1);
+        address proxy = factory.deploy(bytes32(0), root);
+
+        // Sign for routeA, attempt to execute routeB.
+        bytes memory submitter = _submitter(
+            proxy,
+            routeA,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.expectRevert(CounterfactualDepositOFT.InvalidSignature.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(oftImpl), routeB, submitter, proofB);
     }
 }

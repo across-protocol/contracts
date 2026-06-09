@@ -83,9 +83,9 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
     error SignatureExpired();
     error MaxExecutionFee();
 
-    /// @notice EIP-712 typehash binding the local fee signature to (nonce, runtime fee, deadline).
+    /// @notice EIP-712 typehash binding the local fee signature to the route, nonce, runtime fee, and deadline.
     bytes32 public constant EXECUTE_CCTP_TYPEHASH =
-        keccak256("ExecuteCCTP(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteCCTP(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
     constructor() EIP712("CounterfactualDepositCCTP", "v2.0.0") {}
 
@@ -93,22 +93,23 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
      * @inheritdoc ICounterfactualImplementation
      * @dev Bridges tokens via SponsoredCCTP. `routeParamsEncoded` is ABI-encoded as `CCTPRouteParams`;
      *      `submitterDataEncoded` as `CCTPSubmitterData` (includes a signature forwarded to the CCTP periphery).
-     *      ERC-20 (USDC) only. No local route/amount verification — delegated to `srcPeriphery`.
+     *      ERC-20 (USDC) only. The local fee signature binds the route (`routeParamsHash`); `amount` is
+     *      bound transitively via the periphery quote signature forwarded to `srcPeriphery`.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         CCTPRouteParams memory routeParams = abi.decode(routeParamsEncoded, (CCTPRouteParams));
         CCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (CCTPSubmitterData));
 
-        _verifySignature(submitterData);
+        _verifySignature(keccak256(routeParamsEncoded), submitterData);
         if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
             revert MaxExecutionFee();
 
         address srcPeriphery = _requireConfigured(_beacon().cctpSrcPeriphery());
         address inputToken = _requireConfigured(_beacon().usdc());
 
-        // Fee paid before the periphery call (load-bearing): the local signature binds only
-        // (nonce, fee, deadline), so (route, amount) replay protection is the periphery's nonce check —
-        // a replayed fee reverts at `depositForBurn` and rolls back this transfer.
+        // Fee paid before the periphery call (load-bearing): the local signature binds the route and
+        // (nonce, fee, deadline) but not `amount`, so amount-replay protection is the periphery's nonce
+        // check — a replayed fee reverts at `depositForBurn` and rolls back this transfer.
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
@@ -127,11 +128,12 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         );
     }
 
-    function _verifySignature(CCTPSubmitterData memory submitterData) private view {
+    function _verifySignature(bytes32 routeParamsHash, CCTPSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_CCTP_TYPEHASH,
+                routeParamsHash,
                 submitterData.nonce,
                 submitterData.executionFee,
                 submitterData.signatureDeadline
