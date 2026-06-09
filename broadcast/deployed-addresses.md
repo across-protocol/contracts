@@ -56,6 +56,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                          | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | Universal_Adapter_143                  | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_4217                 | [0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c](https://etherscan.io/address/0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c) |
+| Universal_Adapter_43114                | [0x1af659333172DC502bD71Cf5b889521C97751838](https://etherscan.io/address/0x1af659333172DC502bD71Cf5b889521C97751838) |
 | Universal_Adapter_56                   | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
 | Universal_Adapter_9745                 | [0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363](https://etherscan.io/address/0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363) |
 | Universal_Adapter_999                  | [0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B](https://etherscan.io/address/0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B) |
@@ -380,6 +381,14 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://arbiscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://arbiscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+
+## Avalanche (43114)
+
+| Contract Name | Address                                                                                                               |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b](https://snowscan.xyz/address/0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b) |
+| SpokePool     | [0x292A00f2368187073E80AB94fA03AFD8c796d450](https://snowscan.xyz/address/0x292A00f2368187073E80AB94fA03AFD8c796d450) |
 
 ## Ink (57073)
 
