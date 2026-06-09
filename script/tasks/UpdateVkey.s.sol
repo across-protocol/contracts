@@ -8,8 +8,10 @@ import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
 
 /**
  * @title UpdateVkey
- * @notice Generates HubPool.multicall() calldata for updating SP1Helios verification keys across multiple chains.
- * The script queries each chain to verify Helios setup and outputs calldata for the HubPool owner (multisig) to execute.
+ * @notice Generates calldata for updating SP1Helios verification keys across multiple chains. The script queries
+ * each chain to verify Helios setup and outputs two equivalent options for the HubPool owner (multisig) to execute:
+ *   - Option A: a single HubPool.multicall(bytes[]) where each entry is a relaySpokePoolAdminFunction call.
+ *   - Option B: the (chainId, functionData) params for one HubPool.relaySpokePoolAdminFunction call per chain.
  * RPC URLs are read from .env using the NODE_URL_<CHAIN_ID> convention (e.g., NODE_URL_56, NODE_URL_143).
  *
  *
@@ -32,7 +34,8 @@ contract UpdateVkey is Script, Constants, DeployedAddresses {
         uint256 chainId;
         address spokePool;
         address helios;
-        bytes hubPoolCalldata;
+        // `functionData` param for relaySpokePoolAdminFunction(chainId, functionData)
+        bytes functionData;
     }
 
     function run(bytes32 newVkey, string calldata chainsStr) external {
@@ -146,18 +149,13 @@ contract UpdateVkey is Script, Constants, DeployedAddresses {
                 message
             );
 
-            // 3. HubPool.relaySpokePoolAdminFunction(chainId, spokePoolCalldata)
-            bytes memory hubPoolCalldata = abi.encodeWithSelector(
-                IHubPool.relaySpokePoolAdminFunction.selector,
-                chainId,
-                spokePoolCalldata
-            );
-
+            // spokePoolCalldata is the `functionData` param passed directly to
+            // HubPool.relaySpokePoolAdminFunction(chainId, functionData)
             calls[validCallCount++] = ChainCall({
                 chainId: chainId,
                 spokePool: spokePoolAddress,
                 helios: heliosAddress,
-                hubPoolCalldata: hubPoolCalldata
+                functionData: spokePoolCalldata
             });
         }
 
@@ -193,26 +191,36 @@ contract UpdateVkey is Script, Constants, DeployedAddresses {
             );
         }
 
-        // Output multicall data
+        // ---- Option A: single HubPool.multicall(bytes[]) ----
+        // Each entry is an encoded relaySpokePoolAdminFunction(chainId, functionData) call.
         console.log("");
-        console.log("Data to use for HubPool.multicall on %s:", hubPoolAddress);
-        console.log("Each entry is an encoded `relaySpokePoolAdminFunction` call.");
-        console.log("");
-        console.log("Included destination chains:");
-        for (uint256 i = 0; i < validCallCount; i++) {
-            console.log("  %d", calls[i].chainId);
-        }
-        console.log("");
+        console.log("=== Option A: single HubPool.multicall on %s ===", hubPoolAddress);
         console.log("Calldata array (copy this for multicall):");
         console.log("[");
         for (uint256 i = 0; i < validCallCount; i++) {
-            if (i < validCallCount - 1) {
-                console.log("  %s,", vm.toString(calls[i].hubPoolCalldata));
-            } else {
-                console.log("  %s", vm.toString(calls[i].hubPoolCalldata));
-            }
+            bytes memory hubPoolCalldata = abi.encodeWithSelector(
+                IHubPool.relaySpokePoolAdminFunction.selector,
+                calls[i].chainId,
+                calls[i].functionData
+            );
+            console.log("  %s%s", vm.toString(hubPoolCalldata), i < validCallCount - 1 ? "," : "");
         }
         console.log("]");
+
+        // ---- Option B: one relaySpokePoolAdminFunction call per chain ----
+        console.log("");
+        console.log(
+            "=== Option B: %d separate HubPool.relaySpokePoolAdminFunction call(s) on %s ===",
+            validCallCount,
+            hubPoolAddress
+        );
+        console.log("Signature: relaySpokePoolAdminFunction(uint256 chainId, bytes functionData)");
+        for (uint256 i = 0; i < validCallCount; i++) {
+            console.log("");
+            console.log("Call %d:", i + 1);
+            console.log("  chainId:      %d", calls[i].chainId);
+            console.log("  functionData: %s", vm.toString(calls[i].functionData));
+        }
         console.log("");
         console.log("============================================");
     }
