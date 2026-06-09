@@ -228,6 +228,24 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       }
 
       for (const tx of transactions) {
+        // The beacon PROXY's CREATE only appears in the FIRST beacon run at a given salt; later runs (e.g. a
+        // config upgrade) find it already deployed and skip it, re-emitting only `upgradeToAndCall`. So
+        // `run-latest.json` often lacks the proxy CREATE (only the impl CREATE + the upgrade CALL are present).
+        // The `upgradeToAndCall(address,bytes)` call (selector 0x4f1ef286) ALWAYS targets the proxy and is
+        // emitted on every beacon run, so capture the canonical `CounterfactualBeacon` address from its target.
+        if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" && tx.transactionType === "CALL") {
+          const input: string = (tx.transaction && tx.transaction.input) || "";
+          const to: string | undefined = tx.transaction && tx.transaction.to;
+          if (to && input.startsWith("0x4f1ef286")) {
+            contracts.push({
+              contractName: "CounterfactualBeacon",
+              contractAddress: to,
+              transactionHash: tx.hash,
+              blockNumber: txHashToBlock[tx.hash] || null,
+            });
+          }
+        }
+
         if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
