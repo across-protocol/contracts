@@ -34,7 +34,12 @@ struct CounterfactualChainConfig {
     address cctpSrcPeriphery;
     address cctpTokenMessenger;
     uint32 cctpSourceDomain;
+    /// @dev OFT peripheries are single-token (each has an immutable `TOKEN`). The OFT leaf names the one
+    ///      to use by the selector of one of these getters, so supporting another OFT token is a beacon
+    ///      upgrade adding another periphery getter — not a leaf/impl change. `oftSrcPeriphery` is the
+    ///      primary periphery (USDT0 today); `oftUsdcPeriphery` is the USDC OFT periphery.
     address oftSrcPeriphery;
+    address oftUsdcPeriphery;
     uint32 oftSrcEid;
     address usdc;
     address usdt;
@@ -94,6 +99,8 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
     /// @inheritdoc ICounterfactualBeacon
     address public immutable oftSrcPeriphery;
     /// @inheritdoc ICounterfactualBeacon
+    address public immutable oftUsdcPeriphery;
+    /// @inheritdoc ICounterfactualBeacon
     uint32 public immutable oftSrcEid;
     /// @inheritdoc ICounterfactualBeacon
     address public immutable usdc;
@@ -111,6 +118,7 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         cctpTokenMessenger = config.cctpTokenMessenger;
         cctpSourceDomain = config.cctpSourceDomain;
         oftSrcPeriphery = config.oftSrcPeriphery;
+        oftUsdcPeriphery = config.oftUsdcPeriphery;
         oftSrcEid = config.oftSrcEid;
         usdc = config.usdc;
         usdt = config.usdt;

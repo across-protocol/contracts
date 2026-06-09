@@ -81,6 +81,13 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return getDeployedAddress("SponsoredOFTSrcPeriphery", block.chainid, false);
     }
 
+    /// @dev Resolves the USDC OFT periphery (an additional OFT token route) from a token-suffixed deployed
+    ///      name, mirroring the `_OFT_USDT` handler naming convention. Returns address(0) where no USDC OFT
+    ///      periphery is deployed — leaves naming `beacon.oftUsdcPeriphery.selector` then RouteNotConfigured.
+    function _resolveOftUsdcPeriphery() internal view returns (address) {
+        return getDeployedAddress("SponsoredOFTSrcPeriphery_OFT_USDC", block.chainid, false);
+    }
+
     /// @dev Resolves the Circle CCTP v2 TokenMessenger for this chain from constants.json. Lives under
     ///      `.L2_ADDRESS_MAP.<chainId>.cctpV2TokenMessenger` for L2s and `.L1_ADDRESS_MAP.<chainId>` for L1.
     ///      Returns address(0) when not present (chain simply won't have the vanilla CCTP route configured).
@@ -125,6 +132,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.cctpSourceDomain = hasCctpDomain(block.chainid) ? getCircleDomainId(block.chainid) : 0;
         cfg.cctpTokenMessenger = _resolveCctpTokenMessenger();
         cfg.oftSrcPeriphery = _resolveOftPeriphery();
+        cfg.oftUsdcPeriphery = _resolveOftUsdcPeriphery();
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();

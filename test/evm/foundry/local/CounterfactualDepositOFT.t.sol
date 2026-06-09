@@ -11,6 +11,7 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
 import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -46,8 +47,14 @@ contract MockOFTPeriphery {
 
 contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     CounterfactualDepositOFT internal oftImpl;
-    MockOFTPeriphery internal periphery;
+    MockOFTPeriphery internal periphery; // primary OFT periphery (token), named via OFT_GETTER
+    MockOFTPeriphery internal usdcPeriphery; // second OFT periphery (usdcToken), named via OFT_USDC_GETTER
     MintableERC20 internal token;
+    MintableERC20 internal usdcToken;
+
+    /// @dev Beacon getter selectors the leaf names to pick which (single-token) OFT periphery to use.
+    bytes4 constant OFT_GETTER = ICounterfactualBeacon.oftSrcPeriphery.selector;
+    bytes4 constant OFT_USDC_GETTER = ICounterfactualBeacon.oftUsdcPeriphery.selector;
 
     uint32 constant SRC_EID = 30101;
     bytes32 constant EXECUTE_OFT_TYPEHASH =
@@ -56,24 +63,30 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     function setUp() public {
         _setUpCore();
 
-        // Mocks must exist before the beacon is deployed, since the beacon config points at them.
-        token = new MintableERC20("USDC", "USDC", 6);
+        // Mocks must exist before the beacon is deployed, since the beacon config points at them. Two
+        // single-token peripheries are wired so a leaf can target either token via its periphery selector.
+        token = new MintableERC20("USDT0", "USDT0", 6);
+        usdcToken = new MintableERC20("USDC", "USDC", 6);
         periphery = new MockOFTPeriphery(IERC20(address(token)), SRC_EID);
+        usdcPeriphery = new MockOFTPeriphery(IERC20(address(usdcToken)), SRC_EID);
         oftImpl = new CounterfactualDepositOFT();
 
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.oftSrcPeriphery = address(periphery);
+        cfg.oftUsdcPeriphery = address(usdcPeriphery);
         cfg.oftSrcEid = SRC_EID;
-        // The impl resolves the input token from the periphery's immutable `TOKEN`, so it does not depend
-        // on `beacon.usdc()`.
+        // The impl resolves the input token from the chosen periphery's immutable `TOKEN`, so it does not
+        // depend on `beacon.usdc()`.
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);
+        usdcToken.mint(user, 1000e6);
     }
 
-    function _routeParams() internal returns (OFTRouteParams memory) {
+    function _routeParams(bytes4 peripheryGetter) internal returns (OFTRouteParams memory) {
         return
             OFTRouteParams({
+                peripheryGetter: peripheryGetter,
                 dstEid: 30362,
                 destinationHandler: bytes32(uint256(uint160(makeAddr("handler")))),
                 maxOftFeeBps: 100,
@@ -127,7 +140,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     }
 
     function testDeposit() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         uint256 amount = 100e6;
         uint256 fee = 1e6;
@@ -146,8 +159,31 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         assertEq(token.balanceOf(proxy), 0);
     }
 
+    /// @dev The same leaf shape, naming a different periphery getter, bridges a different OFT token through
+    ///      the matching single-token periphery — proving OFT supports multiple tokens via the selector.
+    function testDepositSecondTokenViaPeripherySelector() public {
+        bytes memory route = abi.encode(_routeParams(OFT_USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        uint256 amount = 100e6;
+        uint256 fee = 1e6;
+        bytes32 nonce = keccak256("usdc-n1");
+        bytes memory submitter = _submitter(proxy, amount, nonce, fee, uint32(block.timestamp) + 3600, signerPk);
+
+        vm.prank(user);
+        usdcToken.transfer(proxy, amount);
+
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(oftImpl), route, submitter, proof);
+
+        // Routed through the USDC periphery (not the primary one), pulling the USDC token.
+        assertEq(usdcPeriphery.lastAmount(), amount - fee);
+        assertEq(periphery.callCount(), 0, "primary periphery not used");
+        assertEq(usdcToken.balanceOf(relayer), fee);
+        assertEq(usdcToken.balanceOf(proxy), 0);
+    }
+
     function testDepositForwardsMsgValue() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(
             proxy,
@@ -168,7 +204,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     }
 
     function testZeroExecutionFee() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 0, uint32(block.timestamp) + 3600, signerPk);
 
@@ -182,7 +218,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     }
 
     function testMaxExecutionFeeReverts() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(
             proxy,
@@ -201,7 +237,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     }
 
     function testInvalidSignatureReverts() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 1e6, uint32(block.timestamp) + 3600, 0xBEEF);
 
@@ -213,7 +249,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     }
 
     function testExpiredSignatureReverts() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 1e6, uint32(block.timestamp) + 100, signerPk);
 
@@ -226,7 +262,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     }
 
     function testCrossProxyReplayReverts() public {
-        bytes memory route = abi.encode(_routeParams());
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxyA, bytes32[] memory proofA) = _deploy(route, keccak256("a"));
         (address proxyB, bytes32[] memory proofB) = _deploy(route, keccak256("b"));
         bytes memory submitter = _submitter(

@@ -23,12 +23,16 @@ interface ISponsoredOFTSrcPeriphery {
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
- * @dev Chain-agnostic: it names no source chain and no token address. The source EID and periphery come
- *      from `beacon.oftSrcEid()` / `beacon.oftSrcPeriphery()`, and the input token is resolved at runtime
- *      from the periphery's immutable `TOKEN` — so the leaf works for any token the chain's periphery is
- *      deployed for (USDC, USDT0, …) without baking the token into the merkle commitment.
+ * @dev Chain-agnostic: it names no source chain and no token address. `peripheryGetter` is the 4-byte
+ *      selector of the beacon getter that resolves the SponsoredOFTSrcPeriphery to use (e.g.
+ *      `beacon.oftSrcPeriphery.selector`). Each OFT periphery is single-token (immutable `TOKEN`), so
+ *      naming the periphery selects the input token — the impl reads it from the resolved periphery's
+ *      `TOKEN`. This lets one leaf shape support many OFT tokens: a chain that registers more periphery
+ *      getters (per token) can be named by a leaf without baking the token into the merkle commitment. The
+ *      source EID comes from `beacon.oftSrcEid()`.
  */
 struct OFTRouteParams {
+    bytes4 peripheryGetter;
     uint32 dstEid;
     bytes32 destinationHandler;
     uint256 maxOftFeeBps;
@@ -63,12 +67,13 @@ struct OFTSubmitterData {
 /**
  * @title CounterfactualDepositOFT
  * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The periphery, source EID and
- *      fee signer are resolved from the `CounterfactualBeacon` at runtime; the input token is resolved
- *      from the periphery's immutable `TOKEN` (so the impl is token-agnostic and works with USDT0/USDC/etc.
- *      peripheries equally). This implementation holds no chain-specific values and has one address on
- *      every chain — a single leaf works everywhere (see `CounterfactualImplementationBase`). `msg.value`
- *      covers LayerZero native messaging fees.
+ * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The source EID and fee signer
+ *      are resolved from the `CounterfactualBeacon` at runtime; the periphery is resolved from the beacon
+ *      getter the leaf's `peripheryGetter` selector names, and the input token from that periphery's
+ *      immutable `TOKEN` (so the impl is token-agnostic and one leaf shape works with USDT0/USDC/etc.
+ *      peripheries). This implementation holds no chain-specific values and has one address on every chain
+ *      — a single leaf works everywhere (see `CounterfactualImplementationBase`). `msg.value` covers
+ *      LayerZero native messaging fees.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
@@ -114,9 +119,11 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         _verifySignature(submitterData);
         if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
-        address oftSrcPeriphery = _requireConfigured(_beacon().oftSrcPeriphery());
+        // Resolve which OFT periphery to use from the leaf's `peripheryGetter` selector, so one leaf shape
+        // can name any per-token periphery the chain's beacon exposes.
+        address oftSrcPeriphery = _requireConfigured(_resolveBeaconAddress(routeParams.peripheryGetter));
         // Pull the input token from the periphery's immutable `TOKEN` so the leaf works for whichever
-        // ERC-20 the chain's periphery was deployed for (USDC, USDT0, etc.). The periphery enforces
+        // ERC-20 the chosen periphery was deployed for (USDC, USDT0, etc.). The periphery enforces
         // non-zero `_token` at construction, so we don't re-check here.
         address inputToken = ISponsoredOFTSrcPeriphery(oftSrcPeriphery).TOKEN();
 

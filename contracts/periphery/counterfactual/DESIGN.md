@@ -203,12 +203,14 @@ decided by the **resolved value**, not the selector: the well-known sentinel
 token and one leaf can serve both flavors — on a chain whose `beacon.nativeToken()` returns the sentinel
 it behaves as a native route; on a chain whose `beacon.nativeToken()` returns an ERC-20 (because that
 chain has no native gas token to route through), the same leaf behaves as an ERC-20 route.
-**CCTP / Vanilla CCTP** read `beacon.usdc()` directly (USDC-only bridges). **OFT** reads the input token
-from the periphery's own immutable `TOKEN()` (the periphery is single-token by construction; on Across
-today every deployed `SponsoredOFTSrcPeriphery` is USDT0), so the OFT impl is token-agnostic across
-periphery deployments. A getter that returns `address(0)` on a given chain means that route isn't live
-there — the implementation reverts `RouteNotConfigured`. Adding a token to the registry (a new named
-getter) is a beacon upgrade, but existing SpokePool leaves can then name it with no impl change.
+**CCTP / Vanilla CCTP** read `beacon.usdc()` directly (USDC-only bridges). **OFT** is also selector-driven:
+its leaf carries a `peripheryGetter` naming which `SponsoredOFTSrcPeriphery` getter to use (e.g.
+`beacon.oftSrcPeriphery.selector` for USDT0, `beacon.oftUsdcPeriphery.selector` for USDC). Each OFT
+periphery is single-token (immutable `TOKEN()`), so naming the periphery selects the input token, which the
+impl reads from the resolved periphery — supporting many OFT tokens with one impl. A getter that returns
+`address(0)` on a given chain means that route isn't live there — the implementation reverts
+`RouteNotConfigured`. Adding a token (a new SpokePool token getter, or a new OFT periphery getter) is a
+beacon upgrade, but existing leaves can then name it with no impl change.
 
 **Why immutable, and how it changes.** `implementation` and `upgradeRoot` remain mutable storage (they are
 meant to change). The chain config does **not** use setters: each value is `immutable`, baked into the
@@ -250,7 +252,8 @@ Each names a **bridge-specific implementation** and a route-specific `params`:
 ```
 implementation = CounterfactualDepositSpokePool
                | CounterfactualDepositCCTP | CounterfactualDepositVanillaCCTP | CounterfactualDepositOFT
-params         = destination identity + fee caps + quote params [+ inputTokenGetter for SpokePool]
+params         = destination identity + fee caps + quote params
+                 [+ inputTokenGetter for SpokePool] [+ peripheryGetter for OFT]
                  (no sourceChainId, no raw token address)
 ```
 
@@ -266,8 +269,10 @@ token is named depends on the bridge:
   returns a token address.
 - **CCTP / Vanilla CCTP** bridge USDC, so their implementations read `beacon.usdc()` directly — no
   token field in the leaf.
-- **OFT** reads the input token from the periphery's immutable `TOKEN()`. The periphery is single-token
-  by construction, so this is unambiguous and the leaf carries no token field.
+- **OFT** carries a `peripheryGetter` — the selector of the beacon getter for the
+  `SponsoredOFTSrcPeriphery` to use. Each periphery is single-token (immutable `TOKEN()`), so naming the
+  periphery selects the input token (read from the resolved periphery); more OFT tokens = more periphery
+  getters (a beacon upgrade), with no leaf/impl change.
 
 In all cases the bridge endpoints, CCTP domain / OFT EID and fee `signer` are read from the beacon at
 runtime, so `initialRoot` holds **one leaf per route**, not one per source chain.

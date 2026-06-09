@@ -153,7 +153,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
         // The leaf names a regular beacon getter; the chain's beacon decides whether this route is paid
         // in native (returns `NATIVE_SENTINEL`) or in an ERC-20 (returns the token address). Branching on
         // the value — not on the selector — lets the same merkle leaf serve both flavors.
-        address resolved = _requireConfigured(_resolveInputToken(beacon, routeParams.inputTokenGetter));
+        address resolved = _requireConfigured(_resolveBeaconAddress(routeParams.inputTokenGetter));
         bool isNative = resolved == NATIVE_SENTINEL;
         address inputToken; // ERC-20 to approve/sweep (unused for native)
         bytes32 spokePoolInputToken;
@@ -201,16 +201,6 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
             submitterData.signatureDeadline,
             submitterData.executionFee
         );
-    }
-
-    /// @dev Resolve the input token by calling the beacon getter named by `getter` (a no-arg `() -> address`
-    ///      selector, e.g. `usdc()`). A failed call or non-address return yields `address(0)`, which the
-    ///      caller treats as `RouteNotConfigured`. The selector is committed in the merkle leaf and bound by
-    ///      the fee signature, so it is trusted input; a malformed selector can only revert here or downstream.
-    function _resolveInputToken(ICounterfactualBeacon beacon, bytes4 getter) private view returns (address) {
-        (bool ok, bytes memory ret) = address(beacon).staticcall(abi.encodeWithSelector(getter));
-        if (!ok || ret.length != 32) return address(0);
-        return abi.decode(ret, (address));
     }
 
     function _checkFee(

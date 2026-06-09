@@ -438,6 +438,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         }
         if (_logStaleUint("cctpSourceDomain", beacon.cctpSourceDomain(), expected.cctpSourceDomain)) stale = true;
         if (_logStaleAddr("oftSrcPeriphery", beacon.oftSrcPeriphery(), expected.oftSrcPeriphery)) stale = true;
+        if (_logStaleAddr("oftUsdcPeriphery", beacon.oftUsdcPeriphery(), expected.oftUsdcPeriphery)) stale = true;
         if (_logStaleUint("oftSrcEid", beacon.oftSrcEid(), expected.oftSrcEid)) stale = true;
         if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
         if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;

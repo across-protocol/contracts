@@ -27,6 +27,18 @@ abstract contract CounterfactualImplementationBase is ICounterfactualImplementat
         return ICounterfactualBeacon(ERC1967Utils.getBeacon());
     }
 
+    /// @dev Resolve an address by calling a no-arg `() -> address` beacon getter named by `getter` (its
+    ///      4-byte selector, carried in the leaf — e.g. `beacon.usdc.selector` for a token or an OFT
+    ///      periphery getter). A failed call or non-32-byte return yields `address(0)`, which callers treat
+    ///      as `RouteNotConfigured`. The selector is committed in the merkle leaf (and, where applicable,
+    ///      bound by the fee signature), so it is trusted input; a malformed selector can only revert here
+    ///      or downstream.
+    function _resolveBeaconAddress(bytes4 getter) internal view returns (address) {
+        (bool ok, bytes memory ret) = address(_beacon()).staticcall(abi.encodeWithSelector(getter));
+        if (!ok || ret.length != 32) return address(0);
+        return abi.decode(ret, (address));
+    }
+
     /// @dev Revert `RouteNotConfigured` if a beacon-resolved address is unset; otherwise pass it through.
     function _requireConfigured(address addr) internal pure returns (address) {
         if (addr == address(0)) revert RouteNotConfigured();
