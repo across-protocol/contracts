@@ -148,5 +148,12 @@ abstract contract CounterfactualConfig is DeploymentUtils {
             block.chainid != 728126428 || cfg.usdt != address(0),
             "config: USDT must be configured for Tron (add .USDT.728126428 to constants.json)"
         );
+        // The sentinel means "wrap msg.value into `wrappedNativeToken`", so it's meaningless without one.
+        // `_resolveNativeToken` upholds this for the default path but returns a `.NATIVE_TOKEN.<chainId>`
+        // override verbatim, so guard the pairing here rather than baking a sentinel that bricks at execution.
+        require(
+            cfg.nativeToken != NATIVE_SENTINEL || cfg.wrappedNativeToken != address(0),
+            "config: nativeToken=sentinel requires wrappedNativeToken"
+        );
     }
 }
