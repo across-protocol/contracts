@@ -224,14 +224,8 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             _getCctpTokenMessenger(chainId)
         );
 
-        // oftSrcPeriphery / oftUsdcPeriphery vs deployed-addresses.json
+        // oftSrcPeriphery vs deployed-addresses.json
         _assertAddrEq("CounterfactualBeacon", "oftSrcPeriphery", beacon.oftSrcPeriphery(), _getOftPeriphery(chainId));
-        _assertAddrEq(
-            "CounterfactualBeacon",
-            "oftUsdcPeriphery",
-            beacon.oftUsdcPeriphery(),
-            _getOftUsdcPeriphery(chainId)
-        );
 
         // oftSrcEid vs constants.json (0 when OFT unsupported)
         _assertUintEq(
@@ -331,10 +325,6 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
 
     function _getOftPeriphery(uint256 chainId) internal view returns (address) {
         return _getDeployed("SponsoredOFTSrcPeriphery", chainId);
-    }
-
-    function _getOftUsdcPeriphery(uint256 chainId) internal view returns (address) {
-        return _getDeployed("SponsoredOFTSrcPeriphery_OFT_USDC", chainId);
     }
 
     // --- Constants.json token / messenger lookups (mirror the resolvers in CounterfactualConfig) ---

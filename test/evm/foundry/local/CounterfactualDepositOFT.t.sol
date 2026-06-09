@@ -47,14 +47,12 @@ contract MockOFTPeriphery {
 
 contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     CounterfactualDepositOFT internal oftImpl;
-    MockOFTPeriphery internal periphery; // primary periphery (token), via OFT_GETTER
-    MockOFTPeriphery internal usdcPeriphery; // second periphery (usdcToken), via OFT_USDC_GETTER
+    MockOFTPeriphery internal periphery;
     MintableERC20 internal token;
-    MintableERC20 internal usdcToken;
 
-    /// @dev Beacon getter selectors a leaf can name to pick which single-token OFT periphery to use.
+    /// @dev Selector the OFT leaf names to pick the (single-token) OFT periphery; more OFT tokens = more
+    ///      beacon periphery getters, each named by its own selector.
     bytes4 constant OFT_GETTER = ICounterfactualBeacon.oftSrcPeriphery.selector;
-    bytes4 constant OFT_USDC_GETTER = ICounterfactualBeacon.oftUsdcPeriphery.selector;
 
     uint32 constant SRC_EID = 30101;
     bytes32 constant EXECUTE_OFT_TYPEHASH =
@@ -63,23 +61,18 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     function setUp() public {
         _setUpCore();
 
-        // Mocks must exist before the beacon, which points its config at them. Two single-token peripheries
-        // are wired so a leaf can target either token via its periphery selector.
+        // Mock must exist before the beacon, which points its config at it.
         token = new MintableERC20("USDT0", "USDT0", 6);
-        usdcToken = new MintableERC20("USDC", "USDC", 6);
         periphery = new MockOFTPeriphery(IERC20(address(token)), SRC_EID);
-        usdcPeriphery = new MockOFTPeriphery(IERC20(address(usdcToken)), SRC_EID);
         oftImpl = new CounterfactualDepositOFT();
 
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.oftSrcPeriphery = address(periphery);
-        cfg.oftUsdcPeriphery = address(usdcPeriphery);
         cfg.oftSrcEid = SRC_EID;
-        // The impl resolves the input token from the chosen periphery's `TOKEN`, not `beacon.usdc()`.
+        // The impl resolves the input token from the periphery's `TOKEN`, not `beacon.usdc()`.
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);
-        usdcToken.mint(user, 1000e6);
     }
 
     function _routeParams(bytes4 peripheryGetter) internal returns (OFTRouteParams memory) {
@@ -158,27 +151,31 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         assertEq(token.balanceOf(proxy), 0);
     }
 
-    /// @dev Same leaf shape with a different periphery getter bridges a different OFT token through the
-    ///      matching periphery — proving the selector supports multiple tokens.
-    function testDepositSecondTokenViaPeripherySelector() public {
-        bytes memory route = abi.encode(_routeParams(OFT_USDC_GETTER));
+    /// @dev The periphery is resolved from the leaf's selector, not hardcoded: a leaf whose `peripheryGetter`
+    ///      resolves to address(0) on this chain's beacon reverts `RouteNotConfigured`. (Additional OFT
+    ///      tokens are supported by adding more beacon periphery getters, each named by its own selector.)
+    function testRouteNotConfiguredReverts() public {
+        // Redeploy the beacon with the OFT periphery unset.
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.oftSrcEid = SRC_EID;
+        _deployBeacon(cfg);
+
+        bytes memory route = abi.encode(_routeParams(OFT_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        uint256 amount = 100e6;
-        uint256 fee = 1e6;
-        bytes32 nonce = keccak256("usdc-n1");
-        bytes memory submitter = _submitter(proxy, amount, nonce, fee, uint32(block.timestamp) + 3600, signerPk);
+        bytes memory submitter = _submitter(
+            proxy,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
 
         vm.prank(user);
-        usdcToken.transfer(proxy, amount);
-
+        token.transfer(proxy, 100e6);
         vm.prank(relayer);
+        vm.expectRevert(CounterfactualImplementationBase.RouteNotConfigured.selector);
         ICounterfactualDeposit(proxy).execute(address(oftImpl), route, submitter, proof);
-
-        // Routed through the USDC periphery (not the primary), pulling the USDC token.
-        assertEq(usdcPeriphery.lastAmount(), amount - fee);
-        assertEq(periphery.callCount(), 0, "primary periphery not used");
-        assertEq(usdcToken.balanceOf(relayer), fee);
-        assertEq(usdcToken.balanceOf(proxy), 0);
     }
 
     function testDepositForwardsMsgValue() public {

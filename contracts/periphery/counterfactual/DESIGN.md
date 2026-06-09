@@ -204,13 +204,13 @@ token and one leaf can serve both flavors — on a chain whose `beacon.nativeTok
 it behaves as a native route; on a chain whose `beacon.nativeToken()` returns an ERC-20 (because that
 chain has no native gas token to route through), the same leaf behaves as an ERC-20 route.
 **CCTP / Vanilla CCTP** read `beacon.usdc()` directly (USDC-only bridges). **OFT** is also selector-driven:
-its leaf carries a `peripheryGetter` naming which `SponsoredOFTSrcPeriphery` getter to use (e.g.
-`beacon.oftSrcPeriphery.selector` for USDT0, `beacon.oftUsdcPeriphery.selector` for USDC). Each OFT
-periphery is single-token (immutable `TOKEN()`), so naming the periphery selects the input token, which the
-impl reads from the resolved periphery — supporting many OFT tokens with one impl. A getter that returns
-`address(0)` on a given chain means that route isn't live there — the implementation reverts
-`RouteNotConfigured`. Adding a token (a new SpokePool token getter, or a new OFT periphery getter) is a
-beacon upgrade, but existing leaves can then name it with no impl change.
+its leaf carries a `peripheryGetter` naming which `SponsoredOFTSrcPeriphery` getter to use (today
+`beacon.oftSrcPeriphery.selector`, the USDT0 periphery). Each OFT periphery is single-token (immutable
+`TOKEN()`), so naming the periphery selects the input token, which the impl reads from the resolved
+periphery — supporting many OFT tokens with one impl. A getter that returns `address(0)` on a given chain
+means that route isn't live there — the implementation reverts `RouteNotConfigured`. Adding a token (a new
+SpokePool token getter, or a new OFT periphery getter for a real OFT token) is a beacon upgrade, but
+existing leaves can then name it with no impl change.
 
 **Why immutable, and how it changes.** `implementation` and `upgradeRoot` remain mutable storage (they are
 meant to change). The chain config does **not** use setters: each value is `immutable`, baked into the

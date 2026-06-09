@@ -54,12 +54,9 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Circle CCTP source domain id for this chain (sponsored CCTP route).
     function cctpSourceDomain() external view returns (uint32);
 
-    /// @notice Primary SponsoredOFTSrcPeriphery (USDT0 today). OFT peripheries are single-token; the OFT
-    ///         leaf picks one by this getter's selector.
+    /// @notice SponsoredOFTSrcPeriphery (USDT0 today). OFT peripheries are single-token; the OFT leaf picks
+    ///         which to use by this getter's selector, so another OFT token = another getter (beacon upgrade).
     function oftSrcPeriphery() external view returns (address);
-
-    /// @notice USDC SponsoredOFTSrcPeriphery (`address(0)` where none is deployed).
-    function oftUsdcPeriphery() external view returns (address);
 
     /// @notice LayerZero OFT source endpoint id for this chain.
     function oftSrcEid() external view returns (uint32);
