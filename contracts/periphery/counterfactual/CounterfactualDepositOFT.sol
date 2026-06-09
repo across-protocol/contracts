@@ -9,26 +9,19 @@ import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.so
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 
-/**
- * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery, plus reading its
- *         immutable `TOKEN`.
- * @custom:security-contact bugs@across.to
- */
+/// @notice Minimal interface for SponsoredOFTSrcPeriphery: `deposit` plus its immutable `TOKEN`.
 interface ISponsoredOFTSrcPeriphery {
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
 
-    /// @notice The single ERC-20 this periphery deposits — `safeTransferFrom`-pulled from `msg.sender`.
+    /// @notice The single ERC-20 this periphery deposits (pulled from `msg.sender`).
     function TOKEN() external view returns (address);
 }
 
 /**
- * @notice Route parameters committed to in the merkle leaf.
- * @dev Chain-agnostic: it names no source chain and no token address. `peripheryGetter` is the 4-byte
- *      selector of the beacon getter that resolves the SponsoredOFTSrcPeriphery to use (e.g.
- *      `beacon.oftSrcPeriphery.selector`). Each OFT periphery is single-token (immutable `TOKEN`), so
- *      naming the periphery selects the input token — the impl reads it from the resolved periphery's
- *      `TOKEN`. This lets one leaf shape support many OFT tokens: a chain that registers more periphery
- *      getters (per token) can be named by a leaf without baking the token into the merkle commitment. The
+ * @notice Route parameters committed to in the merkle leaf (chain-agnostic: no source chain, no token).
+ * @dev `peripheryGetter` is the selector of the beacon getter for the SponsoredOFTSrcPeriphery to use
+ *      (e.g. `beacon.oftSrcPeriphery.selector`). Each OFT periphery is single-token (immutable `TOKEN`), so
+ *      naming the periphery selects the input token — supporting many OFT tokens with one leaf shape. The
  *      source EID comes from `beacon.oftSrcEid()`.
  */
 struct OFTRouteParams {
@@ -66,14 +59,11 @@ struct OFTSubmitterData {
 
 /**
  * @title CounterfactualDepositOFT
- * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The source EID and fee signer
- *      are resolved from the `CounterfactualBeacon` at runtime; the periphery is resolved from the beacon
- *      getter the leaf's `peripheryGetter` selector names, and the input token from that periphery's
- *      immutable `TOKEN` (so the impl is token-agnostic and one leaf shape works with USDT0/USDC/etc.
- *      peripheries). This implementation holds no chain-specific values and has one address on every chain
- *      — a single leaf works everywhere (see `CounterfactualImplementationBase`). `msg.value` covers
- *      LayerZero native messaging fees.
+ * @notice Counterfactual deposit via SponsoredOFT (LayerZero).
+ * @dev Delegatecalled by the dispatcher. Source EID and fee signer come from the beacon; the periphery from
+ *      the beacon getter the leaf's `peripheryGetter` names, and the input token from that periphery's
+ *      immutable `TOKEN` — so the impl is token-agnostic, holds no chain-specific values, and has one
+ *      address per chain. `msg.value` covers LayerZero messaging fees.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
@@ -119,18 +109,13 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         _verifySignature(submitterData);
         if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
-        // Resolve which OFT periphery to use from the leaf's `peripheryGetter` selector, so one leaf shape
-        // can name any per-token periphery the chain's beacon exposes.
+        // Periphery chosen by the leaf's selector; input token is that periphery's immutable `TOKEN`.
         address oftSrcPeriphery = _requireConfigured(_resolveBeaconAddress(routeParams.peripheryGetter));
-        // Pull the input token from the periphery's immutable `TOKEN` so the leaf works for whichever
-        // ERC-20 the chosen periphery was deployed for (USDC, USDT0, etc.). The periphery enforces
-        // non-zero `_token` at construction, so we don't re-check here.
         address inputToken = ISponsoredOFTSrcPeriphery(oftSrcPeriphery).TOKEN();
 
-        // The fee is paid BEFORE the periphery call, and this ordering is load-bearing: the local
-        // signature binds only `(nonce, executionFee, signatureDeadline)`, so replay protection for the
-        // (route, amount) tuple comes from the periphery's nonce-uniqueness check. A replayed fee
-        // signature reverts at `deposit`, atomically rolling back this fee transfer.
+        // Fee paid before the periphery call (load-bearing): the local signature binds only
+        // (nonce, fee, deadline), so (route, amount) replay protection is the periphery's nonce check —
+        // a replayed fee reverts at `deposit` and rolls back this transfer.
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
@@ -163,13 +148,11 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
             revert InvalidSignature();
     }
 
-    /**
-     * @notice Calls deposit on the SponsoredOFTSrcPeriphery with the constructed quote.
-     * @param oftSrcPeriphery The sponsored OFT source periphery (resolved from the beacon).
-     * @param routeParams Route parameters from the merkle leaf.
-     * @param submitterData Submitter-provided execution data.
-     * @param depositAmount Amount to deposit after deducting the execution fee.
-     */
+    /// @notice Calls `deposit` on the SponsoredOFTSrcPeriphery with the constructed quote.
+    /// @param oftSrcPeriphery The OFT periphery (resolved from the leaf's selector).
+    /// @param routeParams Route parameters from the merkle leaf.
+    /// @param submitterData Submitter-provided execution data.
+    /// @param depositAmount Amount to deposit after deducting the execution fee.
     function _deposit(
         address oftSrcPeriphery,
         OFTRouteParams memory routeParams,

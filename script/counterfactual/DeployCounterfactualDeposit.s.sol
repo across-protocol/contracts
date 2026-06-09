@@ -8,14 +8,12 @@ import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counter
 import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 
-// Deploys the dispatcher (CounterfactualDeposit) bound to the chain-invariant beacon proxy. Because the
-// beacon proxy address is identical on every chain, the dispatcher init code (and thus its CREATE2 address)
-// is identical on every chain.
+// Deploys the dispatcher (CounterfactualDeposit) bound to the chain-invariant beacon proxy. Since the proxy
+// address is identical on every chain, so is the dispatcher's CREATE2 address.
 //
-// NOTE: the dispatcher needs the beacon proxy address. The zero-arg `run()` recomputes it the same way
-// DeployCounterfactualBeacon does (CREATE2 of the ERC1967Proxy over the bootstrap, owned by the deployer);
-// `run(address beacon)` lets a caller pass it explicitly. The beacon must already be deployed for the
-// dispatcher to be usable (CounterfactualDeposit reads BEACON.upgradeRoot()).
+// The dispatcher needs the beacon proxy address: zero-arg `run()` recomputes it like DeployCounterfactualBeacon
+// (CREATE2 of the ERC1967Proxy over the bootstrap, owned by the deployer); `run(address beacon)` takes it
+// explicitly. The beacon must already be deployed for the dispatcher to work (it reads BEACON.upgradeRoot()).
 //
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
@@ -23,8 +21,7 @@ import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
 contract DeployCounterfactualDeposit is CounterfactualConfig {
-    /// @notice Zero-arg entry point: recomputes the chain-invariant beacon proxy address and deploys the
-    ///         dispatcher bound to it.
+    /// @notice Zero-arg entry point: recomputes the beacon proxy address and deploys the dispatcher bound to it.
     function run() external {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);

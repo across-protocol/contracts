@@ -15,16 +15,14 @@ import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/
 // Deploys the full counterfactual beacon stack so the beacon **proxy** lands at the SAME address on every
 // chain (every counterfactual proxy and the factory embed it):
 //   1. CounterfactualBeaconBootstrap via CREATE2 (no constructor args => same address everywhere).
-//   2. ERC1967Proxy via CREATE2 pointing at the bootstrap, init calldata = bootstrap.initialize(deployer).
-//      The deployer (chain-invariant, derived from MNEMONIC) is the bootstrap owner, so the proxy init code
-//      — and therefore the proxy address — is identical across chains. (Do NOT put the per-chain multisig
-//      in the proxy init calldata; that would make the proxy address differ per chain.)
-//   3. The chain-specific CounterfactualBeacon implementation via `new CounterfactualBeacon(config)` (its
-//      address differs per chain; that is fine — it lives behind the address-stable proxy).
-//   4. As the deployer (current owner), `upgradeToAndCall(beaconImpl, "")` to retarget the proxy to the
-//      real beacon implementation.
-//   5. The dispatcher `new CounterfactualDeposit(ICounterfactualBeacon(proxy))` via CREATE2 (proxy address
-//      is chain-invariant => dispatcher is same address everywhere).
+//   2. ERC1967Proxy via CREATE2 over the bootstrap, init calldata = bootstrap.initialize(deployer). The
+//      deployer (chain-invariant, from MNEMONIC) is the bootstrap owner => identical init code => identical
+//      proxy address. (Do NOT put the per-chain multisig in the init calldata — that breaks address parity.)
+//   3. The chain-specific CounterfactualBeacon impl via `new CounterfactualBeacon(config)` (per-chain address;
+//      fine — it lives behind the address-stable proxy).
+//   4. As deployer/current owner, `upgradeToAndCall(beaconImpl, "")` to retarget the proxy to the real impl.
+//   5. The dispatcher `new CounterfactualDeposit(ICounterfactualBeacon(proxy))` via CREATE2 (proxy is
+//      chain-invariant => dispatcher is same address everywhere).
 //   6. `setImplementation(dispatcher)` on the proxy so every counterfactual proxy resolves the dispatcher.
 //   7. Optionally `transferOwnership(ownerAndDirectWithdrawer)` (Ownable2Step; new owner accepts out of band).
 //
@@ -33,10 +31,9 @@ import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script script/counterfactual/DeployCounterfactualBeacon.s.sol:DeployCounterfactualBeacon \
 //      --rpc-url $NODE_URL -vvvv
-// 4. Deploy: append --broadcast --verify to the command above
-//    To also hand the beacon over to the multisig: --sig "run(bool)" true
+// 4. Deploy: append --broadcast --verify (add --sig "run(bool)" true to also hand the beacon to the multisig)
 contract DeployCounterfactualBeacon is CounterfactualConfig {
-    /// @notice Zero-arg entry point: deploys the beacon stack and keeps the deployer as owner.
+    /// @notice Zero-arg entry point: deploys the beacon stack, keeping the deployer as owner.
     function run() external {
         _run(false);
     }
@@ -70,7 +67,7 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         address bootstrap = _deployCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
         console.log("Bootstrap:          ", bootstrap);
 
-        // 2. Beacon proxy over the bootstrap (chain-identical init code => chain-identical address).
+        // 2. Beacon proxy over the bootstrap (chain-identical init code => same address).
         address deployedProxy = _deployCreate2(bytes32(0), proxyInitCode);
         require(deployedProxy == proxy, "proxy address mismatch");
         console.log("Beacon proxy:       ", deployedProxy);
@@ -79,12 +76,12 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         address beaconImpl = address(new CounterfactualBeacon(chainConfig));
         console.log("Beacon impl:        ", beaconImpl);
 
-        // 4. Upgrade the proxy from the bootstrap to the real beacon implementation. The bootstrap already
-        //    consumed the initializer slot, so we pass empty calldata (no re-init); the chain config comes
-        //    from the implementation's immutables, and implementation/upgradeRoot are set via owner setters.
+        // 4. Upgrade the proxy from the bootstrap to the real beacon impl. The bootstrap already consumed the
+        //    initializer slot, so pass empty calldata (no re-init); chain config comes from the impl's
+        //    immutables, and implementation/upgradeRoot are set via owner setters.
         CounterfactualBeaconBootstrap(payable(deployedProxy)).upgradeToAndCall(beaconImpl, "");
 
-        // 5. Dispatcher (CounterfactualDeposit), bound to the chain-invariant proxy => same address everywhere.
+        // 5. Dispatcher (CounterfactualDeposit), bound to the chain-invariant proxy => same address.
         address deployedDispatcher = _deployCreate2(bytes32(0), _dispatcherInitCode(deployedProxy));
         require(deployedDispatcher == dispatcher, "dispatcher address mismatch");
         console.log("Dispatcher:         ", deployedDispatcher);
@@ -110,14 +107,14 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         console.log("============================================");
     }
 
-    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (the bootstrap owner).
-    /// @dev Used by other scripts that must know the proxy address before/without deploying it.
+    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
+    /// @dev For scripts that need the proxy address before/without deploying it.
     function _predictBeaconProxy(address deployer) internal pure returns (address) {
         return _predictCreate2(bytes32(0), _beaconProxyInitCode(deployer));
     }
 
     /// @dev CREATE2 init code for the beacon proxy: an ERC1967Proxy over the bootstrap, initialized with the
-    ///      deployer as owner. Chain-invariant because the bootstrap address and `deployer` are chain-invariant.
+    ///      deployer as owner. Chain-invariant because both the bootstrap address and `deployer` are.
     function _beaconProxyInitCode(address deployer) internal pure returns (bytes memory) {
         address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
         return

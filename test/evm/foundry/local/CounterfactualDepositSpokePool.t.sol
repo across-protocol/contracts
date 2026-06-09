@@ -17,7 +17,7 @@ import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounte
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/// @notice Mock SpokePool recording deposit args. Pulls ERC20 via transferFrom, or requires matching msg.value.
+/// @notice Mock SpokePool: records deposit args; pulls ERC20 via transferFrom, else requires matching msg.value.
 contract MockSpokePool {
     using SafeERC20 for IERC20;
 
@@ -61,27 +61,26 @@ contract MockSpokePool {
 }
 
 /**
- * @notice Tests the input-token-agnostic SpokePool counterfactual implementation. The leaf carries the
- *         beacon getter selector for its input token (`inputTokenGetter`); native vs ERC-20 is decided by
- *         the value the getter resolves to (`NATIVE_SENTINEL` ⇒ native deposit wrapped via
- *         `beacon.wrappedNativeToken()`; any other address ⇒ ERC-20). The SpokePool and fee signer come
- *         from the beacon. One implementation handles every token, so there is a single EIP-712 domain
- *         name and the token selector — committed in `routeParamsHash` — keeps a fee signature bound to
- *         one token.
+ * @notice Tests the token-agnostic SpokePool counterfactual implementation. The leaf carries the beacon
+ *         getter selector for its input token (`inputTokenGetter`); native vs ERC-20 is decided by the
+ *         resolved value (`NATIVE_SENTINEL` ⇒ native, wrapped via `beacon.wrappedNativeToken()`; else
+ *         ERC-20). SpokePool and fee signer come from the beacon. One implementation handles every token,
+ *         so the single EIP-712 domain plus the token selector in `routeParamsHash` binds a fee signature
+ *         to one token.
  */
 contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
     CounterfactualDepositSpokePool internal spokeImpl;
     MockSpokePool internal spokePool;
     MintableERC20 internal token; // resolved via beacon.usdc()
-    MintableERC20 internal altToken; // resolved via beacon.usdt() — proves token-agnosticism
+    MintableERC20 internal altToken; // resolved via beacon.usdt()
     address internal weth;
     address internal recipient;
 
     bytes4 constant USDC_GETTER = ICounterfactualBeacon.usdc.selector;
     bytes4 constant USDT_GETTER = ICounterfactualBeacon.usdt.selector;
     bytes4 constant NATIVE_GETTER = ICounterfactualBeacon.nativeToken.selector;
-    /// @dev Mirrors `CounterfactualDepositSpokePool.NATIVE_SENTINEL` — Solidity won't let us dot-access
-    ///      a contract's public constant in a struct-field assignment, so we redeclare the value here.
+    /// @dev Mirrors `CounterfactualDepositSpokePool.NATIVE_SENTINEL`; redeclared because Solidity can't
+    ///      dot-access a contract's public constant in a struct-field assignment.
     address constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     string constant NAME = "CounterfactualDepositSpokePool";
@@ -275,16 +274,15 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         assertEq(relayer.balance, e.executionFee);
     }
 
-    /// @dev On a chain whose `beacon.nativeToken()` returns an ERC-20 (not the native sentinel), the
-    ///      SAME leaf — naming `nativeToken.selector` as its `inputTokenGetter` — must take the ERC-20
-    ///      path (transferFrom, no msg.value), proving the leaf's behavior is decided by the resolved
-    ///      value rather than the selector.
+    /// @dev When `beacon.nativeToken()` resolves to an ERC-20 (not the sentinel), the same leaf naming
+    ///      `nativeToken.selector` must take the ERC-20 path (transferFrom, no msg.value) — behavior is
+    ///      decided by the resolved value, not the selector.
     function testNativeGetterResolvingToErc20UsesErc20Path() public {
-        // Redeploy the beacon with `nativeToken` set to an ERC-20 instead of the sentinel.
+        // Redeploy with `nativeToken` set to an ERC-20 instead of the sentinel.
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.spokePool = address(spokePool);
         cfg.wrappedNativeToken = weth;
-        cfg.nativeToken = address(token); // ERC-20 stand-in for "native" on this chain
+        cfg.nativeToken = address(token); // ERC-20 stand-in for "native"
         cfg.usdc = address(token);
         cfg.usdt = address(altToken);
         _deployBeacon(cfg);
@@ -311,7 +309,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         (bool ok, ) = proxy.call(exec);
         assertTrue(ok);
 
-        // ERC-20 path: SpokePool received the ERC-20 (not WETH), no msg.value forwarded, fee in ERC-20.
+        // ERC-20 path: SpokePool got the ERC-20 (not WETH), no msg.value, fee in ERC-20.
         assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(address(token)))));
         assertEq(spokePool.lastMsgValue(), 0);
         assertEq(token.balanceOf(relayer), e.executionFee);
@@ -368,7 +366,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         bytes memory route = abi.encode(_routeParams(USDC_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         Exec memory e = _defaultExec();
-        e.outputAmount = 92e6; // relayerFee = 99e6 - 92e6 = 7e6; +1e6 fee = 8e6 > maxFee 6e6
+        e.outputAmount = 92e6; // relayerFee 7e6 + 1e6 execFee = 8e6 > maxFee 6e6
         bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
@@ -378,14 +376,14 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
     }
 
     function testCheckStableExchangeRateDisabledSkipsRelayerFee() public {
-        // Low output that WOULD blow the max-fee under the rate check; with the flag off it passes.
+        // Low output that would blow the max-fee under the rate check, but the flag is off.
         SpokePoolRouteParams memory rp = _routeParams(USDC_GETTER);
         rp.checkStableExchangeRate = false;
         bytes memory route = abi.encode(rp);
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
 
         Exec memory e = _defaultExec();
-        e.outputAmount = 50e6; // would imply a 49e6 relayer fee under the rate check
+        e.outputAmount = 50e6; // implies a 49e6 relayer fee under the rate check
         bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
@@ -403,7 +401,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
 
         Exec memory e = _defaultExec();
-        e.executionFee = 7e6; // > maxFee (1e6 + 5% of 100e6 = 6e6), even with relayerFee dropped
+        e.executionFee = 7e6; // > maxFee 6e6 even with relayerFee dropped
         bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
@@ -445,7 +443,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         (address proxyA, bytes32[] memory proofA) = _deploy(route, keccak256("a"));
         (address proxyB, bytes32[] memory proofB) = _deploy(route, keccak256("b"));
         Exec memory e = _defaultExec();
-        bytes memory submitter = _signAndEncode(proxyA, route, e, signerPk); // signed for A
+        bytes memory submitter = _signAndEncode(proxyA, route, e, signerPk); // signed for proxyA
 
         vm.prank(user);
         token.transfer(proxyA, e.inputAmount);
@@ -460,13 +458,13 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxyB).execute(address(spokeImpl), route, submitter, proofB);
     }
 
-    /// @dev A signature for the USDC route does not validate for a USDT route on the same proxy: the input
-    ///      token getter is part of `routeParamsHash`, so the two routes have different signed digests.
+    /// @dev A USDC-route signature doesn't validate a USDT route on the same proxy: the input token getter
+    ///      is part of `routeParamsHash`, so the routes have different signed digests.
     function testCrossTokenSignatureReverts() public {
         bytes memory usdcRoute = abi.encode(_routeParams(USDC_GETTER));
         bytes memory usdtRoute = abi.encode(_routeParams(USDT_GETTER));
 
-        // Tree contains both routes for the same proxy.
+        // Both routes in one tree for the same proxy.
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _leaf(address(spokeImpl), usdcRoute);
         leaves[1] = _leaf(address(spokeImpl), usdtRoute);
@@ -477,7 +475,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         address proxy = factory.deploy(bytes32(0), root);
 
         Exec memory e = _defaultExec();
-        // Sign for the USDC route, attempt to execute the USDT route.
+        // Sign for USDC, execute USDT.
         bytes memory submitter = _signAndEncode(proxy, usdcRoute, e, signerPk);
 
         vm.prank(user);
@@ -487,9 +485,9 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(spokeImpl), usdtRoute, submitter, usdtProof);
     }
 
-    /// @dev Executing a route whose input-token getter is unset on this chain's beacon reverts cleanly.
+    /// @dev A route whose input-token getter is unset on the beacon reverts cleanly.
     function testRouteNotConfiguredReverts() public {
-        // Redeploy the beacon with USDC unset (spokePool still set).
+        // Redeploy with USDC unset (spokePool still set).
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.spokePool = address(spokePool);
         cfg.wrappedNativeToken = weth;

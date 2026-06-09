@@ -150,7 +150,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     function testMaxExecutionFeeReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        // 6e6 > maxExecutionFee 5e6
+        // 6e6 > maxExecutionFee 5e6.
         bytes memory submitter = _submitter(
             proxy,
             100e6,
@@ -219,7 +219,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     }
 
     function testRouteNotConfiguredReverts() public {
-        // Redeploy the beacon/factory with USDC unset so the route is not live on this chain.
+        // Redeploy with USDC unset so the route is not live on this chain.
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.cctpSrcPeriphery = address(periphery);
         cfg.cctpSourceDomain = SRC_DOMAIN;
@@ -228,7 +228,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
 
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        // Signature still passes (signer is configured); the revert comes from the unset USDC address.
+        // Signature passes (signer is set); the revert comes from the unset USDC address.
         bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 0, uint32(block.timestamp) + 3600, signerPk);
 
         vm.prank(relayer);

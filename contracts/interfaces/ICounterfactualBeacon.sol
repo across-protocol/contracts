@@ -5,21 +5,14 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 
 /**
  * @title ICounterfactualBeacon
- * @notice Global, per-chain registry that governs how upgradeable counterfactual proxies behave. It is
- *         the **beacon** for every counterfactual `BeaconProxy`: `implementation()` (from `IBeacon`)
- *         returns the single canonical implementation all proxies run, so changing it upgrades every
- *         proxy at once (no per-proxy action). It also holds the `(proxy, latestRoot)` upgrade tree
- *         `root` that authorizes per-proxy root updates. Root updates are best-effort — there is no
- *         on-chain version/freshness gate.
- * @dev `implementation()` here is the **counterfactual** implementation (the beacon target) — distinct
- *      from the registry's own (UUPS) implementation.
- *
- *      Beyond the beacon role, this registry is the single source of every **chain-specific value** the
- *      leaf implementations need (bridge endpoints, domains/EIDs, the fee `signer`, and token addresses).
- *      These are exposed as `public immutable` getters so leaf implementations stay byte-identical across
- *      chains — a leaf names no chain-specific address itself. Because they are `immutable`, changing any
- *      of them (or adding a token) means deploying a new registry implementation and UUPS-upgrading to it;
- *      the proxy address — embedded in every `BeaconProxy` — never changes.
+ * @notice Global, per-chain registry and **beacon** for every counterfactual `BeaconProxy`:
+ *         `implementation()` is the single implementation all proxies run; `upgradeRoot()` is the
+ *         `(proxy, latestRoot)` tree authorizing best-effort per-proxy root updates. It is also the single
+ *         source of every chain-specific value the leaves need (bridge endpoints, domains/EIDs, fee
+ *         `signer`, token addresses), exposed as `public immutable` getters so leaves stay byte-identical
+ *         across chains. Changing any value (or adding a token) is a UUPS upgrade; the proxy address never
+ *         changes.
+ * @dev `implementation()` is the **counterfactual** implementation (beacon target), not the registry's own.
  * @custom:security-contact bugs@across.to
  */
 interface ICounterfactualBeacon is IBeacon {
@@ -46,12 +39,10 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Wrapped native token (e.g. WETH) used as the SpokePool input token for native deposits.
     function wrappedNativeToken() external view returns (address);
 
-    /// @notice Resolved value of the "native or equivalent" SpokePool input-token route. Returns the
-    ///         well-known native sentinel (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) on chains where
-    ///         the deposit comes in as `msg.value` (and is wrapped to `wrappedNativeToken()` as the
-    ///         SpokePool input), or an ERC-20 address on chains where the canonical gas-token route is
-    ///         actually an ERC-20. The SpokePool leaf names this via `inputTokenGetter` and branches on
-    ///         whether the returned value equals the sentinel — so one leaf serves both flavors.
+    /// @notice Input token for the "native" SpokePool route: the native sentinel
+    ///         (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) where the deposit is `msg.value` (wrapped to
+    ///         `wrappedNativeToken()`), or an ERC-20 on chains with no native gas token. The SpokePool leaf
+    ///         names this via `inputTokenGetter` and branches on the sentinel, so one leaf serves both.
     function nativeToken() external view returns (address);
 
     /// @notice SponsoredCCTPSrcPeriphery on this chain (sponsored CCTP route).
@@ -63,12 +54,11 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Circle CCTP source domain id for this chain (sponsored CCTP route).
     function cctpSourceDomain() external view returns (uint32);
 
-    /// @notice Primary SponsoredOFTSrcPeriphery on this chain (USDT0 today). OFT peripheries are
-    ///         single-token; the OFT leaf names which to use by this getter's selector.
+    /// @notice Primary SponsoredOFTSrcPeriphery (USDT0 today). OFT peripheries are single-token; the OFT
+    ///         leaf picks one by this getter's selector.
     function oftSrcPeriphery() external view returns (address);
 
-    /// @notice USDC SponsoredOFTSrcPeriphery on this chain (an additional OFT token route; `address(0)`
-    ///         where no USDC OFT periphery is deployed). Named by the OFT leaf's `peripheryGetter` selector.
+    /// @notice USDC SponsoredOFTSrcPeriphery (`address(0)` where none is deployed).
     function oftUsdcPeriphery() external view returns (address);
 
     /// @notice LayerZero OFT source endpoint id for this chain.

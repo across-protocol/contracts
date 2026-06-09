@@ -23,18 +23,17 @@ import { CounterfactualDepositVanillaCCTP } from "../../contracts/periphery/coun
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // Deploys counterfactual contracts via CREATE2 using the deterministic deployment proxy
-// (0x4e59b44847b379578588920cA78FbF26c0B4956C). Each individual deploy script is invoked via ffi
-// so broadcast artifacts are recorded in each script's own folder.
+// (0x4e59b44847b379578588920cA78FbF26c0B4956C). Each deploy script is invoked via ffi so broadcast artifacts
+// land in each script's own folder.
 //
-// CREATE2 addresses are determined by (factory, salt, initCode). With the refactored architecture all
-// chain-specific values (bridge endpoints, fee signer, token addresses) live on the per-chain
-// CounterfactualBeacon implementation, so the dispatcher and every leaf implementation are byte-identical
-// across chains and therefore land at the SAME CREATE2 address on every chain.
+// CREATE2 addresses depend on (factory, salt, initCode). All chain-specific values (bridge endpoints, fee
+// signer, token addresses) live on the per-chain CounterfactualBeacon impl, so the dispatcher and every leaf
+// impl are byte-identical across chains and land at the SAME CREATE2 address everywhere.
 //
 // SAME address across all chains:
-//   - CounterfactualBeacon PROXY (an ERC1967Proxy over the chain-identical bootstrap, owned by the
-//     chain-invariant deployer => identical init code => identical address; it is the anchor every
-//     counterfactual proxy and the factory embed)
+//   - CounterfactualBeacon PROXY (ERC1967Proxy over the chain-identical bootstrap, owned by the
+//     chain-invariant deployer => identical init code => identical address; the anchor every counterfactual
+//     proxy and the factory embed)
 //   - CounterfactualBeaconBootstrap (no constructor args)
 //   - CounterfactualDeposit / dispatcher (constructor takes the chain-invariant beacon proxy)
 //   - CounterfactualDepositFactory (no constructor args)
@@ -44,8 +43,8 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - AdminWithdrawManager (same constructor args on all chains)
 //
 // CHAIN-SPECIFIC address (intentionally):
-//   - CounterfactualBeacon IMPLEMENTATION (bakes the chain's ChainConfig in as immutables). It sits behind
-//     the address-stable proxy, so the proxy — which everything embeds — stays identical everywhere.
+//   - CounterfactualBeacon IMPLEMENTATION (bakes the chain's ChainConfig as immutables). It sits behind the
+//     address-stable proxy, so the proxy everything embeds stays identical everywhere.
 //
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
@@ -55,24 +54,21 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
-//   - Chain-specific params (spokePool, wrappedNativeToken, nativeToken, cctp/oft periphery +
-//     domain/eid, USDC/USDT, cctpTokenMessenger): auto-resolved from constants.json and
-//     deployed-addresses.json and baked into the CounterfactualBeacon implementation by
-//     DeployCounterfactualBeacon. `nativeToken` defaults to the well-known native sentinel; chains whose
-//     canonical "gas-token route" should resolve to an ERC-20 can override at `.NATIVE_TOKEN.<chainId>`.
+//   - Chain-specific params (spokePool, wrappedNativeToken, nativeToken, cctp/oft periphery + domain/eid,
+//     USDC/USDT, cctpTokenMessenger): auto-resolved from constants.json + deployed-addresses.json and baked
+//     into the beacon impl by DeployCounterfactualBeacon. `nativeToken` defaults to the native sentinel;
+//     override at `.NATIVE_TOKEN.<chainId>` for chains whose gas-token route is an ERC-20.
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from config.toml.
-//     Role transfers (owner/directWithdrawer) are done directly by this script after all ffi deployments
-//     complete, with a safety check that directWithdrawer transferred successfully before ownership.
+//     This script transfers those roles after all ffi deployments, verifying directWithdrawer transferred
+//     before ownership.
 //
 // Always deployed:
 //   - Beacon stack (bootstrap + proxy + chain-specific impl + dispatcher) via DeployCounterfactualBeacon
 //   - CounterfactualDepositFactory, WithdrawImplementation, CounterfactualDepositVanillaCCTP,
 //     AdminWithdrawManager
 //
-// Optionally deployed (controlled by bool arguments):
-//   - CounterfactualDepositSpokePool (deploySpokePool)
-//   - CounterfactualDepositCCTP (deployCctp)
-//   - CounterfactualDepositOFT (deployOft)
+// Optionally deployed (bool args): CounterfactualDepositSpokePool (deploySpokePool),
+// CounterfactualDepositCCTP (deployCctp), CounterfactualDepositOFT (deployOft).
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
@@ -106,10 +102,9 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     ) external {
         address signer = _loadSigner();
 
-        // CCTP / OFT support gating (the leaf impls are chain-identical, but we still only deploy them on
-        // chains where the route is configured, matching the per-script guards). We also require the
-        // upstream periphery to be deployed so the beacon does not bake `address(0)`, which would silently
-        // brick every leaf execution with `RouteNotConfigured` after the impl is deployed.
+        // CCTP / OFT gating: leaf impls are chain-identical, but only deploy where the route is configured
+        // (matching the per-script guards). Also require the upstream periphery so the beacon doesn't bake
+        // `address(0)`, which would silently brick every leaf with `RouteNotConfigured`.
         if (deployCctp) {
             require(hasCctpDomain(block.chainid), "CCTP not supported on this chain");
             require(_resolveCctpPeriphery() != address(0), "CCTP periphery not deployed on this chain");
@@ -122,8 +117,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        // Predict the chain-invariant beacon proxy + dispatcher addresses (same way DeployCounterfactualBeacon
-        // does) so we can log and idempotency-check them.
+        // Predict the chain-invariant beacon proxy + dispatcher addresses (like DeployCounterfactualBeacon)
+        // for logging and idempotency checks.
         address predictedProxy = _predictBeaconProxy(deployer);
         address predictedDispatcher = _predictCreate2(
             bytes32(0),
@@ -168,8 +163,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         address predictedSpokePool;
         if (deploySpokePool) {
-            // On Tron, the sub-script deploys `CounterfactualDepositSpokePoolTr` (different bytecode ⇒
-            // different CREATE2 address) so the override for Tron USDT's non-standard `transfer` runs.
+            // On Tron the sub-script deploys `CounterfactualDepositSpokePoolTr` (different bytecode ⇒
+            // different CREATE2 address) for Tron USDT's non-standard `transfer`.
             bool isTron = block.chainid == 728126428;
             bytes memory spokePoolCode = isTron
                 ? type(CounterfactualDepositSpokePoolTr).creationCode
@@ -198,26 +193,23 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
 
         // --- Beacon stack (bootstrap + proxy + chain-specific impl + upgrade + dispatcher + setImplementation) ---
-        // NOTE: This single sub-script is the one ordering-dependent step — it must run before the dispatcher
-        // is usable. The dispatcher (CounterfactualDeposit) is deployed by DeployCounterfactualBeacon, not by
-        // a standalone script here, because it must be bound to the freshly-deployed beacon proxy.
+        // The one ordering-dependent step: must run before the dispatcher is usable. The dispatcher is
+        // deployed here by DeployCounterfactualBeacon (not standalone) so it binds to the fresh beacon proxy.
         //
-        // Code at both addresses is necessary but not sufficient: a previous broadcast may have stopped
-        // between deploying the proxy/dispatcher and calling `setImplementation(dispatcher)`, leaving the
-        // proxy on the bootstrap (no `implementation()` selector ⇒ staticcall reverts) or pointing at a
-        // stale target. Skip only when the proxy actually resolves the dispatcher.
+        // Code at both addresses is necessary but not sufficient: a prior broadcast may have stopped between
+        // deploying the proxy/dispatcher and `setImplementation(dispatcher)`, leaving the proxy on the
+        // bootstrap (no `implementation()` selector ⇒ staticcall reverts) or stale. Skip only when the proxy
+        // actually resolves the dispatcher.
         if (
             predictedDispatcher.code.length > 0 &&
             predictedProxy.code.length > 0 &&
             _beaconWiredTo(predictedProxy, predictedDispatcher)
         ) {
             console.log("Beacon stack (proxy + dispatcher): ALREADY DEPLOYED");
-            // The proxy resolves the dispatcher, but the chain config is baked into the beacon
-            // implementation's immutables. If constants.json/deployed-addresses.json changed since the
-            // beacon was last deployed (e.g. a missing usdt/cctpTokenMessenger/periphery filled in),
-            // those stale immutables remain — only fixable via a UUPS upgrade of the registry. Surface
-            // the mismatch loudly so the operator doesn't conclude everything is fine when a route is
-            // silently bricked.
+            // The proxy resolves the dispatcher, but chain config lives in the beacon impl's immutables. If
+            // constants.json/deployed-addresses.json changed since the beacon was deployed (e.g. a missing
+            // usdt/cctpTokenMessenger/periphery filled in), those immutables are stale — only fixable via a
+            // registry UUPS upgrade. Surface the mismatch loudly so a silently-bricked route isn't missed.
             _warnIfBeaconConfigStale(predictedProxy);
         } else {
             console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
@@ -231,7 +223,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         }
 
-        // --- CounterfactualDepositFactory (factory that deploys deterministic clones via CREATE2) ---
+        // --- CounterfactualDepositFactory (deploys deterministic clones via CREATE2) ---
         if (predictedFactory.code.length > 0) {
             console.log("CounterfactualDepositFactory: ALREADY DEPLOYED");
         } else {
@@ -349,10 +341,9 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
             console.log("--------------------------------------------");
 
-            // The beacon admin can retarget every counterfactual proxy and UUPS-upgrade the registry — it
-            // must end up on the per-chain multisig, not the deployer EOA. Ownable2Step: the new owner
-            // accepts out of band. Done in its own broadcast scope so the AdminWithdrawManager block below
-            // (which has its own failure handling) stays unchanged.
+            // The beacon admin can retarget every counterfactual proxy and UUPS-upgrade the registry, so it
+            // must end up on the per-chain multisig, not the deployer EOA (Ownable2Step: new owner accepts
+            // out of band). Own broadcast scope, separate from the AdminWithdrawManager block below.
             CounterfactualBeacon beacon = CounterfactualBeacon(predictedProxy);
             if (beacon.owner() != ownerAndDirectWithdrawer && beacon.pendingOwner() != ownerAndDirectWithdrawer) {
                 console.log("Transferring beacon ownership to:", ownerAndDirectWithdrawer);
@@ -396,8 +387,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     }
 
     /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
-    /// @dev Mirrors DeployCounterfactualBeacon: an ERC1967Proxy over the chain-identical bootstrap, with the
-    ///      deployer as the bootstrap owner (chain-invariant => identical init code => identical address).
+    /// @dev Mirrors DeployCounterfactualBeacon: ERC1967Proxy over the chain-identical bootstrap with the
+    ///      deployer as owner (chain-invariant => identical init code => identical address).
     function _predictBeaconProxy(address deployer) internal pure returns (address) {
         address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
         bytes memory proxyInitCode = abi.encodePacked(
@@ -408,19 +399,17 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     }
 
     /// @dev True when the beacon proxy's `implementation()` already resolves to the expected dispatcher.
-    ///      Falls back to false when the staticcall reverts — either the proxy is still pointing at the
-    ///      bootstrap (no `implementation()` selector) or it returned malformed data — both of which mean
-    ///      `setImplementation` has not yet been called and the beacon sub-script still needs to run.
+    ///      False when the staticcall reverts/returns malformed data (proxy still on the bootstrap, no
+    ///      `implementation()` selector) — meaning `setImplementation` hasn't run and the beacon sub-script must.
     function _beaconWiredTo(address proxy, address expectedImpl) internal view returns (bool) {
         (bool ok, bytes memory ret) = proxy.staticcall(abi.encodeCall(CounterfactualBeacon.implementation, ()));
         if (!ok || ret.length != 32) return false;
         return abi.decode(ret, (address)) == expectedImpl;
     }
 
-    /// @dev Compare the chain config baked into the live beacon implementation against the values the
-    ///      current resolvers (constants.json + deployed-addresses.json + config.toml) produce. Each
-    ///      mismatch is logged individually so the operator knows exactly which immutable is stale; a
-    ///      summary line points to the UUPS-upgrade remediation. Read-only — no broadcasts.
+    /// @dev Compares the chain config baked into the live beacon impl against the current resolvers
+    ///      (constants.json + deployed-addresses.json + config.toml). Each mismatch is logged individually,
+    ///      with a summary pointing to the UUPS-upgrade remediation. Read-only — no broadcasts.
     function _warnIfBeaconConfigStale(address proxy) internal {
         CounterfactualChainConfig memory expected = _buildChainConfig();
         CounterfactualBeacon beacon = CounterfactualBeacon(proxy);
@@ -481,8 +470,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string memory sigArgs,
         string memory profile
     ) internal {
-        // Append `|| true` so that non-fatal failures (e.g. etherscan verification
-        // timing out) don't cause ffi to revert and halt subsequent deployments.
+        // Append `|| true` so non-fatal failures (e.g. etherscan verification timeout) don't make ffi revert
+        // and halt subsequent deployments.
         string memory cmd = string.concat(
             "FOUNDRY_PROFILE=",
             profile,

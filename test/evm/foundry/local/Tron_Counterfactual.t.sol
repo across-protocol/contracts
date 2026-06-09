@@ -16,8 +16,8 @@ import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MockTronUSDT } from "../../../../contracts/test/MockTronUSDT.sol";
 
-/// @notice Minimal SpokePool stand-in: pulls tokens via `transferFrom` (which returns true correctly
-///         on Tron USDT) so `execute()` reaches the fee-payment branch we want to exercise.
+/// @notice Minimal SpokePool stand-in: pulls tokens via `transferFrom` so `execute()` reaches the
+///         fee-payment branch under test.
 contract MockSpokePool {
     function deposit(
         bytes32,
@@ -43,10 +43,10 @@ contract MockSpokePool {
 }
 
 /**
- * @notice Exercises the Tron leaf-implementation variants (`CounterfactualDepositSpokePoolTr`,
- *         `WithdrawImplementationTron`) on the beacon model. The proxy + dispatcher
- *         (`CounterfactualDeposit`) are chain-agnostic; only the delegatecalled leaf impls override
- *         transfer semantics (balance-delta check) to tolerate Tron USDT's non-standard `transfer`.
+ * @notice Exercises the Tron leaf-impl variants (`CounterfactualDepositSpokePoolTr`,
+ *         `WithdrawImplementationTron`). The proxy and dispatcher (`CounterfactualDeposit`) are
+ *         chain-agnostic; only the leaf impls override transfer semantics (balance-delta check) to
+ *         tolerate Tron USDT's non-standard `transfer`.
  */
 contract Tron_CounterfactualTest is CounterfactualTestBase {
     CounterfactualDepositSpokePoolTr internal spokeImpl;
@@ -55,7 +55,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
     MockTronUSDT internal usdt;
     address internal recipient;
 
-    // EIP-712 domain name is inherited from the mainline `CounterfactualDepositSpokePool`.
+    // EIP-712 domain name inherited from the mainline `CounterfactualDepositSpokePool`.
     string constant NAME = "CounterfactualDepositSpokePool";
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
@@ -200,7 +200,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
             withdrawProof
         );
 
-        assertEq(usdt.balanceOf(user), 1000e6); // 1000 - 100 deposited + 100 withdrawn
+        assertEq(usdt.balanceOf(user), 1000e6); // 1000 - 100 + 100
         assertEq(usdt.balanceOf(proxy), 0);
     }
 

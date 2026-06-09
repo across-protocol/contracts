@@ -35,7 +35,7 @@ contract RevertingImplementation is ICounterfactualImplementation {
     }
 }
 
-/// @notice A V2 counterfactual implementation: identical storage/layout, plus a `version()` marker.
+/// @notice V2 implementation: same storage layout, plus a `version()` marker.
 contract CounterfactualDepositV2 is CounterfactualDeposit {
     constructor(ICounterfactualBeacon beacon_) CounterfactualDeposit(beacon_) {}
 
@@ -44,7 +44,7 @@ contract CounterfactualDepositV2 is CounterfactualDeposit {
     }
 }
 
-/// @dev Lets us call `version()` on a proxy without the impl declaring it on the proxy type.
+/// @dev Lets us call `version()` on a proxy via the impl.
 interface IVersioned {
     function version() external view returns (uint256);
 }
@@ -101,7 +101,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
     }
 
     function testSetImplementationRejectsNonConformingContract() public {
-        // A contract with no `BEACON()` getter — the try/catch leaves it unbound and it is rejected.
+        // No `BEACON()` getter: the try/catch leaves it unbound, so it is rejected.
         vm.prank(owner);
         vm.expectRevert(CounterfactualBeacon.WrongBeacon.selector);
         beacon.setImplementation(address(mockImpl));
@@ -119,7 +119,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
     }
 
     function testInitializeAllowsZeroImplementation() public {
-        // Lazy init (address(0)) is permitted; base `setUp` already relies on this.
+        // Lazy init (address(0)) is permitted; base `setUp` relies on this.
         address logic = address(new CounterfactualBeacon(_baseConfig()));
         CounterfactualBeacon b = CounterfactualBeacon(
             address(
@@ -208,14 +208,14 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         leaves[2] = _leaf(address(revertImpl), p3);
         leaves[3] = keccak256("padding");
         bytes32 root = merkle.getRoot(leaves);
-        // Precompute proofs before the cheatcodes: `merkle.getProof` is an external call and would
-        // otherwise consume the `vm.expectEmit`/`vm.expectRevert` meant for `execute`.
+        // Precompute proofs before the cheatcodes: the external `merkle.getProof` calls would otherwise
+        // consume the `vm.expectEmit`/`vm.expectRevert` meant for `execute`.
         bytes32[] memory proof0 = merkle.getProof(leaves, 0);
         bytes32[] memory proof1 = merkle.getProof(leaves, 1);
         bytes32[] memory proof2 = merkle.getProof(leaves, 2);
         address proxy = factory.deploy(bytes32(0), root);
 
-        // Two distinct mock leaves on the same proxy both dispatch.
+        // Two mock leaves on the same proxy both dispatch.
         vm.expectEmit(address(proxy));
         emit MockImplementation.MockExecuted(p1, "", 0);
         ICounterfactualDeposit(proxy).execute(address(mockImpl), p1, "", proof0);
@@ -224,7 +224,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         emit MockImplementation.MockExecuted(p2, "", 0);
         ICounterfactualDeposit(proxy).execute(address(mockImpl), p2, "", proof1);
 
-        // The reverting leaf is provable but bubbles its revert on execution.
+        // The reverting leaf is provable but bubbles its revert.
         vm.expectRevert(abi.encodeWithSelector(RevertingImplementation.CustomRevert.selector, "boom"));
         ICounterfactualDeposit(proxy).execute(address(revertImpl), p3, "", proof2);
     }
@@ -250,7 +250,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         assertEq(deployed, predicted);
         assertGt(predicted.code.length, 0);
 
-        // Second call finds the proxy already deployed and just executes (no revert).
+        // Second call finds the proxy deployed and just executes.
         vm.expectEmit(predicted);
         emit MockImplementation.MockExecuted(params, "submitter", 0);
         address again = factory.deployIfNeededAndExecute(bytes32(0), root, exec);
@@ -331,7 +331,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         bytes32 newRoot = keccak256("new-route-set");
         _setUpgradeTree(proxy, newRoot);
 
-        // Prove a different root than the one committed for this proxy.
+        // Prove a root other than the one committed for this proxy.
         bytes32[] memory bad = new bytes32[](1);
         bad[0] = keccak256("garbage");
         vm.expectRevert(CounterfactualDeposit.InvalidUpgradeProof.selector);
@@ -364,14 +364,14 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
     // --- updateRootAndExecute ---
 
     function testUpdateRootAndExecuteActivatesNewRoute() public {
-        // Proxy deployed with an initial root that does NOT contain the mock leaf.
+        // Initial root does NOT contain the mock leaf.
         bytes32[] memory initLeaves = new bytes32[](2);
         initLeaves[0] = keccak256("old-route");
         initLeaves[1] = keccak256("padding");
         bytes32 initialRoot = merkle.getRoot(initLeaves);
         address proxy = factory.deploy(bytes32(0), initialRoot);
 
-        // New route set contains the mock leaf.
+        // New route contains the mock leaf.
         bytes memory params = abi.encode(uint256(123));
         bytes32[] memory newLeaves = new bytes32[](2);
         newLeaves[0] = _leaf(address(mockImpl), params);
@@ -379,7 +379,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         bytes32 newRoot = merkle.getRoot(newLeaves);
         bytes32[] memory execProof = merkle.getProof(newLeaves, 0);
 
-        // Executing the new route before activation fails.
+        // New route fails before activation.
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         ICounterfactualDeposit(proxy).execute(address(mockImpl), params, "", execProof);
 
@@ -399,7 +399,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
     }
 
     function testUpdateRootAndExecuteSkipsUpdateWhenCurrent() public {
-        // Proxy already deployed at the route root; update step must be skipped (no RootUnchanged revert).
+        // Proxy already at the route root; the update step must be skipped (no RootUnchanged revert).
         bytes memory params = abi.encode(uint256(5));
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = _leaf(address(mockImpl), params);
@@ -408,7 +408,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         address proxy = factory.deploy(bytes32(0), root);
         bytes32[] memory execProof = merkle.getProof(leaves, 0);
 
-        // A bogus update proof is fine because newRoot == activeRoot ⇒ the update is skipped entirely.
+        // Bogus update proof is fine: newRoot == activeRoot ⇒ update skipped.
         bytes32[] memory bogus = new bytes32[](1);
         bogus[0] = keccak256("ignored");
 
@@ -423,7 +423,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         (address proxyA, ) = _deploySingleLeaf(_leaf(address(mockImpl), abi.encode(uint256(1))), bytes32(0));
         (address proxyB, ) = _deploySingleLeaf(_leaf(address(mockImpl), abi.encode(uint256(2))), keccak256("b"));
 
-        // Before retargeting, the impl has no `version()`.
+        // Before retargeting the impl has no `version()`.
         vm.expectRevert();
         IVersioned(proxyA).version();
 
@@ -431,11 +431,11 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         vm.prank(owner);
         beacon.setImplementation(address(v2));
 
-        // Both pre-existing proxies instantly resolve the new implementation.
+        // Both existing proxies resolve the new implementation.
         assertEq(IVersioned(proxyA).version(), 2);
         assertEq(IVersioned(proxyB).version(), 2);
 
-        // Storage (activeRoot) is preserved across the retarget.
+        // Storage (activeRoot) survives the retarget.
         assertTrue(CounterfactualDeposit(payable(proxyA)).activeRoot() != bytes32(0));
     }
 }

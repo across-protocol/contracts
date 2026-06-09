@@ -14,30 +14,22 @@ interface IBeaconTarget {
 }
 
 /**
- * @notice Chain-specific configuration baked into a `CounterfactualBeacon` implementation at deploy time.
- * @dev Every field becomes a `public immutable` on the registry, so leaf implementations resolve the
- *      chain's bridge endpoints / tokens / fee signer from the registry instead of holding them as their
- *      own immutables — which keeps the leaf implementations byte-identical across chains. Per-chain
- *      addresses differ, so each chain deploys its own registry implementation with its own `ChainConfig`.
+ * @notice Chain-specific config baked into a `CounterfactualBeacon` implementation as `public immutable`s,
+ *         so leaves read endpoints/tokens/signer from the registry and stay byte-identical across chains.
+ *         Each chain deploys its own implementation with its own config.
  */
 struct CounterfactualChainConfig {
     address signer;
     address spokePool;
     address wrappedNativeToken;
-    /// @dev Resolved value of the "native or equivalent" SpokePool route: the `NATIVE_SENTINEL` address
-    ///      (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) on chains where the SpokePool deposit should
-    ///      come in as `msg.value` (and `wrappedNativeToken` is the SpokePool input token after wrapping),
-    ///      or a chain-specific ERC-20 address on chains where the canonical "gas-token route" is actually
-    ///      an ERC-20. The SpokePool leaf names this getter via `inputTokenGetter` and branches on the
-    ///      sentinel — so one leaf works for both flavors without baking the choice into the merkle commit.
+    /// @dev "Native" SpokePool route: the native sentinel where the deposit is `msg.value` (wrapped to
+    ///      `wrappedNativeToken`), or an ERC-20 on chains with no native gas token. See `nativeToken()`.
     address nativeToken;
     address cctpSrcPeriphery;
     address cctpTokenMessenger;
     uint32 cctpSourceDomain;
-    /// @dev OFT peripheries are single-token (each has an immutable `TOKEN`). The OFT leaf names the one
-    ///      to use by the selector of one of these getters, so supporting another OFT token is a beacon
-    ///      upgrade adding another periphery getter — not a leaf/impl change. `oftSrcPeriphery` is the
-    ///      primary periphery (USDT0 today); `oftUsdcPeriphery` is the USDC OFT periphery.
+    /// @dev Single-token OFT peripheries; the OFT leaf picks one by its getter selector. Another token =
+    ///      another getter (a beacon upgrade). `oftSrcPeriphery` is primary (USDT0); `oftUsdcPeriphery` USDC.
     address oftSrcPeriphery;
     address oftUsdcPeriphery;
     uint32 oftSrcEid;
@@ -47,24 +39,16 @@ struct CounterfactualChainConfig {
 
 /**
  * @title CounterfactualBeacon
- * @notice Global, per-chain registry governing counterfactual proxies. It is the **beacon** for every
- *         counterfactual `BeaconProxy`: `implementation()` returns the single canonical implementation
- *         all proxies run, so setting it upgrades every proxy at once. It also holds the `upgradeRoot`
- *         (root of the `(proxy, latestRoot)` tree authorizing per-proxy root updates) and the chain's
- *         config (bridge endpoints, domains/EIDs, fee signer, token addresses), which leaf implementations
- *         read under delegatecall.
- * @dev Itself a UUPS proxy so its address is permanent (every `BeaconProxy` embeds it as the beacon,
- *      anchoring proxy addresses) while its logic can evolve. `implementation`/`upgradeRoot` are mutable
- *      storage (admin-set, meant to change). The chain config is `public immutable` (code, not storage);
- *      it is correctly readable through the proxy under delegatecall, but changing any value — or adding a
- *      token — requires deploying a new implementation and UUPS-upgrading to it (the proxy address stays
- *      constant). To keep the proxy address identical across chains, deploy the proxy against a uniform
- *      bootstrap implementation, then `upgradeToAndCall` to the chain-specific implementation.
- *
- *      `Ownable2Step` admin; no timelock in this implementation — the admin is effectively all-powerful
- *      (setting `implementation`, or upgrading to a new config, instantly retargets every proxy), so it
- *      must be a trusted multisig. NOTE: `implementation()` here is the **counterfactual** implementation
- *      (the beacon target), not the registry's own UUPS implementation.
+ * @notice Per-chain registry and **beacon** for every counterfactual `BeaconProxy`. Holds the
+ *         `implementation` all proxies run, the `upgradeRoot` authorizing per-proxy root updates, and the
+ *         chain config (endpoints, domains/EIDs, fee signer, tokens) that leaves read under delegatecall.
+ * @dev A UUPS proxy, so its address is permanent (anchoring every `BeaconProxy`) while its logic evolves.
+ *      `implementation`/`upgradeRoot` are mutable storage; the chain config is `public immutable` (in code,
+ *      readable through the proxy), so changing a value or adding a token is a UUPS upgrade. For an
+ *      identical proxy address across chains, deploy against a uniform bootstrap then `upgradeToAndCall` to
+ *      the chain-specific implementation. `Ownable2Step` admin (no timelock) — it can retarget every proxy
+ *      instantly, so use a trusted multisig. `implementation()` is the beacon target, not the registry's
+ *      own UUPS implementation.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgradeable, Ownable2StepUpgradeable {
@@ -126,15 +110,12 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
     }
 
     /**
-     * @notice Initialize the registry's mutable storage.
-     * @dev The chain config comes from the constructor (immutable); this only sets the admin and the two
-     *      mutable knobs. NOTE: when deploying via the bootstrap→upgrade flow, the proxy is initialized by
-     *      the bootstrap implementation and this `initialize` is never reached (the `initializer` slot is
-     *      already consumed); set `implementation`/`upgradeRoot` via the owner setters after upgrading.
+     * @notice Initialize the registry's mutable storage (chain config comes from the constructor).
+     * @dev With the bootstrap→upgrade deploy the proxy is initialized by the bootstrap and this is never
+     *      reached (initializer already consumed); set `implementation`/`upgradeRoot` via the owner setters.
      * @param owner_ The admin (use a multisig).
-     * @param implementation_ Initial global implementation / beacon target (may be address(0) and set
-     *        later via `setImplementation` — the deploy flow is registry → impl → `setImplementation`).
-     * @param upgradeRoot_ Initial upgrade-tree root (may be 0 and set later).
+     * @param implementation_ Initial beacon target (may be address(0), set later via `setImplementation`).
+     * @param upgradeRoot_ Initial upgrade-tree root (may be 0, set later).
      */
     function initialize(address owner_, address implementation_, bytes32 upgradeRoot_) external initializer {
         __Ownable_init(owner_);
@@ -169,10 +150,9 @@ contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgra
         _setUpgradeRoot(newUpgradeRoot);
     }
 
-    /// @dev A valid beacon target must be a contract whose immutable `BEACON()` points back at this
-    ///      beacon. Catches the catastrophic admin error of retargeting every proxy to logic bound to a
-    ///      different beacon (which would silently brick `updateRoot` and risk storage-layout drift). The
-    ///      `try` tolerates non-conforming targets — they leave `boundBeacon == address(0)` and revert below.
+    /// @dev A valid target is a contract whose immutable `BEACON()` points back here — guarding against
+    ///      retargeting every proxy to logic bound to a different beacon (which would brick `updateRoot`).
+    ///      The `try` tolerates non-conforming targets: they leave `boundBeacon == 0` and revert below.
     function _validateImplementation(address impl) private view {
         if (impl.code.length == 0) revert NotAContract();
         address boundBeacon;

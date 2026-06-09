@@ -15,20 +15,18 @@ import { WithdrawImplementation } from "../../../../contracts/periphery/counterf
 
 /**
  * @title CounterfactualTestBase
- * @notice Shared harness for the upgradeable-counterfactual (beacon) tests. Because the beacon now carries
- *         chain-specific config as constructor immutables, tests build a `CounterfactualChainConfig` from
- *         their mocks and call `_deployBeacon(config)` (after creating those mocks). That deploys the beacon
- *         (a UUPS proxy) with `CounterfactualDeposit` as its target implementation, plus the factory that
- *         mints `BeaconProxy` counterfactuals. Provides merkle / leaf / EIP-712 helpers.
- * @dev Deploy order resolves the beacon ⇄ implementation cycle: (1) beacon proxy initialized with
- *      `implementation = 0`, (2) `CounterfactualDeposit` bound to the beacon address, (3)
- *      `beacon.setImplementation(impl)`.
+ * @notice Shared harness for the beacon-based counterfactual tests. Tests build a
+ *         `CounterfactualChainConfig` from their mocks then call `_deployBeacon(config)`, which deploys the
+ *         beacon (UUPS proxy over `CounterfactualDeposit`) plus the factory. Provides merkle/leaf/EIP-712
+ *         helpers.
+ * @dev Deploy order resolves the beacon ⇄ implementation cycle: (1) beacon proxy with `implementation = 0`,
+ *      (2) `CounterfactualDeposit` bound to the beacon, (3) `beacon.setImplementation(impl)`.
  */
 abstract contract CounterfactualTestBase is Test {
     Merkle internal merkle;
 
-    CounterfactualBeacon internal beacon; // the beacon (UUPS proxy), typed as the beacon
-    CounterfactualDeposit internal cfImpl; // the beacon target (counterfactual implementation)
+    CounterfactualBeacon internal beacon; // beacon (UUPS proxy)
+    CounterfactualDeposit internal cfImpl; // beacon target implementation
     CounterfactualDepositFactory internal factory;
     WithdrawImplementation internal withdrawImpl;
 
@@ -45,7 +43,7 @@ abstract contract CounterfactualTestBase is Test {
     bytes32 internal constant VERSION_HASH = keccak256("v2.0.0");
 
     /// @dev Sets up actors, signer, merkle, and the withdraw impl. Does NOT deploy the beacon — call
-    ///      `_deployBeacon(config)` once the test's mocks (SpokePool, peripheries, tokens) exist.
+    ///      `_deployBeacon(config)` once the test's mocks exist.
     function _setUpCore() internal {
         merkle = new Merkle();
 
@@ -64,10 +62,10 @@ abstract contract CounterfactualTestBase is Test {
         cfg.signer = signer;
     }
 
-    /// @dev Deploy the beacon (UUPS proxy over a `CounterfactualBeacon` carrying `config`), wire its
-    ///      target implementation, and deploy the factory. Call after the test's mocks are created.
+    /// @dev Deploy the beacon (carrying `config`), wire its implementation, and deploy the factory. Call
+    ///      after the test's mocks are created.
     function _deployBeacon(CounterfactualChainConfig memory config) internal {
-        // Beacon as a UUPS proxy, implementation set later (deploy flow: beacon → impl → setImplementation).
+        // Implementation set later (deploy flow: beacon → impl → setImplementation).
         beacon = CounterfactualBeacon(
             address(
                 new ERC1967Proxy(
@@ -99,8 +97,7 @@ abstract contract CounterfactualTestBase is Test {
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = _upgradeLeaf(proxy, newRoot);
         leaves[1] = keccak256("upgrade-padding");
-        // Compute root/proof before pranking: `merkle.getRoot` is an external call and would otherwise
-        // consume the prank meant for `setUpgradeRoot`.
+        // Compute root/proof before pranking: the external `merkle` calls would consume the prank.
         bytes32 upgradeRoot = merkle.getRoot(leaves);
         proof = merkle.getProof(leaves, 0);
         vm.prank(owner);

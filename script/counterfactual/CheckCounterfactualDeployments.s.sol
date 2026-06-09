@@ -11,19 +11,19 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 
 // Verifies counterfactual contract deployments across all configured chains.
 //
-// With the refactored architecture, all chain-specific values (bridge endpoints, fee signer, token
-// addresses) live on the per-chain CounterfactualBeacon (read via its `ICounterfactualBeacon` getters), and
-// the leaf implementations are byte-identical across chains. So:
-//   - The leaf implementations (CounterfactualDeposit dispatcher, CCTP/OFT/VanillaCCTP, SpokePool USDC +
-//     native) get bytecode-only presence checks.
-//   - The chain-specific config is auto-checked by reading the beacon's getters and comparing against
-//     constants.json / deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery +
-//     domain/eid, usdc, usdt), plus a manual review of the fee `signer`.
+// All chain-specific values (bridge endpoints, fee signer, token addresses) live on the per-chain
+// CounterfactualBeacon (read via `ICounterfactualBeacon` getters), and the leaf impls are byte-identical
+// across chains. So:
+//   - Leaf impls (CounterfactualDeposit dispatcher, CCTP/OFT/VanillaCCTP, SpokePool) get bytecode-only
+//     presence checks.
+//   - Chain-specific config is auto-checked by comparing the beacon's getters against constants.json /
+//     deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, usdc, usdt),
+//     plus a manual review of the fee `signer`.
 //
-// Owner/directWithdrawer are cross-referenced against both config.toml and
+// Owner/directWithdrawer are cross-referenced against config.toml AND
 // script/mintburn/prod-readiness-multisigs.json for an independent second opinion.
 //
-// Output uses structured prefixes for easy grep:
+// Output prefixes for easy grep:
 //   [PASS]   - Auto-check passed
 //   [FAIL]   - Auto-check failed (investigate!)
 //   [REVIEW] - Manual review needed (always printed, never silently passed)
@@ -82,9 +82,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
     // --- Bytecode-only contracts (chain-identical; presence is all we verify on-chain) ---
 
     function _checkBytecodeContracts(uint256 chainId) internal {
-        // On Tron the SpokePool deploy script branches to `CounterfactualDepositSpokePoolTr` (Tron USDT's
-        // non-standard `transfer` return value), and `yarn extract-addresses` records it under that name.
-        // Match the deploy script's branch here so a correct Tron deployment doesn't read as "missing".
+        // On Tron the deploy script uses `CounterfactualDepositSpokePoolTr` (Tron USDT's non-standard
+        // `transfer` return), recorded under that name. Match that branch so a correct Tron deploy isn't
+        // read as "missing".
         string memory spokePoolImpl = chainId == 728126428
             ? string("CounterfactualDepositSpokePoolTr")
             : string("CounterfactualDepositSpokePool");
@@ -151,10 +151,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
 
         ICounterfactualBeacon beacon = ICounterfactualBeacon(addr);
 
-        // Verify the beacon's `implementation()` resolves to the dispatcher. A beacon deploy that stops
-        // after the proxy is upgraded to `CounterfactualBeacon` but before `setImplementation(dispatcher)`
-        // leaves the slot at zero (or stale), so every counterfactual `BeaconProxy` resolves the wrong
-        // target — config getters can otherwise pass while no clone is actually executable.
+        // Verify the beacon's `implementation()` resolves to the dispatcher. A deploy that stops after the
+        // proxy upgrade but before `setImplementation(dispatcher)` leaves the slot zero/stale, so every
+        // counterfactual proxy resolves the wrong target — config getters can pass while no clone is executable.
         address dispatcher = _getDeployed("CounterfactualDeposit", chainId);
         if (dispatcher == address(0)) {
             _fail("CounterfactualBeacon", "implementation", "CounterfactualDeposit not in deployed-addresses.json");
@@ -197,9 +196,8 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             }
         }
 
-        // nativeToken vs constants.json: defaults to NATIVE_SENTINEL when no `.NATIVE_TOKEN.<chainId>`
-        // override exists (matching `_resolveNativeToken` in CounterfactualConfig). Mismatches surface
-        // when an override was added/removed without redeploying the registry implementation.
+        // nativeToken vs constants.json: defaults to NATIVE_SENTINEL absent a `.NATIVE_TOKEN.<chainId>`
+        // override (matches `_resolveNativeToken`). Mismatches mean an override changed without a redeploy.
         _assertAddrEq("CounterfactualBeacon", "nativeToken", beacon.nativeToken(), _getNativeToken(chainId));
 
         // cctpSrcPeriphery vs deployed-addresses.json
@@ -254,9 +252,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         _review("CounterfactualBeacon", "signer", beacon.signer(), configSigner, "config.toml");
 
         // Manual review: owner — the beacon admin can UUPS-upgrade the registry and retarget every
-        // counterfactual proxy, so it must end up on the per-chain multisig (Ownable2Step: a pending
-        // transfer is not yet effective). `pendingOwner` is reported separately so the operator can
-        // distinguish "already on the multisig" from "transfer initiated, awaiting acceptance".
+        // counterfactual proxy, so it must end up on the per-chain multisig (Ownable2Step: a pending transfer
+        // is not yet effective). `pendingOwner` is reported separately to distinguish "already on the
+        // multisig" from "transfer initiated, awaiting acceptance".
         CounterfactualBeacon ownableBeacon = CounterfactualBeacon(addr);
         address configOwner = config.get("ownerAndDirectWithdrawer").toAddress();
         address multisig = _getMultisig(chainId);
@@ -362,10 +360,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         return address(0);
     }
 
-    /// @dev Mirrors `CounterfactualConfig._resolveNativeToken`: per-chain ERC-20 override at
-    ///      `.NATIVE_TOKEN.<chainId>` wins; otherwise defaults to `NATIVE_SENTINEL` when a wrapped native
-    ///      token exists for the chain, and to `address(0)` when none does (so the sentinel-but-no-wrapper
-    ///      footgun doesn't sneak through).
+    /// @dev Mirrors `CounterfactualConfig._resolveNativeToken`: `.NATIVE_TOKEN.<chainId>` override wins, else
+    ///      `NATIVE_SENTINEL` when a wrapped native token exists, else `address(0)` (avoiding the
+    ///      sentinel-but-no-wrapper footgun).
     function _getNativeToken(uint256 chainId) internal view returns (address) {
         string memory path = string.concat(".NATIVE_TOKEN.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);

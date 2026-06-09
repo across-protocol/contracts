@@ -5,9 +5,9 @@ import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 
-// Deploys the CounterfactualDepositCCTP leaf implementation. It is now chain-identical (no constructor args)
-// — the periphery, source domain, burn token and fee signer are resolved from the CounterfactualBeacon at
-// runtime — so it gets the SAME CREATE2 address on every chain.
+// Deploys the CounterfactualDepositCCTP leaf implementation. Chain-identical (no constructor args; periphery,
+// source domain, burn token and fee signer come from the CounterfactualBeacon at runtime), so it lands at the
+// SAME CREATE2 address on every chain.
 //
 // How to run (zero-arg):
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
@@ -15,7 +15,7 @@ import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfact
 //      --rpc-url $NODE_URL -vvvv
 // 3. Deploy: append --broadcast --verify to the command above
 contract DeployCounterfactualDepositCCTP is CounterfactualConfig {
-    /// @notice Zero-arg entry point. Guards on CCTP support so we only deploy where the route is configured.
+    /// @notice Zero-arg entry point. Guards on CCTP support so we only deploy where the route exists.
     function run() external {
         require(hasCctpDomain(block.chainid), "Chain does not support CCTP");
 

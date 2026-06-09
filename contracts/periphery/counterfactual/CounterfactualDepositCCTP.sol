@@ -10,18 +10,14 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
-/**
- * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
- * @custom:security-contact bugs@across.to
- */
+/// @notice Minimal interface for `depositForBurn` on SponsoredCCTPSrcPeriphery.
 interface ISponsoredCCTPSrcPeriphery {
     function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory signature) external;
 }
 
 /**
- * @notice Route parameters committed to in the merkle leaf.
- * @dev Chain-agnostic: it names no source chain and no token address. The burn token is always USDC,
- *      resolved per chain from `beacon.usdc()`; the source domain and periphery come from
+ * @notice Route parameters committed to in the merkle leaf (chain-agnostic: no source chain, no token).
+ * @dev Burn token is always USDC (`beacon.usdc()`); source domain and periphery come from
  *      `beacon.cctpSourceDomain()` / `beacon.cctpSrcPeriphery()`.
  */
 struct CCTPRouteParams {
@@ -57,11 +53,9 @@ struct CCTPSubmitterData {
 
 /**
  * @title CounterfactualDepositCCTP
- * @notice Implementation contract for counterfactual deposits via SponsoredCCTP.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. The periphery, source domain,
- *      burn token (USDC) and fee signer are resolved from the `CounterfactualBeacon` at runtime, so this
- *      implementation holds no chain-specific values and has one address on every chain — a single leaf
- *      works everywhere (see `CounterfactualImplementationBase`).
+ * @notice Counterfactual deposit via SponsoredCCTP.
+ * @dev Delegatecalled by the dispatcher. Periphery, source domain, burn token (USDC) and fee signer come
+ *      from the beacon, so the impl holds no chain-specific values and has one address per chain.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
@@ -109,10 +103,9 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         address srcPeriphery = _requireConfigured(_beacon().cctpSrcPeriphery());
         address inputToken = _requireConfigured(_beacon().usdc());
 
-        // The fee is paid BEFORE the periphery call, and this ordering is load-bearing: the local
-        // signature binds only `(nonce, executionFee, signatureDeadline)`, so replay protection for the
-        // (route, amount) tuple comes from the periphery's nonce-uniqueness check. A replayed fee
-        // signature reverts at `depositForBurn`, atomically rolling back this fee transfer.
+        // Fee paid before the periphery call (load-bearing): the local signature binds only
+        // (nonce, fee, deadline), so (route, amount) replay protection is the periphery's nonce check —
+        // a replayed fee reverts at `depositForBurn` and rolls back this transfer.
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
@@ -145,14 +138,12 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
             revert InvalidSignature();
     }
 
-    /**
-     * @notice Calls depositForBurn on the SponsoredCCTPSrcPeriphery with the constructed quote.
-     * @param srcPeriphery The sponsored CCTP source periphery (resolved from the beacon).
-     * @param inputToken The burn token, USDC (resolved from the beacon).
-     * @param routeParams Route parameters from the merkle leaf.
-     * @param submitterData Submitter-provided execution data.
-     * @param depositAmount Amount to deposit after deducting the execution fee.
-     */
+    /// @notice Calls `depositForBurn` on the SponsoredCCTPSrcPeriphery with the constructed quote.
+    /// @param srcPeriphery The CCTP source periphery (from the beacon).
+    /// @param inputToken The burn token, USDC (from the beacon).
+    /// @param routeParams Route parameters from the merkle leaf.
+    /// @param submitterData Submitter-provided execution data.
+    /// @param depositAmount Amount to deposit after deducting the execution fee.
     function _depositForBurn(
         address srcPeriphery,
         address inputToken,

@@ -14,8 +14,8 @@ import { CounterfactualChainConfig } from "../../../../contracts/periphery/count
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/// @notice Mock Circle CCTP v2 TokenMessenger: pulls the burn token (as the real one does) and records the
-///         last call, including whether the hook variant was used and the forwarded hookData.
+/// @notice Mock Circle CCTP v2 TokenMessenger: pulls the burn token and records the last call, including
+///         whether the hook variant was used and the forwarded hookData.
 contract MockTokenMessengerV2 {
     using SafeERC20 for IERC20;
 
@@ -89,20 +89,20 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
 
     function setUp() public {
         _setUpCore();
-        // Mocks must exist before deploying the beacon, which reads them from the chain config.
+        // Mocks must exist before the beacon, which reads them from the chain config.
         messenger = new MockTokenMessengerV2();
         token = new MintableERC20("USDC", "USDC", 6);
         vanillaImpl = new CounterfactualDepositVanillaCCTP();
 
         CounterfactualChainConfig memory cfg = _baseConfig();
-        cfg.cctpTokenMessenger = address(messenger); // the mock CCTP v2 messenger
-        cfg.usdc = address(token); // the mock USDC token (burn token)
+        cfg.cctpTokenMessenger = address(messenger);
+        cfg.usdc = address(token); // burn token
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);
     }
 
-    /// @dev Plain CCTP route (empty hookData): USDC mints natively to `mintRecipient` on the destination.
+    /// @dev Plain CCTP route (empty hookData): USDC mints natively to `mintRecipient`.
     function _routeParams() internal returns (VanillaCCTPRouteParams memory) {
         return
             VanillaCCTPRouteParams({
@@ -117,16 +117,16 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     }
 
     /// @dev HyperCore route: burn to HyperEVM (domain 19) with `mintRecipient` = Circle's CctpForwarder and a
-    ///      representative `CctpForwarderHookData` envelope (magic | version | len | recipient | destinationId).
+    ///      `CctpForwarderHookData` envelope (magic | version | len | recipient | destinationId).
     function _hyperCoreRouteParams() internal returns (VanillaCCTPRouteParams memory rp) {
         rp = _routeParams();
         rp.destinationDomain = HYPEREVM_DOMAIN;
         rp.mintRecipient = bytes32(uint256(uint160(makeAddr("cctpForwarder"))));
         rp.cctpMaxFeeBps = 0; // Arbitrum→HyperCore has no fast-transfer fee.
         rp.hookData = abi.encodePacked(
-            bytes24("cctp-forward"), // magic bytes
-            uint32(0), // hook version
-            uint32(24), // hook data length (20-byte recipient + 4-byte destinationId)
+            bytes24("cctp-forward"), // magic
+            uint32(0), // version
+            uint32(24), // length (20-byte recipient + 4-byte destinationId)
             makeAddr("hyperCoreRecipient"), // forwardRecipient
             uint32(2) // destinationId
         );
@@ -250,7 +250,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     function testMaxExecutionFeeReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        // 6e6 > maxExecutionFee 5e6
+        // 6e6 > maxExecutionFee 5e6.
         bytes memory submitter = _submitter(proxy, route, 100e6, 6e6, uint32(block.timestamp) + 3600, signerPk);
 
         vm.prank(user);
@@ -285,12 +285,12 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 
-    /// @dev When the beacon resolves USDC (the burn token) to the zero address, the route is not live on this
-    ///      chain and execution reverts cleanly via `RouteNotConfigured` instead of acting on a zero address.
+    /// @dev When the beacon resolves USDC (the burn token) to zero, the route is not live and execution
+    ///      reverts via `RouteNotConfigured` rather than acting on a zero address.
     function testRouteNotConfiguredReverts() public {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.cctpTokenMessenger = address(messenger);
-        cfg.usdc = address(0); // unconfigured burn token
+        cfg.usdc = address(0); // unset burn token
         _deployBeacon(cfg);
 
         bytes memory route = abi.encode(_routeParams());
@@ -304,8 +304,8 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 
-    /// @dev A signature is bound to one proxy via the EIP-712 `verifyingContract`, so it cannot be replayed
-    ///      against a different counterfactual sharing the same route.
+    /// @dev The signature binds one proxy via the EIP-712 `verifyingContract`, so it can't be replayed
+    ///      against another counterfactual sharing the route.
     function testCrossProxyReplayReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxyA, bytes32[] memory proofA) = _deploy(route, keccak256("a"));
@@ -330,7 +330,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         uint32 deadline = uint32(block.timestamp) + 3600;
-        // Sign over 100e6 but submit 200e6.
+        // Sign 100e6, submit 200e6.
         bytes32 structHash = keccak256(
             abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), 100e6, 1e6, deadline)
         );
@@ -352,13 +352,13 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 
-    /// @dev The signature binds `routeParamsHash`; a signature for a different route must revert even if the
-    ///      submitted route is itself a valid leaf.
+    /// @dev The signature binds `routeParamsHash`; a signature for a different route must revert even when
+    ///      the submitted route is itself a valid leaf.
     function testWrongRouteSignatureReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
         uint32 deadline = uint32(block.timestamp) + 3600;
-        // Sign over a different route's hash.
+        // Sign a different route's hash.
         VanillaCCTPRouteParams memory other = _routeParams();
         other.destinationDomain = 6;
         bytes32 structHash = keccak256(

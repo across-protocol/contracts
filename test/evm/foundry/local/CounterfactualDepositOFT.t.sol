@@ -16,9 +16,9 @@ import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounte
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/// @notice Mock SponsoredOFTSrcPeriphery: pulls `TOKEN`, asserts the quote's srcEid, and records the quote.
-/// @dev Exposes `TOKEN()` (uppercase) to match the real periphery's immutable getter, which the leaf
-///      impl reads to resolve the input token.
+/// @notice Mock SponsoredOFTSrcPeriphery: pulls `TOKEN`, asserts the quote's srcEid, records the quote.
+/// @dev Exposes `TOKEN()` to mirror the real periphery's immutable getter, which the leaf impl reads to
+///      resolve the input token.
 contract MockOFTPeriphery {
     using SafeERC20 for IERC20;
 
@@ -47,12 +47,12 @@ contract MockOFTPeriphery {
 
 contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     CounterfactualDepositOFT internal oftImpl;
-    MockOFTPeriphery internal periphery; // primary OFT periphery (token), named via OFT_GETTER
-    MockOFTPeriphery internal usdcPeriphery; // second OFT periphery (usdcToken), named via OFT_USDC_GETTER
+    MockOFTPeriphery internal periphery; // primary periphery (token), via OFT_GETTER
+    MockOFTPeriphery internal usdcPeriphery; // second periphery (usdcToken), via OFT_USDC_GETTER
     MintableERC20 internal token;
     MintableERC20 internal usdcToken;
 
-    /// @dev Beacon getter selectors the leaf names to pick which (single-token) OFT periphery to use.
+    /// @dev Beacon getter selectors a leaf can name to pick which single-token OFT periphery to use.
     bytes4 constant OFT_GETTER = ICounterfactualBeacon.oftSrcPeriphery.selector;
     bytes4 constant OFT_USDC_GETTER = ICounterfactualBeacon.oftUsdcPeriphery.selector;
 
@@ -63,8 +63,8 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
     function setUp() public {
         _setUpCore();
 
-        // Mocks must exist before the beacon is deployed, since the beacon config points at them. Two
-        // single-token peripheries are wired so a leaf can target either token via its periphery selector.
+        // Mocks must exist before the beacon, which points its config at them. Two single-token peripheries
+        // are wired so a leaf can target either token via its periphery selector.
         token = new MintableERC20("USDT0", "USDT0", 6);
         usdcToken = new MintableERC20("USDC", "USDC", 6);
         periphery = new MockOFTPeriphery(IERC20(address(token)), SRC_EID);
@@ -75,8 +75,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         cfg.oftSrcPeriphery = address(periphery);
         cfg.oftUsdcPeriphery = address(usdcPeriphery);
         cfg.oftSrcEid = SRC_EID;
-        // The impl resolves the input token from the chosen periphery's immutable `TOKEN`, so it does not
-        // depend on `beacon.usdc()`.
+        // The impl resolves the input token from the chosen periphery's `TOKEN`, not `beacon.usdc()`.
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);
@@ -159,8 +158,8 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         assertEq(token.balanceOf(proxy), 0);
     }
 
-    /// @dev The same leaf shape, naming a different periphery getter, bridges a different OFT token through
-    ///      the matching single-token periphery — proving OFT supports multiple tokens via the selector.
+    /// @dev Same leaf shape with a different periphery getter bridges a different OFT token through the
+    ///      matching periphery — proving the selector supports multiple tokens.
     function testDepositSecondTokenViaPeripherySelector() public {
         bytes memory route = abi.encode(_routeParams(OFT_USDC_GETTER));
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
@@ -175,7 +174,7 @@ contract CounterfactualDepositOFTTest is CounterfactualTestBase {
         vm.prank(relayer);
         ICounterfactualDeposit(proxy).execute(address(oftImpl), route, submitter, proof);
 
-        // Routed through the USDC periphery (not the primary one), pulling the USDC token.
+        // Routed through the USDC periphery (not the primary), pulling the USDC token.
         assertEq(usdcPeriphery.lastAmount(), amount - fee);
         assertEq(periphery.callCount(), 0, "primary periphery not used");
         assertEq(usdcToken.balanceOf(relayer), fee);

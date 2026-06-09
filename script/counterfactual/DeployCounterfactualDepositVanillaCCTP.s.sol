@@ -6,8 +6,8 @@ import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositVanillaCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
 
 // Deploys the CounterfactualDepositVanillaCCTP leaf implementation (vanilla, non-sponsored Circle CCTP v2).
-// It is chain-identical (no constructor args) — the CCTP TokenMessenger, burn token (USDC) and fee signer
-// are resolved from the CounterfactualBeacon at runtime — so it gets the SAME CREATE2 address on every chain.
+// Chain-identical (no constructor args; TokenMessenger, burn token (USDC) and fee signer come from the
+// CounterfactualBeacon at runtime), so it lands at the SAME CREATE2 address on every chain.
 //
 // How to run (zero-arg):
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"

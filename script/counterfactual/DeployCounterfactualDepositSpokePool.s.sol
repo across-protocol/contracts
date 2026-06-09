@@ -6,17 +6,17 @@ import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositSpokePoolTr } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 
-// Deploys the SpokePool leaf implementation. It is input-token-agnostic: the leaf names its input token by
-// the beacon getter selector (`inputTokenGetter`), and the SpokePool, wrapped native token and fee signer
-// are resolved from the CounterfactualBeacon at runtime. With no constructor args it gets the SAME CREATE2
-// address on every EVM chain.
+// Deploys the SpokePool leaf implementation. Input-token-agnostic (the leaf names its input token via the
+// beacon getter selector `inputTokenGetter`; SpokePool, wrapped native token and fee signer come from the
+// CounterfactualBeacon at runtime) and has no constructor args, so it lands at the SAME CREATE2 address on
+// every EVM chain.
 //
-// On Tron (chainid 728126428) the Tron-specific variant `CounterfactualDepositSpokePoolTr` is deployed
-// instead: it overrides `_safeTransfer` so Tron USDT's non-standard `transfer` (which returns `false` on
-// success) does not revert execution-fee payouts. The Tron variant lands at a different CREATE2 address —
-// merkle leaves for Tron must name that address. Note: the canonical Tron production deploy uses Tron's
-// solc fork via `script/tron/counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts`; this
-// Foundry branch is the defensive path in case the script is invoked against a Tron RPC directly.
+// On Tron (chainid 728126428) the `CounterfactualDepositSpokePoolTr` variant is deployed instead: it
+// overrides `_safeTransfer` so Tron USDT's non-standard `transfer` (returns `false` on success) doesn't revert
+// execution-fee payouts. It lands at a different CREATE2 address — merkle leaves for Tron must name it. The
+// canonical Tron production deploy uses Tron's solc fork via
+// `script/tron/counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts`; this Foundry branch is a
+// defensive fallback if the script is run against a Tron RPC directly.
 //
 // How to run (zero-arg):
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
