@@ -1959,6 +1959,11 @@
     "728126428": {
       "chain_name": "TRON",
       "contracts": {
+        "AcrossEventEmitter": {
+          "address": "TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu",
+          "block_number": 83474885,
+          "transaction_hash": "0b4f2cf11a811768e15cbb50769ebeaf5c0f9be7eadf6f1d7b2618d6745a7b07"
+        },
         "AdminWithdrawManager": {
           "address": "TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC",
           "block_number": 81611914,
