@@ -170,20 +170,25 @@
           "block_number": 25282782,
           "transaction_hash": "0x6a0ff1120355d907dc4db7038ba2424c0a802071b89ec371e0a70d2a019aac6b"
         },
-        "CounterfactualBeaconImpl": {
-          "address": "0xa84ea0bf22915AFa3ba8A9C97be2dc0d8f3EDfb8",
-          "block_number": 25282957,
-          "transaction_hash": "0xe0565e1d2a52bb8c8b7553ca77e1cc922e7b344c19f98450b19d4105fbc782b6"
+        "CounterfactualBeaconBootstrap": {
+          "address": "0x0D31470a39aA6272b711C8c34e8DDF2F05A16EbD",
+          "block_number": 25282743,
+          "transaction_hash": "0xaf415bf52312df52bcfebef89ae5f198cf07415ecabf1d5bcfeee78aad5796b9"
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
           "block_number": 25282958,
           "transaction_hash": "0xb8d197d5f6a9afe1b1f6970949b71de1ce0e75c324bad6abeb19a38dc7ca38dc"
         },
+        "CounterfactualBeaconImpl": {
+          "address": "0xa84ea0bf22915AFa3ba8A9C97be2dc0d8f3EDfb8",
+          "block_number": 25282957,
+          "transaction_hash": "0xe0565e1d2a52bb8c8b7553ca77e1cc922e7b344c19f98450b19d4105fbc782b6"
+        },
         "CounterfactualDeposit": {
-          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
-          "block_number": 24745908,
-          "transaction_hash": "0x06ecc5b872078b00f3a154476701f66c98cbeff9211b00d6c46a9079c118ed93"
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 25282747,
+          "transaction_hash": "0x30cbecd8d725c520ff104d90718ced400547de0df332faafb8a744274661b78d"
         },
         "CounterfactualDepositCCTP": {
           "address": "0x26cc007E3d658719F8A44B6109cE6341EB0010cD",
@@ -904,6 +909,11 @@
           "address": "0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2",
           "block_number": 30861832,
           "transaction_hash": "0x8d4a5b39bc2977a3ec07aeef29d2efc8d1cf935926d294a9171d0b9eb48c595b"
+        },
+        "CounterfactualDepositVanillaCCTP": {
+          "address": "0xE66E59Ac7813Ab313aaa39A8853071B49Cf66FfF",
+          "block_number": 30898677,
+          "transaction_hash": "0xbeb8ce45b1451828391895733a65e4e5cea65fb1ce537463829ec088dce0b3f0"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
