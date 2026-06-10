@@ -483,6 +483,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SP1Helios                        | [TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm](https://tronscan.org/address/TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm) |
 | SpokePool                        | [TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS](https://tronscan.org/address/TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS) |
 | SpokePoolPeriphery               | [TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ](https://tronscan.org/address/TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ) |
+| TronMulticallHandler             | [TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ](https://tronscan.org/address/TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ) |
 | WithdrawImplementationTron       | [THPA5L2jxGE84FHMieds212WH3sRX5Hi9t](https://tronscan.org/address/THPA5L2jxGE84FHMieds212WH3sRX5Hi9t) |
 
 ## Solana (34268394551451)
