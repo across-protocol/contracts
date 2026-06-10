@@ -4,6 +4,7 @@ export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
+export const USDT = TOKEN_SYMBOLS_MAP.USDT.addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;

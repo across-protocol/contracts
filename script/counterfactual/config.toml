@@ -1,3 +1,13 @@
+# Synthetic "globals" section (chain id 0 is not a real chain; StdConfig requires top-level keys to
+# resolve to a chain id, so global values live here). Read via CounterfactualConfig._deploySalt().
+[0]
+endpoint_url = "http://localhost"
+[0.bytes32]
+# Global CREATE2 salt for the counterfactual singleton infra (factory, bootstrap, beacon proxy,
+# dispatcher, leaf impls). One value shared by every chain so the deterministic addresses stay in
+# cross-chain parity; bump it to coordinate a fresh redeploy everywhere.
+deploySalt = "0x0000000000000000000000000000000000000000000000000000000000000006"
+
 [1]
 endpoint_url = "${NODE_URL_1}"
 [1.address]

@@ -52,6 +52,8 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         uint256[] memory chains = config.getChainIds();
         for (uint256 i = 0; i < chains.length; i++) {
             uint256 chainId = chains[i];
+            // Skip the synthetic `[0]` globals section in config.toml (holds the deploy salt, not a real chain).
+            if (chainId == GLOBALS_CHAIN_ID) continue;
             try vm.createFork(config.getRpcUrl(chainId)) returns (uint256 forkId) {
                 vm.selectFork(forkId);
                 _checkChain(chainId);
@@ -241,36 +243,37 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // usdt vs constants.json (best-effort; 0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdt", beacon.usdt(), _getUsdt(chainId));
 
-        // Per-(token, bridge) execution-fee caps vs config.toml (0 when unset).
+        // Per-(token, bridge) execution-fee caps: hardcoded to type(uint256).max for now (see
+        // CounterfactualConfig._buildChainConfig).
         _assertUintEq(
             "CounterfactualBeacon",
             "usdcCctpMaxExecutionFee",
             beacon.usdcCctpMaxExecutionFee(),
-            _resolveFeeCap("usdcCctpMaxExecutionFee")
+            type(uint256).max
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdtOftMaxExecutionFee",
             beacon.usdtOftMaxExecutionFee(),
-            _resolveFeeCap("usdtOftMaxExecutionFee")
+            type(uint256).max
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdcSpokePoolMaxExecutionFee",
             beacon.usdcSpokePoolMaxExecutionFee(),
-            _resolveFeeCap("usdcSpokePoolMaxExecutionFee")
+            type(uint256).max
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdtSpokePoolMaxExecutionFee",
             beacon.usdtSpokePoolMaxExecutionFee(),
-            _resolveFeeCap("usdtSpokePoolMaxExecutionFee")
+            type(uint256).max
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "wethSpokePoolMaxExecutionFee",
             beacon.wethSpokePoolMaxExecutionFee(),
-            _resolveFeeCap("wethSpokePoolMaxExecutionFee")
+            type(uint256).max
         );
 
         // Manual review: signer (no second source)

@@ -9,6 +9,7 @@ import {
   ZERO_ADDRESS,
   USDC,
   USDCe,
+  USDT,
   WETH,
   WGHO,
   WMATIC,
@@ -105,6 +106,7 @@ function generateConstantsJson() {
     },
     USDC,
     USDCe,
+    USDT,
     WGHO,
     WMATIC,
     OTHER_CONSTANTS: {
