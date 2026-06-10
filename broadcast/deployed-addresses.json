@@ -2004,6 +2004,11 @@
           "block_number": 81812685,
           "transaction_hash": "9a708fb56c6b0bba4e87599f8b1309b479f144badc7a2130d4cd3554836e4481"
         },
+        "TronMulticallHandler": {
+          "address": "TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ",
+          "block_number": 83478629,
+          "transaction_hash": "d25f4b1756b11788f43b253c9dea29227bffab81b1fea5773ced2b257a5873cc"
+        },
         "WithdrawImplementationTron": {
           "address": "THPA5L2jxGE84FHMieds212WH3sRX5Hi9t",
           "block_number": 82681537,
