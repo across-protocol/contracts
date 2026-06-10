@@ -5,13 +5,12 @@ build_info = true
 extra_output = ["storageLayout"]
 src = "contracts"
 out = "out"
-test = "test/evm/foundry"
+test = "test/evm/foundry/local"
 libs = ["node_modules", "lib"]
-cache_path = "cache-foundry"
+cache_path = "cache"
 via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.30"
-revert_strings = "strip"
 fs_permissions = [{ access = "read-write", path = "./" }]
 use_literal_content = true
 
@@ -31,6 +30,8 @@ zksolc = "1.5.15"
 [profile.mintburn]
 # Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
 optimizer_runs = 300
+revert_strings = "strip"
+src = "contracts/periphery/mintburn"
 
 [lint]
 lint_on_build = false
@@ -72,12 +73,9 @@ polygon_amoy = "${NODE_URL_80002}"
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
 
-# A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
-[profile.local-test]
-test = "test/evm/foundry/local"
-revert_strings = "default"
-cache_path = "cache-foundry-local"
-out = "out-local"
+# A profile to only run foundry fork tests, skipping local tests. These tests are NOT run in CI. Run with `FOUNDRY_PROFILE=fork-test forge test`
+[profile.fork-test]
+test = "test/evm/foundry/fork"
 
 # Counterfactual profile. Strips metadata hash so CREATE2 addresses are stable across commits.
 # Run with `FOUNDRY_PROFILE=counterfactual forge script ...`
