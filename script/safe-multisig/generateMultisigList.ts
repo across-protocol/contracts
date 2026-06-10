@@ -40,7 +40,8 @@ const SPONSORED_CCTP_OWNABLE_NAMES = ["SponsoredCCTPSrcPeriphery", "SponsoredCct
 const SPONSORED_OFT_OWNABLE_NAMES = ["SponsoredOFTSrcPeriphery"];
 
 // DonationBox variants use AccessControl, so "ownership" = DEFAULT_ADMIN_ROLE membership.
-const DONATION_BOX_NAMES = ["DonationBox", "DonationBox_CCTP", "DonationBox_OFT"];
+// Matched by prefix because instances carry a bridge/token suffix (e.g. DonationBox_CCTP_USDC, DonationBox_OFT_USDT).
+const DONATION_BOX_NAME_PREFIX = "DonationBox";
 const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 const OWNABLE_ABI = ["function owner() view returns (address)"];
@@ -256,13 +257,12 @@ function findContractAddress(contracts: Record<string, any>, names: readonly str
   return undefined;
 }
 
-function findAllContractInstances(contracts: Record<string, any>, names: readonly string[]): DonationBoxInstance[] {
-  const out: DonationBoxInstance[] = [];
-  for (const name of names) {
-    const addr = contracts[name]?.address;
-    if (addr) out.push({ name, address: safeChecksum(addr) as string });
-  }
-  return out;
+// Collects every deployed contract whose name starts with `prefix` (e.g. all DonationBox_* variants), sorted for stable output.
+function findContractInstancesByPrefix(contracts: Record<string, any>, prefix: string): DonationBoxInstance[] {
+  return Object.keys(contracts)
+    .filter((name) => name.startsWith(prefix) && contracts[name]?.address)
+    .sort()
+    .map((name) => ({ name, address: safeChecksum(contracts[name].address) as string }));
 }
 
 async function buildEntry(
@@ -275,7 +275,7 @@ async function buildEntry(
   const adminWithdrawManagerAddress = safeChecksum(contracts.AdminWithdrawManager?.address);
   const sponsoredCctpAddress = findContractAddress(contracts, SPONSORED_CCTP_OWNABLE_NAMES);
   const sponsoredOftAddress = findContractAddress(contracts, SPONSORED_OFT_OWNABLE_NAMES);
-  const donationBoxes = findAllContractInstances(contracts, DONATION_BOX_NAMES);
+  const donationBoxes = findContractInstancesByPrefix(contracts, DONATION_BOX_NAME_PREFIX);
   const safeAddress = readSafeAddress(chainId);
   const spokePoolType = detectSpokePoolType(chainId, spokePoolAddress);
   const legacyMultisig = prodReadiness.legacyByChainId.get(chainId);
