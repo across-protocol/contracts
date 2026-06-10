@@ -112,7 +112,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://uniscan.xyz/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositOFT       | [0x52afb924C148Bd7B95Ab1033b4e86834FD076DB6](https://uniscan.xyz/address/0x52afb924C148Bd7B95Ab1033b4e86834FD076DB6) |
 | CounterfactualDepositSpokePool | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://uniscan.xyz/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
+| DstOFTHandler                  | [0xa12f224019482C6Dfa6A7699118A4Be2405bD513](https://uniscan.xyz/address/0xa12f224019482C6Dfa6A7699118A4Be2405bD513) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| PermissionedMulticallHandler   | [0x68950EBFb76fA2C451Ee35b4F6EF7D2fF70F0C2c](https://uniscan.xyz/address/0x68950EBFb76fA2C451Ee35b4F6EF7D2fF70F0C2c) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://uniscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://uniscan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |

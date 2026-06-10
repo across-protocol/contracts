@@ -447,6 +447,16 @@
           "block_number": 43829804,
           "transaction_hash": "0x61efce46d1a42f37fd7e1bf27a909be972f036c629816f52147ed9826542442d"
         },
+        "PermissionedMulticallHandler": {
+          "address": "0x68950EBFb76fA2C451Ee35b4F6EF7D2fF70F0C2c",
+          "block_number": 50302078,
+          "transaction_hash": "0xce2a3d8d1e12c8f44f3ea1ea4f55fc22f185a1c2eda9280a8505006dcbec7fa5"
+        },
+        "DstOFTHandler": {
+          "address": "0xa12f224019482C6Dfa6A7699118A4Be2405bD513",
+          "block_number": 50302079,
+          "transaction_hash": "0x100a2b472ccd79b275840ebf6d75ac82dab9edf00c6c98de15f83dedf9fe33e3"
+        },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 48555753,
