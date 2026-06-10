@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "5.0.13-alpha.1",
+  "version": "5.0.16-alpha.2",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -63,11 +63,12 @@
     "tron-deploy-counterfactual-clone": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-clone.ts",
     "tron-deploy-clone": "ts-node script/tron/counterfactual/tron-deploy-clone.ts",
     "tron-execute-clone-deposit": "ts-node script/tron/counterfactual/tron-execute-clone-deposit.ts",
+    "tron-deploy-tron-multicall-handler": "ts-node script/tron/periphery/tron-deploy-tron-multicall-handler.ts",
     "tron-deploy-spoke-pool-periphery": "ts-node script/tron/periphery/tron-deploy-spoke-pool-periphery.ts",
     "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.107",
+    "@across-protocol/constants": "^3.1.111",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",

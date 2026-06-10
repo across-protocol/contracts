@@ -55,6 +55,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | Universal_Adapter_143          | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_4217         | [0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c](https://etherscan.io/address/0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c) |
+| Universal_Adapter_43114        | [0x1af659333172DC502bD71Cf5b889521C97751838](https://etherscan.io/address/0x1af659333172DC502bD71Cf5b889521C97751838) |
 | Universal_Adapter_56           | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
 | Universal_Adapter_9745         | [0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363](https://etherscan.io/address/0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363) |
 | Universal_Adapter_999          | [0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B](https://etherscan.io/address/0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B) |
@@ -114,11 +115,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositSpokePool | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://uniscan.xyz/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
 | DstOFTHandler                  | [0xa12f224019482C6Dfa6A7699118A4Be2405bD513](https://uniscan.xyz/address/0xa12f224019482C6Dfa6A7699118A4Be2405bD513) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| PermissionedMulticallHandler   | [0x68950EBFb76fA2C451Ee35b4F6EF7D2fF70F0C2c](https://uniscan.xyz/address/0x68950EBFb76fA2C451Ee35b4F6EF7D2fF70F0C2c) |
+| PermissionedMulticallHandler   | [0x37C12e9a310AD255601Bc86feD0663243D6f47A8](https://uniscan.xyz/address/0x37C12e9a310AD255601Bc86feD0663243D6f47A8) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://uniscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://uniscan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPDstPeriphery      | [0xC77392d22fbB8c8f8D6045260e4f1d9DBACC4BdA](https://uniscan.xyz/address/0xC77392d22fbB8c8f8D6045260e4f1d9DBACC4BdA) |
 | SponsoredCCTPSrcPeriphery      | [0x232e7f2F8967b3F2e37649eBE1d89C79E4770e20](https://uniscan.xyz/address/0x232e7f2F8967b3F2e37649eBE1d89C79E4770e20) |
 | SponsoredOFTSrcPeriphery       | [0x9d7B6Ea64E9fAEBEf98170210548A777605EDE87](https://uniscan.xyz/address/0x9d7B6Ea64E9fAEBEf98170210548A777605EDE87) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://uniscan.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
@@ -388,6 +390,14 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://arbiscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://arbiscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+
+## Avalanche (43114)
+
+| Contract Name | Address                                                                                                               |
+| ------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b](https://snowscan.xyz/address/0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b) |
+| SpokePool     | [0x292A00f2368187073E80AB94fA03AFD8c796d450](https://snowscan.xyz/address/0x292A00f2368187073E80AB94fA03AFD8c796d450) |
 
 ## Ink (57073)
 
