@@ -197,30 +197,39 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       const transactions = data.transactions || [];
       const receipts = data.receipts || [];
 
-      // Create a mapping of transaction hash to block number
+      // Build receipt lookups keyed by the deployed contract address. Receipts are fetched directly from the
+      // node and are authoritative, whereas `transactions[].hash` is occasionally mis-associated with the wrong
+      // entry by Foundry (e.g. when a sequence contains both a CREATE and a later CALL to the same address). We
+      // therefore resolve a CREATE's transaction hash and block number from the receipt whose `contractAddress`
+      // matches, falling back to `tx.hash` only when no matching receipt exists (e.g. simulation-only runs).
       const txHashToBlock: { [hash: string]: number } = {};
+      const addressToReceipt: { [address: string]: { transactionHash: string; blockNumber: number | null } } = {};
       for (const receipt of receipts) {
         const txHash = receipt.transactionHash;
         let blockNumber = receipt.blockNumber;
+        // Convert hex to decimal
+        if (typeof blockNumber === "string" && blockNumber.startsWith("0x")) {
+          blockNumber = parseInt(blockNumber, 16);
+        }
         if (txHash && blockNumber) {
-          // Convert hex to decimal
-          if (typeof blockNumber === "string" && blockNumber.startsWith("0x")) {
-            blockNumber = parseInt(blockNumber, 16);
-          }
           txHashToBlock[txHash] = blockNumber;
+        }
+        if (receipt.contractAddress) {
+          addressToReceipt[receipt.contractAddress.toLowerCase()] = { transactionHash: txHash, blockNumber };
         }
       }
 
       for (const tx of transactions) {
         if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
-          const txHash = tx.hash;
-          const blockNumber = txHashToBlock[txHash] || null;
+          const receipt = addressToReceipt[tx.contractAddress.toLowerCase()];
+          const txHash = receipt?.transactionHash ?? tx.hash;
+          const blockNumber = receipt?.blockNumber ?? txHashToBlock[tx.hash] ?? null;
 
           let contractName = (tx.contractName as string | null) ?? "";
 
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
-          } else if (contractName.endsWith("_SpokePool")) {
+          } else if (contractName.endsWith("_SpokePool") || contractName.startsWith("DonationBox")) {
             // skip
             continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
@@ -255,14 +264,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
                 `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
               );
             }
-          }
-
-          if (broadcastFile.scriptName === "DeployDstHandler.s.sol") {
-            contractName += "_OFT_USDT";
-          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeriphery.s.sol") {
-            contractName += "_CCTP_USDC";
-          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeripheryUSDH.s.sol") {
-            contractName += "_CCTP_USDH";
           }
 
           contracts.push({

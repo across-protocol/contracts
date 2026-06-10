@@ -35,7 +35,7 @@ contract ApproveZkLighterMaxUSDCFromMulticallHandler is Script, Config {
 
         address usdc = config.get("usdc").toAddress();
         address zkLighter = config.get("zkLighter").toAddress();
-        address multicallHandlerAddr = config.get("multicallHandler_usdc").toAddress();
+        address multicallHandlerAddr = config.get("multicallHandler").toAddress();
 
         require(usdc != address(0), "missing usdc in config");
         require(zkLighter != address(0), "missing zkLighter in config");
