@@ -36,7 +36,7 @@ For each qualifying chain the table reports:
 2. **Universal SpokePool Owner** — the on-chain `owner()` of the chain's `Universal_SpokePool` (if any).
 3. **Counterfactual WithdrawManager Owner / directWithdrawer** — the on-chain `AdminWithdrawManager.owner()` and `AdminWithdrawManager.directWithdrawer()`.
 4. **Sponsored CCTP / OFT Periphery Owner** — the on-chain `owner()` of the Ownable sponsored mintburn peripheries (`SponsoredCCTPSrcPeriphery`, `SponsoredOFTSrcPeriphery`). The Dst variants use `AccessControl` and are not included.
-5. **DonationBox Admin** — who holds `DEFAULT_ADMIN_ROLE` on every deployed `DonationBox` variant on the chain (`DonationBox`, `DonationBox_CCTP`, `DonationBox_OFT`). The script calls `hasRole(DEFAULT_ADMIN_ROLE, …)` against the Safe, the chain's legacy multisig, and the fallback EOA so it can attribute the holder.
+5. **DonationBox Admin** — who holds `DEFAULT_ADMIN_ROLE` on each deployed `DonationBox` variant on the chain (matched by `DonationBox` name prefix, e.g. `DonationBox_CCTP_USDC`, `DonationBox_OFT_USDT`). The script calls `hasRole(DEFAULT_ADMIN_ROLE, …)` against the Safe, the chain's legacy multisig, and the fallback EOA so it can attribute the holder. Chains with multiple boxes list one line per box (`<box>: <holder>`), and each box counts as its own check toward the migration percentage.
 
 Cell content (status is shown with a 🟢/🔴 dot; the label after the dot links to that address on the chain's block explorer, since GitHub renders neither colored LaTeX nor inline HTML color inside a link):
 

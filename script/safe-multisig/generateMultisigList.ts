@@ -433,26 +433,50 @@ function ownershipCell(
   return { kind: "red", text: abbreviateAddress(actual), address: actual };
 }
 
-// AccessControl flavour: aggregates DEFAULT_ADMIN_ROLE membership across every deployed DonationBox variant.
-// Returns Yes if the Safe holds the role on every box; otherwise tries to attribute to the legacy multisig
-// or fallback EOA when one of those holds the role on every box; otherwise red "No".
-// The cell links to whichever role-holder address it attributes to (safe / legacy / fallback).
-function donationBoxAdminCell(
+// AccessControl flavour for a single DonationBox: which known candidate (if any) holds DEFAULT_ADMIN_ROLE.
+// Safe → green "Ops multisig"; else legacy multisig or fallback EOA → red; else red "No" (held by some
+// other address or renounced — AccessControl exposes no getter to resolve who, so there's no address to link).
+function donationBoxState(
+  s: DonationBoxRoleState,
+  safe: string,
+  legacy: string | undefined,
+  fallback: string | undefined
+): Cell {
+  if (s.safeHasRole) return { kind: "yes", text: "Ops multisig", address: safe };
+  if (legacy && s.legacyHasRole) return { kind: "red", text: "Legacy multisig", address: legacy };
+  if (s.fallbackHasRole) return { kind: "red", text: "fallbackEOA", address: fallback };
+  return { kind: "red", text: "No" };
+}
+
+interface DonationBoxColumn {
+  rendered: string; // markdown for the cell: one line per box, joined with <br>
+  countable: Cell[]; // per-box cells that feed the migration percentage
+}
+
+// Renders the DonationBox Admin column. Chains with several boxes (e.g. CCTP + OFT) list one line per box —
+// "<dot> <box>: <holder>" — and each box counts as its own check. NA/error states render a single "—"/"?".
+function donationBoxColumn(
   states: DonationBoxRoleState[] | undefined,
   hasDeployments: boolean,
+  isNonEvm: boolean,
   safe: string | undefined,
   legacy: string | undefined,
   fallback: string | undefined,
-  error: string | undefined
-): Cell {
-  if (!hasDeployments) return NA_CELL;
-  if (!safe) return NA_CELL;
-  if (error) return ERROR_CELL;
-  if (!states || states.length === 0) return NA_CELL;
-  if (states.every((s) => s.safeHasRole)) return { kind: "yes", text: "Ops multisig", address: safe };
-  if (legacy && states.every((s) => s.legacyHasRole)) return { kind: "red", text: "Legacy multisig", address: legacy };
-  if (states.every((s) => s.fallbackHasRole)) return { kind: "red", text: "fallbackEOA", address: fallback };
-  return { kind: "red", text: "No" };
+  error: string | undefined,
+  explorer: string | undefined
+): DonationBoxColumn {
+  if (!hasDeployments || !safe || isNonEvm) return { rendered: "—", countable: [] };
+  if (error) return { rendered: "?", countable: [] };
+  if (!states || states.length === 0) return { rendered: "—", countable: [] };
+  const parts = states.map((s) => {
+    const cell = donationBoxState(s, safe, legacy, fallback);
+    const boxLabel = s.name.replace(/^DonationBox_?/, "") || s.name; // e.g. DonationBox_CCTP_USDC → CCTP_USDC
+    const dot = cell.kind === "yes" ? GREEN_DOT : RED_DOT;
+    const holder =
+      cell.address && explorer ? `[${cell.text}](${explorerAddressUrl(explorer, cell.address)})` : cell.text;
+    return { cell, line: `${dot} ${boxLabel}: ${holder}` };
+  });
+  return { rendered: parts.map((p) => p.line).join("<br>"), countable: parts.map((p) => p.cell) };
 }
 
 function collectErrors(entry: ChainEntry): { check: string; message: string }[] {
@@ -503,23 +527,21 @@ function renderMarkdown(entries: ChainEntry[]): string {
     const cctpCell = ownership(Boolean(entry.sponsoredCctpAddress), entry.sponsoredCctpOwner, entry.sponsoredCctpError);
     const oftCell = ownership(Boolean(entry.sponsoredOftAddress), entry.sponsoredOftOwner, entry.sponsoredOftError);
 
-    const donationBoxDeployed = entry.donationBoxes.length > 0;
-    const donationBoxCell =
-      isNonEvm && donationBoxDeployed
-        ? NA_CELL
-        : donationBoxAdminCell(
-            entry.donationBoxStates,
-            donationBoxDeployed,
-            safe,
-            legacy,
-            fallback,
-            entry.donationBoxError
-          );
+    const ownershipCells = [universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell];
+    const donationBoxes = donationBoxColumn(
+      entry.donationBoxStates,
+      entry.donationBoxes.length > 0,
+      isNonEvm,
+      safe,
+      legacy,
+      fallback,
+      entry.donationBoxError,
+      explorer
+    );
 
-    const cells = [safeDeployedCell, universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell, donationBoxCell];
     // Migration progress measures ownership/admin transfer only; whether the Ops multisig (Safe) is deployed
-    // (safeDeployedCell) is excluded from the count.
-    for (const cell of [universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell, donationBoxCell]) {
+    // (safeDeployedCell) is excluded. Each DonationBox variant counts as its own check.
+    for (const cell of [...ownershipCells, ...donationBoxes.countable]) {
       if (cell.kind === "yes") yesCount += 1;
       else if (cell.kind === "red") noCount += 1;
     }
@@ -527,7 +549,11 @@ function renderMarkdown(entries: ChainEntry[]): string {
     rows.push({
       chainId: entry.chainId,
       chainName: entry.chainName,
-      migration: cells.map((cell) => renderCell(cell, explorer)),
+      migration: [
+        renderCell(safeDeployedCell, explorer),
+        ...ownershipCells.map((cell) => renderCell(cell, explorer)),
+        donationBoxes.rendered,
+      ],
     });
   }
 
@@ -596,7 +622,7 @@ function renderMarkdown(entries: ChainEntry[]): string {
     "- **Sponsored CCTP / OFT Periphery Owner** — the on-chain `owner()` of the chain's Ownable sponsored mintburn peripheries (`SponsoredCCTPSrcPeriphery`, `SponsoredOFTSrcPeriphery`)"
   );
   lines.push(
-    "- **DonationBox Admin** — who holds `DEFAULT_ADMIN_ROLE` on every deployed `DonationBox` variant (DonationBox uses AccessControl, not Ownable)"
+    "- **DonationBox Admin** — who holds `DEFAULT_ADMIN_ROLE` on each deployed `DonationBox` variant (DonationBox uses AccessControl, not Ownable). Chains with multiple boxes (e.g. CCTP + OFT) list one line per box, and each box counts as its own check"
   );
   lines.push("");
   lines.push(
@@ -645,7 +671,7 @@ For each qualifying chain:
 - if the SpokePool is a Universal_SpokePool, calls owner() to check Safe migration
 - if AdminWithdrawManager is deployed, calls owner() and directWithdrawer() to check Safe migration
 - if SponsoredCCTPSrcPeriphery or SponsoredOFTSrcPeriphery is deployed, calls owner() to check Safe migration
-- if any DonationBox variant is deployed, calls hasRole(DEFAULT_ADMIN_ROLE, safe) to check Safe migration
+- for each deployed DonationBox variant, calls hasRole(DEFAULT_ADMIN_ROLE, ...) to check Safe migration (one line + one check per box)
 
 Failed RPC checks render as \`?\` in the affected cell; full error details are listed in the "Errors from last run" section below the table.
 
