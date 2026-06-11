@@ -1,12 +1,12 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys WithdrawImplementation to Tron. No constructor args.
+ * Deploys WithdrawImplementationTron to Tron. No constructor args.
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
  *
  * Usage:
- *   yarn tron-deploy-withdraw-implementation [--testnet]
+ *   yarn tron-deploy-withdraw-implementation-tron [--testnet]
  */
 
 import "dotenv/config";
@@ -16,12 +16,12 @@ import { deployContract, resolveChainId } from "../deploy";
 async function main(): Promise<void> {
   const chainId = resolveChainId();
 
-  console.log("=== WithdrawImplementation Deployment ===");
+  console.log("=== WithdrawImplementationTron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
   const artifactPath = path.resolve(
     __dirname,
-    "../../../out-tron/WithdrawImplementation.sol/WithdrawImplementation.json"
+    "../../../out-tron/WithdrawImplementationTron.sol/WithdrawImplementationTron.json"
   );
 
   await deployContract({ chainId, artifactPath });

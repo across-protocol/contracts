@@ -90,6 +90,28 @@ library SponsoredCCTPQuoteLib {
     }
 
     /**
+     * @notice Reads the top-level CCTP message `recipient` (i.e. the contract MessageTransmitter delivers to,
+     * typically the TokenMessenger that performs the mint). Assumes `message` has passed length validation.
+     */
+    function extractRecipient(bytes memory message) internal pure returns (bytes32) {
+        return message.toBytes32(RECIPIENT_INDEX);
+    }
+
+    /**
+     * @notice Reads the CCTP source domain from the message header. Assumes `message` has passed length validation.
+     */
+    function extractSourceDomain(bytes memory message) internal pure returns (uint32) {
+        return message.toUint32(SOURCE_DOMAIN_INDEX);
+    }
+
+    /**
+     * @notice Reads the burnToken (as bytes32) from the burn message body. Assumes `message` has passed length validation.
+     */
+    function extractBurnToken(bytes memory message) internal pure returns (bytes32) {
+        return message.toBytes32(MESSAGE_BODY_INDEX + BURN_TOKEN_INDEX);
+    }
+
+    /**
      * @notice Validates the message that is received from CCTP. If this checks fails, then the quote on source chain was invalid
      * and we are unable to retrieve user's address to send the funds to. In that case the funds will stay in this contract.
      * @param message The message that is received from CCTP.

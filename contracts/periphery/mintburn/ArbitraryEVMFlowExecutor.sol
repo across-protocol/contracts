@@ -60,9 +60,17 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(params.actionData, (CompressedCall[]));
 
-        // Snapshot balances
-        uint256 initialAmountSnapshot = IERC20(params.initialToken).balanceOf(address(this));
-        uint256 finalAmountSnapshot = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+        // Sweep any pre-existing dust on MulticallHandler so it cannot pollute our balance snapshots
+        _drainMulticallHandlerDust(params.initialToken);
+        if (params.commonParams.finalToken != params.initialToken) {
+            _drainMulticallHandlerDust(params.commonParams.finalToken);
+        }
+
+        bool differentTokens = params.initialToken != params.commonParams.finalToken;
+
+        // Read "starting balance initial token"(sBI) and "starting balance final token"(sBF)
+        uint256 sBI = IERC20(params.initialToken).balanceOf(address(this));
+        uint256 sBF = differentTokens ? IERC20(params.commonParams.finalToken).balanceOf(address(this)) : sBI;
 
         // Transfer tokens to MulticallHandler
         IERC20(params.initialToken).safeTransfer(multicallHandler, params.commonParams.amountInEVM);
@@ -82,19 +90,21 @@ abstract contract ArbitraryEVMFlowExecutor {
             instructions
         );
 
-        uint256 finalAmount;
-        // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
-        if (initialAmountSnapshot == IERC20(params.initialToken).balanceOf(address(this))) {
-            params.commonParams.finalToken = params.initialToken;
-            finalAmount = params.commonParams.amountInEVM;
-        } else {
-            uint256 finalBalance = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-            if (finalBalance >= finalAmountSnapshot) {
-                // This means the swap did happen, so we check the balance of the output token and send it.
-                finalAmount = finalBalance - finalAmountSnapshot;
+        // Default to initial-token accounting; overwrite below if finalToken was actually produced.
+        // Ending balance initial token
+        uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
+        uint256 finalAmount = params.commonParams.amountInEVM + eBI - sBI;
+        if (differentTokens) {
+            // Ending balance final token
+            uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+
+            // Any positive finalToken delta is treated as successful execution when initialToken != finalToken. If any
+            // (or all) of the initialToken amount is unspent during the execution, it lands back into this contract and
+            // can be withdrawn by the admin
+            if (eBF > sBF) {
+                finalAmount = eBF - sBF;
             } else {
-                // If we somehow lost final tokens (e.g. by depositing into some contract), just set the finalAmount to 0.
-                finalAmount = 0;
+                params.commonParams.finalToken = params.initialToken;
             }
         }
 
@@ -153,6 +163,19 @@ abstract contract ArbitraryEVMFlowExecutor {
         });
 
         return abi.encode(instructions);
+    }
+
+    /// @notice Drains any pre-existing balance of token from MulticallHandler
+    function _drainMulticallHandlerDust(address token) internal {
+        if (IERC20(token).balanceOf(multicallHandler) == 0) return;
+
+        // Empty instructions with `fallbackRecipient` set. Causes MulticallHandler to call `_drainRemainingTokens`, which
+        // does a safeTransfer of `token` to `fallbackRecipient`, this contract, essentially removing dust
+        bytes memory instructions = abi.encode(
+            MulticallHandler.Instructions({ calls: new MulticallHandler.Call[](0), fallbackRecipient: address(this) })
+        );
+
+        MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(token, 0, address(this), instructions);
     }
 
     /// @notice Calculates proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount

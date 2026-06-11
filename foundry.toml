@@ -32,6 +32,9 @@ zksolc = "1.5.15"
 # Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
 optimizer_runs = 300
 
+[lint]
+lint_on_build = false
+
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"
 base = "${NODE_URL_8453}"
