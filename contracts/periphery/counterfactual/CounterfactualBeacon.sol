@@ -29,6 +29,9 @@ struct CounterfactualChainConfig {
     ///      a `bytes4` selector (its `maxExecutionFeeGetter`). Illustrative set — add more as routes need them.
     ///      For SpokePool this is the fixed component of the fee cap (added to the leaf's `maxFeeBps` term).
     uint256 usdcCctpMaxExecutionFee;
+    /// @dev Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP route), in bps of the
+    ///      burned amount (0 ⇒ standard transfers only).
+    uint256 usdcCctpMaxFeeBps;
     uint256 usdtOftMaxExecutionFee;
     uint256 usdcSpokePoolMaxExecutionFee;
     uint256 usdtSpokePoolMaxExecutionFee;
@@ -77,6 +80,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcCctpMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcCctpMaxFeeBps;
+    /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdtOftMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcSpokePoolMaxExecutionFee;
@@ -100,6 +105,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         usdc = config.usdc;
         usdt = config.usdt;
         usdcCctpMaxExecutionFee = config.usdcCctpMaxExecutionFee;
+        usdcCctpMaxFeeBps = config.usdcCctpMaxFeeBps;
         usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;
         usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
         usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;

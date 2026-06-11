@@ -321,8 +321,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 152723450,
-          "transaction_hash": "0xcd8d6e0c9110c703da09ad381a6904178601968cb9c5ca4591ae7e3508b26147"
+          "block_number": 152723452,
+          "transaction_hash": "0xe1b056bab13778fccef87dbfe417ca2a63e3a1e6e1a39162b3c5bf9bc45e54fa"
         },
         "CounterfactualBeaconImpl": {
           "address": "0xE676eEDadAd75f0d06FcfB60A9C795DBeaaE802E",
@@ -464,8 +464,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 50308518,
-          "transaction_hash": "0xdafc28cfb75302a1eaef674a218baaa18bf695dd2216511f380f330a7f60f268"
+          "block_number": 50308520,
+          "transaction_hash": "0x4c50b37063749752917f8776e3d396181e8bacc85515c41ae7cc9a3b3f7d0f7e"
         },
         "CounterfactualBeaconImpl": {
           "address": "0xa4f2dE742E6449e26D0B4741dFBc3F8a05a8b54c",
@@ -580,8 +580,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 88235174,
-          "transaction_hash": "0x85f53ecb11bbef16798215689fbc8439dd70c4ac7cb51346c843655982f96d55"
+          "block_number": 88235177,
+          "transaction_hash": "0x481d3be6d0bb386e086b7ec5e8f870bc172162495d4c77effdab0011c39bfcb8"
         },
         "CounterfactualBeaconImpl": {
           "address": "0xc32eEF2907f2d6996c0b08191F50DdCb69DC0E50",
@@ -677,8 +677,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 80272669,
-          "transaction_hash": "0xf73f475f8a05b2d170c16bfdcd40731f5ab567c2e13e387f2fc2c4f59aa18518"
+          "block_number": 80272681,
+          "transaction_hash": "0x07ea8e7b03e32ad589419801faf79e68289989afae3edccb4b02c97944d7eaa2"
         },
         "CounterfactualBeaconImpl": {
           "address": "0x84941D370CcB53488A98FC9d7AD66b1790f260b7",
@@ -882,8 +882,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 30861771,
-          "transaction_hash": "0xd45c3b966e28414fc35ebeee793e7b17fd476ab50629d6b39046bd2572f14933"
+          "block_number": 30861773,
+          "transaction_hash": "0x60dd1f8bcb579951ef8be92c9288de952f96c5dc5fe88e028f55f8cde0c917cf"
         },
         "CounterfactualBeaconImpl": {
           "address": "0x04f329B8a6E57b33aF1aC99b9060F57c8beF7351",
@@ -981,8 +981,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 37405332,
-          "transaction_hash": "0xb435c6a6c57cf55c5a2e5556d3295c16f68158ca232507e871a07bbe1ce909bf"
+          "block_number": 37405454,
+          "transaction_hash": "0x9068f240687bbf9c2a146dbfab68c76989c8ab8ebff0cd96d31b578e6e23a012"
         },
         "CounterfactualBeaconImpl": {
           "address": "0xFcb61e1E76189938344CdcCc4F777119eA49Ab70",
@@ -1389,8 +1389,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 47128694,
-          "transaction_hash": "0x45c82dff3c1d16b812e126039687a5d9d5fb8a63a1a7eedafce49c71550ed76a"
+          "block_number": 47128696,
+          "transaction_hash": "0xf19c09f3b3fd93fa3b4b1d4dbed27ba13488b6da39e841e6497febbf0b907193"
         },
         "CounterfactualBeaconImpl": {
           "address": "0x5444cD07cF309eC88a71E57Ded035EcF4A896C9a",
@@ -1590,8 +1590,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 471891583,
-          "transaction_hash": "0xba48480ae9a58b91691e186734960229320611a7801caa1fdd317c53293b692c"
+          "block_number": 471891598,
+          "transaction_hash": "0xe203a2482f204f25aba888b1bc32a72c81eda7a40b3c314267374600d5f64994"
         },
         "CounterfactualBeaconImpl": {
           "address": "0x2E5D3a0177d0AeBC69C542fADc7EDe2B042a7ab2",
@@ -1687,8 +1687,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 47561906,
-          "transaction_hash": "0xe37b5f126737dc7a546d859e2c7d66e82ce1d695709f8c9b522f34744beb1371"
+          "block_number": 47561910,
+          "transaction_hash": "0x4b76b27a5d585ec5c13cff452400206ced3a1ec0f1a486431e6355c1f2c3de4e"
         },
         "CounterfactualBeaconImpl": {
           "address": "0xa278C21537dfa28d31DE1B2F8f179681382B8baA",
@@ -1779,8 +1779,8 @@
         },
         "CounterfactualBeacon": {
           "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
-          "block_number": 30976288,
-          "transaction_hash": "0xb3d9f5dddbae485e43d30094e85f003b0cfe95f686396acabd8f69fe6b1b841d"
+          "block_number": 30976290,
+          "transaction_hash": "0x0700d94888d40b6fceec5fc27a5279804c7f9aa793ee2c9ee40c742cb2dd99f5"
         },
         "CounterfactualBeaconImpl": {
           "address": "0xd4B79aAb2Af8A316861AA04899a3D1085fEea270",

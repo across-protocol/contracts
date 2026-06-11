@@ -171,11 +171,12 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();
-        // Per-(token, bridge) execution-fee caps. Hardcoded to `type(uint256).max` (effectively no on-chain
-        // cap) for now: the leaf's execution fee is already authorized by the beacon `signer`'s EIP-712
-        // signature, which is the real bound. Revisit (e.g. resolve per-chain from config.toml) before relying
-        // on the cap as a defense-in-depth limit.
+        // Per-(token, bridge) execution-fee caps from config.toml (operational; 0 if unset). A leaf names
+        // which cap to enforce via its `maxExecutionFeeGetter` selector.
         cfg.usdcCctpMaxExecutionFee = type(uint256).max;
+        // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP);
+        // 0 if unset ⇒ standard transfers only on this chain.
+        cfg.usdcCctpMaxFeeBps = type(uint256).max;
         cfg.usdtOftMaxExecutionFee = type(uint256).max;
         cfg.usdcSpokePoolMaxExecutionFee = type(uint256).max;
         cfg.usdtSpokePoolMaxExecutionFee = type(uint256).max;

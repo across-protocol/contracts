@@ -73,6 +73,10 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Max execution fee for the USDC CCTP route(s).
     function usdcCctpMaxExecutionFee() external view returns (uint256);
 
+    /// @notice Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP route), in bps of the
+    ///         burned amount; 0 ⇒ standard transfers only.
+    function usdcCctpMaxFeeBps() external view returns (uint256);
+
     /// @notice Max execution fee for the USDT OFT route.
     function usdtOftMaxExecutionFee() external view returns (uint256);
 
