@@ -1478,9 +1478,9 @@
       "chain_name": "Avalanche",
       "contracts": {
         "SP1Helios": {
-          "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b",
-          "block_number": 87017813,
-          "transaction_hash": "0x3c91515e112c6603fc8032fe1bc51c6670f39bba287ea931b5b0c7e88463fda0"
+          "address": "0x7a36967Ee0a5c913Be88c838321d05C13705911a",
+          "block_number": 87757914,
+          "transaction_hash": "0x858b85d14197c27c166e7ac3bca76705e70164f88db0f2ae776e1321ed01b04c"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -1488,9 +1488,9 @@
           "transaction_hash": "0x200b98e4ec8b7f99c0a41ea4732e8a11a5c2d4f6915c9d7d43f0bc083de8204a"
         },
         "SpokePool": {
-          "address": "0x292A00f2368187073E80AB94fA03AFD8c796d450",
-          "block_number": 87017827,
-          "transaction_hash": "0x91b03ff4987f357528b49d3b9e0e7e08abbd90719f407f16fecdf77be4ca1bbe"
+          "address": "0xE0DB08B3F72931Dca2Ed7323a1053EaC42715bEe",
+          "block_number": 87757923,
+          "transaction_hash": "0xb0d0238291aa88cdbf176d568d5620c98725148e2198e8c7128785e79fd1529d"
         }
       }
     },

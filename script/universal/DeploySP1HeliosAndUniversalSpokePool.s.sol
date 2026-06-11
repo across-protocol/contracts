@@ -14,21 +14,22 @@ import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
 /// Deployment flow:
 ///   1. Deploy SP1Helios light client (via forge script FFI)
 ///   2. Deploy Universal_SpokePool proxy (via forge script FFI, using SP1Helios address from step 1)
-///   3. Transfer SP1Helios VKEY_UPDATER_ROLE and DEFAULT_ADMIN_ROLE from deployer to SpokePool (cast send)
+///   3. Transfer SP1Helios VKEY_UPDATER_ROLE and DEFAULT_ADMIN_ROLE from deployer to SpokePool (cast send,
+///      optional -- skip with TRANSFER_ROLES=false to keep the roles on the deployer, e.g. to transfer later)
 ///   4. Verify contracts on Etherscan (optional, via forge script --resume)
 ///
 /// Usage:
 ///   forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-///     --sig "run(uint256,string,string,bool)" <OFT_FEE_CAP> <RPC_URL> <ETHERSCAN_API_KEY> <BROADCAST> \
+///     --sig "run(uint256,string,string,bool,bool)" <OFT_FEE_CAP> <RPC_URL> <ETHERSCAN_API_KEY> <BROADCAST> <TRANSFER_ROLES> \
 ///     --ffi
 ///
 /// Example (dry run):
 ///   forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-///     --sig "run(uint256,string,string,bool)" 78000000000000000000000 "https://rpc.hyperliquid.xyz/evm" "" false --ffi
+///     --sig "run(uint256,string,string,bool,bool)" 78000000000000000000000 "https://rpc.hyperliquid.xyz/evm" "" false true --ffi
 ///
 /// Example (broadcast + verify):
 ///   forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-///     --sig "run(uint256,string,string,bool)" 78000000000000000000000 "https://rpc.hyperliquid.xyz/evm" "YOUR_API_KEY" true --ffi
+///     --sig "run(uint256,string,string,bool,bool)" 78000000000000000000000 "https://rpc.hyperliquid.xyz/evm" "YOUR_API_KEY" true true --ffi
 ///
 /// Required env vars (loaded from .env, passed through to sub-scripts):
 ///   MNEMONIC, SP1_RELEASE, SP1_PROVER_MODE, SP1_VERIFIER_ADDRESS,
@@ -41,7 +42,8 @@ contract DeploySP1HeliosAndUniversalSpokePool is Script, DeployedAddresses {
         uint256 oftFeeCap,
         string calldata rpcUrl,
         string calldata etherscanApiKey,
-        bool doBroadcast
+        bool doBroadcast,
+        bool transferRoles
     ) external {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
@@ -168,7 +170,9 @@ contract DeploySP1HeliosAndUniversalSpokePool is Script, DeployedAddresses {
         string memory vkeyRole = vm.toString(VKEY_UPDATER_ROLE);
         string memory adminRole = vm.toString(DEFAULT_ADMIN_ROLE);
 
-        if (doBroadcast) {
+        if (!transferRoles) {
+            console.log("(Skipping admin role transfer -- TRANSFER_ROLES=false; deployer retains SP1Helios roles)");
+        } else if (doBroadcast) {
             _castSend(rpcUrl, pkHex, sp1Helios, "grantRole(bytes32,address)", vkeyRole, spokePool);
             _castSend(rpcUrl, pkHex, sp1Helios, "renounceRole(bytes32,address)", vkeyRole, deployer);
             _castSend(rpcUrl, pkHex, sp1Helios, "grantRole(bytes32,address)", adminRole, spokePool);
