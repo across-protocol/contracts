@@ -232,7 +232,10 @@ so they too share one address per chain — see _Execution Fees_.)
 > Note: absolute fee caps are **per-chain, per-token** beacon values, not leaf constants. A leaf names a
 > cap via a `bytes4 maxExecutionFeeGetter` selector (e.g. `beacon.usdcCctpMaxExecutionFee.selector`,
 > `beacon.usdcSpokePoolMaxExecutionFee.selector`); the impl resolves it with `_resolveBeaconUint`. So the
-> same leaf carries the right cap on every chain. (`maxFeeBps`, being relative, stays in the SpokePool leaf.)
+> same leaf carries the right cap on every chain. The vanilla CCTP leaf additionally names a **relative**
+> cap via `cctpMaxFeeBpsGetter` (e.g. `beacon.usdcCctpMaxFeeBps.selector`), bounding the submitter-chosen
+> Circle `maxFeeCctp` in bps of the burned amount. (`maxFeeBps`, being relative, stays in the SpokePool
+> leaf.)
 
 ---
 
@@ -500,8 +503,9 @@ CCTP TokenMessenger (`beacon.cctpTokenMessenger()`) and burn token (`beacon.usdc
 **Two destination shapes, one branch on `hookData`:**
 
 - **Plain CCTP v2 (fast or standard)** — `hookData` empty ⇒ `depositForBurn`. USDC mints to `mintRecipient`
-  on `destinationDomain`. Fast vs standard is `minFinalityThreshold` (+ a `maxFee` derived from
-  `cctpMaxFeeBps`); a standard transfer sets `cctpMaxFeeBps = 0`.
+  on `destinationDomain`. Fast vs standard is a **runtime choice**: the submitter supplies
+  `maxFeeCctp`/`minFinalityThreshold` at execution time (standard ⇒ `maxFeeCctp = 0`); `maxFeeCctp` is
+  capped at the beacon's `<cctpMaxFeeBpsGetter>` bps of the burned amount.
 - **HyperCore** ([Circle docs](https://developers.circle.com/cctp/concepts/cctp-on-hypercore)) — `hookData`
   non-empty ⇒ `depositForBurnWithHook`. A HyperCore transfer is just a CCTP burn to **HyperEVM (domain 19)** where `mintRecipient` is Circle's **`CctpForwarder`** proxy and `hookData` is its envelope; the
   forwarder mints on HyperEVM, then routes through `CoreDepositWallet` to the HyperCore account. The
@@ -525,8 +529,11 @@ route and amount are **not** bound transitively. Instead the impl's own EIP-712 
 directly (mirroring SpokePool):
 `ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`,
 where `routeParamsHash = keccak256(params)` is the exact merkle-leaf params and `verifyingContract`
-resolves to the proxy. `beacon.signer()` authorizes it, `executionFee ≤ beacon.<maxExecutionFeeGetter>()`
-(the per-chain cap the leaf names) is checked afterward, and **replay protection is the short
+resolves to the proxy. `beacon.signer()` authorizes it. The two fees are then capped **independently**
+against the per-chain getters the leaf names: `executionFee ≤ beacon.<maxExecutionFeeGetter>()` (the same
+`usdcCctpMaxExecutionFee` the sponsored CCTP leaf uses) and the submitter-chosen
+`maxFeeCctp ≤ beacon.<cctpMaxFeeBpsGetter>()` bps of the burned amount — either failing check reverts.
+**Replay protection is the short
 `signatureDeadline`** — there is no nonce, so a
 re-funded proxy could be re-executed within the signature window; keep deadlines short. ERC-20 (USDC) only.
 

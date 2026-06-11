@@ -131,6 +131,9 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         // Per-(token, bridge) execution-fee caps from config.toml (operational; 0 if unset). A leaf names
         // which cap to enforce via its `maxExecutionFeeGetter` selector.
         cfg.usdcCctpMaxExecutionFee = _resolveFeeCap("usdcCctpMaxExecutionFee");
+        // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP);
+        // 0 if unset ⇒ standard transfers only on this chain.
+        cfg.usdcCctpMaxFeeBps = _resolveFeeCap("usdcCctpMaxFeeBps");
         cfg.usdtOftMaxExecutionFee = _resolveFeeCap("usdtOftMaxExecutionFee");
         cfg.usdcSpokePoolMaxExecutionFee = _resolveFeeCap("usdcSpokePoolMaxExecutionFee");
         cfg.usdtSpokePoolMaxExecutionFee = _resolveFeeCap("usdtSpokePoolMaxExecutionFee");

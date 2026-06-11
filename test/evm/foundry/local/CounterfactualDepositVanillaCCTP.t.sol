@@ -99,6 +99,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         cfg.cctpTokenMessenger = address(messenger);
         cfg.usdc = address(token); // burn token
         cfg.usdcCctpMaxExecutionFee = 5e6;
+        cfg.usdcCctpMaxFeeBps = 100; // cap on the submitter's maxFeeCctp: 1% of the burned amount
         _deployBeacon(cfg);
 
         token.mint(user, 1000e6);
@@ -111,10 +112,9 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 destinationDomain: 3,
                 mintRecipient: bytes32(uint256(uint160(makeAddr("mintRecipient")))),
                 destinationCaller: bytes32(uint256(uint160(makeAddr("caller")))),
-                cctpMaxFeeBps: 100,
-                minFinalityThreshold: 1000,
                 hookData: "",
-                maxExecutionFeeGetter: ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector
+                maxExecutionFeeGetter: ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector,
+                cctpMaxFeeBpsGetter: ICounterfactualBeacon.usdcCctpMaxFeeBps.selector
             });
     }
 
@@ -124,7 +124,6 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         rp = _routeParams();
         rp.destinationDomain = HYPEREVM_DOMAIN;
         rp.mintRecipient = bytes32(uint256(uint160(makeAddr("cctpForwarder"))));
-        rp.cctpMaxFeeBps = 0; // Arbitrum→HyperCore has no fast-transfer fee.
         rp.hookData = abi.encodePacked(
             bytes24("cctp-forward"), // magic
             uint32(0), // version
@@ -143,11 +142,25 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         proxy = factory.deploy(salt, root);
     }
 
+    /// @dev Default runtime CCTP params: fast transfer with `maxFeeCctp = 1e5`, threshold 1000.
     function _submitter(
         address proxy,
         bytes memory route,
         uint256 amount,
         uint256 executionFee,
+        uint32 signatureDeadline,
+        uint256 pk
+    ) internal view returns (bytes memory) {
+        return _submitter(proxy, route, amount, executionFee, 1e5, 1000, signatureDeadline, pk);
+    }
+
+    function _submitter(
+        address proxy,
+        bytes memory route,
+        uint256 amount,
+        uint256 executionFee,
+        uint256 maxFeeCctp,
+        uint32 minFinalityThreshold,
         uint32 signatureDeadline,
         uint256 pk
     ) internal view returns (bytes memory) {
@@ -161,6 +174,8 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                     amount: amount,
                     executionFeeRecipient: relayer,
                     executionFee: executionFee,
+                    maxFeeCctp: maxFeeCctp,
+                    minFinalityThreshold: minFinalityThreshold,
                     signatureDeadline: signatureDeadline,
                     counterfactualSignature: sig
                 })
@@ -187,7 +202,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         assertEq(messenger.lastMintRecipient(), rp.mintRecipient);
         assertEq(messenger.lastBurnToken(), address(token));
         assertEq(messenger.lastDestinationCaller(), rp.destinationCaller);
-        assertEq(messenger.lastMaxFee(), ((amount - fee) * 100) / 10000);
+        assertEq(messenger.lastMaxFee(), 1e5); // submitter-chosen, within the 1% bps cap
         assertEq(messenger.lastMinFinalityThreshold(), 1000);
         assertEq(token.balanceOf(relayer), fee);
         assertEq(token.balanceOf(proxy), 0);
@@ -213,7 +228,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         assertEq(messenger.lastDestinationDomain(), HYPEREVM_DOMAIN);
         assertEq(messenger.lastMintRecipient(), rp.mintRecipient);
         assertEq(messenger.lastBurnToken(), address(token));
-        assertEq(messenger.lastMaxFee(), 0);
+        assertEq(messenger.lastMaxFee(), 1e5); // submitter-chosen, within the 1% bps cap
         assertEq(messenger.lastHookData(), rp.hookData);
         assertEq(token.balanceOf(proxy), 0);
     }
@@ -232,13 +247,20 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         assertEq(token.balanceOf(relayer), 0);
     }
 
+    /// @dev The submitter picks a standard transfer at execution time: `maxFeeCctp = 0`, threshold 2000.
     function testStandardTransferZeroFee() public {
-        VanillaCCTPRouteParams memory rp = _routeParams();
-        rp.cctpMaxFeeBps = 0;
-        rp.minFinalityThreshold = 2000;
-        bytes memory route = abi.encode(rp);
+        bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, route, 100e6, 1e6, uint32(block.timestamp) + 3600, signerPk);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            1e6,
+            0,
+            2000,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -252,7 +274,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     function testMaxExecutionFeeReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        // 6e6 > maxExecutionFee 5e6.
+        // 6e6 > cap 5e6.
         bytes memory submitter = _submitter(proxy, route, 100e6, 6e6, uint32(block.timestamp) + 3600, signerPk);
 
         vm.prank(user);
@@ -260,6 +282,28 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         vm.prank(relayer);
         vm.expectRevert(CounterfactualDepositVanillaCCTP.MaxExecutionFee.selector);
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
+    }
+
+    /// @dev `maxFeeCctp` is capped independently of the execution fee, at the beacon's bps of the burned
+    ///      amount: above the cap reverts, exactly at the cap passes.
+    function testMaxCctpFeeBoundary() public {
+        bytes memory route = abi.encode(_routeParams()); // beacon usdcCctpMaxFeeBps = 100 (1%)
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        uint32 deadline = uint32(block.timestamp) + 3600;
+        uint256 cap = ((100e6 - 1e6) * 100) / 10000; // 1% of the burned amount = 0.99e6
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+
+        bytes memory submitter = _submitter(proxy, route, 100e6, 1e6, cap + 1, 1000, deadline, signerPk);
+        vm.prank(relayer);
+        vm.expectRevert(CounterfactualDepositVanillaCCTP.MaxCctpFee.selector);
+        ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
+
+        submitter = _submitter(proxy, route, 100e6, 1e6, cap, 1000, deadline, signerPk);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
+        assertEq(messenger.lastMaxFee(), cap);
     }
 
     function testInvalidSignatureReverts() public {
@@ -293,7 +337,8 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         CounterfactualChainConfig memory cfg = _baseConfig();
         cfg.cctpTokenMessenger = address(messenger);
         cfg.usdc = address(0); // unset burn token
-        cfg.usdcCctpMaxExecutionFee = 5e6; // set so the fee check passes; the revert is from usdc = 0
+        cfg.usdcCctpMaxExecutionFee = 5e6; // set so the fee checks pass; the revert is from usdc = 0
+        cfg.usdcCctpMaxFeeBps = 100;
         _deployBeacon(cfg);
 
         bytes memory route = abi.encode(_routeParams());
@@ -343,6 +388,8 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 amount: 200e6,
                 executionFeeRecipient: relayer,
                 executionFee: 1e6,
+                maxFeeCctp: 1e5,
+                minFinalityThreshold: 1000,
                 signatureDeadline: deadline,
                 counterfactualSignature: sig
             })
@@ -373,6 +420,8 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 amount: 100e6,
                 executionFeeRecipient: relayer,
                 executionFee: 1e6,
+                maxFeeCctp: 1e5,
+                minFinalityThreshold: 1000,
                 signatureDeadline: deadline,
                 counterfactualSignature: sig
             })

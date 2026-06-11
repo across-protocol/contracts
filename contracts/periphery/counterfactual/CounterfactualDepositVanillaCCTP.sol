@@ -15,19 +15,20 @@ import { BPS_SCALAR } from "./CounterfactualConstants.sol";
  * @dev Burn token is always USDC (`beacon.usdc()`); the CCTP TokenMessenger from `beacon.cctpTokenMessenger()`.
  *      `hookData` selects the entrypoint: empty ⇒ `depositForBurn` (plain CCTP); non-empty ⇒
  *      `depositForBurnWithHook` (e.g. HyperCore, where `mintRecipient`/`hookData` are Circle's
- *      `CctpForwarder` + envelope, opaque here and built off-chain). `cctpMaxFeeBps`/`minFinalityThreshold`
- *      pick fast vs standard (standard ⇒ `cctpMaxFeeBps = 0`).
+ *      `CctpForwarder` + envelope, opaque here and built off-chain). Fast vs standard is chosen at
+ *      execution time by the submitter (`maxFeeCctp`/`minFinalityThreshold` in the submitter data).
  */
 struct VanillaCCTPRouteParams {
     uint32 destinationDomain;
     bytes32 mintRecipient;
     bytes32 destinationCaller;
-    uint256 cctpMaxFeeBps;
-    uint32 minFinalityThreshold;
     bytes hookData;
     /// @dev Selector of the beacon getter for this route's per-chain execution-fee cap (e.g.
-    ///      `beacon.usdcCctpMaxExecutionFee.selector`).
+    ///      `beacon.usdcCctpMaxExecutionFee.selector`, shared with the sponsored CCTP leaf).
     bytes4 maxExecutionFeeGetter;
+    /// @dev Selector of the beacon getter for this route's per-chain cap on the submitter-chosen
+    ///      `maxFeeCctp`, in bps of the burned amount (e.g. `beacon.usdcCctpMaxFeeBps.selector`).
+    bytes4 cctpMaxFeeBpsGetter;
 }
 
 /**
@@ -37,6 +38,10 @@ struct VanillaCCTPSubmitterData {
     uint256 amount;
     address executionFeeRecipient;
     uint256 executionFee;
+    /// @dev Circle fast-transfer `maxFee` passed to the TokenMessenger (0 ⇒ standard transfer), capped at
+    ///      the beacon's `<cctpMaxFeeBpsGetter>` bps of the burned amount.
+    uint256 maxFeeCctp;
+    uint32 minFinalityThreshold;
     uint32 signatureDeadline;
     bytes counterfactualSignature;
 }
@@ -74,6 +79,7 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
     error InvalidSignature();
     error SignatureExpired();
     error MaxExecutionFee();
+    error MaxCctpFee();
 
     /// @notice EIP-712 typehash binding the fee signature to the route, amount, runtime fee, and deadline.
     bytes32 public constant EXECUTE_VANILLA_CCTP_TYPEHASH =
@@ -94,17 +100,21 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
 
         // Sole authorization (no periphery sig): binds the exact leaf params, amount, and fee.
         _verifySignature(keccak256(routeParamsEncoded), submitterData);
+
+        // Each fee is capped independently against the beacon getter its leaf names.
         if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
             revert MaxExecutionFee();
+        uint256 depositAmount = submitterData.amount - submitterData.executionFee;
+        if (
+            submitterData.maxFeeCctp >
+            (depositAmount * _resolveBeaconUint(routeParams.cctpMaxFeeBpsGetter)) / BPS_SCALAR
+        ) revert MaxCctpFee();
 
         ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(_beacon().cctpTokenMessenger()));
         address inputToken = _requireConfigured(_beacon().usdc());
 
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
-
-        uint256 depositAmount = submitterData.amount - submitterData.executionFee;
-        uint256 maxFee = (depositAmount * routeParams.cctpMaxFeeBps) / BPS_SCALAR;
 
         IERC20(inputToken).forceApprove(address(tokenMessenger), depositAmount);
 
@@ -116,8 +126,8 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
                 routeParams.mintRecipient,
                 inputToken,
                 routeParams.destinationCaller,
-                maxFee,
-                routeParams.minFinalityThreshold,
+                submitterData.maxFeeCctp,
+                submitterData.minFinalityThreshold,
                 routeParams.hookData
             );
         } else {
@@ -127,8 +137,8 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
                 routeParams.mintRecipient,
                 inputToken,
                 routeParams.destinationCaller,
-                maxFee,
-                routeParams.minFinalityThreshold
+                submitterData.maxFeeCctp,
+                submitterData.minFinalityThreshold
             );
         }
 
