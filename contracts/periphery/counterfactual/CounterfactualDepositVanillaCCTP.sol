@@ -55,8 +55,8 @@ struct VanillaCCTPSubmitterData {
  *      the beacon, so the impl holds no chain-specific values and has one address per chain.
  *
  *      With no periphery quote signature, the local EIP-712 fee signature binds the full route
- *      (`routeParamsHash`), `amount`, `executionFee` and `signatureDeadline`. Replay protection is the short
- *      `signatureDeadline` (no nonce). ERC-20 only.
+ *      (`routeParamsHash`), `amount`, `executionFee`, `maxFeeCctp`, `minFinalityThreshold` and
+ *      `signatureDeadline`. Replay protection is the short `signatureDeadline` (no nonce). ERC-20 only.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, EIP712 {
@@ -81,10 +81,11 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
     error MaxExecutionFee();
     error MaxCctpFee();
 
-    /// @notice EIP-712 typehash binding the fee signature to the route, amount, runtime fee, and deadline.
+    /// @notice EIP-712 typehash binding the fee signature to the route, amount, runtime fees (executor +
+    ///         Circle), finality threshold, and deadline.
     bytes32 public constant EXECUTE_VANILLA_CCTP_TYPEHASH =
         keccak256(
-            "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
+            "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
         );
 
     constructor() EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {}
@@ -158,6 +159,8 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
                 routeParamsHash,
                 submitterData.amount,
                 submitterData.executionFee,
+                submitterData.maxFeeCctp,
+                submitterData.minFinalityThreshold,
                 submitterData.signatureDeadline
             )
         );

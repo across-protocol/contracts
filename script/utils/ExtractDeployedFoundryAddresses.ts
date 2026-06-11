@@ -229,14 +229,14 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
       for (const tx of transactions) {
         // The beacon PROXY's CREATE only appears in the FIRST beacon run at a given salt; later runs (e.g. a
-        // config upgrade) find it already deployed and skip it, re-emitting only `upgradeToAndCall`. So
-        // `run-latest.json` often lacks the proxy CREATE (only the impl CREATE + the upgrade CALL are present).
-        // The `upgradeToAndCall(address,bytes)` call (selector 0x4f1ef286) ALWAYS targets the proxy and is
-        // emitted on every beacon run, so capture the canonical `CounterfactualBeacon` address from its target.
+        // config upgrade) find it already deployed and skip it, so `run-latest.json` often lacks the proxy
+        // CREATE. Both `upgradeToAndCall(address,bytes)` (0x4f1ef286) and `setImplementation(address)`
+        // (0xd784d426) ALWAYS target the proxy and at least one of them is emitted on any beacon run that
+        // changes anything, so capture the canonical `CounterfactualBeacon` address from their target.
         if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" && tx.transactionType === "CALL") {
           const input: string = (tx.transaction && tx.transaction.input) || "";
           const to: string | undefined = tx.transaction && tx.transaction.to;
-          if (to && input.startsWith("0x4f1ef286")) {
+          if (to && (input.startsWith("0x4f1ef286") || input.startsWith("0xd784d426"))) {
             contracts.push({
               contractName: "CounterfactualBeacon",
               contractAddress: to,
@@ -266,11 +266,15 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
             continue;
           } else if (
-            broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" &&
+            ["DeployCounterfactualBeacon.s.sol", "DeployCounterfactualBeaconImpl.s.sol"].includes(
+              broadcastFile.scriptName
+            ) &&
             contractName === "CounterfactualBeacon"
           ) {
             // The canonical `CounterfactualBeacon` is the proxy (named above); this is the implementation
             // behind it, which changes on upgrade — record it under a distinct name to avoid colliding.
+            // It is deployed by DeployCounterfactualBeaconImpl (and, historically, by the pre-split
+            // DeployCounterfactualBeacon, whose committed broadcasts still contain impl CREATEs).
             contractName = "CounterfactualBeaconImpl";
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;

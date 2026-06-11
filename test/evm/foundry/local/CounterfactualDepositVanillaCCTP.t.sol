@@ -85,7 +85,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     uint32 constant HYPEREVM_DOMAIN = 19;
     bytes32 constant EXECUTE_VANILLA_CCTP_TYPEHASH =
         keccak256(
-            "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
+            "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
         );
 
     function setUp() public {
@@ -165,7 +165,15 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), amount, executionFee, signatureDeadline)
+            abi.encode(
+                EXECUTE_VANILLA_CCTP_TYPEHASH,
+                keccak256(route),
+                amount,
+                executionFee,
+                maxFeeCctp,
+                minFinalityThreshold,
+                signatureDeadline
+            )
         );
         bytes memory sig = _sign(pk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
         return
@@ -380,7 +388,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         uint32 deadline = uint32(block.timestamp) + 3600;
         // Sign 100e6, submit 200e6.
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), 100e6, 1e6, deadline)
+            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), 100e6, 1e6, 1e5, uint32(1000), deadline)
         );
         bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
@@ -402,6 +410,36 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 
+    /// @dev The signature binds `maxFeeCctp`/`minFinalityThreshold`; submitting different CCTP runtime
+    ///      params than were signed must revert, even when they'd pass the bps cap.
+    function testWrongCctpParamsSignatureReverts() public {
+        bytes memory route = abi.encode(_routeParams());
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        uint32 deadline = uint32(block.timestamp) + 3600;
+        // Sign (maxFeeCctp 1e5, threshold 1000), submit (5e4, 2000).
+        bytes32 structHash = keccak256(
+            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), 100e6, 1e6, 1e5, uint32(1000), deadline)
+        );
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory submitter = abi.encode(
+            VanillaCCTPSubmitterData({
+                amount: 100e6,
+                executionFeeRecipient: relayer,
+                executionFee: 1e6,
+                maxFeeCctp: 5e4,
+                minFinalityThreshold: 2000,
+                signatureDeadline: deadline,
+                counterfactualSignature: sig
+            })
+        );
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.prank(relayer);
+        vm.expectRevert(CounterfactualDepositVanillaCCTP.InvalidSignature.selector);
+        ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
+    }
+
     /// @dev The signature binds `routeParamsHash`; a signature for a different route must revert even when
     ///      the submitted route is itself a valid leaf.
     function testWrongRouteSignatureReverts() public {
@@ -412,7 +450,15 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         VanillaCCTPRouteParams memory other = _routeParams();
         other.destinationDomain = 6;
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(abi.encode(other)), 100e6, 1e6, deadline)
+            abi.encode(
+                EXECUTE_VANILLA_CCTP_TYPEHASH,
+                keccak256(abi.encode(other)),
+                100e6,
+                1e6,
+                1e5,
+                uint32(1000),
+                deadline
+            )
         );
         bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
