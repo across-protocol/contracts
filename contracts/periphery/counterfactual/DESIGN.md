@@ -463,7 +463,7 @@ Per-bridge typehash and binding:
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **SpokePool**    | `ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)` | Binds **everything explicitly** — `clone`, `routeParamsHash`, and all runtime fields — because there is no separate periphery quote signature.                                                                                            |
 | **CCTP**         | `ExecuteCCTP(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                           | Binds the **route** (`routeParamsHash`) and fee explicitly; clone bound via the domain; `amount` bound **transitively** through the periphery quote signature; `nonce` gives single-use replay protection once the periphery consumes it. |
-| **Vanilla CCTP** | `ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                   | No periphery, so binds **everything explicitly** — `routeParamsHash` (the leaf), `amount`, and the fee; clone bound via the EIP-712 domain. Replay protection is the short `signatureDeadline` (no nonce).                                |
+| **Vanilla CCTP** | `ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)`                                                                                    | No periphery, so binds **everything explicitly** — `routeParamsHash` (the leaf), `amount`, both fees and the finality threshold; clone bound via the EIP-712 domain. Replay protection is the short `signatureDeadline` (no nonce).       |
 | **OFT**          | `ExecuteOFT(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)`                                                                                                                                            | Same as CCTP (`routeParamsHash` includes the `peripheryGetter`, so the fee signature is bound to the chosen input-token periphery).                                                                                                       |
 
 > CCTP and OFT additionally forward a **separate periphery quote signature** (`peripherySignature`) to
@@ -527,12 +527,14 @@ CCTP TokenMessenger (`beacon.cctpTokenMessenger()`) and burn token (`beacon.usdc
 **Authorization.** There is no periphery quote signature, so — unlike the sponsored CCTP/OFT impls — the
 route and amount are **not** bound transitively. Instead the impl's own EIP-712 signature binds them
 directly (mirroring SpokePool):
-`ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)`,
+`ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)`,
 where `routeParamsHash = keccak256(params)` is the exact merkle-leaf params and `verifyingContract`
-resolves to the proxy. `beacon.signer()` authorizes it. The two fees are then capped **independently**
-against the per-chain getters the leaf names: `executionFee ≤ beacon.<maxExecutionFeeGetter>()` (the same
-`usdcCctpMaxExecutionFee` the sponsored CCTP leaf uses) and the submitter-chosen
-`maxFeeCctp ≤ beacon.<cctpMaxFeeBpsGetter>()` bps of the burned amount — either failing check reverts.
+resolves to the proxy. `beacon.signer()` authorizes it — including the runtime `maxFeeCctp` and
+`minFinalityThreshold`, so the submitter can't alter the fast/standard choice or Circle fee bound it
+signed. The two fees are additionally capped **independently** against the per-chain getters the leaf
+names: `executionFee ≤ beacon.<maxExecutionFeeGetter>()` (the same `usdcCctpMaxExecutionFee` the
+sponsored CCTP leaf uses) and `maxFeeCctp ≤ beacon.<cctpMaxFeeBpsGetter>()` bps of the burned amount —
+either failing check reverts.
 **Replay protection is the short
 `signatureDeadline`** — there is no nonce, so a
 re-funded proxy could be re-executed within the signature window; keep deadlines short. ERC-20 (USDC) only.
