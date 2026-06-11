@@ -1959,6 +1959,11 @@
     "728126428": {
       "chain_name": "TRON",
       "contracts": {
+        "AcrossEventEmitter": {
+          "address": "TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu",
+          "block_number": 83474885,
+          "transaction_hash": "0b4f2cf11a811768e15cbb50769ebeaf5c0f9be7eadf6f1d7b2618d6745a7b07"
+        },
         "AdminWithdrawManager": {
           "address": "TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC",
           "block_number": 81611914,
@@ -1998,6 +2003,11 @@
           "address": "TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ",
           "block_number": 81812685,
           "transaction_hash": "9a708fb56c6b0bba4e87599f8b1309b479f144badc7a2130d4cd3554836e4481"
+        },
+        "TronMulticallHandler": {
+          "address": "TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ",
+          "block_number": 83478629,
+          "transaction_hash": "d25f4b1756b11788f43b253c9dea29227bffab81b1fea5773ced2b257a5873cc"
         },
         "WithdrawImplementationTron": {
           "address": "THPA5L2jxGE84FHMieds212WH3sRX5Hi9t",

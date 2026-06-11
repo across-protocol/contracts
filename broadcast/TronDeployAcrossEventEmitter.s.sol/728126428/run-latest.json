@@ -1,0 +1,38 @@
+{
+  "transactions": [
+    {
+      "hash": "0b4f2cf11a811768e15cbb50769ebeaf5c0f9be7eadf6f1d7b2618d6745a7b07",
+      "transactionType": "CREATE",
+      "contractName": "AcrossEventEmitter",
+      "contractAddress": "TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu",
+      "function": null,
+      "arguments": null,
+      "transaction": {
+        "from": "TQ4T4DgHoezYBTRoZPCspsSgRw38Ni9prA",
+        "gas": "0x5f5e100",
+        "value": "0x0",
+        "input": "0x60808060405234601d57d3601d57d2601d5761015a90816100228239f35b5f80fdfe6080806040526004361015610012575f80fd5b5f3560e01c63d836083e14610025575f80fd5b3461011257d361011257d2610112576020366003190112610112576004359067ffffffffffffffff9081831161011257366023840112156101125782600401359182116101125736602483850101116101125781156100d0577fc28009f405f9b451f5155492167b1ad5ab376d991bea880cb5049e924e5b823c6024604085858083519485936020855282602086015201848401375f828201840152601f01601f19168101030190a1005b62461bcd60e51b815260206004820152601460248201527f446174612063616e6e6f7420626520656d7074790000000000000000000000006044820152606490fd5b5f80fdfea36474726f6e58221220f9b403ec4b53aa13adbf12b9888ac24408976223cdcb1c9a7e94ddfc9f45c83c6c6578706572696d656e74616cf564736f6c63430008190041",
+        "chainId": "0x2b6653dc"
+      },
+      "additionalContracts": []
+    }
+  ],
+  "receipts": [
+    {
+      "status": "0x1",
+      "cumulativeGasUsed": "0x10ee4",
+      "transactionHash": "0b4f2cf11a811768e15cbb50769ebeaf5c0f9be7eadf6f1d7b2618d6745a7b07",
+      "blockHash": null,
+      "blockNumber": "0x4f9b9c5",
+      "gasUsed": "0x10ee4",
+      "from": "TQ4T4DgHoezYBTRoZPCspsSgRw38Ni9prA",
+      "to": null,
+      "contractAddress": "TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu"
+    }
+  ],
+  "libraries": [],
+  "pending": [],
+  "returns": {},
+  "timestamp": 1781093934366,
+  "chain": 728126428
+}

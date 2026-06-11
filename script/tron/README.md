@@ -56,6 +56,24 @@ TRON_FEE_LIMIT=100000000  # Fee limit in sun (default: 100 TRX)
 
 All scripts default to **Tron mainnet** (`728126428`). Pass `--testnet` to deploy to Nile testnet (`3448148188`). All address arguments use **Tron Base58Check format** (`T...`).
 
+## General deployment entry point
+
+`deploy-tron.ts` is a generic entry point for contracts whose deployment is just "compile, encode constructor args, deploy" — no genesis binaries, constants lookups, or post-deploy verification. The contract name is passed as a runtime argument and resolved against a registry in the script; address arguments are validated and converted from Base58Check to EVM hex automatically.
+
+```bash
+yarn tron-deploy <Contract> [--testnet] [constructorArgs...]
+```
+
+Contracts with bespoke deployment logic (SP1Helios, the universal SpokePool proxy flow, counterfactual clones) keep their dedicated scripts below. To add a simple contract, add an entry to the `REGISTRY` in `deploy-tron.ts` rather than creating a new script and yarn target.
+
+### AcrossEventEmitter
+
+Emits `MetadataEmitted(bytes)` events. No constructor args.
+
+```bash
+yarn tron-deploy AcrossEventEmitter [--testnet]
+```
+
 ## Tron SpokePool Scripts
 
 ### SP1AutoVerifier
@@ -180,7 +198,31 @@ forge flatten contracts/sp1-helios/SP1Helios.sol | sed 's/pragma solidity .*/pra
 forge flatten contracts/spoke-pools/Tron_SpokePool.sol | sed 's/pragma solidity .*/pragma solidity ^0.8.25;/' > flattened/Tron_SpokePool.sol
 ```
 
-Then verify on TronScan:
+### Via API (no wallet required)
+
+The TronScan web form requires a connected wallet and a captcha, but both are client-side gating only — neither is sent to the backend, so a plain multipart POST verifies the contract:
+
+```bash
+# Derive the compiler string TronScan expects from the Tron solc binary: "tron_v" + version + commit.
+COMPILER=$(bin/solc-tron --version | sed -n 's/^Version: \([0-9.]*+commit\.[0-9a-f]*\).*/tron_v\1/p')
+# e.g. tron_v0.8.25+commit.77bd169f
+
+curl -X POST "https://apilist.tronscanapi.com/api/solidity/contract/verify" \
+  -F "contractAddress=<T-address>" \
+  -F "contractName=<ContractName>" \
+  -F "compiler=$COMPILER" \
+  -F "optimizer=1" -F "runs=800" \
+  -F "evmVersion=cancun" -F "viaIR=1" \
+  -F "license=14" \
+  -F "files=@flattened/<ContractName>.sol;type=text/plain"
+# success -> {"code":200,"data":{"status":2006,"message":"Verification success."}}
+```
+
+- `license=14` is BUSL-1.1. Add `-F "constructorArguments=<hex>"` (no `0x`) for contracts with constructor args.
+- The `compiler` string is derived above from `bin/solc-tron --version`. To cross-check it (or recover all settings at once), query an already-verified sibling contract built with the same toolchain via `POST https://apilist.tronscanapi.com/api/solidity/contract/info` with body `{"contractAddress":"<verified-addr>"}` — the response includes `compiler`, `optimizer_runs`, `evm_version`, `via_ir`, and `license`.
+- Confirm verification with that same `/info` endpoint (it returns the stored source + settings once verified). The `/api/contract?contract=` endpoint is cached and lags.
+
+### Via the web form
 
 1. Go to the contract page on [TronScan](https://tronscan.org) (or [Nile TronScan](https://nile.tronscan.org) for testnet)
 2. Click **Contract** → **Verify and Publish**
@@ -199,21 +241,22 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 
 ## File overview
 
-| File                                                                  | Purpose                                                                |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `deploy.ts`                                                           | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb |
-| `universal/tron-deploy-sp1-auto-verifier.ts`                          | Deploys SP1AutoVerifier (no args)                                      |
-| `universal/tron-deploy-sp1-helios.ts`                                 | Deploys SP1Helios with genesis binary                                  |
-| `universal/tron-deploy-universal-spokepool.ts`                        | Deploys Tron_SpokePool implementation + ERC1967Proxy                   |
-| `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (no args)                     |
-| `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Deploys CounterfactualDeposit implementation (no args)                 |
-| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTr                               |
-| `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                           |
-| `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                           |
-| `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction              |
-| `periphery/tron-deploy-tron-multicall-handler.ts`                     | Deploys TronMulticallHandler (no args)                                 |
-| `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
-| `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone SwapProxy                                         |
+| File                                                                  | Purpose                                                                             |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `deploy.ts`                                                           | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb              |
+| `deploy-tron.ts`                                                      | Generic entry point — deploys a registry contract by name (e.g. AcrossEventEmitter) |
+| `universal/tron-deploy-sp1-auto-verifier.ts`                          | Deploys SP1AutoVerifier (no args)                                                   |
+| `universal/tron-deploy-sp1-helios.ts`                                 | Deploys SP1Helios with genesis binary                                               |
+| `universal/tron-deploy-universal-spokepool.ts`                        | Deploys Tron_SpokePool implementation + ERC1967Proxy                                |
+| `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (no args)                                  |
+| `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Deploys CounterfactualDeposit implementation (no args)                              |
+| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTr                                            |
+| `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                                        |
+| `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                                        |
+| `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction                           |
+| `periphery/tron-deploy-tron-multicall-handler.ts`                     | Deploys TronMulticallHandler (no args)                                              |
+| `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)               |
+| `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone SwapProxy                                                      |
 
 ## Chain IDs
 
