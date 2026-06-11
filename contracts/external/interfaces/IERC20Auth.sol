@@ -33,3 +33,34 @@ interface IERC20Auth {
         bytes32 s
     ) external;
 }
+
+/*
+ * @notice Minimal interface for tokens that implement the extended EIP-3009 form which accepts
+ * an unstructured `bytes` signature, allowing both EOA (ECDSA) and contract (EIP-1271) signers.
+ * @dev This has a different selector than the canonical EIP-3009 `receiveWithAuthorization`, so a
+ * single token can implement both. Used by tokens such as USDC v2.2.
+ */
+interface IERC20AuthBytes {
+    /**
+     * @notice Receive a transfer with a signed authorization from the payer
+     * @dev This has an additional check to ensure that the payee's address matches
+     * the caller of this function to prevent front-running attacks. (See security
+     * considerations)
+     * @param from          Payer's address (Authorizer)
+     * @param to            Payee's address
+     * @param value         Amount to be transferred
+     * @param validAfter    The time after which this is valid (unix time)
+     * @param validBefore   The time before which this is valid (unix time)
+     * @param nonce         Unique nonce
+     * @param signature     Unstructured bytes signature signed by an EOA wallet or a contract wallet
+     */
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) external;
+}
