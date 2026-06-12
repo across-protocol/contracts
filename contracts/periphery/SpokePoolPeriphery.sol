@@ -16,6 +16,7 @@ import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "../libraries/PeripherySigningLib.sol";
 import { SpokePoolPeripheryInterface } from "../interfaces/SpokePoolPeripheryInterface.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
+import { ERC6492SignatureHandler } from "./ERC6492SignatureHandler.sol";
 
 /**
  * @title SwapProxy
@@ -143,7 +144,13 @@ contract SwapProxy is ReentrancyGuard {
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712 {
+contract SpokePoolPeriphery is
+    SpokePoolPeripheryInterface,
+    ReentrancyGuard,
+    MultiCaller,
+    EIP712,
+    ERC6492SignatureHandler
+{
     using SafeERC20 for IERC20;
     using Address for address;
     using AddressToBytes32 for address;
@@ -188,10 +195,17 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     /**
      * @notice Construct a new Periphery contract.
      * @param _permit2 Address of the canonical permit2 contract.
+     * @param _multicall3 Address of the canonical Multicall3 singleton used to route ERC-6492
+     * prepare/deploy calls (see ERC6492SignatureHandler).
      */
-    constructor(IPermit2 _permit2) EIP712("ACROSS-PERIPHERY", "1.0.0") {
+    constructor(
+        IPermit2 _permit2,
+        address _multicall3
+    ) EIP712("ACROSS-PERIPHERY", "1.0.0") ERC6492SignatureHandler(_multicall3) {
         require(address(_permit2) != address(0), "Permit2 cannot be zero address");
         require(_isContract(address(_permit2)), "Permit2 must be a contract");
+        require(_multicall3 != address(0), "Multicall3 cannot be zero address");
+        require(_isContract(_multicall3), "Multicall3 must be a contract");
         permit2 = _permit2;
 
         // Deploy the swap proxy with reference to the permit2 address
@@ -387,7 +401,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @inheritdoc SpokePoolPeripheryInterface
      * @dev Mirrors `swapAndBridgeWithAuthorization` but pulls tokens via the extended EIP-3009
      * `receiveWithAuthorization(...,bytes signature)` overload, allowing both EOA (ECDSA) and
-     * contract (EIP-1271) signers.
+     * contract (EIP-1271) signers. The signature may be ERC-6492 wrapped to additionally support
+     * counterfactual (not-yet-deployed) contract wallets; see `_handleERC6492Signature`.
      */
     function swapAndBridgeWithAuthorizationBytes(
         address signatureOwner,
@@ -398,6 +413,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. The token remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(receiveWithAuthSignature);
         IERC20AuthBytes(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
             signatureOwner,
             address(this),
@@ -405,7 +423,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             validAfter,
             validBefore,
             witness,
-            receiveWithAuthSignature
+            innerSignature
         );
         _finishSwapAndBridgeWithAuthorization(swapAndDepositData, witness, signatureOwner);
     }
@@ -568,7 +586,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @inheritdoc SpokePoolPeripheryInterface
      * @dev Mirrors `depositWithAuthorization` but pulls tokens via the extended EIP-3009
      * `receiveWithAuthorization(...,bytes signature)` overload, allowing both EOA (ECDSA) and
-     * contract (EIP-1271) signers.
+     * contract (EIP-1271) signers. The signature may be ERC-6492 wrapped to additionally support
+     * counterfactual (not-yet-deployed) contract wallets; see `_handleERC6492Signature`.
      */
     function depositWithAuthorizationBytes(
         address signatureOwner,
@@ -578,6 +597,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009DepositWitness(depositData);
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. The token remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(receiveWithAuthSignature);
         IERC20AuthBytes(depositData.baseDepositData.inputToken).receiveWithAuthorization(
             signatureOwner,
             address(this),
@@ -585,7 +607,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             validAfter,
             validBefore,
             witness,
-            receiveWithAuthSignature
+            innerSignature
         );
         _finishDepositWithAuthorization(depositData, witness, signatureOwner);
     }

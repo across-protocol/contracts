@@ -22,15 +22,17 @@ contract DeploySpokePoolPeriphery is Script, Test, Constants {
         // Get the current chain ID
         uint256 chainId = block.chainid;
         IPermit2 permit2 = IPermit2(getPermit2(chainId));
+        address multicall3 = getMulticall3();
 
         vm.startBroadcast(deployerPrivateKey);
 
         bytes32 salt = bytes32(uint256(0x1236));
-        SpokePoolPeriphery spokePoolPeriphery = new SpokePoolPeriphery{ salt: salt }(permit2);
+        SpokePoolPeriphery spokePoolPeriphery = new SpokePoolPeriphery{ salt: salt }(permit2, multicall3);
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
         console.log("Permit2:", address(permit2));
+        console.log("Multicall3:", multicall3);
         console.log("Spoke pool periphery deployed to:", address(spokePoolPeriphery));
 
         vm.stopBroadcast();

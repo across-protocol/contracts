@@ -14,9 +14,11 @@ import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol
 import { MockPermit2, Permit2EIP712, SignatureVerification } from "../../../../contracts/test/MockPermit2.sol";
 import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySigningLib.sol";
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
+import { Multicall3 } from "../../../../contracts/external/Multicall3.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts-v4/interfaces/IERC1271.sol";
+import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 contract Exchange {
@@ -92,6 +94,52 @@ contract EIP1271Wallet is IERC1271 {
     }
 }
 
+// Minimal EIP-1271 contract wallet whose owner is fixed at deploy time and which validates a signature
+// by ECDSA-recovering it and comparing against that owner. Used to exercise the ERC-6492 counterfactual
+// flow: the wallet does not exist until its factory is invoked by the periphery's prepare step.
+contract CounterfactualEIP1271Wallet is IERC1271 {
+    using ECDSA for bytes32;
+
+    bytes4 private constant MAGIC_VALUE = 0x1626ba7e;
+    address public immutable owner;
+
+    constructor(address _owner) {
+        owner = _owner;
+    }
+
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+        return hash.recover(signature) == owner ? MAGIC_VALUE : bytes4(0xffffffff);
+    }
+}
+
+// CREATE2 factory for CounterfactualEIP1271Wallet. The wallet address is deterministic in (owner, salt),
+// so it can be funded and signed for before deployment — exactly the ERC-6492 use case. createWallet is
+// idempotent (returns the existing wallet if already deployed), mirroring real smart-wallet factories
+// such as Coinbase's and Safe's.
+contract CounterfactualWalletFactory {
+    function createWallet(address owner, bytes32 salt) external returns (address wallet) {
+        wallet = getWalletAddress(owner, salt);
+        if (wallet.code.length == 0) {
+            wallet = address(new CounterfactualEIP1271Wallet{ salt: salt }(owner));
+        }
+    }
+
+    function getWalletAddress(address owner, bytes32 salt) public view returns (address) {
+        bytes32 initCodeHash = keccak256(
+            abi.encodePacked(type(CounterfactualEIP1271Wallet).creationCode, abi.encode(owner))
+        );
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
+    }
+}
+
+// A prepare target that always reverts, used to prove the periphery tolerates a failing ERC-6492
+// prepare call (the call is routed through Multicall3 with requireSuccess=false).
+contract RevertingPreparer {
+    function prepare() external pure {
+        revert("RevertingPreparer: always reverts");
+    }
+}
+
 // Utility contract which lets us perform external calls to an internal library.
 contract HashUtils {
     function hashDepositData(
@@ -119,6 +167,7 @@ contract SpokePoolPeripheryTest is Test {
 
     WETH9Interface mockWETH;
     MockERC20 mockERC20;
+    Multicall3 multicall3;
 
     address depositor;
     address owner;
@@ -149,6 +198,7 @@ contract SpokePoolPeripheryTest is Test {
 
         mockWETH = WETH9Interface(address(new WETH9()));
         mockERC20 = new MockERC20();
+        multicall3 = new Multicall3();
 
         depositor = vm.addr(privateKey);
         owner = vm.addr(2);
@@ -159,7 +209,7 @@ contract SpokePoolPeripheryTest is Test {
         cex = new Exchange(permit2);
 
         vm.startPrank(owner);
-        spokePoolPeriphery = new SpokePoolPeriphery(permit2);
+        spokePoolPeriphery = new SpokePoolPeriphery(permit2, address(multicall3));
         domainSeparator = Permit2EIP712(address(permit2)).DOMAIN_SEPARATOR();
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
@@ -186,8 +236,9 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testPeripheryConstructor() public {
-        SpokePoolPeriphery _spokePoolPeriphery = new SpokePoolPeriphery(permit2);
+        SpokePoolPeriphery _spokePoolPeriphery = new SpokePoolPeriphery(permit2, address(multicall3));
         assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
+        assertEq(address(_spokePoolPeriphery.multicall3()), address(multicall3));
     }
 
     /**
@@ -1306,6 +1357,301 @@ contract SpokePoolPeripheryTest is Test {
         );
 
         assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    /**
+     * ERC-6492 counterfactual contract-wallet flows.
+     *
+     * The periphery is not the signature verifier (the token is); it only runs the wrapped factory
+     * call to deploy the signer before the token's EIP-1271 verification. These tests prove that a
+     * deposit/swap can be authorized by a contract wallet that does not yet exist on-chain.
+     */
+    function testTransferWithAuthBytesDepositERC6492CounterfactualWallet() public {
+        uint256 walletOwnerKey = 0xB0B;
+        address walletOwner = vm.addr(walletOwnerKey);
+        bytes32 salt = keccak256("erc6492-deposit-wallet");
+
+        CounterfactualWalletFactory factory = new CounterfactualWalletFactory();
+        address wallet = factory.getWalletAddress(walletOwner, salt);
+
+        // The signer is counterfactual: no code at its address yet.
+        assertEq(wallet.code.length, 0);
+
+        // Fund the not-yet-deployed wallet so it can authorize a transfer to the periphery.
+        deal(address(mockERC20), wallet, mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            wallet
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+
+        // The wallet owner EOA signs the ERC-3009 digest on behalf of the (from = wallet) signer.
+        bytes memory innerSignature = _signReceiveWithAuthorization(
+            walletOwnerKey,
+            wallet,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        // Wrap with the ERC-6492 factory call that deploys the wallet.
+        bytes memory wrappedSignature = _wrapERC6492(
+            address(factory),
+            abi.encodeCall(CounterfactualWalletFactory.createWallet, (walletOwner, salt)),
+            innerSignature
+        );
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            wallet,
+            wallet,
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            wallet.toBytes32(),
+            wallet.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithAuthorizationBytes(
+            wallet,
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            wrappedSignature
+        );
+
+        // The prepare step materialized the wallet and the deposit went through.
+        assertGt(wallet.code.length, 0);
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testTransferWithAuthBytesSwapAndBridgeERC6492CounterfactualWallet() public {
+        // Deal exchange WETH since we swap an ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        uint256 walletOwnerKey = 0xB0B;
+        address walletOwner = vm.addr(walletOwnerKey);
+        bytes32 salt = keccak256("erc6492-swap-wallet");
+
+        CounterfactualWalletFactory factory = new CounterfactualWalletFactory();
+        address wallet = factory.getWalletAddress(walletOwner, salt);
+        assertEq(wallet.code.length, 0);
+
+        deal(address(mockERC20), wallet, mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            wallet,
+            true,
+            0
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+
+        bytes memory innerSignature = _signReceiveWithAuthorization(
+            walletOwnerKey,
+            wallet,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        bytes memory wrappedSignature = _wrapERC6492(
+            address(factory),
+            abi.encodeCall(CounterfactualWalletFactory.createWallet, (walletOwner, salt)),
+            innerSignature
+        );
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            wallet,
+            wallet,
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockWETH).toBytes32(),
+            address(mockWETH).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            wallet.toBytes32(),
+            wallet.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithAuthorizationBytes(
+            wallet,
+            swapAndDepositData,
+            block.timestamp,
+            block.timestamp,
+            wrappedSignature
+        );
+
+        assertGt(wallet.code.length, 0);
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testTransferWithAuthBytesDepositERC6492AlreadyDeployedWallet() public {
+        uint256 walletOwnerKey = 0xB0B;
+        address walletOwner = vm.addr(walletOwnerKey);
+        bytes32 salt = keccak256("erc6492-already-deployed-wallet");
+
+        CounterfactualWalletFactory factory = new CounterfactualWalletFactory();
+        address wallet = factory.getWalletAddress(walletOwner, salt);
+
+        // Deploy the wallet up front. The embedded (idempotent) factory call then becomes a cheap noop.
+        factory.createWallet(walletOwner, salt);
+        assertGt(wallet.code.length, 0);
+
+        deal(address(mockERC20), wallet, mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            wallet
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+
+        bytes memory innerSignature = _signReceiveWithAuthorization(
+            walletOwnerKey,
+            wallet,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        // Still ERC-6492 wrapped even though the wallet already exists; the prepare call is a noop and
+        // the token verifies against the deployed wallet.
+        bytes memory wrappedSignature = _wrapERC6492(
+            address(factory),
+            abi.encodeCall(CounterfactualWalletFactory.createWallet, (walletOwner, salt)),
+            innerSignature
+        );
+
+        spokePoolPeriphery.depositWithAuthorizationBytes(
+            wallet,
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            wrappedSignature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testTransferWithAuthBytesDepositERC6492FailedPrepareTolerated() public {
+        uint256 walletOwnerKey = 0xB0B;
+        address walletOwner = vm.addr(walletOwnerKey);
+        bytes32 salt = keccak256("erc6492-failed-prepare-wallet");
+
+        CounterfactualWalletFactory factory = new CounterfactualWalletFactory();
+        address wallet = factory.getWalletAddress(walletOwner, salt);
+        // Wallet is already deployed, so the signature can be verified even if the prepare call fails.
+        factory.createWallet(walletOwner, salt);
+        assertGt(wallet.code.length, 0);
+
+        deal(address(mockERC20), wallet, mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            wallet
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+
+        bytes memory innerSignature = _signReceiveWithAuthorization(
+            walletOwnerKey,
+            wallet,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        // Point the prepare call at a target that always reverts. Because it is routed through
+        // Multicall3 with requireSuccess=false, the failure is swallowed and the deposit still succeeds.
+        RevertingPreparer reverter = new RevertingPreparer();
+        bytes memory wrappedSignature = _wrapERC6492(
+            address(reverter),
+            abi.encodeCall(RevertingPreparer.prepare, ()),
+            innerSignature
+        );
+
+        spokePoolPeriphery.depositWithAuthorizationBytes(
+            wallet,
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            wrappedSignature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function _wrapERC6492(
+        address factory,
+        bytes memory factoryCalldata,
+        bytes memory innerSignature
+    ) internal pure returns (bytes memory) {
+        return
+            abi.encodePacked(
+                abi.encode(factory, factoryCalldata, innerSignature),
+                bytes32(0x6492649264926492649264926492649264926492649264926492649264926492)
+            );
     }
 
     function _signReceiveWithAuthorization(
