@@ -53,26 +53,20 @@ abstract contract ERC6492SignatureHandler {
      * @return The inner signature to forward to the real verifier. If `signature` is not ERC-6492
      * wrapped it is returned unchanged.
      */
-    function _handleERC6492Signature(bytes memory signature) internal returns (bytes memory) {
+    function _handleERC6492Signature(bytes calldata signature) internal returns (bytes memory) {
         // An ERC-6492 signature is at least the 32-byte magic suffix; anything shorter passes through.
         uint256 signatureLength = signature.length;
         if (signatureLength < 32) return signature;
 
         // Pass through unless the trailing 32 bytes are the ERC-6492 magic value.
-        bytes32 suffix;
-        assembly {
-            suffix := mload(add(add(signature, 32), sub(signatureLength, 32)))
-        }
-        if (suffix != _ERC6492_MAGIC_VALUE) return signature;
+        if (bytes32(signature[signatureLength - 32:]) != _ERC6492_MAGIC_VALUE) return signature;
 
-        // Strip the magic suffix and decode the wrapped (factory, factoryCalldata, innerSignature).
-        bytes memory erc6492Data = new bytes(signatureLength - 32);
-        for (uint256 i; i < signatureLength - 32; ++i) {
-            erc6492Data[i] = signature[i];
-        }
-        address prepareTarget;
-        bytes memory prepareData;
-        (prepareTarget, prepareData, signature) = abi.decode(erc6492Data, (address, bytes, bytes));
+        // Decode the wrapped (factory, factoryCalldata, innerSignature) directly from the calldata
+        // slice that strips the magic suffix.
+        (address prepareTarget, bytes memory prepareData, bytes memory innerSignature) = abi.decode(
+            signature[:signatureLength - 32],
+            (address, bytes, bytes)
+        );
 
         // Route the deploy call through the neutral Multicall3 so this contract is never the sender of
         // attacker-controlled calldata. Failure is tolerated (e.g. the wallet is already deployed);
@@ -81,6 +75,6 @@ abstract contract ERC6492SignatureHandler {
         calls[0] = IMulticall3.Call(prepareTarget, prepareData);
         multicall3.tryAggregate(false, calls);
 
-        return signature;
+        return innerSignature;
     }
 }
