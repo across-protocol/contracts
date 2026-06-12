@@ -13,16 +13,17 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 /**
  * @notice Route parameters committed to in the merkle leaf.
  */
-struct SpokePoolDepositParams {
+struct SpokePoolRouteParams {
+    uint256 sourceChainId;
     uint256 destinationChainId;
     bytes32 inputToken;
     bytes32 outputToken;
     bytes32 recipient;
     bytes message;
+    bool checkStableExchangeRate;
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
-    uint256 executionFee;
 }
 
 /**
@@ -37,6 +38,7 @@ struct SpokePoolSubmitterData {
     uint32 quoteTimestamp;
     uint32 fillDeadline;
     uint32 signatureDeadline;
+    uint256 executionFee;
     bytes signature;
 }
 
@@ -70,6 +72,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
      * @param quoteTimestamp Timestamp of the deposit quote.
      * @param fillDeadline Deadline by which the deposit must be filled.
      * @param signatureDeadline Deadline after which the authorizing signature expires.
+     * @param executionFee Execution fee paid to the executor (in input token).
      */
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
@@ -79,18 +82,20 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         address indexed executionFeeRecipient,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 signatureDeadline
+        uint32 signatureDeadline,
+        uint256 executionFee
     );
 
     error MaxFee();
     error InvalidSignature();
     error SignatureExpired();
     error NativeTransferFailed();
+    error SourceChainMismatch();
 
     /// @notice EIP-712 typehash for execute deposit signature verification.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
     /// @notice Across SpokePool contract
@@ -106,7 +111,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         address _spokePool,
         address _signer,
         address _wrappedNativeToken
-    ) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
+    ) EIP712("CounterfactualDepositSpokePool", "v2.0.0") {
         spokePool = _spokePool;
         signer = _signer;
         wrappedNativeToken = _wrappedNativeToken;
@@ -114,90 +119,108 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
-     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
+     * @dev Deposits into the Across SpokePool. `routeParamsEncoded` is ABI-encoded as `SpokePoolRouteParams`;
+     *      `submitterDataEncoded` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
      *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
      *      `NativeTransferFailed`.
      */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
-        SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
+    function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
+        SpokePoolRouteParams memory routeParams = abi.decode(routeParamsEncoded, (SpokePoolRouteParams));
+        SpokePoolSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (SpokePoolSubmitterData));
 
-        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
-        _verifySignature(sd);
+        if (block.chainid != routeParams.sourceChainId) revert SourceChainMismatch();
+        if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
+        _verifySignature(keccak256(routeParamsEncoded), submitterData);
 
-        address inputToken = address(uint160(uint256(dp.inputToken)));
-        uint256 depositAmount = sd.inputAmount - dp.executionFee;
+        address inputToken = address(uint160(uint256(routeParams.inputToken)));
+        uint256 depositAmount = submitterData.inputAmount - submitterData.executionFee;
 
-        _checkFee(dp, sd.inputAmount, sd.outputAmount, depositAmount);
+        _checkFee(
+            routeParams,
+            submitterData.inputAmount,
+            submitterData.outputAmount,
+            depositAmount,
+            submitterData.executionFee
+        );
 
         bool isNative = inputToken == NATIVE_ASSET;
         if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
 
-        bytes32 spokePoolInputToken = isNative ? bytes32(uint256(uint160(wrappedNativeToken))) : dp.inputToken;
+        bytes32 spokePoolInputToken = isNative ? bytes32(uint256(uint160(wrappedNativeToken))) : routeParams.inputToken;
         V3SpokePoolInterface(spokePool).deposit{ value: isNative ? depositAmount : 0 }(
             bytes32(uint256(uint160(address(this)))),
-            dp.recipient,
+            routeParams.recipient,
             spokePoolInputToken,
-            dp.outputToken,
+            routeParams.outputToken,
             depositAmount,
-            sd.outputAmount,
-            dp.destinationChainId,
-            sd.exclusiveRelayer,
-            sd.quoteTimestamp,
-            sd.fillDeadline,
-            sd.exclusivityDeadline,
-            dp.message
+            submitterData.outputAmount,
+            routeParams.destinationChainId,
+            submitterData.exclusiveRelayer,
+            submitterData.quoteTimestamp,
+            submitterData.fillDeadline,
+            submitterData.exclusivityDeadline,
+            routeParams.message
         );
 
         // Pay execution fee
-        if (dp.executionFee > 0) {
+        if (submitterData.executionFee > 0) {
             if (isNative) {
-                (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
+                (bool success, ) = submitterData.executionFeeRecipient.call{ value: submitterData.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                _safeTransfer(inputToken, sd.executionFeeRecipient, dp.executionFee);
+                _safeTransfer(inputToken, submitterData.executionFeeRecipient, submitterData.executionFee);
             }
         }
 
         emit SpokePoolDepositExecuted(
-            sd.inputAmount,
-            sd.outputAmount,
-            sd.exclusiveRelayer,
-            sd.exclusivityDeadline,
-            sd.executionFeeRecipient,
-            sd.quoteTimestamp,
-            sd.fillDeadline,
-            sd.signatureDeadline
+            submitterData.inputAmount,
+            submitterData.outputAmount,
+            submitterData.exclusiveRelayer,
+            submitterData.exclusivityDeadline,
+            submitterData.executionFeeRecipient,
+            submitterData.quoteTimestamp,
+            submitterData.fillDeadline,
+            submitterData.signatureDeadline,
+            submitterData.executionFee
         );
     }
 
     function _checkFee(
-        SpokePoolDepositParams memory dp,
+        SpokePoolRouteParams memory routeParams,
         uint256 inputAmount,
         uint256 outputAmount,
-        uint256 depositAmount
+        uint256 depositAmount,
+        uint256 executionFee
     ) private pure {
-        uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
-        uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + dp.executionFee;
-        uint256 maxFee = dp.maxFeeFixed + (dp.maxFeeBps * inputAmount) / BPS_SCALAR;
+        // When `checkStableExchangeRate` is false (e.g. non-stable pairs), the rate-derived relayer fee
+        // is not enforced — `outputAmount` is trusted via the signer's signature — but `executionFee`
+        // remains bounded by `maxFee` below.
+        uint256 relayerFee;
+        if (routeParams.checkStableExchangeRate) {
+            uint256 outputInInputToken = (outputAmount * routeParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
+            relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
+        }
+        uint256 totalFee = relayerFee + executionFee;
+        uint256 maxFee = routeParams.maxFeeFixed + (routeParams.maxFeeBps * inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(SpokePoolSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 routeParamsHash, SpokePoolSubmitterData memory submitterData) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
-                sd.inputAmount,
-                sd.outputAmount,
-                sd.exclusiveRelayer,
-                sd.exclusivityDeadline,
-                sd.quoteTimestamp,
-                sd.fillDeadline,
-                sd.signatureDeadline
+                address(this),
+                routeParamsHash,
+                submitterData.inputAmount,
+                submitterData.outputAmount,
+                submitterData.exclusiveRelayer,
+                submitterData.exclusivityDeadline,
+                submitterData.quoteTimestamp,
+                submitterData.fillDeadline,
+                submitterData.signatureDeadline,
+                submitterData.executionFee
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.signature) != signer) revert InvalidSignature();
     }
 }
