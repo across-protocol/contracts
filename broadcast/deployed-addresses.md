@@ -57,6 +57,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Universal_Adapter_143                  | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_4217                 | [0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c](https://etherscan.io/address/0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c) |
 | Universal_Adapter_43114                | [0x1af659333172DC502bD71Cf5b889521C97751838](https://etherscan.io/address/0x1af659333172DC502bD71Cf5b889521C97751838) |
+| Universal_Adapter_5042                 | [0xCA5f9960022078F3585a188e06F910eeC29c7eBD](https://etherscan.io/address/0xCA5f9960022078F3585a188e06F910eeC29c7eBD) |
 | Universal_Adapter_56                   | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
 | Universal_Adapter_9745                 | [0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363](https://etherscan.io/address/0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363) |
 | Universal_Adapter_999                  | [0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B](https://etherscan.io/address/0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B) |

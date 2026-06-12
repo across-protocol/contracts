@@ -119,6 +119,10 @@
           "address": "0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c",
           "block_number": 24421479
         },
+        "Universal_Adapter_43114": {
+          "address": "0x1af659333172DC502bD71Cf5b889521C97751838",
+          "block_number": 25237918
+        },
         "Blast_Adapter": {
           "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81",
           "block_number": 20221494
@@ -249,10 +253,10 @@
           "block_number": 24690994,
           "transaction_hash": "0x869926fddcfc39456d4479bda50e644dac93aea0f731e1313ac7d5b80134db6c"
         },
-        "Universal_Adapter_43114": {
-          "address": "0x1af659333172DC502bD71Cf5b889521C97751838",
-          "block_number": 25237918,
-          "transaction_hash": "0x26556c4f14f62b56ef0a4359e83d62751e21d4e3fe9eb855e8e84c12dba41853"
+        "Universal_Adapter_5042": {
+          "address": "0xCA5f9960022078F3585a188e06F910eeC29c7eBD",
+          "block_number": 25298498,
+          "transaction_hash": "0x1197bf71f2b21d584af3290b68dfc6b696db3df90422296a0fe338e1bda15def"
         },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
