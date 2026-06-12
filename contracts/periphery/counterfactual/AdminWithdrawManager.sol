@@ -5,108 +5,138 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
-import { WithdrawParams } from "./WithdrawImplementation.sol";
+import { CloneArgs } from "./CounterfactualCloneArgs.sol";
 
 /**
  * @title AdminWithdrawManager
- * @notice Manages admin withdrawals from counterfactual deposit clones via two paths:
- *         1. Direct withdraw — trusted `directWithdrawer` calls clone.execute() with arbitrary submitterData
- *         2. Signed withdraw — anyone can trigger with a `signer` signature; recipient is forced to the user
- * @dev Set this contract's address as `admin` in withdrawal merkle leaves.
+ * @notice Manages withdrawals from counterfactual deposit clones via two paths with different
+ *         trust levels:
+ *           1. Direct withdraw — trusted `directWithdrawer` triggers a withdrawal and chooses the
+ *              recipient. Full trust.
+ *           2. Signed withdraw — anyone can trigger with a valid `signer` signature. Recipient is
+ *              forced to `cloneArgs.userAddress`; a compromised `signer` can force a withdrawal to
+ *              happen but cannot redirect it.
+ *         The `directWithdrawer` is intended for a tightly-controlled operator EOA / multisig; the
+ *         `signer` is intended for a "hot" API-side role that powers user-initiated withdrawals
+ *         and therefore has its blast radius bounded.
+ * @dev The target `withdrawImpl` is supplied per call rather than stored on the manager. This
+ *      avoids a circular construction dependency with `WithdrawImplementation` (which holds the
+ *      manager's address as its immutable `admin`): the manager can be deployed first, then the
+ *      impl is deployed pointing at the manager's known address. The dispatcher's merkle check
+ *      ensures only policy-authorized impls can ever be reached, regardless of what address the
+ *      caller passes.
+ *
+ *      To use, deploy this manager, then deploy `WithdrawImplementation` with this contract's
+ *      address as its immutable `admin`. Include the `(withdrawImpl, "")` leaf in any policy
+ *      whose clones should accept manager-driven withdrawals. The user's self-withdraw path
+ *      (via `clone.execute` from `cloneArgs.userAddress`) is always available and doesn't go
+ *      through this manager.
  * @custom:security-contact bugs@across.to
  */
 contract AdminWithdrawManager is Ownable, EIP712 {
     /// @notice Emitted when the direct withdrawer address is updated.
-    /// @param directWithdrawer The new direct withdrawer address.
     event DirectWithdrawerUpdated(address indexed directWithdrawer);
 
     /// @notice Emitted when the signer address is updated.
-    /// @param signer The new signer address.
     event SignerUpdated(address indexed signer);
 
     error Unauthorized();
     error InvalidSignature();
     error SignatureExpired();
 
-    /// @notice EIP-712 typehash for signed withdraw messages.
+    /// @notice EIP-712 typehash for signed withdraw messages. The signature commits to the target
+    ///         `withdrawImpl` so a submitter cannot redirect an authorized withdrawal to a
+    ///         different impl. Recipient is not signed — `signedWithdraw` forces the recipient to
+    ///         `cloneArgs.userAddress`, so a compromised `signer` cannot redirect funds.
     bytes32 public constant SIGNED_WITHDRAW_TYPEHASH =
-        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
+        keccak256(
+            "SignedWithdraw(address depositAddress,address withdrawImpl,address token,uint256 amount,uint256 deadline)"
+        );
 
     /// @notice Address authorized to call `directWithdraw` without a signature.
     address public directWithdrawer;
 
-    /// @notice Address whose EIP-712 signature authorizes `signedWithdrawToUser` calls.
+    /// @notice Address whose EIP-712 signature authorizes `signedWithdraw` calls.
     address public signer;
 
     constructor(
         address _owner,
         address _directWithdrawer,
         address _signer
-    ) Ownable(_owner) EIP712("AdminWithdrawManager", "v1.0.0") {
+    ) Ownable(_owner) EIP712("AdminWithdrawManager", "v2.0.0") {
         directWithdrawer = _directWithdrawer;
         signer = _signer;
     }
 
     /**
-     * @notice Direct withdraw — calls clone.execute() with the provided parameters.
-     * @dev Only callable by `directWithdrawer`. Caller provides all merkle proof data.
-     * @param depositAddress Address of the deployed clone.
-     * @param implementation WithdrawImplementation address (merkle leaf implementation).
-     * @param params ABI-encoded WithdrawParams (admin must be this contract).
-     * @param submitterData ABI-encoded (token, to, amount) for the withdrawal.
-     * @param proof Merkle proof for the withdrawal leaf.
+     * @notice Direct withdraw — triggers a sweep of `(token, amount)` from `depositAddress` to a
+     *         caller-specified `recipient` via the supplied `withdrawImpl`.
+     * @dev Only callable by `directWithdrawer`. The `directWithdrawer` is a fully-trusted role
+     *      and chooses the recipient freely. The caller supplies the impl and the merkle proof
+     *      for the policy's withdraw leaf; the dispatcher verifies the proof before
+     *      delegatecalling the impl, and the impl checks `msg.sender == admin` (= this manager).
      */
     function directWithdraw(
         address depositAddress,
-        address implementation,
-        bytes calldata params,
-        bytes calldata submitterData,
+        CloneArgs calldata cloneArgs,
+        address withdrawImpl,
+        address token,
+        address recipient,
+        uint256 amount,
         bytes32[] calldata proof
     ) external {
         if (msg.sender != directWithdrawer) revert Unauthorized();
-        ICounterfactualDeposit(depositAddress).execute(implementation, params, submitterData, proof);
+        ICounterfactualDeposit(depositAddress).execute(
+            cloneArgs,
+            withdrawImpl,
+            "",
+            abi.encode(token, recipient, amount),
+            proof
+        );
     }
 
     /**
-     * @notice Signed withdraw to user — anyone can trigger with a valid signature from `signer`.
-     * @dev Recipient is forced to the `user` address committed in the merkle leaf's WithdrawParams.
-     * @param depositAddress Address of the deployed clone.
-     * @param implementation WithdrawImplementation address (merkle leaf implementation).
-     * @param params ABI-encoded WithdrawParams (admin = this, user = recipient).
-     * @param token Token to withdraw.
-     * @param amount Amount to withdraw.
-     * @param proof Merkle proof for the withdrawal leaf.
-     * @param deadline Timestamp after which the signature is no longer valid.
-     * @param signature EIP-712 signature from `signer`.
+     * @notice Signed withdraw — anyone can trigger with a valid `signer` signature over
+     *         `(depositAddress, withdrawImpl, token, amount, deadline)`. Recipient is forced to
+     *         `cloneArgs.userAddress` inside this function (passed through `submitterData` to the
+     *         impl) — a compromised `signer` can force withdrawals to happen but cannot redirect
+     *         them. The submitter supplies the merkle proof for the policy's withdraw leaf (it is
+     *         not part of what the signer authorizes — the tree is publicly known off-chain).
      */
-    function signedWithdrawToUser(
+    function signedWithdraw(
         address depositAddress,
-        address implementation,
-        bytes calldata params,
+        CloneArgs calldata cloneArgs,
+        address withdrawImpl,
         address token,
         uint256 amount,
-        bytes32[] calldata proof,
         uint256 deadline,
-        bytes calldata signature
+        bytes calldata signature,
+        bytes32[] calldata proof
     ) external {
         if (block.timestamp > deadline) revert SignatureExpired();
 
-        bytes32 structHash = keccak256(abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, token, amount, deadline));
+        bytes32 structHash = keccak256(
+            abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, withdrawImpl, token, amount, deadline)
+        );
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
 
-        address to = abi.decode(params, (WithdrawParams)).user;
-        ICounterfactualDeposit(depositAddress).execute(implementation, params, abi.encode(token, to, amount), proof);
+        // Force recipient to the clone's userAddress so signer compromise can't redirect funds.
+        ICounterfactualDeposit(depositAddress).execute(
+            cloneArgs,
+            withdrawImpl,
+            "",
+            abi.encode(token, cloneArgs.userAddress, amount),
+            proof
+        );
     }
 
     /// @notice Updates the direct withdrawer address.
-    /// @param _directWithdrawer The new direct withdrawer address.
     function setDirectWithdrawer(address _directWithdrawer) external onlyOwner {
         directWithdrawer = _directWithdrawer;
         emit DirectWithdrawerUpdated(_directWithdrawer);
     }
 
     /// @notice Updates the signer address used for signed withdrawals.
-    /// @param _signer The new signer address.
     function setSigner(address _signer) external onlyOwner {
         signer = _signer;
         emit SignerUpdated(_signer);

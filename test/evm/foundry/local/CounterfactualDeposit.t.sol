@@ -6,282 +6,416 @@ import { Merkle } from "murky/Merkle.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import {
-    WithdrawImplementation,
-    WithdrawParams
-} from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
+import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../../../contracts/interfaces/ICounterfactualImplementation.sol";
+import {
+    CloneArgs,
+    CounterfactualCloneArgs
+} from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/**
- * @notice Mock implementation that records delegatecall execution and returns data.
- */
-contract MockImplementation is ICounterfactualImplementation {
-    event MockExecuted(bytes params, bytes submitterData);
+/// @notice Records the args it was called with for assertions.
+contract RecordingImplementation is ICounterfactualImplementation {
+    event Recorded(
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 destinationChainId,
+        address userAddress,
+        bytes routeParams,
+        bytes submitterData
+    );
 
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        emit MockExecuted(params, submitterData);
+    function execute(
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 destinationChainId,
+        address userAddress,
+        bytes calldata routeParams,
+        bytes calldata submitterData
+    ) external payable {
+        emit Recorded(recipient, outputToken, destinationChainId, userAddress, routeParams, submitterData);
     }
 }
 
-/**
- * @notice Mock implementation that reverts with a custom error.
- */
 contract RevertingImplementation is ICounterfactualImplementation {
     error CustomRevert(string reason);
 
-    function execute(bytes calldata, bytes calldata) external payable {
+    function execute(bytes32, bytes32, uint256, address, bytes calldata, bytes calldata) external payable {
         revert CustomRevert("test revert");
     }
 }
 
 contract CounterfactualDepositTest is Test {
+    using CounterfactualCloneArgs for CloneArgs;
+
     Merkle public merkle;
     CounterfactualDeposit public dispatcher;
     CounterfactualDepositFactory public factory;
-    MockImplementation public mockImpl;
-    RevertingImplementation public revertImpl;
     WithdrawImplementation public withdrawImpl;
+    RecordingImplementation public recImpl;
+    RevertingImplementation public revImpl;
+    RoutePolicyImmutableRoot public policy;
     MintableERC20 public token;
 
     address public user;
-    address public admin;
+    address public withdrawAdmin;
     address public relayer;
+    address public policyOwner;
+
+    bytes32 public constant SALT = keccak256("salt");
 
     function setUp() public {
         merkle = new Merkle();
+        withdrawAdmin = makeAddr("withdrawAdmin");
+        withdrawImpl = new WithdrawImplementation(withdrawAdmin);
         dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
-        mockImpl = new MockImplementation();
-        revertImpl = new RevertingImplementation();
-        withdrawImpl = new WithdrawImplementation();
+        recImpl = new RecordingImplementation();
+        revImpl = new RevertingImplementation();
         token = new MintableERC20("USDC", "USDC", 6);
 
         user = makeAddr("user");
-        admin = makeAddr("admin");
         relayer = makeAddr("relayer");
+        policyOwner = makeAddr("policyOwner");
+        policy = deployRoutePolicy(policyOwner, bytes32(0));
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _cloneArgs() internal returns (CloneArgs memory) {
+        return
+            CloneArgs({
+                outputToken: bytes32(uint256(uint160(address(token)))),
+                destinationChainId: 42161,
+                recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+                userAddress: user,
+                routePolicyAddress: address(policy)
+            });
     }
 
-    function _deployClone(bytes32 merkleRoot, bytes32 salt) internal returns (address) {
-        return factory.deploy(address(dispatcher), merkleRoot, salt);
+    function _computeLeaf(address impl, bytes memory routeParams) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(routeParams)))));
     }
 
-    // --- Single-leaf tree tests ---
+    function _setPolicyRoot(bytes32 root) internal {
+        rotateRoot(policy, policyOwner, root);
+    }
 
-    function testExecuteSingleLeaf() public {
-        bytes memory params = abi.encode(uint256(123));
-        bytes32 leaf = _computeLeaf(address(mockImpl), params);
-
+    /// @dev Build a tree with a single leaf of interest. Murky needs ≥2 leaves so we add a padding leaf.
+    function _buildTreeWithSingleLeaf(
+        address impl,
+        bytes memory routeParams
+    ) internal returns (bytes32 root, bytes32[] memory proof) {
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = leaf;
-        leaves[1] = keccak256("dummy");
-        bytes32 root = merkle.getRoot(leaves);
-        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        leaves[0] = _computeLeaf(impl, routeParams);
+        leaves[1] = keccak256("padding");
+        root = merkle.getRoot(leaves);
+        proof = merkle.getProof(leaves, 0);
+    }
 
-        address clone = _deployClone(root, keccak256("salt"));
+    // --- cloneArgs hash verification ---
+
+    function testTamperedCloneArgsReverts() public {
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+
+        CloneArgs memory tampered = _cloneArgs();
+        tampered.recipient = bytes32(uint256(uint160(makeAddr("attacker"))));
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidCloneArgs.selector);
+        ICounterfactualDeposit(clone).execute(
+            tampered,
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), user, uint256(0)),
+            new bytes32[](0)
+        );
+    }
+
+    function testTamperedUserAddressReverts() public {
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        token.mint(clone, 100e6);
+
+        CloneArgs memory tampered = _cloneArgs();
+        tampered.userAddress = address(this);
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidCloneArgs.selector);
+        ICounterfactualDeposit(clone).execute(
+            tampered,
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), user, uint256(100e6)),
+            new bytes32[](0)
+        );
+    }
+
+    // --- User escape ---
+
+    function testUserEscapeBypassesProofForWithdrawImpl() public {
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        token.mint(clone, 100e6);
+
+        // Policy root is bytes32(0) — no proof can verify. The user escape should still work.
+        assertEq(policy.activeRoot(address(0)), bytes32(0));
+
+        vm.prank(user);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), user, uint256(100e6)),
+            new bytes32[](0)
+        );
+
+        // The user supplied themselves as the recipient.
+        assertEq(token.balanceOf(user), 100e6);
+    }
+
+    function testUserEscapeBypassesProofForAnyImpl() public {
+        // The user can call any impl — not just the withdraw impl. Here they call a recording impl
+        // that's never been added to the policy tree, with arbitrary routeParams.
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(0xDEAD));
 
         vm.expectEmit(false, false, false, true);
-        emit MockImplementation.MockExecuted(params, "submitter");
+        emit RecordingImplementation.Recorded(
+            args.recipient,
+            args.outputToken,
+            args.destinationChainId,
+            args.userAddress,
+            routeParams,
+            "data"
+        );
 
-        ICounterfactualDeposit(clone).execute(address(mockImpl), params, "submitter", proof);
+        vm.prank(user);
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParams, "data", new bytes32[](0));
+    }
+
+    function testNonUserCallerHitsProofPath() public {
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        token.mint(clone, 100e6);
+
+        // Non-user caller falls through to the proof path, which fails because no proof matches
+        // against a bytes32(0) root.
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), relayer, uint256(50e6)),
+            new bytes32[](0)
+        );
+    }
+
+    function testWithdrawImplRejectsRandomCallerEvenWithValidProof() public {
+        // Defense-in-depth: even if a policy tree mistakenly includes a withdrawImpl leaf, the
+        // impl itself rejects callers that are neither its immutable admin nor the clone's user.
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = "";
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(withdrawImpl), routeParams);
+        _setPolicyRoot(root);
+
+        address clone = factory.deploy(address(dispatcher), args, SALT);
+        token.mint(clone, 100e6);
+
+        // Proof verifies, dispatcher delegatecalls withdrawImpl, withdrawImpl reverts.
+        vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(clone).execute(
+            args,
+            address(withdrawImpl),
+            routeParams,
+            abi.encode(address(token), relayer, uint256(100e6)),
+            proof
+        );
+    }
+
+    // --- Dispatcher leaf is agnostic to clone identity ---
+
+    function testDispatcherLeafIsAgnosticToOutputToken() public {
+        // The dispatcher's leaf commits only (impl, keccak256(routeParams)) — not clone identity.
+        // For an impl that doesn't include identity binding in its routeParams (like the recording
+        // impl), a leaf authored against clone A can also be executed via clone B with a different
+        // outputToken. Identity binding is each impl's responsibility (see CloneIdentity library).
+        CloneArgs memory argsA = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), routeParams);
+        _setPolicyRoot(root);
+
+        // Clone A can prove the leaf.
+        address cloneA = factory.deploy(address(dispatcher), argsA, SALT);
+        ICounterfactualDeposit(cloneA).execute(argsA, address(recImpl), routeParams, "", proof);
+
+        // Clone B (different outputToken) can ALSO prove the same leaf and execute.
+        CloneArgs memory argsB = _cloneArgs();
+        argsB.outputToken = bytes32(uint256(uint160(makeAddr("other-token"))));
+        address cloneB = factory.deploy(address(dispatcher), argsB, keccak256("salt-b"));
+
+        vm.expectEmit(false, false, false, true);
+        emit RecordingImplementation.Recorded(
+            argsB.recipient,
+            argsB.outputToken,
+            argsB.destinationChainId,
+            argsB.userAddress,
+            routeParams,
+            ""
+        );
+        ICounterfactualDeposit(cloneB).execute(argsB, address(recImpl), routeParams, "", proof);
+    }
+
+    function testDispatcherLeafIsAgnosticToDestinationChainId() public {
+        // Same as above but vary destinationChainId.
+        CloneArgs memory argsA = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), routeParams);
+        _setPolicyRoot(root);
+
+        address cloneA = factory.deploy(address(dispatcher), argsA, SALT);
+        ICounterfactualDeposit(cloneA).execute(argsA, address(recImpl), routeParams, "", proof);
+
+        CloneArgs memory argsB = _cloneArgs();
+        argsB.destinationChainId = 10; // different chain
+        address cloneB = factory.deploy(address(dispatcher), argsB, keccak256("salt-c"));
+
+        vm.expectEmit(false, false, false, true);
+        emit RecordingImplementation.Recorded(
+            argsB.recipient,
+            argsB.outputToken,
+            argsB.destinationChainId,
+            argsB.userAddress,
+            routeParams,
+            ""
+        );
+        ICounterfactualDeposit(cloneB).execute(argsB, address(recImpl), routeParams, "", proof);
+    }
+
+    // --- Proof verification against RoutePolicyImmutableRoot.activeRoot(clone) ---
+
+    function testValidProofExecutesImpl() public {
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), routeParams);
+        _setPolicyRoot(root);
+
+        address clone = factory.deploy(address(dispatcher), args, SALT);
+
+        vm.expectEmit(false, false, false, true);
+        emit RecordingImplementation.Recorded(
+            args.recipient,
+            args.outputToken,
+            args.destinationChainId,
+            args.userAddress,
+            routeParams,
+            "submitter"
+        );
+
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParams, "submitter", proof);
     }
 
     function testInvalidProofReverts() public {
-        bytes memory params = abi.encode(uint256(123));
-        bytes32 leaf = _computeLeaf(address(mockImpl), params);
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), routeParams);
+        _setPolicyRoot(root);
 
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = leaf;
-        leaves[1] = keccak256("dummy");
-        bytes32 root = merkle.getRoot(leaves);
+        address clone = factory.deploy(address(dispatcher), args, SALT);
 
-        address clone = _deployClone(root, keccak256("salt"));
-
-        // Use wrong params
-        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        // Different routeParams → different leaf → proof fails.
+        bytes memory wrongParams = abi.encode(uint256(999));
 
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
-        ICounterfactualDeposit(clone).execute(
-            address(mockImpl),
-            abi.encode(uint256(999)), // wrong params
-            "submitter",
-            proof
-        );
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), wrongParams, "", proof);
     }
 
-    function testWrongImplementationReverts() public {
-        bytes memory params = abi.encode(uint256(123));
-        bytes32 leaf = _computeLeaf(address(mockImpl), params);
+    function testProofAgainstStaleRootReverts() public {
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), routeParams);
+        _setPolicyRoot(root);
 
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = leaf;
-        leaves[1] = keccak256("dummy");
-        bytes32 root = merkle.getRoot(leaves);
-        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        address clone = factory.deploy(address(dispatcher), args, SALT);
 
-        address clone = _deployClone(root, keccak256("salt"));
+        _setPolicyRoot(keccak256("new-root"));
 
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
-        ICounterfactualDeposit(clone).execute(
-            address(revertImpl), // wrong implementation
-            params,
-            "submitter",
-            proof
-        );
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParams, "", proof);
     }
 
-    function testDelegatecallRevertBubbles() public {
-        bytes memory params = abi.encode(uint256(123));
-        bytes32 leaf = _computeLeaf(address(revertImpl), params);
+    function testNewRootAuthorizesPreviouslyInvalidLeaf() public {
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParamsA = abi.encode(uint256(1));
+        bytes memory routeParamsB = abi.encode(uint256(2));
 
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = leaf;
-        leaves[1] = keccak256("dummy");
-        bytes32 root = merkle.getRoot(leaves);
-        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        (bytes32 rootA, bytes32[] memory proofA) = _buildTreeWithSingleLeaf(address(recImpl), routeParamsA);
+        (bytes32 rootB, bytes32[] memory proofB) = _buildTreeWithSingleLeaf(address(recImpl), routeParamsB);
 
-        address clone = _deployClone(root, keccak256("salt"));
+        _setPolicyRoot(rootA);
+        address clone = factory.deploy(address(dispatcher), args, SALT);
+
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParamsA, "", proofA);
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParamsB, "", proofB);
+
+        _setPolicyRoot(rootB);
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParamsB, "", proofB);
+    }
+
+    // --- Delegatecall semantics ---
+
+    function testImplReceivesVerifiedCloneArgs() public {
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(7));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), routeParams);
+        _setPolicyRoot(root);
+
+        address clone = factory.deploy(address(dispatcher), args, SALT);
+
+        vm.expectEmit(false, false, false, true);
+        emit RecordingImplementation.Recorded(
+            args.recipient,
+            args.outputToken,
+            args.destinationChainId,
+            args.userAddress,
+            routeParams,
+            "data"
+        );
+
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParams, "data", proof);
+    }
+
+    function testRevertingImplBubblesError() public {
+        CloneArgs memory args = _cloneArgs();
+        bytes memory routeParams = abi.encode(uint256(7));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(revImpl), routeParams);
+        _setPolicyRoot(root);
+
+        address clone = factory.deploy(address(dispatcher), args, SALT);
 
         vm.expectRevert(abi.encodeWithSelector(RevertingImplementation.CustomRevert.selector, "test revert"));
-        ICounterfactualDeposit(clone).execute(address(revertImpl), params, "", proof);
+        ICounterfactualDeposit(clone).execute(args, address(revImpl), routeParams, "", proof);
     }
 
-    // --- Multi-leaf tree tests ---
+    // --- Clone identity ---
 
-    function testMultiLeafTree() public {
-        bytes memory params1 = abi.encode(uint256(1));
-        bytes memory params2 = abi.encode(uint256(2));
-        bytes memory params3 = abi.encode(uint256(3));
+    function testCloneStoresArgsHash() public {
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
 
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(mockImpl), params1);
-        leaves[1] = _computeLeaf(address(mockImpl), params2);
-        leaves[2] = _computeLeaf(address(revertImpl), params3);
-        leaves[3] = keccak256("padding");
+        bytes memory stored = Clones.fetchCloneArgs(clone);
+        bytes32 storedHash = abi.decode(stored, (bytes32));
 
-        bytes32 root = merkle.getRoot(leaves);
-        address clone = _deployClone(root, keccak256("multi"));
-
-        // Execute leaf 0
-        bytes32[] memory proof0 = merkle.getProof(leaves, 0);
-        ICounterfactualDeposit(clone).execute(address(mockImpl), params1, "", proof0);
-
-        // Execute leaf 1
-        bytes32[] memory proof1 = merkle.getProof(leaves, 1);
-        ICounterfactualDeposit(clone).execute(address(mockImpl), params2, "", proof1);
-
-        // Leaf 2 with revertImpl should revert on execution (proof is valid, impl reverts)
-        bytes32[] memory proof2 = merkle.getProof(leaves, 2);
-        vm.expectRevert();
-        ICounterfactualDeposit(clone).execute(address(revertImpl), params3, "", proof2);
+        assertEq(storedHash, _cloneArgs().hash());
     }
-
-    // --- Typical merkle tree: deposit + withdrawal ---
-
-    function testTypicalMerkleTree() public {
-        // Simulate a typical tree with deposit (mock) + single withdraw leaf
-        bytes memory depositParams = abi.encode(uint256(42));
-        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(mockImpl), depositParams);
-        leaves[1] = _computeLeaf(address(withdrawImpl), withdrawParams);
-
-        bytes32 root = merkle.getRoot(leaves);
-        address clone = _deployClone(root, keccak256("typical"));
-
-        // Fund clone with ERC20
-        token.mint(clone, 100e6);
-
-        // User withdraw
-        bytes32[] memory userProof = merkle.getProof(leaves, 1);
-        vm.prank(user);
-        ICounterfactualDeposit(clone).execute(
-            address(withdrawImpl),
-            withdrawParams,
-            abi.encode(address(token), user, 50e6),
-            userProof
-        );
-        assertEq(token.balanceOf(user), 50e6);
-
-        // Admin withdraw (same leaf, same proof)
-        vm.prank(admin);
-        ICounterfactualDeposit(clone).execute(
-            address(withdrawImpl),
-            withdrawParams,
-            abi.encode(address(token), admin, 50e6),
-            userProof
-        );
-        assertEq(token.balanceOf(admin), 50e6);
-        assertEq(token.balanceOf(clone), 0);
-    }
-
-    // --- Factory integration ---
-
-    function testDeployIfNeededAndExecute() public {
-        bytes memory params = abi.encode(uint256(123));
-        bytes32 leaf = _computeLeaf(address(mockImpl), params);
-
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = leaf;
-        leaves[1] = keccak256("dummy");
-        bytes32 root = merkle.getRoot(leaves);
-        bytes32[] memory proof = merkle.getProof(leaves, 0);
-
-        bytes32 salt = keccak256("factory-test");
-        address predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
-
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDeposit.execute,
-            (address(mockImpl), params, "submitter", proof)
-        );
-
-        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
-        assertEq(deployed, predicted);
-
-        // Second call should not revert (clone already exists)
-        deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
-        assertEq(deployed, predicted);
-    }
-
-    // --- Receive ETH ---
 
     function testCloneAcceptsETH() public {
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = keccak256("a");
-        leaves[1] = keccak256("b");
-        bytes32 root = merkle.getRoot(leaves);
-
-        address clone = _deployClone(root, keccak256("eth"));
-
-        vm.deal(user, 1 ether);
-        vm.prank(user);
-        (bool success, ) = clone.call{ value: 1 ether }("");
-        assertTrue(success);
-        assertEq(clone.balance, 1 ether);
-    }
-
-    // --- MsgValue forwarding ---
-
-    function testMsgValueForwarded() public {
-        bytes memory params = abi.encode(uint256(123));
-        bytes32 leaf = _computeLeaf(address(mockImpl), params);
-
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = leaf;
-        leaves[1] = keccak256("dummy");
-        bytes32 root = merkle.getRoot(leaves);
-        bytes32[] memory proof = merkle.getProof(leaves, 0);
-
-        address clone = _deployClone(root, keccak256("value"));
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
 
         vm.deal(relayer, 1 ether);
         vm.prank(relayer);
-        ICounterfactualDeposit(clone).execute{ value: 0.1 ether }(address(mockImpl), params, "submitter", proof);
+        (bool success, ) = clone.call{ value: 1 ether }("");
+        assertTrue(success);
+        assertEq(clone.balance, 1 ether);
     }
 }
