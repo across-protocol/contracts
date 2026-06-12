@@ -66,7 +66,9 @@ split along "shared vs. per-proxy":
 >   Leaves are `keccak256(proxy, newRoot)` authorizing each proxy to move its `activeRoot` to a new **Route
 >   Tree** root. `updateRoot` proves a leaf against it.
 >
-> A Route Tree root is therefore a _leaf value_ inside the Upgrade Tree.
+> A Route Tree root is therefore a _leaf value_ inside the Upgrade Tree. (The `keccak256(…)` forms above
+> are shorthand; both trees use the OpenZeppelin `StandardMerkleTree` double-hash leaf encoding
+> `keccak256(bytes.concat(keccak256(abi.encode(…))))` — see the exact formulas below.)
 
 ```
 ═══════════════════════════ DEPOSIT (per counterfactual) ═══════════════════════════
@@ -343,11 +345,18 @@ Each proxy's `activeRoot` is unique (it encodes that identity's routes), so root
 **per-proxy**, authorized by the upgrade tree:
 
 ```
-leaf = keccak256( abi.encode( proxyAddress, latestRoot ) )
+leaf = keccak256( bytes.concat( keccak256( abi.encode(proxyAddress, latestRoot) ) ) )
 ```
 
+The double hash is the same OpenZeppelin `StandardMerkleTree` encoding used by the Route Tree: hashing
+the leaf preimage twice makes a leaf hash structurally distinct from an internal node (which is the hash
+of two concatenated 32-byte child hashes), closing the second-preimage ambiguity where a crafted 64-byte
+leaf preimage — and `abi.encode(address, bytes32)` is exactly 64 bytes — could otherwise be reinterpreted
+as an internal node (or vice versa). Off-chain tree builders must use this exact encoding; a
+single-hashed tree produces an `upgradeRoot` whose proofs never verify on-chain.
+
 An executor calls `proxy.updateRoot(newRoot, proof)`; the proxy recomputes
-`leaf = keccak256(abi.encode(address(this), newRoot))`, verifies `proof` against
+`leaf = keccak256(bytes.concat(keccak256(abi.encode(address(this), newRoot))))`, verifies `proof` against
 `CounterfactualBeacon.upgradeRoot()`, and on success sets `activeRoot = newRoot` — only the **exact** value
 the leaf commits. There is no admin check on the proxy; the root update is gated **solely** by the
 registry proof.
