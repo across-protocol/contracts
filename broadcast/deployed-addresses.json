@@ -1208,6 +1208,21 @@
         }
       }
     },
+    "5042": {
+      "chain_name": "ARC",
+      "contracts": {
+        "SP1Helios": {
+          "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
+          "block_number": 4681034,
+          "transaction_hash": "0xc2298162df46d25eb878ac7d93d8a07294e9dad0b68d6465835c99c1b522146a"
+        },
+        "SpokePool": {
+          "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
+          "block_number": 4694834,
+          "transaction_hash": "0x31aaba9cef65a567fb5d9cf60217391511e77b9a82c7c24da2e8a3b278e31134"
+        }
+      }
+    },
     "8453": {
       "chain_name": "Base",
       "contracts": {

@@ -312,6 +312,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredOFTSrcPeriphery       | [0x02D65fb01d3d88127dF19838902ba42c6239c0Fd](https://megaeth.blockscout.com/address/0x02D65fb01d3d88127dF19838902ba42c6239c0Fd) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://megaeth.blockscout.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
+## ARC (5042)
+
+| Contract Name | Address                                                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://arcscan.app/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://arcscan.app/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+
 ## Base (8453)
 
 | Contract Name                          | Address                                                                                                               |

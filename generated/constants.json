@@ -230,6 +230,16 @@
       "oftEid": 30398,
       "hypDomainId": 4326
     },
+    "5042": {
+      "name": "ARC",
+      "family": "NONE",
+      "nativeToken": "USDC",
+      "publicRPC": "https://rpc.arc.network",
+      "blockExplorer": "https://arcscan.app",
+      "cctpDomain": 26,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
     "5330": {
       "name": "Superseed",
       "family": "OP_STACK",
@@ -430,6 +440,16 @@
       "oftEid": -1,
       "hypDomainId": -1
     },
+    "5042002": {
+      "name": "ARC Testnet",
+      "family": "NONE",
+      "nativeToken": "USDC",
+      "publicRPC": "https://rpc.testnet.arc.network",
+      "blockExplorer": "https://testnet.arcscan.app",
+      "cctpDomain": 26,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
     "7777777": {
       "name": "Zora",
       "family": "OP_STACK",
@@ -504,6 +524,7 @@
   "CHAIN_IDs": {
     "ALEPH_ZERO": 41455,
     "ARBITRUM": 42161,
+    "ARC": 5042,
     "AVALANCHE": 43114,
     "BASE": 8453,
     "BLAST": 81457,
@@ -536,6 +557,7 @@
     "ZORA": 7777777,
     "SOLANA": 34268394551451,
     "ARBITRUM_SEPOLIA": 421614,
+    "ARC_TESTNET": 5042002,
     "BASE_SEPOLIA": 84532,
     "BLAST_SEPOLIA": 168587773,
     "BOB_SEPOLIA": 808813,
@@ -556,8 +578,8 @@
     "SOLANA_DEVNET": 133268194659241
   },
   "TESTNET_CHAIN_IDs": [
-    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 10143, 11155420, 9746, 80002, 534351,
-    11155111, 1301, 300, 133268194659241
+    421614, 5042002, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 10143, 11155420, 9746, 80002,
+    534351, 11155111, 1301, 300, 133268194659241
   ],
   "WETH": {
     "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -721,6 +743,10 @@
     "4326": {
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
+    "5042": {
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
     },
     "8453": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
@@ -984,6 +1010,7 @@
     "998": "0x2B3370eE501B4a559b57D449569354196457D8Ab",
     "999": "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
     "1301": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    "5042": "0x3600000000000000000000000000000000000000",
     "8453": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "10143": "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
     "42161": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
@@ -994,6 +1021,7 @@
     "84532": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     "421614": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     "534352": "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4",
+    "5042002": "0x3600000000000000000000000000000000000000",
     "11155111": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     "11155420": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
     "34268394551451": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
