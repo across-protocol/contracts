@@ -107,7 +107,8 @@ echo -n "0x$LOCAL_INIT" | cast keccak
 
 if [[ "$ONCHAIN" == "$LOCAL_INIT" ]]; then
     echo "✅ Code match"
-elif [[ "$(mask_metadata_hash "$ONCHAIN")" == "$(mask_metadata_hash "$LOCAL_INIT")" ]]; then
+elif [[ "$(mask_metadata_hash "${ONCHAIN:0:${#CREATION}}")" == "$(mask_metadata_hash "$CREATION")" \
+      && "${ONCHAIN:${#CREATION}}" == "${ENCODED_ARGS:-}" ]]; then
     echo "✅ Code match (metadata hash differs)"
 elif [[ -n "${ENCODED_ARGS:-}" ]]; then
     ONCHAIN_CREATION="${ONCHAIN:0:${#CREATION}}"
