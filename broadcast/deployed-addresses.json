@@ -1220,6 +1220,11 @@
           "block_number": 4681034,
           "transaction_hash": "0xc2298162df46d25eb878ac7d93d8a07294e9dad0b68d6465835c99c1b522146a"
         },
+        "Safe": {
+          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
+          "block_number": 4828640,
+          "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
+        },
         "SpokePool": {
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
           "block_number": 4694834,
