@@ -244,6 +244,13 @@ contract Constants is Script {
         return vm.parseJsonAddress(file, string.concat(".L2_ADDRESS_MAP.", vm.toString(chainId), ".permit2"));
     }
 
+    // Get the canonical Multicall3 singleton address. Multicall3 is deployed deterministically at the
+    // same address on virtually all EVM chains (see https://github.com/mds1/multicall). Used by the
+    // SpokePoolPeriphery to route ERC-6492 prepare/deploy calls through a neutral contract.
+    function getMulticall3() public pure returns (address) {
+        return 0xcA11bde05977b3631167028862bE2a173976CA11;
+    }
+
     /**
      * @notice Get L2 address from constants.json
      * @param chainId The chain ID to get the address for
