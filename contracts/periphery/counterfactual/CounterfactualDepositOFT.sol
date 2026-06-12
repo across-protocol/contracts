@@ -7,23 +7,27 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 
-/**
- * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
- * @custom:security-contact bugs@across.to
- */
+/// @notice Minimal interface for SponsoredOFTSrcPeriphery: `deposit` plus its immutable `TOKEN`.
 interface ISponsoredOFTSrcPeriphery {
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
+
+    /// @notice The single ERC-20 this periphery deposits (pulled from `msg.sender`).
+    function TOKEN() external view returns (address);
 }
 
 /**
- * @notice Route parameters committed to in the merkle leaf.
+ * @notice Route parameters committed to in the merkle leaf (chain-agnostic: no source chain, no token).
+ * @dev `peripheryGetter` is the selector of the beacon getter for the SponsoredOFTSrcPeriphery to use
+ *      (e.g. `beacon.oftSrcPeriphery.selector`). Each OFT periphery is single-token (immutable `TOKEN`), so
+ *      naming the periphery selects the input token — supporting many OFT tokens with one leaf shape. The
+ *      source EID comes from `beacon.oftSrcEid()`.
  */
 struct OFTRouteParams {
-    uint256 sourceChainId;
+    bytes4 peripheryGetter;
     uint32 dstEid;
     bytes32 destinationHandler;
-    address token;
     uint256 maxOftFeeBps;
     uint256 lzReceiveGasLimit;
     uint256 lzComposeGasLimit;
@@ -36,7 +40,9 @@ struct OFTRouteParams {
     uint8 executionMode;
     address refundRecipient;
     bytes actionData;
-    uint256 maxExecutionFee;
+    /// @dev Selector of the beacon getter for this route's per-chain execution-fee cap (e.g.
+    ///      `beacon.usdtOftMaxExecutionFee.selector`).
+    bytes4 maxExecutionFeeGetter;
 }
 
 /**
@@ -55,12 +61,14 @@ struct OFTSubmitterData {
 
 /**
  * @title CounterfactualDepositOFT
- * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
- *      msg.value covers LayerZero native messaging fees.
+ * @notice Counterfactual deposit via SponsoredOFT (LayerZero).
+ * @dev Delegatecalled by the dispatcher. Source EID and fee signer come from the beacon; the periphery from
+ *      the beacon getter the leaf's `peripheryGetter` names, and the input token from that periphery's
+ *      immutable `TOKEN` — so the impl is token-agnostic, holds no chain-specific values, and has one
+ *      address per chain. `msg.value` covers LayerZero messaging fees.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
+contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
     using SafeERC20 for IERC20;
 
     /**
@@ -82,57 +90,44 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     error InvalidSignature();
     error SignatureExpired();
     error MaxExecutionFee();
-    error SourceChainMismatch();
 
-    /// @notice EIP-712 typehash binding the local fee signature to (nonce, runtime fee, deadline).
+    /// @notice EIP-712 typehash binding the local fee signature to the route, nonce, runtime fee, and deadline.
     bytes32 public constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
-    /// @notice SponsoredOFTSrcPeriphery contract
-    address public immutable oftSrcPeriphery;
-
-    /// @notice OFT source endpoint ID for this chain
-    uint32 public immutable srcEid;
-
-    /// @notice Signer that authorizes the runtime execution fee.
-    address public immutable signer;
-
-    constructor(
-        address _oftSrcPeriphery,
-        uint32 _srcEid,
-        address _signer
-    ) EIP712("CounterfactualDepositOFT", "v2.0.0") {
-        oftSrcPeriphery = _oftSrcPeriphery;
-        srcEid = _srcEid;
-        signer = _signer;
-    }
+    constructor() EIP712("CounterfactualDepositOFT", "v2.0.0") {}
 
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Bridges tokens via SponsoredOFT (LayerZero). `routeParamsEncoded` is ABI-encoded as `OFTRouteParams`;
      *      `submitterDataEncoded` as `OFTSubmitterData` (includes a signature forwarded to the OFT periphery).
-     *      ERC-20 only. Forwards `msg.value` for LayerZero messaging fees. No local signature verification.
+     *      ERC-20 only — the token is the periphery's immutable `TOKEN`. Forwards `msg.value` for LayerZero
+     *      messaging fees. The local fee signature binds the route (`routeParamsHash`, which includes the
+     *      `peripheryGetter`); `amount` is bound transitively via the periphery quote signature.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         OFTRouteParams memory routeParams = abi.decode(routeParamsEncoded, (OFTRouteParams));
         OFTSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (OFTSubmitterData));
 
-        if (block.chainid != routeParams.sourceChainId) revert SourceChainMismatch();
-        _verifySignature(submitterData);
-        if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
+        _verifySignature(keccak256(routeParamsEncoded), submitterData);
+        if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
+            revert MaxExecutionFee();
 
-        // The fee is paid BEFORE the periphery call, and this ordering is load-bearing: the local
-        // signature binds only `(nonce, executionFee, signatureDeadline)`, so replay protection for the
-        // (route, amount) tuple comes from the periphery's nonce-uniqueness check. A replayed fee
-        // signature reverts at `deposit`, atomically rolling back this fee transfer.
+        // Periphery chosen by the leaf's selector; input token is that periphery's immutable `TOKEN`.
+        address oftSrcPeriphery = _requireConfigured(_resolveBeaconAddress(routeParams.peripheryGetter));
+        address inputToken = ISponsoredOFTSrcPeriphery(oftSrcPeriphery).TOKEN();
+
+        // Fee paid before the periphery call (load-bearing): the local signature binds the route and
+        // (nonce, fee, deadline) but not `amount`, so amount-replay protection is the periphery's nonce
+        // check — a replayed fee reverts at `deposit` and rolls back this transfer.
         if (submitterData.executionFee > 0)
-            IERC20(routeParams.token).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
+            IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
         uint256 depositAmount = submitterData.amount - submitterData.executionFee;
 
-        IERC20(routeParams.token).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(inputToken).forceApprove(oftSrcPeriphery, depositAmount);
 
-        _deposit(routeParams, submitterData, depositAmount);
+        _deposit(oftSrcPeriphery, routeParams, submitterData, depositAmount);
 
         emit OFTDepositExecuted(
             submitterData.amount,
@@ -143,27 +138,28 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         );
     }
 
-    function _verifySignature(OFTSubmitterData memory submitterData) private view {
+    function _verifySignature(bytes32 routeParamsHash, OFTSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_OFT_TYPEHASH,
+                routeParamsHash,
                 submitterData.nonce,
                 submitterData.executionFee,
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != signer)
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
             revert InvalidSignature();
     }
 
-    /**
-     * @notice Calls deposit on the SponsoredOFTSrcPeriphery with the constructed quote.
-     * @param routeParams Route parameters from the merkle leaf.
-     * @param submitterData Submitter-provided execution data.
-     * @param depositAmount Amount to deposit after deducting the execution fee.
-     */
+    /// @notice Calls `deposit` on the SponsoredOFTSrcPeriphery with the constructed quote.
+    /// @param oftSrcPeriphery The OFT periphery (resolved from the leaf's selector).
+    /// @param routeParams Route parameters from the merkle leaf.
+    /// @param submitterData Submitter-provided execution data.
+    /// @param depositAmount Amount to deposit after deducting the execution fee.
     function _deposit(
+        address oftSrcPeriphery,
         OFTRouteParams memory routeParams,
         OFTSubmitterData memory submitterData,
         uint256 depositAmount
@@ -171,7 +167,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
-                    srcEid: srcEid,
+                    srcEid: _beacon().oftSrcEid(),
                     dstEid: routeParams.dstEid,
                     destinationHandler: routeParams.destinationHandler,
                     amountLD: depositAmount,

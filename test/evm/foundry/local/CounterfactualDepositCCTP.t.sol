@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
+import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {
@@ -9,6 +11,7 @@ import {
     CCTPRouteParams,
     CCTPSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
+import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
@@ -37,25 +40,31 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     MockCCTPPeriphery internal periphery;
     MintableERC20 internal token;
 
-    uint32 constant SOURCE_DOMAIN = 0;
+    uint32 constant SRC_DOMAIN = 0;
     bytes32 constant EXECUTE_CCTP_TYPEHASH =
-        keccak256("ExecuteCCTP(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteCCTP(bytes32 routeParamsHash,bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
     function setUp() public {
         _setUpCore();
         periphery = new MockCCTPPeriphery();
-        cctpImpl = new CounterfactualDepositCCTP(address(periphery), SOURCE_DOMAIN, signer);
         token = new MintableERC20("USDC", "USDC", 6);
         token.mint(user, 1000e6);
+
+        cctpImpl = new CounterfactualDepositCCTP();
+
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.cctpSrcPeriphery = address(periphery);
+        cfg.cctpSourceDomain = SRC_DOMAIN;
+        cfg.usdc = address(token);
+        cfg.usdcCctpMaxExecutionFee = 5e6;
+        _deployBeacon(cfg);
     }
 
     function _routeParams() internal returns (CCTPRouteParams memory) {
         return
             CCTPRouteParams({
-                sourceChainId: block.chainid,
                 destinationDomain: 3,
                 mintRecipient: bytes32(uint256(uint160(makeAddr("mintRecipient")))),
-                burnToken: bytes32(uint256(uint160(address(token)))),
                 destinationCaller: bytes32(uint256(uint160(makeAddr("caller")))),
                 cctpMaxFeeBps: 100,
                 minFinalityThreshold: 1000,
@@ -67,7 +76,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
                 accountCreationMode: 0,
                 executionMode: 0,
                 actionData: "",
-                maxExecutionFee: 5e6
+                maxExecutionFeeGetter: ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector
             });
     }
 
@@ -82,13 +91,16 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
 
     function _submitter(
         address proxy,
+        bytes memory route,
         uint256 amount,
         bytes32 nonce,
         uint256 executionFee,
         uint32 signatureDeadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 structHash = keccak256(abi.encode(EXECUTE_CCTP_TYPEHASH, nonce, executionFee, signatureDeadline));
+        bytes32 structHash = keccak256(
+            abi.encode(EXECUTE_CCTP_TYPEHASH, keccak256(route), nonce, executionFee, signatureDeadline)
+        );
         bytes memory cfSig = _sign(pk, _domainSeparator("CounterfactualDepositCCTP", proxy), structHash);
         return
             abi.encode(
@@ -111,7 +123,7 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
         uint256 amount = 100e6;
         uint256 fee = 1e6;
         bytes32 nonce = keccak256("n1");
-        bytes memory submitter = _submitter(proxy, amount, nonce, fee, uint32(block.timestamp) + 3600, signerPk);
+        bytes memory submitter = _submitter(proxy, route, amount, nonce, fee, uint32(block.timestamp) + 3600, signerPk);
 
         vm.prank(user);
         token.transfer(proxy, amount);
@@ -129,7 +141,15 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     function testZeroExecutionFee() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 0, uint32(block.timestamp) + 3600, signerPk);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            0,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -143,9 +163,10 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     function testMaxExecutionFeeReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        // 6e6 > maxExecutionFee 5e6
+        // 6e6 > maxExecutionFee 5e6.
         bytes memory submitter = _submitter(
             proxy,
+            route,
             100e6,
             keccak256("n"),
             6e6,
@@ -163,7 +184,15 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     function testInvalidSignatureReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 1e6, uint32(block.timestamp) + 3600, 0xBEEF);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 3600,
+            0xBEEF
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -175,7 +204,15 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
     function testExpiredSignatureReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(proxy, 100e6, keccak256("n"), 1e6, uint32(block.timestamp) + 100, signerPk);
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 100,
+            signerPk
+        );
 
         vm.prank(user);
         token.transfer(proxy, 100e6);
@@ -185,33 +222,13 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(cctpImpl), route, submitter, proof);
     }
 
-    function testSourceChainMismatchReverts() public {
-        CCTPRouteParams memory rp = _routeParams();
-        rp.sourceChainId = block.chainid + 1;
-        bytes memory route = abi.encode(rp);
-        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
-        bytes memory submitter = _submitter(
-            proxy,
-            100e6,
-            keccak256("n"),
-            1e6,
-            uint32(block.timestamp) + 3600,
-            signerPk
-        );
-
-        vm.prank(user);
-        token.transfer(proxy, 100e6);
-        vm.prank(relayer);
-        vm.expectRevert(CounterfactualDepositCCTP.SourceChainMismatch.selector);
-        ICounterfactualDeposit(proxy).execute(address(cctpImpl), route, submitter, proof);
-    }
-
     function testCrossProxyReplayReverts() public {
         bytes memory route = abi.encode(_routeParams());
         (address proxyA, bytes32[] memory proofA) = _deploy(route, keccak256("a"));
         (address proxyB, bytes32[] memory proofB) = _deploy(route, keccak256("b"));
         bytes memory submitter = _submitter(
             proxyA,
+            route,
             100e6,
             keccak256("n"),
             1e6,
@@ -230,5 +247,66 @@ contract CounterfactualDepositCCTPTest is CounterfactualTestBase {
         vm.prank(relayer);
         vm.expectRevert(CounterfactualDepositCCTP.InvalidSignature.selector);
         ICounterfactualDeposit(proxyB).execute(address(cctpImpl), route, submitter, proofB);
+    }
+
+    /// @dev A fee signature for one CCTP route does not validate for a different route on the SAME proxy:
+    ///      `routeParamsHash` is bound in the fee signature, so the two routes have different digests. This
+    ///      is what lets a tree safely hold multiple leaves sharing the CCTP implementation address.
+    function testCrossRouteSignatureReverts() public {
+        CCTPRouteParams memory rpA = _routeParams();
+        CCTPRouteParams memory rpB = _routeParams();
+        rpB.destinationDomain = rpA.destinationDomain + 1; // distinct route, same impl
+        bytes memory routeA = abi.encode(rpA);
+        bytes memory routeB = abi.encode(rpB);
+
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _leaf(address(cctpImpl), routeA);
+        leaves[1] = _leaf(address(cctpImpl), routeB);
+        bytes32 root = merkle.getRoot(leaves);
+        bytes32[] memory proofB = merkle.getProof(leaves, 1);
+        address proxy = factory.deploy(bytes32(0), root);
+
+        // Sign for routeA, attempt to execute routeB.
+        bytes memory submitter = _submitter(
+            proxy,
+            routeA,
+            100e6,
+            keccak256("n"),
+            1e6,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.expectRevert(CounterfactualDepositCCTP.InvalidSignature.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(cctpImpl), routeB, submitter, proofB);
+    }
+
+    function testRouteNotConfiguredReverts() public {
+        // Redeploy with USDC unset so the route is not live on this chain.
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.cctpSrcPeriphery = address(periphery);
+        cfg.cctpSourceDomain = SRC_DOMAIN;
+        cfg.usdc = address(0);
+        _deployBeacon(cfg);
+
+        bytes memory route = abi.encode(_routeParams());
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        // Signature passes (signer is set); the revert comes from the unset USDC address.
+        bytes memory submitter = _submitter(
+            proxy,
+            route,
+            100e6,
+            keccak256("n"),
+            0,
+            uint32(block.timestamp) + 3600,
+            signerPk
+        );
+
+        vm.prank(relayer);
+        vm.expectRevert(CounterfactualImplementationBase.RouteNotConfigured.selector);
+        ICounterfactualDeposit(proxy).execute(address(cctpImpl), route, submitter, proof);
     }
 }

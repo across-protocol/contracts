@@ -1,118 +1,115 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
+import { CounterfactualBeaconBase } from "./CounterfactualBeaconBase.sol";
 
-/// @dev Minimal view used to verify a candidate beacon target is bound to this beacon — every
-///      counterfactual implementation embeds its beacon as the immutable `BEACON` (for `updateRoot`).
-interface IBeaconTarget {
-    function BEACON() external view returns (address);
+/**
+ * @notice Chain-specific config baked into a `CounterfactualBeacon` implementation as `public immutable`s,
+ *         so leaves read endpoints/tokens/signer from the registry and stay byte-identical across chains.
+ *         Each chain deploys its own implementation with its own config.
+ */
+struct CounterfactualChainConfig {
+    address signer;
+    address spokePool;
+    address wrappedNativeToken;
+    /// @dev "Native" SpokePool route: the native sentinel where the deposit is `msg.value` (wrapped to
+    ///      `wrappedNativeToken`), or an ERC-20 on chains with no native gas token. See `nativeToken()`.
+    address nativeToken;
+    address cctpSrcPeriphery;
+    address cctpTokenMessenger;
+    uint32 cctpSourceDomain;
+    /// @dev Single-token OFT periphery (USDT0). The OFT leaf picks the periphery by its getter selector, so
+    ///      another OFT token is a beacon upgrade adding another getter.
+    address oftSrcPeriphery;
+    uint32 oftSrcEid;
+    address usdc;
+    address usdt;
+    /// @dev Per-(token, bridge) execution-fee caps, in input-token units. A leaf names which to enforce via
+    ///      a `bytes4` selector (its `maxExecutionFeeGetter`). Illustrative set — add more as routes need them.
+    ///      For SpokePool this is the fixed component of the fee cap (added to the leaf's `maxFeeBps` term).
+    uint256 usdcCctpMaxExecutionFee;
+    /// @dev Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP route), in bps of the
+    ///      burned amount (0 ⇒ standard transfers only).
+    uint256 usdcCctpMaxFeeBps;
+    uint256 usdtOftMaxExecutionFee;
+    uint256 usdcSpokePoolMaxExecutionFee;
+    uint256 usdtSpokePoolMaxExecutionFee;
+    uint256 wethSpokePoolMaxExecutionFee;
 }
 
 /**
  * @title CounterfactualBeacon
- * @notice Global, per-chain registry governing counterfactual proxies. It is the **beacon** for every
- *         counterfactual `BeaconProxy`: `implementation()` returns the single canonical implementation
- *         all proxies run, so setting it upgrades every proxy at once. It also holds the `upgradeRoot`
- *         (root of the `(proxy, latestRoot)` tree authorizing per-proxy root updates).
- * @dev Itself a UUPS proxy so its address is permanent (every `BeaconProxy` embeds it as the beacon,
- *      anchoring proxy addresses) while its logic can evolve. `Ownable2Step` admin; no timelock in this
- *      implementation — the admin is effectively all-powerful (setting `implementation` instantly
- *      retargets every proxy), so it must be a trusted multisig. NOTE: `implementation()` here is the
- *      **counterfactual** implementation (the beacon target), not the registry's own UUPS implementation.
+ * @notice The **configuration** of the per-chain counterfactual registry/beacon: every chain-specific value
+ *         (bridge endpoints, domains/EIDs, fee signer, token addresses, fee caps) as a `public immutable`,
+ *         named getter. All logic — root/implementation management, UUPS, ownership — lives in
+ *         `CounterfactualBeaconBase`.
+ * @dev The config is `public immutable` (in code, readable through the proxy under delegatecall), so changing
+ *      a value or adding a token/cap means deploying a new implementation and `upgradeToAndCall`-ing to it.
+ *      For an identical proxy address across chains, deploy against a uniform bootstrap then upgrade to the
+ *      chain-specific implementation.
+ *
+ *      NOTE: these `immutable` values are **pure configuration**. A new implementation that changes only
+ *      them (this contract's constructor wiring, with no change to `CounterfactualBeaconBase`) is a
+ *      configuration change and is **not subject to audit** — only changes to the base's *logic* are audited.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualBeacon is ICounterfactualBeacon, Initializable, UUPSUpgradeable, Ownable2StepUpgradeable {
-    /// @custom:storage-location erc7201:across.counterfactual.beacon.storage
-    struct RegistryStorage {
-        address implementation;
-        bytes32 upgradeRoot;
-    }
-
-    /// @dev Implementation target is not a contract.
-    error NotAContract();
-    /// @dev Implementation target's `BEACON()` does not point back at this beacon.
-    error WrongBeacon();
-
-    // keccak256(abi.encode(uint256(keccak256("across.counterfactual.beacon.storage")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant STORAGE_LOCATION = 0xb8f0bb8c74633417634f6191ee000dac3f927914fa2e1d714b73a72668a01500;
-
-    constructor() {
-        _disableInitializers();
-    }
-
-    /**
-     * @notice Initialize the registry.
-     * @param owner_ The admin (use a multisig).
-     * @param implementation_ Initial global implementation / beacon target (may be address(0) and set
-     *        later via `setImplementation` — the deploy flow is registry → impl → `setImplementation`).
-     * @param upgradeRoot_ Initial upgrade-tree root (may be 0 and set later).
-     */
-    function initialize(address owner_, address implementation_, bytes32 upgradeRoot_) external initializer {
-        __Ownable_init(owner_);
-        __Ownable2Step_init();
-        // Allow `address(0)` for lazy init (the standard deploy flow is beacon → impl → setImplementation);
-        // otherwise the target must be a contract bound to this beacon, matching `setImplementation`.
-        if (implementation_ != address(0)) _validateImplementation(implementation_);
-        _setImplementation(implementation_);
-        _setUpgradeRoot(upgradeRoot_);
-    }
-
-    /// @inheritdoc IBeacon
-    /// @dev The counterfactual implementation every `BeaconProxy` resolves and delegatecalls.
-    function implementation() external view returns (address) {
-        return _getStorage().implementation;
-    }
-
+contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
-    function upgradeRoot() external view returns (bytes32) {
-        return _getStorage().upgradeRoot;
-    }
+    address public immutable signer;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable spokePool;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable wrappedNativeToken;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable nativeToken;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable cctpSrcPeriphery;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable cctpTokenMessenger;
+    /// @inheritdoc ICounterfactualBeacon
+    uint32 public immutable cctpSourceDomain;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable oftSrcPeriphery;
+    /// @inheritdoc ICounterfactualBeacon
+    uint32 public immutable oftSrcEid;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable usdc;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable usdt;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcCctpMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcCctpMaxFeeBps;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdtOftMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdtSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable wethSpokePoolMaxExecutionFee;
 
-    /// @notice Set the global implementation (the beacon target) every proxy runs. Must be a contract
-    ///         bound to this beacon; setting it instantly retargets all counterfactual proxies.
-    function setImplementation(address newImplementation) external onlyOwner {
-        _validateImplementation(newImplementation);
-        _setImplementation(newImplementation);
-    }
-
-    /// @notice Set the root of the `(proxy, latestRoot)` upgrade tree.
-    function setUpgradeRoot(bytes32 newUpgradeRoot) external onlyOwner {
-        _setUpgradeRoot(newUpgradeRoot);
-    }
-
-    /// @dev A valid beacon target must be a contract whose immutable `BEACON()` points back at this
-    ///      beacon. Catches the catastrophic admin error of retargeting every proxy to logic bound to a
-    ///      different beacon (which would silently brick `updateRoot` and risk storage-layout drift). The
-    ///      `try` tolerates non-conforming targets — they leave `boundBeacon == address(0)` and revert below.
-    function _validateImplementation(address impl) private view {
-        if (impl.code.length == 0) revert NotAContract();
-        address boundBeacon;
-        try IBeaconTarget(impl).BEACON() returns (address b) {
-            boundBeacon = b;
-        } catch {}
-        if (boundBeacon != address(this)) revert WrongBeacon();
-    }
-
-    function _setImplementation(address newImplementation) internal {
-        _getStorage().implementation = newImplementation;
-        emit ImplementationSet(newImplementation);
-    }
-
-    function _setUpgradeRoot(bytes32 newUpgradeRoot) internal {
-        _getStorage().upgradeRoot = newUpgradeRoot;
-        emit UpgradeRootSet(newUpgradeRoot);
-    }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
-    function _getStorage() private pure returns (RegistryStorage storage $) {
-        assembly {
-            $.slot := STORAGE_LOCATION
-        }
+    /// @param config The chain-specific configuration baked into this implementation (see
+    ///        `CounterfactualChainConfig`). Each field becomes an immutable, named getter.
+    constructor(CounterfactualChainConfig memory config) {
+        signer = config.signer;
+        spokePool = config.spokePool;
+        wrappedNativeToken = config.wrappedNativeToken;
+        nativeToken = config.nativeToken;
+        cctpSrcPeriphery = config.cctpSrcPeriphery;
+        cctpTokenMessenger = config.cctpTokenMessenger;
+        cctpSourceDomain = config.cctpSourceDomain;
+        oftSrcPeriphery = config.oftSrcPeriphery;
+        oftSrcEid = config.oftSrcEid;
+        usdc = config.usdc;
+        usdt = config.usdt;
+        usdcCctpMaxExecutionFee = config.usdcCctpMaxExecutionFee;
+        usdcCctpMaxFeeBps = config.usdcCctpMaxFeeBps;
+        usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;
+        usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
+        usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
+        wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
+        _disableInitializers();
     }
 }

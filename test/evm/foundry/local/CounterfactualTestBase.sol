@@ -4,7 +4,11 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { Merkle } from "murky/Merkle.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import { CounterfactualBeacon } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import {
+    CounterfactualBeacon,
+    CounterfactualChainConfig
+} from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { CounterfactualBeaconBase } from "../../../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
@@ -12,17 +16,18 @@ import { WithdrawImplementation } from "../../../../contracts/periphery/counterf
 
 /**
  * @title CounterfactualTestBase
- * @notice Shared harness for the upgradeable-counterfactual (beacon) tests. Deploys the beacon (a UUPS
- *         proxy) with `CounterfactualDeposit` as its target implementation, plus the factory that mints
- *         `BeaconProxy` counterfactuals. Provides merkle / leaf / EIP-712 helpers.
+ * @notice Shared harness for the beacon-based counterfactual tests. Tests build a
+ *         `CounterfactualChainConfig` from their mocks then call `_deployBeacon(config)`, which deploys the
+ *         beacon (UUPS proxy over `CounterfactualDeposit`) plus the factory. Provides merkle/leaf/EIP-712
+ *         helpers.
  * @dev Deploy order resolves the beacon ⇄ implementation cycle: (1) beacon proxy with `implementation = 0`,
- *      (2) `CounterfactualDeposit` bound to the beacon address, (3) `beacon.setImplementation(impl)`.
+ *      (2) `CounterfactualDeposit` bound to the beacon, (3) `beacon.setImplementation(impl)`.
  */
 abstract contract CounterfactualTestBase is Test {
     Merkle internal merkle;
 
-    CounterfactualBeacon internal beacon; // the beacon (UUPS proxy), typed as the beacon
-    CounterfactualDeposit internal cfImpl; // the beacon target (counterfactual implementation)
+    CounterfactualBeacon internal beacon; // beacon (UUPS proxy)
+    CounterfactualDeposit internal cfImpl; // beacon target implementation
     CounterfactualDepositFactory internal factory;
     WithdrawImplementation internal withdrawImpl;
 
@@ -38,6 +43,8 @@ abstract contract CounterfactualTestBase is Test {
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 internal constant VERSION_HASH = keccak256("v2.0.0");
 
+    /// @dev Sets up actors, signer, merkle, and the withdraw impl. Does NOT deploy the beacon — call
+    ///      `_deployBeacon(config)` once the test's mocks exist.
     function _setUpCore() internal {
         merkle = new Merkle();
 
@@ -48,12 +55,23 @@ abstract contract CounterfactualTestBase is Test {
         signerPk = 0xA11CE;
         signer = vm.addr(signerPk);
 
-        // Beacon as a UUPS proxy, implementation set later (deploy flow: beacon → impl → setImplementation).
+        withdrawImpl = new WithdrawImplementation();
+    }
+
+    /// @dev A config with only the fee `signer` set; tests fill in the chain-specific fields they need.
+    function _baseConfig() internal view returns (CounterfactualChainConfig memory cfg) {
+        cfg.signer = signer;
+    }
+
+    /// @dev Deploy the beacon (carrying `config`), wire its implementation, and deploy the factory. Call
+    ///      after the test's mocks are created.
+    function _deployBeacon(CounterfactualChainConfig memory config) internal {
+        // Implementation set later (deploy flow: beacon → impl → setImplementation).
         beacon = CounterfactualBeacon(
             address(
                 new ERC1967Proxy(
-                    address(new CounterfactualBeacon()),
-                    abi.encodeCall(CounterfactualBeacon.initialize, (owner, address(0), bytes32(0)))
+                    address(new CounterfactualBeacon(config)),
+                    abi.encodeCall(CounterfactualBeaconBase.initialize, (owner, address(0), bytes32(0)))
                 )
             )
         );
@@ -63,7 +81,6 @@ abstract contract CounterfactualTestBase is Test {
         beacon.setImplementation(address(cfImpl));
 
         factory = new CounterfactualDepositFactory(address(beacon));
-        withdrawImpl = new WithdrawImplementation();
     }
 
     /// @dev Deposit/withdraw leaf: double-hashed `(implementation, keccak256(params))`.
@@ -81,8 +98,7 @@ abstract contract CounterfactualTestBase is Test {
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = _upgradeLeaf(proxy, newRoot);
         leaves[1] = keccak256("upgrade-padding");
-        // Compute root/proof before pranking: `merkle.getRoot` is an external call and would otherwise
-        // consume the prank meant for `setUpgradeRoot`.
+        // Compute root/proof before pranking: the external `merkle` calls would consume the prank.
         bytes32 upgradeRoot = merkle.getRoot(leaves);
         proof = merkle.getProof(leaves, 0);
         vm.prank(owner);
