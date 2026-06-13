@@ -3,7 +3,7 @@
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
-import Safe, { PredictedSafeProps, SafeAccountConfig } from "@safe-global/protocol-kit";
+import Safe, { ContractNetworksConfig, PredictedSafeProps, SafeAccountConfig } from "@safe-global/protocol-kit";
 import { getAddress } from "ethers/lib/utils";
 import { ethers } from "../../utils/utils";
 import { getNodeUrl } from "../../utils";
@@ -11,6 +11,7 @@ import { getChainId, getProvider, getSigner } from "../../scripts/utils";
 import { writeMultisigBroadcastArtifact } from "./broadcast";
 
 const DEFAULT_CONFIG_PATH = path.resolve(__dirname, "config.json");
+const CANONICAL_INFRA_PATH = path.resolve(__dirname, "canonicalSafeInfraAddresses.json");
 
 interface MultisigConfig {
   owners: string[];
@@ -49,7 +50,12 @@ function loadMultisigConfig(configPath: string): MultisigConfig {
 }
 
 function printUsage(): void {
-  console.log(`Usage: yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id <id>
+  console.log(`Usage: yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id <id> [--use-canonical-infra]
+
+Options:
+  --use-canonical-infra  Resolve Safe contract addresses from canonicalSafeInfraAddresses.json
+                         instead of the safe-deployments registry bundled with protocol-kit.
+                         Required for chains the registry does not know (e.g. Arc, 5042).
 
 Reads env vars from .env automatically.
 
@@ -77,6 +83,26 @@ async function resolveChainContext(): Promise<{
   return { chainId, provider, nodeUrl };
 }
 
+// Loads the canonical Safe v1.4.1 infra addresses for chains missing from the safe-deployments
+// registry bundled with @safe-global/protocol-kit. The SafeL2 singleton is used to match
+// protocol-kit's default on other L2 chains, so the deployment calldata and CREATE2 address match
+// the Safes deployed there with the same owners/threshold/saltNonce. Every address is required to
+// have code on the target chain.
+async function loadCanonicalContractNetworks(
+  chainId: number,
+  provider: ethers.providers.JsonRpcProvider
+): Promise<ContractNetworksConfig> {
+  const addresses = JSON.parse(fs.readFileSync(CANONICAL_INFRA_PATH, "utf8")) as Record<string, string>;
+  await Promise.all(
+    Object.entries(addresses).map(async ([name, address]) => {
+      if ((await provider.getCode(address)) === "0x") {
+        throw new Error(`Canonical Safe contract ${name} has no code at ${address} on chain ${chainId}`);
+      }
+    })
+  );
+  return { [chainId]: addresses };
+}
+
 function assertSameOwners(actualOwners: string[], expectedOwners: string[]): void {
   const actual = actualOwners.map((owner) => owner.toLowerCase());
   const expected = expectedOwners.map((owner) => owner.toLowerCase());
@@ -94,8 +120,10 @@ async function main() {
   }
 
   const configPath = DEFAULT_CONFIG_PATH;
+  const useCanonicalInfra = process.argv.includes("--use-canonical-infra");
   const { chainId, provider, nodeUrl } = await resolveChainContext();
   const config = loadMultisigConfig(configPath);
+  const contractNetworks = useCanonicalInfra ? await loadCanonicalContractNetworks(chainId, provider) : undefined;
   const wallet = getSigner(provider);
   const privateKey = wallet._signingKey().privateKey;
 
@@ -115,11 +143,13 @@ async function main() {
   console.log(`Owners: ${config.owners.join(", ")}`);
   console.log(`Threshold: ${config.threshold}`);
   console.log(`Salt nonce: ${config.saltNonce}`);
+  console.log(`Safe contract addresses: ${useCanonicalInfra ? CANONICAL_INFRA_PATH : "protocol-kit registry"}`);
 
   const protocolKit = await Safe.init({
     provider: nodeUrl,
     signer: privateKey,
     predictedSafe,
+    contractNetworks,
   });
 
   const safeAddress = await protocolKit.getAddress();

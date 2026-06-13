@@ -119,6 +119,10 @@
           "address": "0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c",
           "block_number": 24421479
         },
+        "Universal_Adapter_43114": {
+          "address": "0x1af659333172DC502bD71Cf5b889521C97751838",
+          "block_number": 25237918
+        },
         "Blast_Adapter": {
           "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81",
           "block_number": 20221494
@@ -249,10 +253,10 @@
           "block_number": 24690994,
           "transaction_hash": "0x869926fddcfc39456d4479bda50e644dac93aea0f731e1313ac7d5b80134db6c"
         },
-        "Universal_Adapter_43114": {
-          "address": "0x1af659333172DC502bD71Cf5b889521C97751838",
-          "block_number": 25237918,
-          "transaction_hash": "0x26556c4f14f62b56ef0a4359e83d62751e21d4e3fe9eb855e8e84c12dba41853"
+        "Universal_Adapter_5042": {
+          "address": "0xCA5f9960022078F3585a188e06F910eeC29c7eBD",
+          "block_number": 25298498,
+          "transaction_hash": "0x1197bf71f2b21d584af3290b68dfc6b696db3df90422296a0fe338e1bda15def"
         },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
@@ -1205,6 +1209,26 @@
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
           "block_number": 12011854,
           "transaction_hash": "0xbe2cc41a1810895f39fb18657b6ed92f26e8b1a51b52e0fd6d9f867eb5973718"
+        }
+      }
+    },
+    "5042": {
+      "chain_name": "ARC",
+      "contracts": {
+        "SP1Helios": {
+          "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
+          "block_number": 4681034,
+          "transaction_hash": "0xc2298162df46d25eb878ac7d93d8a07294e9dad0b68d6465835c99c1b522146a"
+        },
+        "Safe": {
+          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
+          "block_number": 4828640,
+          "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
+        },
+        "SpokePool": {
+          "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
+          "block_number": 4694834,
+          "transaction_hash": "0x31aaba9cef65a567fb5d9cf60217391511e77b9a82c7c24da2e8a3b278e31134"
         }
       }
     },
