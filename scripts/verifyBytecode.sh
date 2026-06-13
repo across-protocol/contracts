@@ -13,25 +13,13 @@ set -euo pipefail
 # ./scripts/verifyBytecode.sh 0x2015905f5cbdb4afeba30deb6dc0f0f779ba4af5bc43edceabf0bf4343cb290b "$NODE_URL_1" SponsoredCCTPSrcPeriphery script/mintburn/cctp/DeploySponsoredCCTPSrcPeriphery.s.sol
 # ./scripts/verifyBytecode.sh --broadcast "$NODE_URL_1" SponsoredCCTPSrcPeriphery script/mintburn/cctp/DeploySponsoredCCTPSrcPeriphery.s.sol
 
-strip_cbor_metadata() {
-    local hex="$1"
-    local n=${#hex}
-    if (( n < 4 )); then
-        echo "$hex"
-        return
-    fi
-
-    local len_hex="${hex:$((n - 4)):4}"
-    [[ "$len_hex" =~ ^[0-9a-fA-F]{4}$ ]] || { echo "$hex"; return; }
-
-    local metadata_bytes=$((16#$len_hex))
-    local remove_nibbles=$((metadata_bytes * 2 + 4))
-    if (( remove_nibbles >= n )); then
-        echo "$hex"
-        return
-    fi
-
-    echo "${hex:0:$((n - remove_nibbles))}"
+# Masks the 34-byte ipfs hash inside each CBOR metadata blob so builds that differ
+# only in source metadata (comments, paths) still match. The metadata can sit
+# mid-bytecode (e.g. followed by data constants), so masking beats tail-stripping.
+mask_metadata_hash() {
+    local zeros
+    zeros=$(printf '0%.0s' {1..68})
+    sed -E "s/(a2646970667358221220)[0-9a-f]{68}/\1${zeros}/g" <<< "$1"
 }
 
 if [[ "$1" != "--broadcast" && $# -ne 4 ]] || [[ "$1" == "--broadcast" && $# -ne 4 ]]; then
@@ -96,7 +84,12 @@ CREATION=$(jq -r '.bytecode.object' "$ART" | sed 's/^0x//')
 LOCAL_INIT="$CREATION"
 
 if [[ -n "${TX_ENTRY:-}" && "$TX_ENTRY" != "null" ]]; then
-    CONSTRUCTOR_TYPES=$(jq -r '([.abi[]? | select(.type=="constructor")][0].inputs // []) | map(.type) | join(",")' "$ART")
+    # Expand struct params ("tuple"/"tuple[]") into their component types, e.g. "(bytes32,uint256)[]".
+    CONSTRUCTOR_TYPES=$(jq -r '
+        def expand: if (.type | startswith("tuple"))
+            then "(" + (.components | map(expand) | join(",")) + ")" + (.type | ltrimstr("tuple"))
+            else .type end;
+        ([.abi[]? | select(.type=="constructor")][0].inputs // []) | map(expand) | join(",")' "$ART")
     CONSTRUCTOR_SIG="constructor($CONSTRUCTOR_TYPES)"
     CONSTRUCTOR_ARGS=()
     while IFS= read -r arg; do
@@ -114,15 +107,12 @@ echo -n "0x$LOCAL_INIT" | cast keccak
 
 if [[ "$ONCHAIN" == "$LOCAL_INIT" ]]; then
     echo "✅ Code match"
+elif [[ "$(mask_metadata_hash "${ONCHAIN:0:${#CREATION}}")" == "$(mask_metadata_hash "$CREATION")" \
+      && "${ONCHAIN:${#CREATION}}" == "${ENCODED_ARGS:-}" ]]; then
+    echo "✅ Code match (metadata hash differs)"
 elif [[ -n "${ENCODED_ARGS:-}" ]]; then
     ONCHAIN_CREATION="${ONCHAIN:0:${#CREATION}}"
     ONCHAIN_ARGS="${ONCHAIN:${#CREATION}:${#ENCODED_ARGS}}"
-    STRIPPED_ONCHAIN_CREATION=$(strip_cbor_metadata "$ONCHAIN_CREATION")
-    STRIPPED_LOCAL_CREATION=$(strip_cbor_metadata "$CREATION")
-    if [[ "$ONCHAIN_ARGS" == "$ENCODED_ARGS" && "$STRIPPED_ONCHAIN_CREATION" == "$STRIPPED_LOCAL_CREATION" ]]; then
-        echo "✅ Code match (metadata hash differs)"
-        exit 0
-    fi
     echo "❌ Code mismatch"
     echo "Onchain bytes : ${#ONCHAIN}"
     echo "Local bytes   : ${#LOCAL_INIT}"

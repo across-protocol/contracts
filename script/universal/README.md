@@ -51,7 +51,7 @@ There are three scripts in this directory:
 1. Runs `forge clean && forge build` to ensure a fresh build for OZ proxy validation
 2. Invokes `DeploySP1Helios.s.sol` via FFI to deploy the light client
 3. Invokes `DeployUniversalSpokePool.s.sol` via FFI to deploy the SpokePool proxy
-4. Transfers `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from deployer to SpokePool via `cast send`
+4. Transfers `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from deployer to SpokePool via `cast send` (skipped when `<TRANSFER_ROLES>` is `false` — the deployer retains the SP1Helios roles for a later manual transfer)
 5. Verifies role transfers via `cast call`
 6. Optionally verifies contracts on Etherscan via `forge script --resume --verify`
 
@@ -61,8 +61,8 @@ Each sub-script runs as its own `forge script` process, so broadcast artifacts l
 
 ```bash
 forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-  --sig "run(uint256,string,string,bool)" \
-  <OFT_FEE_CAP> <RPC_URL> <ETHERSCAN_API_KEY> true \
+  --sig "run(uint256,string,string,bool,bool)" \
+  <OFT_FEE_CAP> <RPC_URL> <ETHERSCAN_API_KEY> true <TRANSFER_ROLES> \
   --ffi
 ```
 
@@ -70,10 +70,12 @@ forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
 
 ```bash
 forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-  --sig "run(uint256,string,string,bool)" \
-  <OFT_FEE_CAP> <RPC_URL> "" false \
+  --sig "run(uint256,string,string,bool,bool)" \
+  <OFT_FEE_CAP> <RPC_URL> "" false <TRANSFER_ROLES> \
   --ffi
 ```
+
+Set `<TRANSFER_ROLES>` to `true` for the standard flow (SP1Helios roles handed to the SpokePool). Set it to `false` to skip Step 4 and leave both roles with the deployer — useful when the role transfer should happen later.
 
 The script aborts if a SpokePool is already registered for the target chain in `broadcast/deployed-addresses.json`. Remove the chain entry from that file if you need to redeploy.
 

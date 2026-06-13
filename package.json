@@ -52,6 +52,7 @@
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts",
     "deploy-safe": "ts-node ./script/safe-multisig/deploySafe.ts",
     "build-tron": "FOUNDRY_PROFILE=tron forge build",
+    "tron-deploy": "ts-node script/tron/deploy-tron.ts",
     "tron-deploy-sp1-auto-verifier": "ts-node script/tron/universal/tron-deploy-sp1-auto-verifier.ts",
     "tron-deploy-sp1-helios": "ts-node script/tron/universal/tron-deploy-sp1-helios.ts",
     "tron-deploy-universal-spokepool": "ts-node script/tron/universal/tron-deploy-universal-spokepool.ts",

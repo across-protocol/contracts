@@ -396,8 +396,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name | Address                                                                                                               |
 | ------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b](https://snowscan.xyz/address/0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b) |
-| SpokePool     | [0x292A00f2368187073E80AB94fA03AFD8c796d450](https://snowscan.xyz/address/0x292A00f2368187073E80AB94fA03AFD8c796d450) |
+| SP1Helios     | [0x7a36967Ee0a5c913Be88c838321d05C13705911a](https://snowscan.xyz/address/0x7a36967Ee0a5c913Be88c838321d05C13705911a) |
+| SpokePool     | [0xE0DB08B3F72931Dca2Ed7323a1053EaC42715bEe](https://snowscan.xyz/address/0xE0DB08B3F72931Dca2Ed7323a1053EaC42715bEe) |
 
 ## Ink (57073)
 
@@ -483,6 +483,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                               |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter               | [TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu](https://tronscan.org/address/TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu) |
 | AdminWithdrawManager             | [TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC](https://tronscan.org/address/TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC) |
 | CounterfactualDeposit            | [TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy](https://tronscan.org/address/TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy) |
 | CounterfactualDepositFactoryTron | [TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob](https://tronscan.org/address/TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob) |
@@ -491,6 +492,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SP1Helios                        | [TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm](https://tronscan.org/address/TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm) |
 | SpokePool                        | [TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS](https://tronscan.org/address/TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS) |
 | SpokePoolPeriphery               | [TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ](https://tronscan.org/address/TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ) |
+| TronMulticallHandler             | [TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ](https://tronscan.org/address/TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ) |
 | WithdrawImplementationTron       | [THPA5L2jxGE84FHMieds212WH3sRX5Hi9t](https://tronscan.org/address/THPA5L2jxGE84FHMieds212WH3sRX5Hi9t) |
 
 ## Solana (34268394551451)
