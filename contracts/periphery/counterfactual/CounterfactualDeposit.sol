@@ -25,12 +25,12 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
  *      keeps its `activeRoot` until someone updates it; there is no on-chain version/min-version gate.
  *      **Every future implementation version MUST preserve this ERC-7201 storage layout.**
  *
- *      Note: the CCTP/OFT leaf implementations authorize the runtime fee with a signature over
- *      `(nonce, executionFee, signatureDeadline)` that does NOT bind the leaf's route `params` — the route
- *      is bound only transitively, via the periphery quote signature. So if two such leaves shared one
- *      implementation address, a caller could prove leaf A's params while submitting a fee signature meant
- *      for leaf B. (SpokePool is unaffected: its typehash binds `routeParamsHash`.) As a belt-and-braces
- *      rule, a clone's tree must never contain multiple leaves with the same implementation address.
+ *      Note: every leaf implementation's fee signature binds the leaf's route via `routeParamsHash` (the
+ *      EIP-712 typehash for all four — SpokePool, CCTP, VanillaCCTP, OFT — commits it). So a fee signature
+ *      authored for one leaf cannot be replayed against another, and a clone's tree MAY safely contain
+ *      multiple leaves that share an implementation address (e.g. two OFT routes for different input tokens
+ *      to one destination identity). Cross-chain replay is independently prevented by the `chainId` in the
+ *      EIP-712 domain, and cross-clone replay by `verifyingContract = address(this)`.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {

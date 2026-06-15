@@ -16,6 +16,7 @@ contract WithdrawImplementationTest is CounterfactualTestBase {
 
     function setUp() public {
         _setUpCore();
+        _deployBeacon(_baseConfig());
         token = new MintableERC20("USDC", "USDC", 6);
     }
 

@@ -29,6 +29,7 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
 
     function setUp() public {
         _setUpCore();
+        _deployBeacon(_baseConfig());
         managerOwner = makeAddr("managerOwner");
         directWithdrawer = makeAddr("directWithdrawer");
 

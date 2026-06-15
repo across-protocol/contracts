@@ -218,6 +218,20 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = (tx.contractName as string | null) ?? "";
 
+          // Special-case the CounterfactualBeacon deploy: the ERC1967Proxy is the canonical, address-
+          // stable registry (every BeaconProxy embeds it). The per-chain CounterfactualBeacon
+          // implementation that lives behind that proxy is not the address callers should resolve, so
+          // skip it. Without this branch the generic `ERC1967Proxy → SpokePool` rewrite below would
+          // misfile the beacon proxy as SpokePool, and `CounterfactualBeacon` in deployed-addresses.json
+          // would point at the per-chain implementation.
+          if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol") {
+            if (contractName === "ERC1967Proxy") {
+              contractName = "CounterfactualBeacon";
+            } else if (contractName === "CounterfactualBeacon") {
+              continue;
+            }
+          }
+
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
           } else if (contractName.endsWith("_SpokePool")) {

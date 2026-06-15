@@ -5,34 +5,25 @@ import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 
-// How to run (zero-arg, reads from constants + deployed addresses):
+// Deploys the CounterfactualDepositOFT leaf implementation. Chain-identical (no constructor args; periphery,
+// source EID, input token (USDC) and fee signer come from the CounterfactualBeacon at runtime), so it lands at
+// the SAME CREATE2 address on every chain.
+//
+// How to run (zero-arg):
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 2. forge script script/counterfactual/DeployCounterfactualDepositOFT.s.sol:DeployCounterfactualDepositOFT \
 //      --rpc-url $NODE_URL -vvvv
 // 3. Deploy: append --broadcast --verify to the command above
 contract DeployCounterfactualDepositOFT is CounterfactualConfig {
-    /// @notice Zero-arg entry point: resolves all params from constants and deployed addresses.
+    /// @notice Zero-arg entry point. Guards on OFT support so we only deploy where the route exists.
     function run() external {
         require(hasOftEid(block.chainid), "Chain does not support OFT");
-        address oftSrcPeriphery = _resolveOftPeriphery();
-        require(oftSrcPeriphery != address(0), "OFT periphery not deployed on this chain");
-        this.run(oftSrcPeriphery, uint32(getOftEid(block.chainid)));
-    }
 
-    function run(address oftSrcPeriphery, uint32 srcEid) external {
-        string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
 
-        require(oftSrcPeriphery != address(0), "OFT SrcPeriphery cannot be zero address");
-
-        bytes memory initCode = abi.encodePacked(
-            type(CounterfactualDepositOFT).creationCode,
-            abi.encode(oftSrcPeriphery, srcEid)
-        );
+        bytes memory initCode = type(CounterfactualDepositOFT).creationCode;
         console.log("Deploying CounterfactualDepositOFT via CREATE2...");
         console.log("Chain ID:", block.chainid);
-        console.log("OFT SrcPeriphery:", oftSrcPeriphery);
-        console.log("Source EID:", uint256(srcEid));
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);
