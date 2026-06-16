@@ -252,20 +252,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = (tx.contractName as string | null) ?? "";
 
-          // Special-case the CounterfactualBeacon deploy: the ERC1967Proxy is the canonical, address-
-          // stable registry (every BeaconProxy embeds it). The per-chain CounterfactualBeacon
-          // implementation that lives behind that proxy is not the address callers should resolve, so
-          // skip it. Without this branch the generic `ERC1967Proxy → SpokePool` rewrite below would
-          // misfile the beacon proxy as SpokePool, and `CounterfactualBeacon` in deployed-addresses.json
-          // would point at the per-chain implementation.
-          if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol") {
-            if (contractName === "ERC1967Proxy") {
-              contractName = "CounterfactualBeacon";
-            } else if (contractName === "CounterfactualBeacon") {
-              continue;
-            }
-          }
-
           if (contractName === "ERC1967Proxy") {
             // Resolve which contract this proxy represents by the deploying script (see comment above).
             const mappedProxyName = PROXY_LOGICAL_NAME_BY_SCRIPT[broadcastFile.scriptName];
@@ -279,17 +265,14 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           } else if (contractName.endsWith("_SpokePool")) {
             // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
             continue;
-          } else if (
-            ["DeployCounterfactualBeacon.s.sol", "DeployCounterfactualBeaconImpl.s.sol"].includes(
-              broadcastFile.scriptName
-            ) &&
-            contractName === "CounterfactualBeacon"
-          ) {
-            // The canonical `CounterfactualBeacon` is the proxy (named above); this is the implementation
-            // behind it, which changes on upgrade — record it under a distinct name to avoid colliding.
-            // It is deployed by DeployCounterfactualBeaconImpl (and, historically, by the pre-split
-            // DeployCounterfactualBeacon, whose committed broadcasts still contain impl CREATEs).
-            contractName = "CounterfactualBeaconImpl";
+          } else if (contractName === "CounterfactualBeacon" || contractName === "CounterfactualBeaconBootstrap") {
+            // Skip the beacon implementation and bootstrap — neither is an address callers should resolve.
+            // The canonical `CounterfactualBeacon` is the ERC1967 proxy (captured above from the
+            // upgradeToAndCall/setImplementation CALL target, and via the proxy CREATE on first deploy). A
+            // `CounterfactualBeacon` CREATE is always the per-chain impl behind that proxy (the proxy is an
+            // `ERC1967Proxy`); it changes on every upgrade. `CounterfactualBeaconBootstrap` is the one-time
+            // init shim the proxy is deployed over before being upgraded to the impl.
+            continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;
             let oftDstEid: string | undefined = undefined;

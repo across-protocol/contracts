@@ -4,19 +4,12 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBase } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
-=======
-import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
-import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
-import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
->>>>>>> taylor/counterfactual-upgradeable
 import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
@@ -68,7 +61,6 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //
 // Always deployed:
 //   - Beacon stack (bootstrap + proxy + chain-specific impl + dispatcher) via DeployCounterfactualBeacon
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
 //   - CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
 //
 // Route leaves — deployed automatically wherever the route is VIABLE on this chain (no flags; derived from
@@ -78,13 +70,6 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - CounterfactualDepositCCTP         if the chain has a CCTP domain + SponsoredCCTPSrcPeriphery
 //   - CounterfactualDepositOFT          if the chain has an OFT EID + SponsoredOFTSrcPeriphery
 //   - CounterfactualDepositVanillaCCTP  if Circle's CCTP v2 TokenMessenger is configured
-=======
-//   - CounterfactualDepositFactory, WithdrawImplementation, CounterfactualDepositVanillaCCTP,
-//     AdminWithdrawManager
-//
-// Optionally deployed (bool args): CounterfactualDepositSpokePool (deploySpokePool),
-// CounterfactualDepositCCTP (deployCctp), CounterfactualDepositOFT (deployOft).
->>>>>>> taylor/counterfactual-upgradeable
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
@@ -109,7 +94,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     function run(string calldata rpcUrl, bool transferRoles, bool broadcast, string calldata profile) external {
         address signer = _loadSigner();
 
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         // Which route leaves to deploy is DERIVED from on-chain capability, not passed in: deploy a route's
         // leaf exactly where that route can actually function on this chain (its dependency resolves). Leaf
         // impls are inert until a signed merkle leaf names them and the beacon config is set, so deploying
@@ -124,19 +108,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         bool deployCctp = hasCctpDomain(block.chainid) && _resolveCctpPeriphery() != address(0);
         bool deployOft = hasOftEid(block.chainid) && _resolveOftPeriphery() != address(0);
         bool deployVanillaCctp = _resolveCctpTokenMessenger() != address(0);
-=======
-        // CCTP / OFT gating: leaf impls are chain-identical, but only deploy where the route is configured
-        // (matching the per-script guards). Also require the upstream periphery so the beacon doesn't bake
-        // `address(0)`, which would silently brick every leaf with `RouteNotConfigured`.
-        if (deployCctp) {
-            require(hasCctpDomain(block.chainid), "CCTP not supported on this chain");
-            require(_resolveCctpPeriphery() != address(0), "CCTP periphery not deployed on this chain");
-        }
-        if (deployOft) {
-            require(hasOftEid(block.chainid), "OFT not supported on this chain");
-            require(_resolveOftPeriphery() != address(0), "OFT periphery not deployed on this chain");
-        }
->>>>>>> taylor/counterfactual-upgradeable
 
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
@@ -146,17 +117,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         // for logging and idempotency checks.
         address predictedProxy = _predictBeaconProxy(deployer);
         address predictedDispatcher = _predictDispatcher(predictedProxy);
-
-        // Predict the chain-invariant beacon proxy + dispatcher addresses (like DeployCounterfactualBeacon)
-        // for logging and idempotency checks.
-        address predictedProxy = _predictBeaconProxy(deployer);
-        address predictedDispatcher = _predictCreate2(
-            bytes32(0),
-            abi.encodePacked(
-                type(CounterfactualDeposit).creationCode,
-                abi.encode(ICounterfactualBeacon(predictedProxy))
-            )
-        );
 
         // Log predicted addresses upfront so they can be verified before deploying.
         console.log("============================================");
@@ -168,32 +128,20 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("--------------------------------------------");
         console.log("Detected route capabilities (deploy where the route is viable):");
         console.log("  Signer:             ", signer);
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         console.log("  SpokePool route:    ", deploySpokePool);
         console.log("  Sponsored CCTP:     ", deployCctp);
         console.log("  Sponsored OFT:      ", deployOft);
         console.log("  Vanilla CCTP:       ", deployVanillaCctp);
-=======
-        console.log("  Deploy SpokePool:   ", deploySpokePool);
-        console.log("  Deploy CCTP:        ", deployCctp);
-        console.log("  Deploy OFT:         ", deployOft);
->>>>>>> taylor/counterfactual-upgradeable
         console.log("  Transfer roles:     ", transferRoles);
         console.log("--------------------------------------------");
         console.log("Predicted addresses:");
 
         // Beacon stack + always-on contracts.
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         address predictedFactory = _predictCreate2(
             salt,
             abi.encodePacked(type(CounterfactualDepositFactory).creationCode, abi.encode(predictedProxy))
         );
         address predictedWithdraw = _predictCreate2(salt, type(WithdrawImplementation).creationCode);
-=======
-        address predictedFactory = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
-        address predictedWithdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
-        address predictedVanilla = _predictCreate2(bytes32(0), type(CounterfactualDepositVanillaCCTP).creationCode);
->>>>>>> taylor/counterfactual-upgradeable
         address predictedAdmin = _predictCreate2(
             salt,
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
@@ -203,7 +151,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         _logPredicted("CounterfactualDeposit (dispatcher)", predictedDispatcher);
         _logPredicted("CounterfactualDepositFactory", predictedFactory);
         _logPredicted("WithdrawImplementation", predictedWithdraw);
-        _logPredicted("CounterfactualDepositVanillaCCTP", predictedVanilla);
         _logPredicted("AdminWithdrawManager", predictedAdmin);
 
         address predictedVanilla;
@@ -220,11 +167,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             bytes memory spokePoolCode = isTron
                 ? type(CounterfactualDepositSpokePoolTr).creationCode
                 : type(CounterfactualDepositSpokePool).creationCode;
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             predictedSpokePool = _predictCreate2(salt, spokePoolCode);
-=======
-            predictedSpokePool = _predictCreate2(bytes32(0), spokePoolCode);
->>>>>>> taylor/counterfactual-upgradeable
             _logPredicted(
                 isTron ? "CounterfactualDepositSpokePoolTr" : "CounterfactualDepositSpokePool",
                 predictedSpokePool
@@ -233,35 +176,23 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         address predictedCctp;
         if (deployCctp) {
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             predictedCctp = _predictCreate2(salt, type(CounterfactualDepositCCTP).creationCode);
-=======
-            predictedCctp = _predictCreate2(bytes32(0), type(CounterfactualDepositCCTP).creationCode);
->>>>>>> taylor/counterfactual-upgradeable
             _logPredicted("CounterfactualDepositCCTP", predictedCctp);
         }
 
         address predictedOft;
         if (deployOft) {
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             predictedOft = _predictCreate2(salt, type(CounterfactualDepositOFT).creationCode);
-=======
-            predictedOft = _predictCreate2(bytes32(0), type(CounterfactualDepositOFT).creationCode);
->>>>>>> taylor/counterfactual-upgradeable
             _logPredicted("CounterfactualDepositOFT", predictedOft);
         }
 
         console.log("============================================");
 
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         // `--slow` sends each tx in a sub-script's broadcast batch sequentially, waiting for each receipt.
         // The beacon stack is multi-tx (impl deploy -> upgradeToAndCall -> dispatcher -> setImplementation);
         // without --slow, forge fires them with rapid sequential nonces and the txs after the first get
         // dropped against an RPC whose nonce view lags, leaving the proxy stuck on the bootstrap.
         string memory broadcastFlag = broadcast ? " --broadcast --slow --verify --retries 5 --delay 10" : "";
-=======
-        string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
->>>>>>> taylor/counterfactual-upgradeable
 
         // --- Beacon stack (bootstrap + proxy + chain-specific impl + upgrade + dispatcher + setImplementation) ---
         // The one ordering-dependent step: must run before the dispatcher is usable. The dispatcher is
@@ -284,22 +215,15 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             _warnIfBeaconConfigStale(predictedProxy);
         } else {
             console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             // `DeployCounterfactualBeacon` has two `run` overloads (`run()` and `run(bool)`), so it MUST be
             // invoked with an explicit `--sig` or forge aborts with "Multiple functions with the same name
             // run". We want the no-transfer path here (role transfer is handled by this orchestrator below).
-=======
->>>>>>> taylor/counterfactual-upgradeable
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployCounterfactualBeacon.s.sol"),
                 "DeployCounterfactualBeacon",
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
                 ' --sig "run()"',
-=======
-                "",
->>>>>>> taylor/counterfactual-upgradeable
                 profile
             );
         }
@@ -380,7 +304,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositOFT.s.sol"),
                     "DeployCounterfactualDepositOFT",
                     "",
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
                     profile
                 );
             }
@@ -398,26 +321,9 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositVanillaCCTP.s.sol"),
                     "DeployCounterfactualDepositVanillaCCTP",
                     "",
-=======
->>>>>>> taylor/counterfactual-upgradeable
                     profile
                 );
             }
-        }
-
-        // --- CounterfactualDepositVanillaCCTP (vanilla, non-sponsored Circle CCTP v2) ---
-        if (predictedVanilla.code.length > 0) {
-            console.log("CounterfactualDepositVanillaCCTP: ALREADY DEPLOYED");
-        } else {
-            console.log("Deploying CounterfactualDepositVanillaCCTP...");
-            _runForgeScript(
-                rpcUrl,
-                broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployCounterfactualDepositVanillaCCTP.s.sol"),
-                "DeployCounterfactualDepositVanillaCCTP",
-                "",
-                profile
-            );
         }
 
         // --- AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
@@ -435,7 +341,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         }
 
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         // The deploys above happened in separate `forge script --broadcast` child processes (via ffi), so they
         // are invisible to THIS script's fork (pinned at the block we started on). Re-fork to latest so the
         // role-transfer reads below (beacon.owner(), manager roles) and the verification summary see what the
@@ -444,8 +349,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         // this orchestrator is itself invoked with `--broadcast`; otherwise do role transfers separately.
         if (broadcast) vm.createSelectFork(rpcUrl);
 
-=======
->>>>>>> taylor/counterfactual-upgradeable
         // --- Transfer beacon + AdminWithdrawManager roles ---
         if (transferRoles) {
             address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
@@ -546,25 +449,12 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("============================================");
     }
 
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
     /// @dev Logs whether `addr` has on-chain code and returns true when deployed. Powers the post-run
     ///      verification summary so a sub-script failure swallowed by `|| true` is surfaced explicitly.
     function _status(string memory name, address addr) internal view returns (bool) {
         bool ok = addr.code.length > 0;
         console.log(ok ? "  [OK]      %s: %s" : "  [MISSING] %s: %s", name, addr);
         return ok;
-=======
-    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
-    /// @dev Mirrors DeployCounterfactualBeacon: ERC1967Proxy over the chain-identical bootstrap with the
-    ///      deployer as owner (chain-invariant => identical init code => identical address).
-    function _predictBeaconProxy(address deployer) internal pure returns (address) {
-        address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
-        bytes memory proxyInitCode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
-        );
-        return _predictCreate2(bytes32(0), proxyInitCode);
->>>>>>> taylor/counterfactual-upgradeable
     }
 
     /// @dev True when the beacon proxy's `implementation()` already resolves to the expected dispatcher.

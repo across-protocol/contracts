@@ -243,61 +243,37 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // usdt vs constants.json (best-effort; 0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdt", beacon.usdt(), _getUsdt(chainId));
 
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         // Per-(token, bridge) execution-fee caps: hardcoded to type(uint256).max for now (see
         // CounterfactualConfig._buildChainConfig).
-=======
-        // Per-(token, bridge) execution-fee caps vs config.toml (0 when unset).
->>>>>>> taylor/counterfactual-upgradeable
         _assertUintEq(
             "CounterfactualBeacon",
             "usdcCctpMaxExecutionFee",
             beacon.usdcCctpMaxExecutionFee(),
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             type(uint256).max
-=======
-            _resolveFeeCap("usdcCctpMaxExecutionFee")
->>>>>>> taylor/counterfactual-upgradeable
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdtOftMaxExecutionFee",
             beacon.usdtOftMaxExecutionFee(),
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             type(uint256).max
-=======
-            _resolveFeeCap("usdtOftMaxExecutionFee")
->>>>>>> taylor/counterfactual-upgradeable
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdcSpokePoolMaxExecutionFee",
             beacon.usdcSpokePoolMaxExecutionFee(),
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             type(uint256).max
-=======
-            _resolveFeeCap("usdcSpokePoolMaxExecutionFee")
->>>>>>> taylor/counterfactual-upgradeable
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdtSpokePoolMaxExecutionFee",
             beacon.usdtSpokePoolMaxExecutionFee(),
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             type(uint256).max
-=======
-            _resolveFeeCap("usdtSpokePoolMaxExecutionFee")
->>>>>>> taylor/counterfactual-upgradeable
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "wethSpokePoolMaxExecutionFee",
             beacon.wethSpokePoolMaxExecutionFee(),
-<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
             type(uint256).max
-=======
-            _resolveFeeCap("wethSpokePoolMaxExecutionFee")
->>>>>>> taylor/counterfactual-upgradeable
         );
 
         // Manual review: signer (no second source)
