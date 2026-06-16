@@ -19,15 +19,22 @@ contract DeployCounterfactualDepositVanillaCCTP is CounterfactualConfig {
     function run() external {
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
 
+<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         // Resolve the salt (which lazily loads config via file-reading cheatcodes) BEFORE startBroadcast;
         // constructing the StdConfig helper inside the broadcast region breaks forge's on-chain simulation.
         bytes32 salt = _deploySalt();
+=======
+>>>>>>> taylor/counterfactual-upgradeable
         bytes memory initCode = type(CounterfactualDepositVanillaCCTP).creationCode;
         console.log("Deploying CounterfactualDepositVanillaCCTP via CREATE2...");
         console.log("Chain ID:", block.chainid);
 
         vm.startBroadcast(deployerPrivateKey);
+<<<<<<< taylor/counterfactual-chain-agnostic-deploy-cctp-fix
         address deployed = _deployCreate2(salt, initCode);
+=======
+        address deployed = _deployCreate2(bytes32(0), initCode);
+>>>>>>> taylor/counterfactual-upgradeable
         vm.stopBroadcast();
 
         console.log("CounterfactualDepositVanillaCCTP deployed to:", deployed);
