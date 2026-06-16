@@ -176,7 +176,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.usdcCctpMaxExecutionFee = type(uint256).max;
         // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP);
         // 0 if unset ⇒ standard transfers only on this chain.
-        cfg.usdcCctpMaxFeeBps = type(uint256).max;
+        cfg.usdcCctpMaxFeeBps = 10_000;
         cfg.usdtOftMaxExecutionFee = type(uint256).max;
         cfg.usdcSpokePoolMaxExecutionFee = type(uint256).max;
         cfg.usdtSpokePoolMaxExecutionFee = type(uint256).max;
