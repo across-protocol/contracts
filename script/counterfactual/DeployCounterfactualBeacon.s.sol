@@ -7,27 +7,32 @@ import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualBeacon } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
 
-// Deploys-or-upgrades the counterfactual beacon **proxy** stack so the proxy lands at the SAME address on
-// every chain (every counterfactual proxy and the factory embed it). The chain-specific CounterfactualBeacon
+// Deploys the counterfactual beacon **proxy** stack so the proxy lands at the SAME address on every chain
+// (every counterfactual proxy and the factory embed it). The chain-specific CounterfactualBeacon
 // implementation is deployed separately by DeployCounterfactualBeaconImpl.s.sol; this script reads that
-// script's broadcast run-latest.json for this chain and points the proxy at the most recent impl. Every step
-// is idempotent, so re-running after an impl redeploy just performs the upgrade:
+// script's broadcast run-latest.json for this chain and points a FRESH proxy at the most recent impl.
+//
+// Deploy-only: this script stands up a NEW beacon but never upgrades a live one. A fresh proxy still sits on
+// the bootstrap (its ERC1967 impl slot == the bootstrap); once it has been pointed at a real impl the beacon
+// is considered deployed and this script makes no further changes. Re-pointing a live beacon to a newer impl
+// or dispatcher is an upgrade, performed out of band by the beacon owner — not here.
 //   1. CounterfactualBeaconBootstrap via CREATE2 (no constructor args => same address everywhere). Skipped
 //      when already deployed.
 //   2. ERC1967Proxy via CREATE2 over the bootstrap, init calldata = bootstrap.initialize(deployer). The
 //      deployer (chain-invariant, from MNEMONIC) is the bootstrap owner => identical init code => identical
 //      proxy address. (Do NOT put the per-chain multisig in the init calldata — that breaks address parity.)
 //      Skipped when already deployed.
-//   3. `upgradeToAndCall(latestImpl, "")` whenever the proxy's ERC1967 implementation slot differs from the
-//      latest impl — covers both a fresh proxy (still on the bootstrap) and a stale impl. onlyOwner: once the
-//      beacon was handed to the multisig this script can no longer upgrade it and reverts with instructions.
+//   3. `upgradeToAndCall(latestImpl, "")` ONLY when the proxy is still on the bootstrap (a fresh deploy),
+//      pointing it at the chain-specific impl. A proxy already on a real impl is left untouched (no upgrade).
+//      The bootstrap already consumed the initializer slot, so pass empty calldata (no re-init).
 //   4. The dispatcher `new CounterfactualDeposit(ICounterfactualBeacon(proxy))` via CREATE2 (proxy is
 //      chain-invariant => dispatcher is same address everywhere). Skipped when already deployed.
 //   5. `setImplementation(dispatcher)` on the proxy so every counterfactual proxy resolves the dispatcher.
 //   6. Optionally `transferOwnership(ownerAndDirectWithdrawer)` (Ownable2Step; new owner accepts out of band).
 //
 // How to run:
-// 1. Deploy (or redeploy, after a config change) the impl: DeployCounterfactualBeaconImpl.s.sol
+// 1. Deploy the impl: DeployCounterfactualBeaconImpl.s.sol (after a config change, redeploy the impl and
+//    upgrade the beacon separately — this script will NOT move a live beacon to the new impl)
 // 2. Edit script/counterfactual/config.toml with signer + ownerAndDirectWithdrawer per chain
 // 3. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 4. forge script script/counterfactual/DeployCounterfactualBeacon.s.sol:DeployCounterfactualBeacon \
@@ -36,7 +41,7 @@ import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counter
 contract DeployCounterfactualBeacon is CounterfactualConfig {
     string constant IMPL_SCRIPT = "DeployCounterfactualBeaconImpl.s.sol";
 
-    /// @notice Zero-arg entry point: deploys/upgrades the beacon stack, keeping the deployer as owner.
+    /// @notice Zero-arg entry point: deploys the beacon stack, keeping the deployer as owner.
     function run() external {
         _run(false);
     }
@@ -71,7 +76,7 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         address dispatcher = _predictDispatcher(proxy);
 
         console.log("============================================");
-        console.log("Counterfactual Beacon proxy deploy-or-upgrade");
+        console.log("Counterfactual Beacon proxy deployment");
         console.log("============================================");
         console.log("Chain ID:           ", block.chainid);
         console.log("Deployer:           ", deployer);
@@ -93,24 +98,25 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
 
         CounterfactualBeacon beacon = CounterfactualBeacon(deployedProxy);
 
-        // 3. Retarget the proxy whenever its ERC1967 impl slot isn't the latest impl: a fresh proxy still
-        //    sits on the bootstrap, an existing one may be on an outdated impl. The bootstrap already
-        //    consumed the initializer slot, so pass empty calldata (no re-init); chain config comes from the
-        //    impl's immutables, and implementation/upgradeRoot are set via owner setters.
+        // Deploy-only guard: a fresh proxy still points at the bootstrap. Once it has been pointed at a real
+        // impl the beacon is deployed, and this script never upgrades a live beacon — bail without changes.
+        // (Re-pointing to a newer impl/dispatcher is an upgrade, performed out of band by the beacon owner.)
         address currentImpl = address(uint160(uint256(vm.load(deployedProxy, ERC1967Utils.IMPLEMENTATION_SLOT))));
-        if (currentImpl != beaconImpl) {
-            // upgradeToAndCall is onlyOwner; after the beacon was handed to the multisig, the owner must
-            // execute the upgrade instead (call upgradeToAndCall(<latest impl>, "") on the proxy).
-            if (beacon.owner() != deployer) {
-                console.log("ERROR: beacon owner is %s, not the deployer.", beacon.owner());
-                console.log("The owner must call upgradeToAndCall(%s, 0x) on the proxy %s.", beaconImpl, deployedProxy);
-            }
-            require(beacon.owner() == deployer, "deployer is not beacon owner: upgrade must be executed by the owner");
-            CounterfactualBeaconBootstrap(payable(deployedProxy)).upgradeToAndCall(beaconImpl, "");
-            console.log("Upgraded impl:      ", currentImpl, "->", beaconImpl);
-        } else {
-            console.log("Proxy already on latest impl");
+        if (currentImpl != bootstrap) {
+            vm.stopBroadcast();
+            console.log("Beacon already deployed; impl slot:", currentImpl);
+            console.log("Deploy-only script makes no changes. Upgrades are performed separately by the owner.");
+            console.log("============================================");
+            return;
         }
+
+        // 3. Point the fresh proxy from the bootstrap at the chain-specific impl. The bootstrap already
+        //    consumed the initializer slot, so pass empty calldata (no re-init); chain config comes from the
+        //    impl's immutables, and implementation/upgradeRoot are set via owner setters. onlyOwner — a fresh
+        //    proxy's bootstrap.initialize set the deployer as owner, so this holds.
+        require(beacon.owner() == deployer, "deployer is not beacon owner");
+        CounterfactualBeaconBootstrap(payable(deployedProxy)).upgradeToAndCall(beaconImpl, "");
+        console.log("Pointed proxy at impl:", beaconImpl);
 
         // 4. Dispatcher (CounterfactualDeposit), bound to the chain-invariant proxy => same address; skipped
         //    when already deployed.
@@ -119,18 +125,7 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         console.log("Dispatcher:         ", deployedDispatcher);
 
         // 5. Point the beacon at the dispatcher so every counterfactual proxy runs it (onlyOwner, like 3).
-        if (beacon.implementation() != deployedDispatcher) {
-            if (beacon.owner() != deployer) {
-                console.log("ERROR: beacon owner is %s, not the deployer.", beacon.owner());
-                console.log(
-                    "The owner must call setImplementation(%s) on the proxy %s.",
-                    deployedDispatcher,
-                    deployedProxy
-                );
-            }
-            require(beacon.owner() == deployer, "deployer is not beacon owner: owner must setImplementation");
-            beacon.setImplementation(deployedDispatcher);
-        }
+        beacon.setImplementation(deployedDispatcher);
 
         // 6. Optionally hand the beacon over to the per-chain multisig (Ownable2Step accept out of band).
         if (doTransferOwnership) {
@@ -145,7 +140,7 @@ contract DeployCounterfactualBeacon is CounterfactualConfig {
         vm.stopBroadcast();
 
         console.log("============================================");
-        console.log("Beacon stack up to date.");
+        console.log("Beacon stack deployed.");
         console.log("============================================");
     }
 }

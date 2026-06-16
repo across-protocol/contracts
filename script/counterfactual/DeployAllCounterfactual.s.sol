@@ -46,21 +46,23 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
 //   - No nonce burning for skipped contracts
-//   - No ordering dependency — deploy in any order (except the beacon stack, which is one atomic script)
+//   - No ordering dependency — deploy in any order (except the beacon stack: its impl, then the
+//     proxy/dispatcher, run as two ordered sub-scripts)
 //   - Idempotent — already-deployed contracts are auto-skipped
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
 //   - Chain-specific params (spokePool, wrappedNativeToken, nativeToken, cctp/oft periphery + domain/eid,
 //     USDC/USDT, cctpTokenMessenger): auto-resolved from constants.json + deployed-addresses.json and baked
-//     into the beacon impl by DeployCounterfactualBeacon. `nativeToken` defaults to the native sentinel;
+//     into the beacon impl by DeployCounterfactualBeaconImpl. `nativeToken` defaults to the native sentinel;
 //     override at `.NATIVE_TOKEN.<chainId>` for chains whose gas-token route is an ERC-20.
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from config.toml.
 //     This script transfers those roles after all ffi deployments, verifying directWithdrawer transferred
 //     before ownership.
 //
 // Always deployed:
-//   - Beacon stack (bootstrap + proxy + chain-specific impl + dispatcher) via DeployCounterfactualBeacon
+//   - Beacon stack (chain-specific impl + bootstrap + proxy + dispatcher) via DeployCounterfactualBeaconImpl
+//     then DeployCounterfactualBeacon
 //   - CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
 //
 // Route leaves — deployed automatically wherever the route is VIABLE on this chain (no flags; derived from
@@ -194,9 +196,11 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         // dropped against an RPC whose nonce view lags, leaving the proxy stuck on the bootstrap.
         string memory broadcastFlag = broadcast ? " --broadcast --slow --verify --retries 5 --delay 10" : "";
 
-        // --- Beacon stack (bootstrap + proxy + chain-specific impl + upgrade + dispatcher + setImplementation) ---
-        // The one ordering-dependent step: must run before the dispatcher is usable. The dispatcher is
-        // deployed here by DeployCounterfactualBeacon (not standalone) so it binds to the fresh beacon proxy.
+        // --- Beacon stack (impl + bootstrap + proxy + upgrade + dispatcher + setImplementation) ---
+        // Two ordered sub-scripts: DeployCounterfactualBeaconImpl (chain-specific impl) then
+        // DeployCounterfactualBeacon (bootstrap/proxy/upgrade-to-impl/dispatcher/setImplementation). The one
+        // ordering-dependent step: must run before the dispatcher is usable. The dispatcher is deployed by
+        // DeployCounterfactualBeacon (not standalone) so it binds to the fresh beacon proxy.
         //
         // Code at both addresses is necessary but not sufficient: a prior broadcast may have stopped between
         // deploying the proxy/dispatcher and `setImplementation(dispatcher)`, leaving the proxy on the
@@ -214,10 +218,22 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             // registry UUPS upgrade. Surface the mismatch loudly so a silently-bricked route isn't missed.
             _warnIfBeaconConfigStale(predictedProxy);
         } else {
-            console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
-            // `DeployCounterfactualBeacon` has two `run` overloads (`run()` and `run(bool)`), so it MUST be
-            // invoked with an explicit `--sig` or forge aborts with "Multiple functions with the same name
-            // run". We want the no-transfer path here (role transfer is handled by this orchestrator below).
+            console.log("Deploying Beacon stack (impl + bootstrap + proxy + upgrade + dispatcher)...");
+            // 1. Chain-specific beacon IMPLEMENTATION (per-chain CREATE; bakes this chain's ChainConfig as
+            //    immutables). It MUST be deployed first: DeployCounterfactualBeacon below reads this script's
+            //    broadcast for the latest impl and `upgradeToAndCall`s the proxy to it, reverting if absent.
+            _runForgeScript(
+                rpcUrl,
+                broadcastFlag,
+                string.concat(SCRIPT_DIR, "DeployCounterfactualBeaconImpl.s.sol"),
+                "DeployCounterfactualBeaconImpl",
+                "",
+                profile
+            );
+            // 2. Bootstrap + proxy + upgrade-to-impl + dispatcher + setImplementation. `DeployCounterfactualBeacon`
+            //    has two `run` overloads (`run()` and `run(bool)`), so it MUST be invoked with an explicit `--sig`
+            //    or forge aborts with "Multiple functions with the same name run". We want the no-transfer path
+            //    here (role transfer is handled by this orchestrator below).
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,

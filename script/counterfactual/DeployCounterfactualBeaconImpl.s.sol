@@ -11,13 +11,14 @@ import {
 // Deploys the chain-specific CounterfactualBeacon IMPLEMENTATION, baking this chain's
 // CounterfactualChainConfig (SpokePool, bridge endpoints, fee signer, tokens, fee caps — resolved from
 // constants.json + deployed-addresses.json + config.toml) into its immutables. The impl deliberately gets a
-// per-chain address (plain CREATE) — it sits behind the address-stable beacon proxy managed by
-// DeployCounterfactualBeacon.s.sol, which reads this script's broadcast run-latest.json for the most recent
-// impl and `upgradeToAndCall`s the proxy to it.
+// per-chain address (plain CREATE) — it sits behind the address-stable beacon proxy. On a fresh chain
+// DeployCounterfactualBeacon.s.sol reads this script's broadcast run-latest.json and points the newly
+// deployed proxy at the most recent impl.
 //
-// Run this script first on a fresh chain, and again whenever the chain config changes (the config is
-// immutable on the impl, so a change means a new impl + a proxy upgrade); then run
-// DeployCounterfactualBeacon to retarget the proxy.
+// Run this script first on a fresh chain, then run DeployCounterfactualBeacon to deploy the proxy pointed at
+// this impl. After a config change the impl is immutable, so a change means a new impl AND a proxy upgrade —
+// but DeployCounterfactualBeacon is deploy-only and will NOT move a live beacon. The owner must perform that
+// upgrade out of band: `CounterfactualBeacon(proxy).upgradeToAndCall(newImpl, "")`.
 //
 // How to run:
 // 1. Edit script/counterfactual/config.toml with the signer for this chain
