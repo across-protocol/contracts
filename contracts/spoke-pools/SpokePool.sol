@@ -969,15 +969,6 @@ abstract contract SpokePool is
         // Reject V5-prefixed messages: those may only be filled via the Gateway-mediated V5 execute path.
         _revertIfV5Message(relayData.message);
 
-        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-        // to fill the relay.
-        if (
-            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
-        ) {
-            revert NotExclusiveRelayer();
-        }
-
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
             relayHash: getV3RelayHash(relayData),
@@ -987,6 +978,8 @@ abstract contract SpokePool is
             repaymentChainId: repaymentChainId
         });
 
+        // Exclusivity and all other fast-fill bookkeeping (deadline, status dedup, event) are enforced in
+        // `_fillRelayV3` -> `_commitFill`, with `msg.sender` as the filler whose exclusivity right is checked.
         _fillRelayV3(relayExecution, repaymentAddress, false);
     }
 
@@ -1043,15 +1036,6 @@ abstract contract SpokePool is
         // V5 execute path.
         _revertIfV5Message(relayData.message);
         _revertIfV5Message(updatedMessage);
-
-        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-        // to fill the relay.
-        if (
-            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
-        ) {
-            revert NotExclusiveRelayer();
-        }
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
@@ -1591,7 +1575,40 @@ abstract contract SpokePool is
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
     function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
+        // Run the shared fast/slow fill bookkeeping (deadline, exclusivity, status dedup, event), checking
+        // exclusivity against `msg.sender`, then move funds. The V5 execute path (see SpokePoolV5) reuses
+        // `_commitFill` directly so it can diverge only on the final funds transfer.
+        _commitFill(relayExecution, relayer, msg.sender, isSlowFill);
+        _transferTokensToRecipient(relayExecution, relayExecution.relay, isSlowFill);
+    }
+
+    /**
+     * @notice Shared fill pipeline: validates the fill deadline, enforces exclusivity (fast fills only), records
+     * the relay hash as filled (reverting on double-fill), and emits the `FilledRelay` event. Does NOT move funds;
+     * callers handle delivery so that the v4 path and the V5 execute path can use different transfer semantics.
+     * @param relayExecution The relay execution parameters (relay data, hash, updated fields, repayment chain).
+     * @param relayer The repayment identity emitted in the event (where/whom the relayer is repaid as).
+     * @param filler The address whose exclusivity right is checked for fast fills (the relayer that fronts funds).
+     * @param isSlowFill Whether this is a slow fill execution; slow fills skip the exclusivity check.
+     * @return fillType The classification emitted to the dataworker (FastFill / ReplacedSlowFill / SlowFill).
+     */
+    function _commitFill(
+        V3RelayExecutionParams memory relayExecution,
+        bytes32 relayer,
+        address filler,
+        bool isSlowFill
+    ) internal returns (FillType fillType) {
         V3RelayData memory relayData = relayExecution.relay;
+
+        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
+        // to fill the relay. Slow fills are never gated by exclusivity.
+        if (
+            !isSlowFill &&
+            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != filler
+        ) {
+            revert NotExclusiveRelayer();
+        }
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
 
@@ -1603,10 +1620,10 @@ abstract contract SpokePool is
         // is trivially true. We'll emit this value in the FilledRelay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
         // be used for a slow fill execution.
-        FillType fillType = isSlowFill
+        fillType = isSlowFill
             ? FillType.SlowFill // The following is true if this is a fast fill that was sent after a slow fill request.
             : (
-                fillStatuses[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
+                fillStatuses[relayHash] == uint256(FillStatus.RequestedSlowFill)
                     ? FillType.ReplacedSlowFill
                     : FillType.FastFill
             );
@@ -1621,7 +1638,6 @@ abstract contract SpokePool is
         fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
         _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
-        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
     }
 
     /**
