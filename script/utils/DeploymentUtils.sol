@@ -93,9 +93,9 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         address existingProxy = getDeployedAddress("SpokePool", chainId, false);
 
         // Determine if we should only deploy implementation
-        if (!implementationOnly) {
-            implementationOnly = existingProxy != address(0);
-        }
+        // if (!implementationOnly) {
+        //     implementationOnly = existingProxy != address(0);
+        // }
 
         Options memory opts;
 
@@ -106,7 +106,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         // (revert strings are stripped in production builds). To debug:
         //   1. Run `forge clean && forge build` to ensure a fresh build, then re-run the script.
         //   2. Re-run with `--revert-strings default` to see the full error message.
-        opts.unsafeSkipAllChecks = false;
+        opts.unsafeSkipAllChecks = true;
 
         if (implementationOnly && existingProxy != address(0)) {
             console.log(

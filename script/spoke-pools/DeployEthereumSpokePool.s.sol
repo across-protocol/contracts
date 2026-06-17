@@ -51,7 +51,7 @@ contract DeployEthereumSpokePool is Script, Test, DeploymentUtils {
             "Ethereum_SpokePool",
             constructorArgs,
             initArgs,
-            true // implementationOnly
+            false // implementationOnly
         );
 
         // Log the deployed addresses
