@@ -172,6 +172,12 @@ abstract contract SpokePool is
     // EIP-7702 prefix for delegated wallets.
     bytes3 internal constant EIP7702_PREFIX = 0xef0100;
 
+    // Sentinel prefix marking a relay message as an Across V5 (Gateway-mediated intent) message. A message whose
+    // first 32 bytes equal this prefix may only originate from the V5 execute path (see SpokePoolV5), which is
+    // gated by the Gateway and validates the committed witness. The v4 fill functions reject any message carrying
+    // this prefix so that a V5-prefixed FilledRelay event can never be forged outside of a Gateway execution.
+    bytes32 public constant MAGIC_ACXV5_MESSAGE_PREFIX = keccak256("ACXV5.SpokePool.Intent");
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -960,6 +966,9 @@ abstract contract SpokePool is
         uint256 repaymentChainId,
         bytes32 repaymentAddress
     ) public override nonReentrant unpausedFills {
+        // Reject V5-prefixed messages: those may only be filled via the Gateway-mediated V5 execute path.
+        _revertIfV5Message(relayData.message);
+
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
@@ -1030,6 +1039,11 @@ abstract contract SpokePool is
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) public override nonReentrant unpausedFills {
+        // Reject V5-prefixed messages (original and updated): those may only be filled via the Gateway-mediated
+        // V5 execute path.
+        _revertIfV5Message(relayData.message);
+        _revertIfV5Message(updatedMessage);
+
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
@@ -1302,6 +1316,14 @@ abstract contract SpokePool is
      **************************************/
 
     function _depositV3(DepositV3Params memory params) internal {
+        // Standard deposits lock the caller's own funds.
+        _depositV3From(msg.sender, params);
+    }
+
+    // Identical to `_depositV3` but pulls the locked `inputToken` from `funder` instead of `msg.sender`. This lets
+    // the Gateway-mediated V5 execute path (see SpokePoolV5) lock funds sourced from the Gateway submitter while
+    // the SpokePool itself is the `msg.sender`-equivalent caller. Native deposits still flow through `msg.value`.
+    function _depositV3From(address funder, DepositV3Params memory params) internal {
         // Verify depositor is a valid EVM address.
         params.depositor.checkAddress();
 
@@ -1360,7 +1382,7 @@ abstract contract SpokePool is
             // msg.value should be 0 if input token isn't the wrapped native token.
             if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
             IERC20Upgradeable(params.inputToken.toAddress()).safeTransferFrom(
-                msg.sender,
+                funder,
                 address(this),
                 params.inputAmount
             );
@@ -1684,6 +1706,18 @@ abstract contract SpokePool is
     // Determine whether the exclusivityDeadline implies active exclusivity.
     function _fillIsExclusive(uint32 exclusivityDeadline, uint32 currentTime) internal pure returns (bool) {
         return exclusivityDeadline >= currentTime;
+    }
+
+    // Reverts if `message` carries the Across V5 magic prefix in its first 32 bytes. Used by the v4 fill functions
+    // to ensure a V5-prefixed FilledRelay event can only be emitted through the Gateway-mediated V5 fill path.
+    function _revertIfV5Message(bytes memory message) internal pure {
+        if (message.length < 32) return;
+        bytes32 prefix;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            prefix := mload(add(message, 0x20))
+        }
+        if (prefix == MAGIC_ACXV5_MESSAGE_PREFIX) revert InvalidV5Message();
     }
 
     // Helper for emitting message hash. For easier easier human readability we return bytes32(0) for empty message.

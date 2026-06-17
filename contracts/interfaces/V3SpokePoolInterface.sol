@@ -335,6 +335,7 @@ interface V3SpokePoolInterface {
     error RemovedFunction();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
+    error InvalidV5Message();
     error NoSlowFillsInExclusivityWindow();
     error RelayFilled();
     error InvalidSlowFillRequest();
