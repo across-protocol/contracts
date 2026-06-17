@@ -68,8 +68,7 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
     // Domain separator binding auction-authority signatures to the auction type and this Gateway instance.
     bytes32 public immutable auctionResolutionDomain;
 
-    // userMsg action discriminator. Encoded as the first (uint8) field of the leading static struct so it occupies
-    // the first calldata word and can be peeked before decoding the full payload.
+    // userMsg action discriminator, carried as the first raw byte of userMsg (the payload follows from byte 1).
     uint8 internal constant ACXV5_ACTION_FILL = 1;
     uint8 internal constant ACXV5_ACTION_DEPOSIT = 2;
 
@@ -81,11 +80,9 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
     error OutputBelowMinimum(uint256 minimumOutputAmount, uint256 resolvedOutputAmount);
     error InvalidAuctionSignature(address authority);
 
-    // User-committed payload for a V5 fill. All fields are static so `typ` lands in the first calldata word.
-    // Mirrors V3RelayData minus `message` (derived as MAGIC || witness). `outputAmount` is the floor that is
-    // emitted and repaid; the submitter may deliver more (see `_fillV5`).
+    // User-committed payload for a V5 fill. Mirrors V3RelayData minus `message` (derived as MAGIC || witness).
+    // `outputAmount` is the floor that is emitted and repaid; the submitter may deliver more (see `_fillV5`).
     struct AcrossV5FillData {
-        uint8 typ; // == ACXV5_ACTION_FILL
         bytes32 depositor;
         bytes32 recipient;
         bytes32 exclusiveRelayer;
@@ -99,10 +96,9 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
         uint32 exclusivityDeadline;
     }
 
-    // User-committed payload for a V5 deposit. All fields are static so `typ` lands in the first calldata word.
-    // `outputAmount` is the floor; the resolved amount (auction- or submitter-supplied) must be >= it.
+    // User-committed payload for a V5 deposit. `outputAmount` is the floor; the resolved amount
+    // (auction- or submitter-supplied) must be >= it.
     struct AcrossV5DepositData {
-        uint8 typ; // == ACXV5_ACTION_DEPOSIT
         bytes32 depositor;
         bytes32 recipient;
         bytes32 inputToken;
@@ -134,8 +130,8 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
 
     /**
      * @notice Across V5 executor entry point. Only the configured Gateway may call this.
-     * @param userMsg User-committed path message. Its first word encodes the action discriminator, selecting
-     * between a fill ({AcrossV5FillData}) and a deposit ({AcrossV5DepositData}).
+     * @param userMsg User-committed path message: the first byte is the action discriminator, the remaining bytes
+     * are the abi-encoded payload ({AcrossV5FillData} for a fill, {AcrossV5DepositData} for a deposit).
      * @param submitterMsg Submitter-provided JIT data.
      */
     function executeAcrossV5Msg(bytes calldata userMsg, bytes calldata submitterMsg) external payable override {
@@ -143,11 +139,13 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
         // The economic actor whose funds back this execution: the relayer (fill) or sponsor/depositor (deposit).
         address submitter = IAcrossV5Gateway(gateway).currentSubmitter();
 
-        uint8 action = _peekAction(userMsg);
+        // The first raw byte selects the action; everything after it is the abi-encoded payload.
+        uint8 action = uint8(userMsg[0]);
+        bytes calldata payload = userMsg[1:];
         if (action == ACXV5_ACTION_FILL) {
-            _fillV5(userMsg, submitterMsg, submitter, msg.value);
+            _fillV5(payload, submitterMsg, submitter, msg.value);
         } else if (action == ACXV5_ACTION_DEPOSIT) {
-            _depositV5Unsafe(userMsg, submitterMsg, submitter);
+            _depositV5Unsafe(payload, submitterMsg, submitter);
         } else {
             revert InvalidV5Action();
         }
@@ -191,7 +189,7 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
             outputAmount: resolvedOutputAmount,
             destinationChainId: d.destinationChainId,
             exclusiveRelayer: d.exclusiveRelayer,
-            depositId: getUnsafeDepositId(msg.sender, d.depositor, depositNonce),
+            depositId: getUnsafeDepositId(submitter, d.depositor, depositNonce),
             quoteTimestamp: d.quoteTimestamp,
             fillDeadline: d.fillDeadline,
             exclusivityParameter: d.exclusivityParameter,
@@ -314,14 +312,5 @@ abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor {
     /// @notice Digest signed by an auction authority to resolve a deposit's output amount.
     function auctionDigest(bytes32 stepId, uint256 fillId, uint256 resolvedOutputAmount) public view returns (bytes32) {
         return keccak256(abi.encodePacked(auctionResolutionDomain, stepId, fillId, resolvedOutputAmount));
-    }
-
-    /// @dev Read the action discriminator from the first word of `userMsg` (the leading static `typ` field).
-    function _peekAction(bytes calldata userMsg) private pure returns (uint8 action) {
-        if (userMsg.length < 32) revert InvalidV5Message();
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            action := byte(31, calldataload(userMsg.offset))
-        }
     }
 }
