@@ -1812,7 +1812,10 @@ abstract contract SpokePool is
 
     // V5 executor entry point; only the Gateway may call. userMsg[0] selects the action, userMsg[1:] is the payload;
     // submitterMsg carries submitter JIT data.
-    function executeAcrossV5Msg(bytes calldata userMsg, bytes calldata submitterMsg) external payable override {
+    function executeAcrossV5Msg(
+        bytes calldata userMsg,
+        bytes calldata submitterMsg
+    ) external payable override nonReentrant {
         if (msg.sender != gateway) revert NotGateway();
         // Funds backing this execution come from the Gateway submitter.
         address submitter = IAcrossV5Gateway(gateway).currentSubmitter();
