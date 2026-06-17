@@ -11,6 +11,7 @@ import "./ZkSync_SpokePool.sol";
 contract Lens_SpokePool is ZkSync_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         address _wrappedNativeTokenAddress,
         IERC20 _circleUSDC,
         ZkBridgeLike _zkUSDCBridge,
@@ -20,6 +21,7 @@ contract Lens_SpokePool is ZkSync_SpokePool {
         uint32 _fillDeadlineBuffer
     )
         ZkSync_SpokePool(
+            _gateway,
             _wrappedNativeTokenAddress,
             _circleUSDC,
             _zkUSDCBridge,

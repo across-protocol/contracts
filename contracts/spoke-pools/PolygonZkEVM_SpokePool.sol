@@ -86,11 +86,13 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     )
         SpokePool(
+            _gateway,
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,

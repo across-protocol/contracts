@@ -18,6 +18,7 @@ contract Cher_SpokePool is Ovm_SpokePool {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
@@ -25,6 +26,7 @@ contract Cher_SpokePool is Ovm_SpokePool {
         ITokenMessenger _cctpTokenMessenger
     )
         Ovm_SpokePool(
+            _gateway,
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,

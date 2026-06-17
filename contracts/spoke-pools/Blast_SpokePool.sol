@@ -67,6 +67,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
@@ -78,6 +79,7 @@ contract Blast_SpokePool is Ovm_SpokePool {
         address blastRetriever
     )
         Ovm_SpokePool(
+            _gateway,
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,

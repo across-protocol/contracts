@@ -24,10 +24,15 @@ contract DeployEthereumSpokePool is Script, Test, DeploymentUtils {
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
 
+        // V5 Gateway address. Immutable on the SpokePool, so this is permanent for this deployment:
+        // set V5_GATEWAY in the env to enable the Across V5 intent path; defaults to address(0) (V5 disabled).
+        address gateway = vm.envOr("V5_GATEWAY", address(0));
+
         vm.startBroadcast(deployerPrivateKey);
 
         // Prepare constructor arguments for Ethereum_SpokePool
         bytes memory constructorArgs = abi.encode(
+            gateway, // _gateway
             weth, // _weth
             QUOTE_TIME_BUFFER(), // _quoteTimeBuffer
             FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer

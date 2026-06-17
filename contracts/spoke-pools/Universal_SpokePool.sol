@@ -79,6 +79,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         uint256 _adminUpdateBufferSeconds,
         address _helios,
         address _hubPoolStore,
@@ -90,7 +91,14 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         uint32 _oftDstEid,
         uint256 _oftFeeCap
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftDstEid, _oftFeeCap)
+        SpokePool(
+            _gateway,
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            _oftDstEid,
+            _oftFeeCap
+        )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         ADMIN_UPDATE_BUFFER = _adminUpdateBufferSeconds;

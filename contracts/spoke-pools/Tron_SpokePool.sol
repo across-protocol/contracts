@@ -23,6 +23,7 @@ import { TronTransferLib } from "../libraries/TronTransferLib.sol";
 contract Tron_SpokePool is Universal_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         uint256 _adminUpdateBufferSeconds,
         address _helios,
         address _hubPoolStore,
@@ -35,6 +36,7 @@ contract Tron_SpokePool is Universal_SpokePool {
         uint256 _oftFeeCap
     )
         Universal_SpokePool(
+            _gateway,
             _adminUpdateBufferSeconds,
             _helios,
             _hubPoolStore,

@@ -85,6 +85,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _gateway,
         address _wrappedNativeTokenAddress,
         IERC20 _circleUSDC,
         ZkBridgeLike _zkUSDCBridge,
@@ -94,6 +95,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _fillDeadlineBuffer
     )
         SpokePool(
+            _gateway,
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
