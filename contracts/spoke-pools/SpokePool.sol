@@ -200,10 +200,6 @@ abstract contract SpokePool is
     // this prefix so that a V5-prefixed FilledRelay event can never be forged outside of a Gateway execution.
     bytes32 public constant MAGIC_ACXV5_MESSAGE_PREFIX = keccak256("ACXV5.SpokePool.Intent");
 
-    // userMsg action selector, carried as the first raw byte of userMsg (the payload follows from byte 1).
-    uint8 internal constant ACXV5_ACTION_FILL = 1;
-    uint8 internal constant ACXV5_ACTION_DEPOSIT = 2;
-
     bytes32 internal constant ACXV5_AUCTION_NAMEHASH = keccak256("ACXV5.SpokePool.AuctionResolution.V1");
 
     /****************************************
@@ -249,10 +245,13 @@ abstract contract SpokePool is
 
     // Across V5 (Gateway intent path) errors.
     error NotGateway();
-    error InvalidV5Action();
     error WitnessMismatch();
     error OutputBelowMinimum(uint256 minimumOutputAmount, uint256 resolvedOutputAmount);
     error InvalidAuctionSignature(address authority);
+    // Auction/floor deposits override the exclusive relayer, so the user must not pin one themselves.
+    error ExclusiveRelayerMustBeUnset();
+    // The submitter's auction exclusivity window exceeded the user's committed cap (treated as a max deadline).
+    error ExclusivityExceedsMax(uint32 cap, uint32 requested);
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -1783,7 +1782,9 @@ abstract contract SpokePool is
         uint32 exclusivityDeadline;
     }
 
-    // User-committed deposit payload. `outputAmount` is the floor; the resolved amount must be >= it.
+    // User-committed deposit payload. `outputAmount` is the floor; the resolved amount must be >= it. Exclusivity is
+    // resolved by mode (see `_v5Exclusivity`): in auction/floor mode the submitter sets the exclusive relayer, so the
+    // user must leave `exclusiveRelayer` unset; in static mode the user commits it directly.
     struct AcrossV5DepositData {
         bytes32 depositor;
         bytes32 recipient;
@@ -1792,13 +1793,23 @@ abstract contract SpokePool is
         uint256 inputAmount;
         uint256 outputAmount;
         uint256 destinationChainId;
-        bytes32 exclusiveRelayer;
+        bytes32 exclusiveRelayer; // static mode: the relayer. auction/floor mode: must be unset (submitter sets it).
         uint32 quoteTimestamp;
         uint32 fillDeadline;
-        uint32 exclusivityParameter;
+        uint32 exclusivityParameter; // static/floor: the window. auction: the max window the submitter may request.
         bytes32 witness; // destination step id committed into the deposit message
-        address auctionAuthority; // if non-zero: auction mode, this signer authorizes the resolved amount
+        address auctionAuthority; // if non-zero: auction mode, this signer authorizes the resolved amount + relayer
         uint256 fillId; // disambiguates deposits/auctions for the same origin step
+    }
+
+    // Submitter JIT for a V5 deposit. `resolvedOutputAmount` is the submitter-supplied output (>= the committed
+    // floor). `winningRelayer`/`exclusivityParameter` set the exclusive relayer + window in auction/floor mode (both
+    // ignored in static mode). `signature` is the auction-authority signature, required only in auction mode.
+    struct AcrossV5DepositJit {
+        uint256 resolvedOutputAmount;
+        bytes32 winningRelayer;
+        uint32 exclusivityParameter;
+        bytes signature;
     }
 
     // Submitter JIT for a V5 fill: witness, repayment routing (outside the relay hash), over-delivery amount, tape JIT.
@@ -1810,60 +1821,96 @@ abstract contract SpokePool is
         bytes recipientJit;
     }
 
-    // V5 executor entry point; only the Gateway may call. userMsg[0] selects the action, userMsg[1:] is the payload;
-    // submitterMsg carries submitter JIT data.
+    // V5 fill entry point; only the Gateway may call. This path settles fills only — `userMsg` is the fill payload
+    // (`abi.encode(AcrossV5FillData, recipientMsg)`) and `submitterMsg` the submitter JIT. V5 deposits do not flow
+    // through here; they use the standalone, Executor-funded `depositV5`.
     function executeAcrossV5Msg(
         bytes calldata userMsg,
         bytes calldata submitterMsg
     ) external payable override nonReentrant {
         if (msg.sender != gateway) revert NotGateway();
-        // Funds backing this execution come from the Gateway submitter.
-        address submitter = IAcrossV5Gateway(gateway).currentSubmitter();
-
-        uint8 action = uint8(userMsg[0]);
-        bytes calldata payload = userMsg[1:];
-        if (action == ACXV5_ACTION_FILL) {
-            _fillV5(payload, submitterMsg, submitter, msg.value);
-        } else if (action == ACXV5_ACTION_DEPOSIT) {
-            _depositV5Unsafe(payload, submitterMsg, submitter);
-        } else {
-            revert InvalidV5Action();
-        }
+        // Funds backing this fill come from the Gateway submitter.
+        _fillV5(userMsg, submitterMsg, IAcrossV5Gateway(gateway).currentSubmitter(), msg.value);
     }
 
-    // Lock a V5 deposit funded by the submitter. Unsafe deposit id is derived from origin stepId + fillId; output is
-    // submitter-resolved (>= floor) and, when auctionAuthority is set, authority-signed.
-    function _depositV5Unsafe(bytes calldata userMsg, bytes calldata submitterMsg, address submitter) internal {
+    /**
+     * @notice Lock a V5 (Gateway-intent) deposit funded by the caller. Designed to be invoked by the Gateway's
+     *         Executor inside a step execution: the Gateway funds the Executor (gaslessly or otherwise), then the
+     *         Executor calls this to lock the input token via `transferFrom(msg.sender)` and emit a deposit whose id,
+     *         message, and (optional) auctioned output match the Gateway-intent semantics.
+     * @dev    Permissionless and standalone — the locked funds always come from `msg.sender`, so there is nothing to
+     *         grief. The deposit is bound to the live Gateway step via `currentStepId()`; called outside a Gateway
+     *         execution the step id is zero (and an auction signature would have to sign over it), so the resulting
+     *         deposit cannot be matched to a real step. The emitted message is `MAGIC || witness`, so it can only be
+     *         settled through the Gateway-mediated V5 fill path (`executeAcrossV5Msg`).
+     * @param d   User-committed deposit fields. `outputAmount` is the floor; `fillId` disambiguates deposits for the
+     *            same step; `auctionAuthority`, when non-zero, must sign the resolved output and winning relayer.
+     * @param jit Submitter-supplied resolution: output amount (>= floor), winning relayer + window, and the auction
+     *            signature. See `AcrossV5DepositJit` and `_v5Exclusivity` for how these resolve by mode.
+     */
+    function depositV5(AcrossV5DepositData calldata d, AcrossV5DepositJit calldata jit) external payable nonReentrant {
         if (pausedDeposits) revert DepositsArePaused();
 
-        AcrossV5DepositData memory d = abi.decode(userMsg, (AcrossV5DepositData));
-        bytes32 originStepId = IAcrossV5Gateway(gateway).currentStepId();
+        // Bind the deposit to the step currently being executed by the Gateway (set in transient context for the
+        // duration of the Executor call). depositId and any auction signature are derived from it.
+        bytes32 stepId = IAcrossV5Gateway(gateway).currentStepId();
 
-        // Submitter resolves the output amount; auction mode also carries the authority signature.
-        (uint256 resolvedOutputAmount, bytes memory signature) = abi.decode(submitterMsg, (uint256, bytes));
-        if (resolvedOutputAmount < d.outputAmount) revert OutputBelowMinimum(d.outputAmount, resolvedOutputAmount);
+        if (jit.resolvedOutputAmount < d.outputAmount)
+            revert OutputBelowMinimum(d.outputAmount, jit.resolvedOutputAmount);
 
-        // Auction mode: the resolved amount must be authorized by the committed authority.
+        // Resolve the exclusive relayer + window by mode (auction / floor / static).
+        (bytes32 exclusiveRelayer, uint32 exclusivityParameter) = _v5Exclusivity(d, jit);
+
+        // Auction mode: the resolved amount and winning relayer must be authorized by the committed authority.
         if (
             d.auctionAuthority != address(0) &&
             !SignatureChecker.isValidSignatureNow(
                 d.auctionAuthority,
-                auctionDigest(originStepId, d.fillId, resolvedOutputAmount),
-                signature
+                auctionDigest(stepId, d.fillId, jit.winningRelayer, jit.resolvedOutputAmount),
+                jit.signature
             )
         ) revert InvalidAuctionSignature(d.auctionAuthority);
 
-        // Lock the input token from the submitter (native deposits flow through the forwarded msg.value).
-        _depositV3From(submitter, _v5DepositParams(d, submitter, originStepId, resolvedOutputAmount));
+        // Lock the input token from the caller (native deposits flow through the forwarded msg.value).
+        _depositV3From(
+            msg.sender,
+            _v5DepositParams(d, msg.sender, stepId, jit.resolvedOutputAmount, exclusiveRelayer, exclusivityParameter)
+        );
     }
 
-    // Build the unsafe-deposit params for a V5 deposit. Separate frame so `_depositV5Unsafe` stays under the stack
-    // limit. depositId namespaces by submitter; the deposit nonce binds the origin step and fillId.
+    // Resolve the exclusive relayer + window for a V5 deposit by mode:
+    //  - auction (auctionAuthority set): the submitter's winning relayer and window replace the user's. The user must
+    //    not pin a relayer, and the window may not exceed the user's committed value (treated as a max deadline).
+    //  - floor (no authority, submitter supplies a winning relayer): the submitter claims first-fill rights but takes
+    //    the user's committed window unchanged. The user must not pin a relayer.
+    //  - static (no authority, no winning relayer): both the relayer and window are taken from the user's fields.
+    function _v5Exclusivity(
+        AcrossV5DepositData calldata d,
+        AcrossV5DepositJit calldata jit
+    ) internal pure returns (bytes32 exclusiveRelayer, uint32 exclusivityParameter) {
+        if (d.auctionAuthority != address(0)) {
+            if (d.exclusiveRelayer != bytes32(0)) revert ExclusiveRelayerMustBeUnset();
+            if (jit.exclusivityParameter > d.exclusivityParameter)
+                revert ExclusivityExceedsMax(d.exclusivityParameter, jit.exclusivityParameter);
+            return (jit.winningRelayer, jit.exclusivityParameter);
+        }
+        if (jit.winningRelayer != bytes32(0)) {
+            if (d.exclusiveRelayer != bytes32(0)) revert ExclusiveRelayerMustBeUnset();
+            return (jit.winningRelayer, d.exclusivityParameter);
+        }
+        return (d.exclusiveRelayer, d.exclusivityParameter);
+    }
+
+    // Build the unsafe-deposit params for a V5 deposit. Separate frame so `depositV5` stays under the stack limit.
+    // depositId namespaces by the funding caller; the deposit nonce binds the origin step and fillId. The exclusive
+    // relayer + window are passed in already resolved by `_v5Exclusivity`.
     function _v5DepositParams(
-        AcrossV5DepositData memory d,
-        address submitter,
+        AcrossV5DepositData calldata d,
+        address funder,
         bytes32 originStepId,
-        uint256 resolvedOutputAmount
+        uint256 resolvedOutputAmount,
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityParameter
     ) internal pure returns (DepositV3Params memory) {
         return
             DepositV3Params({
@@ -1874,15 +1921,15 @@ abstract contract SpokePool is
                 inputAmount: d.inputAmount,
                 outputAmount: resolvedOutputAmount,
                 destinationChainId: d.destinationChainId,
-                exclusiveRelayer: d.exclusiveRelayer,
+                exclusiveRelayer: exclusiveRelayer,
                 depositId: getUnsafeDepositId(
-                    submitter,
+                    funder,
                     d.depositor,
                     uint256(keccak256(abi.encodePacked(originStepId, d.fillId)))
                 ),
                 quoteTimestamp: d.quoteTimestamp,
                 fillDeadline: d.fillDeadline,
-                exclusivityParameter: d.exclusivityParameter,
+                exclusivityParameter: exclusivityParameter,
                 message: abi.encodePacked(MAGIC_ACXV5_MESSAGE_PREFIX, d.witness)
             });
     }
@@ -1985,9 +2032,16 @@ abstract contract SpokePool is
         }
     }
 
-    // Digest signed by an auction authority to resolve a deposit's output amount (bound to this Gateway instance).
-    function auctionDigest(bytes32 stepId, uint256 fillId, uint256 resolvedOutputAmount) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(auctionResolutionDomain, stepId, fillId, resolvedOutputAmount));
+    // Digest signed by an auction authority to resolve a deposit's output amount and winning relayer (bound to this
+    // Gateway instance via auctionResolutionDomain).
+    function auctionDigest(
+        bytes32 stepId,
+        uint256 fillId,
+        bytes32 winningRelayer,
+        uint256 resolvedOutputAmount
+    ) public view returns (bytes32) {
+        return
+            keccak256(abi.encodePacked(auctionResolutionDomain, stepId, fillId, winningRelayer, resolvedOutputAmount));
     }
 
     // Reverts if `message` carries the Across V5 magic prefix in its first 32 bytes. Used by the v4 fill functions
