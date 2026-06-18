@@ -37,9 +37,9 @@
           "block_number": 14704381
         },
         "SpokePool": {
-          "address": "0xf73a79B06af589F698C05bBC69a07759Bda4a042",
-          "block_number": 25337834,
-          "transaction_hash": "0x3bdc1373afeef0e0f6bf0bbaa4292254d1f4f0c298c453f3f39b8b60ce14d1c8"
+          "address": "0x8a938FBcC43d92AE3eA0369D0e84DfA8022A09f8",
+          "block_number": 25343698,
+          "transaction_hash": "0xd20922b1de038e7f551509e02a8bc439969a0273ad5b8c82f2ad567a185d0071"
         },
         "HubPool": {
           "address": "0xc186fA914353c44b2E33eBE05f21846F1048bEda",
