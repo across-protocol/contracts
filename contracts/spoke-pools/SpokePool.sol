@@ -28,6 +28,14 @@ interface IAcrossV5Executor {
     function executeAcrossV5Msg(bytes calldata userMsg, bytes calldata submitterMsg) external payable;
 }
 
+// V5 executor *adapter* interface (the renamed `IExecutorAdapter`). Invoked by the Gateway's Executor through an
+// ADAPTER_CALL command. Like `IAcrossV5Executor` it splits the payload into a path-committed half (`userMsg`) and a
+// submitter-supplied half (`submitterMsg`); unlike a plain command CALL, the submitter half is forwarded separately
+// so it stays out of the committed path and cannot alter the step id. SpokePool exposes `depositV5` through this.
+interface IAcrossV5ExecutorAdapter {
+    function executeAcrossV5AdapterMsg(bytes calldata userMsg, bytes calldata submitterMsg) external payable;
+}
+
 // Minimal view of the V5 Gateway execution context. `currentStepId()` is assumed to be exposed by the V5 Gateway.
 interface IAcrossV5Gateway {
     function currentSubmitter() external view returns (address submitter);
@@ -55,7 +63,8 @@ abstract contract SpokePool is
     IDestinationSettler,
     OFTTransportAdapter,
     SafeTransferERC20,
-    IAcrossV5Executor
+    IAcrossV5Executor,
+    IAcrossV5ExecutorAdapter
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
     // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
@@ -1849,6 +1858,28 @@ abstract contract SpokePool is
      *            signature. See `AcrossV5DepositJit` and `_v5Exclusivity` for how these resolve by mode.
      */
     function depositV5(AcrossV5DepositData calldata d, AcrossV5DepositJit calldata jit) external payable nonReentrant {
+        _depositV5(d, jit);
+    }
+
+    /**
+     * @notice Adapter entry point for the same V5 deposit, reached via the Executor's ADAPTER_CALL. Equivalent to
+     *         `depositV5`, but the two halves arrive as separate ABI-encoded blobs: `userMsg` is the path-committed
+     *         deposit data `d` and `submitterMsg` is the submitter JIT. Splitting them this way keeps the submitter's
+     *         auction signature out of the committed path (so it cannot perturb the step id), the same property
+     *         `depositV5`'s `(d, jit)` split provides — but without a separate planner reuniting them, which is
+     *         cheaper. Permissionless and standalone for the same reason as `depositV5`: funds come from `msg.sender`.
+     * @param userMsg      ABI-encoded `AcrossV5DepositData` (the committed half).
+     * @param submitterMsg ABI-encoded `AcrossV5DepositJit` (the submitter half).
+     */
+    function executeAcrossV5AdapterMsg(
+        bytes calldata userMsg,
+        bytes calldata submitterMsg
+    ) external payable override nonReentrant {
+        _depositV5(abi.decode(userMsg, (AcrossV5DepositData)), abi.decode(submitterMsg, (AcrossV5DepositJit)));
+    }
+
+    // Shared V5 deposit logic behind both `depositV5` and `executeAcrossV5AdapterMsg`.
+    function _depositV5(AcrossV5DepositData memory d, AcrossV5DepositJit memory jit) internal {
         if (pausedDeposits) revert DepositsArePaused();
 
         // Bind the deposit to the step currently being executed by the Gateway (set in transient context for the
@@ -1885,8 +1916,8 @@ abstract contract SpokePool is
     //    the user's committed window unchanged. The user must not pin a relayer.
     //  - static (no authority, no winning relayer): both the relayer and window are taken from the user's fields.
     function _v5Exclusivity(
-        AcrossV5DepositData calldata d,
-        AcrossV5DepositJit calldata jit
+        AcrossV5DepositData memory d,
+        AcrossV5DepositJit memory jit
     ) internal pure returns (bytes32 exclusiveRelayer, uint32 exclusivityParameter) {
         if (d.auctionAuthority != address(0)) {
             if (d.exclusiveRelayer != bytes32(0)) revert ExclusiveRelayerMustBeUnset();
@@ -1905,7 +1936,7 @@ abstract contract SpokePool is
     // depositId namespaces by the funding caller; the deposit nonce binds the origin step and fillId. The exclusive
     // relayer + window are passed in already resolved by `_v5Exclusivity`.
     function _v5DepositParams(
-        AcrossV5DepositData calldata d,
+        AcrossV5DepositData memory d,
         address funder,
         bytes32 originStepId,
         uint256 resolvedOutputAmount,
