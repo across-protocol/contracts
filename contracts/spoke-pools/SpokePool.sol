@@ -1347,24 +1347,10 @@ abstract contract SpokePool is
             if (params.exclusiveRelayer == bytes32(0)) revert InvalidExclusiveRelayer();
         }
 
-        // If the address of the origin token is a wrappedNativeToken contract and there is a msg.value with the
-        // transaction then the user is sending the native token. In this case, the native token should be
-        // wrapped.
-        if (params.inputToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
-            if (msg.value != params.inputAmount) revert MsgValueDoesNotMatchInputAmount();
-            wrappedNativeToken.deposit{ value: msg.value }();
-            // Else, it is a normal ERC20. In this case pull the token from the caller as per normal.
-            // Note: this includes the case where the L2 caller has WETH (already wrapped ETH) and wants to bridge them.
-            // In this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        } else {
-            // msg.value should be 0 if input token isn't the wrapped native token.
-            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
-            IERC20Upgradeable(params.inputToken.toAddress()).safeTransferFrom(
-                msg.sender,
-                address(this),
-                params.inputAmount
-            );
-        }
+        // Pull the input funds backing this deposit into the contract. Factored into a virtual hook so that deposit
+        // variants (e.g. SpokePoolV5, funding from the Gateway submitter or Executor) can change the funding source
+        // without duplicating the surrounding validation and event-emission logic.
+        _pullDepositFunds(params);
 
         emit FundsDeposited(
             params.inputToken,
@@ -1381,6 +1367,30 @@ abstract contract SpokePool is
             params.exclusiveRelayer,
             params.message
         );
+    }
+
+    /**
+     * @notice Pulls `params.inputAmount` of `params.inputToken` into this contract to back a deposit.
+     * @dev Default behavior: if `inputToken` is the wrapped native token and msg.value is set, wrap the native value;
+     * otherwise require msg.value == 0 and pull the ERC20 from `msg.sender`. Marked `virtual` so deposit variants
+     * (e.g. SpokePoolV5) can override the funding source. Implementations must leave `inputAmount` of
+     * `inputToken` held by this contract on return.
+     */
+    function _pullDepositFunds(DepositV3Params memory params) internal virtual {
+        // If the origin token is the wrappedNativeToken and there is a msg.value, the caller is sending native token
+        // which we wrap. Otherwise it is a normal ERC20 (including pre-wrapped WETH) pulled from the caller.
+        if (params.inputToken == address(wrappedNativeToken).toBytes32() && msg.value > 0) {
+            if (msg.value != params.inputAmount) revert MsgValueDoesNotMatchInputAmount();
+            wrappedNativeToken.deposit{ value: msg.value }();
+        } else {
+            // msg.value should be 0 if input token isn't the wrapped native token.
+            if (msg.value != 0) revert MsgValueDoesNotMatchInputAmount();
+            IERC20Upgradeable(params.inputToken.toAddress()).safeTransferFrom(
+                msg.sender,
+                address(this),
+                params.inputAmount
+            );
+        }
     }
 
     function _distributeRelayerRefunds(
@@ -1568,7 +1578,11 @@ abstract contract SpokePool is
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
+    function _fillRelayV3(
+        V3RelayExecutionParams memory relayExecution,
+        bytes32 relayer,
+        bool isSlowFill
+    ) internal virtual {
         V3RelayData memory relayData = relayExecution.relay;
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
@@ -1649,7 +1663,7 @@ abstract contract SpokePool is
         V3RelayExecutionParams memory relayExecution,
         V3RelayData memory relayData,
         bool isSlowFill
-    ) internal {
+    ) internal virtual {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
@@ -1671,7 +1685,7 @@ abstract contract SpokePool is
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+        if (updatedMessage.length > 0) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,
