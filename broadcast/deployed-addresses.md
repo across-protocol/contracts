@@ -396,8 +396,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name | Address                                                                                                               |
 | ------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x7a36967Ee0a5c913Be88c838321d05C13705911a](https://snowscan.xyz/address/0x7a36967Ee0a5c913Be88c838321d05C13705911a) |
-| SpokePool     | [0xE0DB08B3F72931Dca2Ed7323a1053EaC42715bEe](https://snowscan.xyz/address/0xE0DB08B3F72931Dca2Ed7323a1053EaC42715bEe) |
+| SP1Helios     | [0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1](https://snowscan.xyz/address/0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1) |
+| SpokePool     | [0x7ba7db70aE338bA74dab72A29b740BC7AcD5AF1b](https://snowscan.xyz/address/0x7ba7db70aE338bA74dab72A29b740BC7AcD5AF1b) |
 
 ## Ink (57073)
 
