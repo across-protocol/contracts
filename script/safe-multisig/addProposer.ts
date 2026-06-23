@@ -175,6 +175,21 @@ function signDelegate(chainId: number, delegate: string, delegator: string, hdPa
     message,
   };
 
+  // Print the values the Ledger displays so they can be cross-checked on-device.
+  // When blind-signing EIP-712, the Ledger shows the Domain hash and Message hash;
+  // the signed digest is keccak256(0x1901 || domainHash || messageHash).
+  const enc = ethers.utils._TypedDataEncoder;
+  const domainHash = enc.hashDomain(domain);
+  const messageHash = enc.hashStruct("Delegate", DELEGATE_TYPES as any, message);
+  const digest = enc.hash(domain, DELEGATE_TYPES as any, message);
+  console.log("  Verify on your Ledger:");
+  console.log(`    delegateAddress : ${delegate}`);
+  console.log(`    totp            : ${totp}`);
+  console.log(`    chainId         : ${chainId}`);
+  console.log(`    Domain hash     : ${domainHash}`);
+  console.log(`    Message hash    : ${messageHash}`);
+  console.log(`    Digest (0x1901) : ${digest}`);
+
   const tmp = path.join(os.tmpdir(), `safe-delegate-${chainId}-${totp}.json`);
   fs.writeFileSync(tmp, JSON.stringify(typedData));
   let stdout: string;

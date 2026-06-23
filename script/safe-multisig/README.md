@@ -58,6 +58,7 @@ Flags: `--config`, `--delegate`, `--delegator`, `--label`, `--hd-path`, `--safes
 Notes:
 
 - Each chain needs its **own** on-device approval because the signed `chainId` differs — expect one Ledger prompt per Safe.
+- Before each signature the script prints the decoded fields (`delegateAddress`, `totp`, `chainId`) plus the **Domain hash**, **Message hash**, and final digest. When the Ledger blind-signs EIP-712 it shows the Domain hash and Message hash — compare them to the printout. The digest is `keccak256(0x1901 || domainHash || messageHash)`.
 - If the Ledger rejects the typed-data signature, enable **Blind signing** (or EIP-712 support) in the Ledger Ethereum app settings.
 - The config is committed: the proposer address, authorizing owner, and Safe list are operational inputs, not secrets.
 
