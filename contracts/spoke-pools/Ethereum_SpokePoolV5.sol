@@ -6,7 +6,7 @@ import "./SpokePoolV5.sol";
 
 /**
  * @notice Ethereum L1 specific SpokePoolV5. Combines {Ethereum_SpokePool} (owner-based admin, direct token transfer
- * to the withdrawal recipient) with the Across V5 Gateway integration ({SpokePoolV5}: the `execute` entrypoint).
+ * to the withdrawal recipient) with the Across V5 Gateway integration ({SpokePoolV5}: executor/adapter entrypoints).
  * @dev The chain logic and admin auth come from {Ethereum_SpokePool}; the V5 deposit/fill behavior comes from
  * {SpokePoolV5}. Their overrides are disjoint, so no further resolution is required.
  *

@@ -6,7 +6,7 @@ import "./SpokePoolV5.sol";
 
 /**
  * @notice Arbitrum (AVM) specific SpokePoolV5. Combines {Arbitrum_SpokePool} (AVM cross-domain admin, L2
- * gateway/CCTP/OFT bridging to L1) with the Across V5 Gateway integration ({SpokePoolV5}: the `execute` entrypoint).
+ * gateway/CCTP/OFT bridging to L1) with the Across V5 Gateway integration ({SpokePoolV5}: executor/adapter entrypoints).
  * @dev The chain logic and admin auth come from {Arbitrum_SpokePool}; the V5 deposit/fill behavior comes from
  * {SpokePoolV5}. Their overrides are disjoint, so no further resolution is required.
  *

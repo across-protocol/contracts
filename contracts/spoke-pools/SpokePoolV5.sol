@@ -3,8 +3,8 @@ pragma solidity ^0.8.18;
 
 import { SpokePool } from "./SpokePool.sol";
 import { IGateway } from "../interfaces/IGateway.sol";
-import { IExecutor } from "../interfaces/IExecutor.sol";
-import { IExecutorAdapter } from "../interfaces/IExecutorAdapter.sol";
+import { IAcrossV5Executor } from "../interfaces/IAcrossV5Executor.sol";
+import { IAcrossV5ExecutorAdapter } from "../interfaces/IAcrossV5ExecutorAdapter.sol";
 import "../libraries/AddressConverters.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -13,25 +13,26 @@ import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgrad
  * @title SpokePoolV5
  * @notice SpokePool variant integrated with the Across V5 Gateway/Executor system.
  *
- * Rather than exposing bespoke `depositV5` / `fillV5` entrypoints, this contract is itself an Across V5 {IExecutor}
- * and {IExecutorAdapter}: both declare the same `execute(bytes,bytes)` selector, so a single {execute} function
- * serves both roles and is reachable two ways inside a `Gateway.execute`:
+ * Rather than exposing bespoke `depositV5` / `fillV5` entrypoints, this contract is itself an Across V5
+ * {IAcrossV5Executor} and {IAcrossV5ExecutorAdapter}. They use distinct selectors, so `executeAcrossV5` serves direct
+ * Gateway calls and `adapterExecuteAcrossV5` serves Executor adapter calls; both share the same internal dispatcher.
  *
- *  - As {IExecutor} — the Gateway calls it directly when a path names this SpokePool as its `executor`
+ *  - As {IAcrossV5Executor} — the Gateway calls it directly when a path names this SpokePool as its `executor`
  *    (`Gateway -> SpokePool`).
- *  - As {IExecutorAdapter} — the Executor reaches it via an `ADAPTER_CALL` command, so a deposit/fill can be one step
- *    of a larger tape (`Gateway -> Executor -> SpokePool`, alongside swaps, multiple fills, etc.).
+ *  - As {IAcrossV5ExecutorAdapter} — the Executor reaches it via an `ADAPTER_CALL` command, so a deposit/fill can be
+ *    one step of a larger tape (`Gateway -> Executor -> SpokePool`, alongside swaps, multiple fills, etc.).
  *
- * `execute` decodes `(V5Op op, V5FundsFrom from, bytes payload)`: `op` selects deposit vs. fill and `from` selects the
- * funding source — the live Gateway submitter, or the caller (`msg.sender`, i.e. the Gateway-funded Executor, for
- * gasless flows). Both deposits and fills are ERC-20 only.
+ * The shared dispatcher decodes `(V5Op op, V5FundsFrom from, bytes payload)`: `op` selects deposit vs. fill and `from`
+ * selects the funding source — the live Gateway submitter, or the caller (`msg.sender`, i.e. the Gateway-funded
+ * Executor, for gasless flows). Both deposits and fills are ERC-20 only.
  *
  * V5 deposits are tagged with a magic header (`keccak256("AcrossV5Deposit")`) committed in the deposit message and
- * bound to a specific destination Gateway path. The header makes them settleable only through `execute` inside the
- * canonical Gateway: every other fill path — direct `fillRelay`, `fillV3Relay`, `fillRelayWithUpdatedDeposit`, and
- * slow fills — reverts. A V5 fill reconstructs the control message from the live `currentPathId()`, which lets the
- * destination path commit the relay data with an empty message and avoids a circular dependency between the deposit
- * message and the destination pathId. See `SpokePoolV5-design.md` for the full rationale.
+ * bound to a specific destination Gateway path. The header makes them settleable only through a V5 executor entrypoint
+ * inside the canonical Gateway: every other fill path — direct `fillRelay`, `fillV3Relay`,
+ * `fillRelayWithUpdatedDeposit`, and slow fills — reverts. A V5 fill reconstructs the control message from the live
+ * `currentPathId()`, which lets the destination path commit the relay data with an empty message and avoids a circular
+ * dependency between the deposit message and the destination pathId. See `SpokePoolV5-design.md` for the full
+ * rationale.
  *
  * @dev Mixin layered on top of {SpokePool}. Its `_fillRelayV3` / `_transferTokensToRecipient` / `_pullDepositFunds`
  * overrides are disjoint from the chain pools' `_requireAdminSender` / `_bridgeTokensToHubPool` overrides, so a
@@ -39,7 +40,7 @@ import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgrad
  * {SpokePool} constructor args are supplied by the chain pool; this mixin's constructor only sets the Gateway.
  * @custom:security-contact bugs@across.to
  */
-abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
+abstract contract SpokePoolV5 is SpokePool, IAcrossV5Executor, IAcrossV5ExecutorAdapter {
     using { SafeERC20Upgradeable.safeTransferFrom } for IERC20Upgradeable;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -48,23 +49,23 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     IGateway public immutable gateway;
 
-    /// @notice Magic header marking a deposit as "V5": Gateway-only fillable, settled exclusively through `execute`.
+    /// @notice Magic header marking a deposit as "V5": Gateway-only fillable through the V5 entrypoints.
     bytes32 public constant V5_DEPOSIT_HEADER = keccak256("AcrossV5Deposit");
 
-    /// @notice Thrown when a V5 deposit or fill is attempted outside of `execute` / a live Gateway execution.
+    /// @notice Thrown when a V5 deposit or fill is attempted outside of a V5 entrypoint / live Gateway execution.
     error V5RequiresGateway();
     /// @notice Thrown when a slow fill is attempted against a V5 deposit (V5 deposits are Gateway-fill-only).
     error V5SlowFillNotAllowed();
 
-    /// @notice Operation selector decoded from the `execute` message.
+    /// @notice Operation selector decoded from the V5 message.
     enum V5Op {
         Deposit,
         Fill
     }
 
-    /// @notice Funding-source selector decoded from the `execute` message. `None` (the zero value) is invalid as input
-    /// and is also the transient default, which lets the funding hooks detect a V5 message that did not come through
-    /// `execute`.
+    /// @notice Funding-source selector decoded from the V5 message. `None` (the zero value) is invalid as input and is
+    /// also the transient default, which lets the funding hooks detect a V5 message that did not come through a V5
+    /// entrypoint.
     enum V5FundsFrom {
         None,
         Submitter,
@@ -98,8 +99,7 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
     }
 
     /**
-     * @notice Unified Across V5 entrypoint implementing both {IExecutor} (called by the Gateway directly) and
-     * {IExecutorAdapter} (reached by the Executor via `ADAPTER_CALL`). Performs one V5 deposit or fill.
+     * @notice Across V5 executor entrypoint called directly by the Gateway. Performs one V5 deposit or fill.
      * @dev Carries the inherited persistent `nonReentrant`, which interlocks with the base `deposit`/`fillRelay`
      * entrypoints: a malicious ERC-20 pulled mid-execution cannot reenter a base deposit/fill (forged with a V5
      * header) — it reverts at the shared reentrancy guard. `payable` is required because the Gateway forwards
@@ -111,12 +111,28 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
      * @param executorMessage Submitter-supplied JIT data. For `Fill`, `abi.encode(uint256 repaymentChainId,
      * bytes32 repaymentAddress)`; ignored for `Deposit`.
      */
-    function execute(
+    function executeAcrossV5(
         bytes calldata message,
         bytes calldata executorMessage
-    ) external payable override(IExecutor, IExecutorAdapter) nonReentrant {
+    ) external payable override(IAcrossV5Executor) nonReentrant {
+        _executeAcrossV5(message, executorMessage);
+    }
+
+    /// @notice Across V5 adapter entrypoint called by the Executor's `ADAPTER_CALL`.
+    /// @param input Path-committed `abi.encode(V5Op op, V5FundsFrom from, bytes payload)`.
+    /// @param jitData Submitter-supplied JIT data. For `Fill`, `abi.encode(uint256 repaymentChainId,
+    /// bytes32 repaymentAddress)`; ignored for `Deposit`.
+    function adapterExecuteAcrossV5(
+        bytes calldata input,
+        bytes calldata jitData
+    ) external payable override(IAcrossV5ExecutorAdapter) nonReentrant {
+        _executeAcrossV5(input, jitData);
+    }
+
+    function _executeAcrossV5(bytes calldata message, bytes calldata executorMessage) private {
         (V5Op op, V5FundsFrom from, bytes memory payload) = abi.decode(message, (V5Op, V5FundsFrom, bytes));
         if (from == V5FundsFrom.None) revert V5RequiresGateway();
+        _requireSubmitter();
         _setV5FundsFrom(from);
         if (op == V5Op.Fill) _executeFill(payload, executorMessage);
         else _executeDeposit(payload);
@@ -158,7 +174,6 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
      * {_transferTokensToRecipient}.
      */
     function _executeFill(bytes memory payload, bytes calldata executorMessage) private unpausedFills {
-        _requireSubmitter(); // a V5 fill binds to currentPathId(); reject fills outside a Gateway execution
         V3RelayData memory relayData = abi.decode(payload, (V3RelayData));
         (uint256 repaymentChainId, bytes32 repaymentAddress) = abi.decode(executorMessage, (uint256, bytes32));
         relayData.message = abi.encodePacked(V5_DEPOSIT_HEADER, gateway.currentPathId());
@@ -176,9 +191,9 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
     }
 
     /**
-     * @dev Funds a V5 deposit (ERC-20 only) from the source `execute` selected. Non-V5 deposits fall through to the
-     * base `msg.sender` pull. A V5-tagged message that did not come through `execute` has no funding source set and
-     * reverts.
+     * @dev Funds a V5 deposit (ERC-20 only) from the source selected by the V5 entrypoint. Non-V5 deposits fall
+     * through to the base `msg.sender` pull. A V5-tagged message that did not come through a V5 entrypoint has no
+     * funding source set and reverts.
      */
     function _pullDepositFunds(DepositV3Params memory params) internal virtual override {
         if (!_isV5Deposit(params.message)) {
@@ -196,9 +211,9 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
     }
 
     /**
-     * @dev Gate: a V5 deposit can only be settled through `execute` inside a Gateway execution, and never via slow
-     * fill. This blocks direct `fillRelay` / `fillV3Relay` / `fillRelayWithUpdatedDeposit` / `executeSlowRelayLeaf` for
-     * V5 deposits (a forged V5-tagged message has no funding source set and reverts).
+     * @dev Gate: a V5 deposit can only be settled through a V5 entrypoint inside a Gateway execution, and never via
+     * slow fill. This blocks direct `fillRelay` / `fillV3Relay` / `fillRelayWithUpdatedDeposit` /
+     * `executeSlowRelayLeaf` for V5 deposits (a forged V5-tagged message has no funding source set and reverts).
      */
     function _fillRelayV3(
         V3RelayExecutionParams memory relayExecution,
@@ -258,11 +273,11 @@ abstract contract SpokePoolV5 is SpokePool, IExecutor, IExecutorAdapter {
     }
 
     // ─── V5 funding-source flag (EIP-1153 transient storage) ──────────────────────────────────
-    // The funding pull happens inside the shared `_depositV3` / `_fillRelayV3`, below the point where `execute` knows
-    // the chosen source. `execute` stashes `V5FundsFrom` here so the funding hooks can resolve the source, then clears
-    // it. Because `execute` is `nonReentrant` (interlocking with base deposit/fill), no other deposit/fill can observe
-    // a stale value mid-call; clearing on return keeps the default (`None`) outside an `execute`, which is what lets
-    // the hooks reject a forged V5-tagged message that bypassed `execute`.
+    // The funding pull happens inside the shared `_depositV3` / `_fillRelayV3`, below the point where the V5 entrypoint
+    // knows the chosen source. The V5 entrypoints stash `V5FundsFrom` here so the funding hooks can resolve it, then
+    // clear it. Because both entrypoints are `nonReentrant` (interlocking with base deposit/fill), no other
+    // deposit/fill can observe a stale value mid-call; clearing on return keeps the default (`None`) outside a V5
+    // entrypoint, which is what lets the hooks reject a forged V5-tagged message that bypassed the entrypoints.
     bytes32 private constant V5_FUNDS_FROM_TSLOT = keccak256("across.spokePoolV5.transient.fundsFrom");
 
     function _setV5FundsFrom(V5FundsFrom from) private {
