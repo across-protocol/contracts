@@ -29,6 +29,7 @@
     "Universal_Adapter_9745": { "address": "0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363", "blockNumber": 23419367 },
     "Universal_Adapter_4217": { "address": "0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c", "blockNumber": 24421479 },
     "Universal_Adapter_43114": { "address": "0x1af659333172DC502bD71Cf5b889521C97751838", "blockNumber": 25237918 },
+    "Universal_Adapter_5042": { "address": "0xCA5f9960022078F3585a188e06F910eeC29c7eBD", "blockNumber": 25298498 },
     "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 },
     "Scroll_Adapter": { "address": "0x2DA799c2223c6ffB595e578903AE6b95839160d8", "blockNumber": 22325451 },
     "Blast_DaiRetriever": { "address": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB", "blockNumber": 20378862 },

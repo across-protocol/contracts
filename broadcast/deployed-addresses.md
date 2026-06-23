@@ -57,6 +57,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Universal_Adapter_143                  | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_4217                 | [0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c](https://etherscan.io/address/0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c) |
 | Universal_Adapter_43114                | [0x1af659333172DC502bD71Cf5b889521C97751838](https://etherscan.io/address/0x1af659333172DC502bD71Cf5b889521C97751838) |
+| Universal_Adapter_4663                 | [0xbc5E82035e2C8d4B335Ccb751D6BF47e44Dec678](https://etherscan.io/address/0xbc5E82035e2C8d4B335Ccb751D6BF47e44Dec678) |
 | Universal_Adapter_5042                 | [0xCA5f9960022078F3585a188e06F910eeC29c7eBD](https://etherscan.io/address/0xCA5f9960022078F3585a188e06F910eeC29c7eBD) |
 | Universal_Adapter_56                   | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
 | Universal_Adapter_9745                 | [0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363](https://etherscan.io/address/0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363) |
@@ -313,13 +314,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredOFTSrcPeriphery       | [0x02D65fb01d3d88127dF19838902ba42c6239c0Fd](https://megaeth.blockscout.com/address/0x02D65fb01d3d88127dF19838902ba42c6239c0Fd) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://megaeth.blockscout.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
+## Robinhood (4663)
+
+| Contract Name | Address                                                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.testnet.chain.robinhood.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.testnet.chain.robinhood.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool     | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://explorer.testnet.chain.robinhood.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
+
 ## ARC (5042)
 
-| Contract Name | Address                                                                                                              |
-| ------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://arcscan.app/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://arcscan.app/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://arcscan.app/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| Contract Name | Address                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
 
 ## Base (8453)
 

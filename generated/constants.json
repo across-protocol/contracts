@@ -230,12 +230,22 @@
       "oftEid": 30398,
       "hypDomainId": 4326
     },
+    "4663": {
+      "name": "Robinhood",
+      "family": "ORBIT",
+      "nativeToken": "ETH",
+      "publicRPC": "https://rpc.testnet.chain.robinhood.com",
+      "blockExplorer": "https://explorer.testnet.chain.robinhood.com",
+      "cctpDomain": -1,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
     "5042": {
       "name": "ARC",
       "family": "NONE",
       "nativeToken": "USDC",
       "publicRPC": "https://rpc.arc.network",
-      "blockExplorer": "https://arcscan.app",
+      "blockExplorer": "https://explorer.arc.io",
       "cctpDomain": 26,
       "oftEid": -1,
       "hypDomainId": -1
@@ -546,6 +556,7 @@
     "PLASMA": 9745,
     "POLYGON": 137,
     "REDSTONE": 690,
+    "ROBINHOOD": 4663,
     "SCROLL": 534352,
     "SONEIUM": 1868,
     "SUPERSEED": 5330,
@@ -599,6 +610,7 @@
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
     "4326": "0x4200000000000000000000000000000000000006",
+    "4663": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x9895D81bB462A195b4922ED7De0e3ACD007c32CB",
     "34443": "0x4200000000000000000000000000000000000006",
@@ -640,6 +652,7 @@
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
     "4326": "0x4200000000000000000000000000000000000006",
+    "4663": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
     "9746": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
