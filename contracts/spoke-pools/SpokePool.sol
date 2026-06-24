@@ -14,6 +14,9 @@ import "../libraries/AddressConverters.sol";
 import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
+import { V5SpokePoolInterface } from "../interfaces/V5SpokePoolInterface.sol";
+import { IAcrossV5Executor } from "../interfaces/IAcrossV5Executor.sol";
+import { IGateway } from "../interfaces/IGateway.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -33,6 +36,7 @@ import "@openzeppelin/contracts-v4/utils/math/SignedMath.sol";
  * @custom:security-contact bugs@across.to
  */
 abstract contract SpokePool is
+    V5SpokePoolInterface,
     V3SpokePoolInterface,
     SpokePoolInterface,
     UUPSUpgradeable,
@@ -41,6 +45,7 @@ abstract contract SpokePool is
     EIP712CrossChainUpgradeable,
     IDestinationSettler,
     OFTTransportAdapter,
+    IAcrossV5Executor,
     SafeTransferERC20
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
@@ -136,6 +141,10 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     WETH9Interface public immutable wrappedNativeToken;
 
+    /// @notice Canonical Across V5 Gateway. V5 deposits/fills read the live execution context from this contract.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    IGateway public immutable gateway;
+
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -151,6 +160,10 @@ abstract contract SpokePool is
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
+
+    /// @notice Magic header marking a deposit as "V5": Gateway-only fillable through the V5 entrypoints.
+    bytes32 public constant V5_DEPOSIT_HEADER = keccak256("AcrossV5Deposit-v1.0.0");
+
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
@@ -212,6 +225,10 @@ abstract contract SpokePool is
     error OFTTokenMismatch();
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
+    /// @notice Thrown when a V5 deposit or fill is attempted outside of a V5 entrypoint / live Gateway execution.
+    error V5RequiresGateway();
+    /// @notice Thrown when a slow fill is attempted against a V5 deposit (V5 deposits are Gateway-fill-only).
+    error V5SlowFillNotAllowed();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -229,6 +246,7 @@ abstract contract SpokePool is
      * into the future from the block time of the deposit.
      * @param _oftDstEid destination endpoint id for OFT messaging
      * @param _oftFeeCap fee cap in native token when paying for cross-chain OFT transfers
+     * @param _gateway gateway address
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -236,11 +254,13 @@ abstract contract SpokePool is
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        address _gateway
     ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
+        gateway = IGateway(_gateway);
         _disableInitializers();
     }
 
@@ -1003,6 +1023,43 @@ abstract contract SpokePool is
         fillRelay(convertedRelayData, repaymentChainId, msg.sender.toBytes32());
     }
 
+    function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable {
+        // all V3RelayData fields except for exclusiveRelayer, inputAmount, outputAmount, exclusivityDeadline from input
+        InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
+
+        // get the rest of params plus repaymentChainId and repaymentAddress from jitData
+        JitInputParamsV5 memory jitInputParamsV5 = abi.decode(jitData, (JitInputParamsV5));
+
+        // Create relayData from above params
+        V3RelayData memory relayData = V3RelayData({
+            depositor: inputParamsV5.depositor,
+            recipient: inputParamsV5.recipient,
+            exclusiveRelayer: jitInputParamsV5.exclusiveRelayer,
+            inputToken: inputParamsV5.inputToken,
+            outputToken: inputParamsV5.outputToken,
+            inputAmount: inputParamsV5.inputAmount,
+            outputAmount: jitInputParamsV5.outputAmount,
+            originChainId: inputParamsV5.originChainId,
+            depositId: inputParamsV5.depositId,
+            fillDeadline: inputParamsV5.fillDeadline,
+            exclusivityDeadline: jitInputParamsV5.exclusivityDeadline,
+            message: new bytes(0)
+        });
+
+        relayData.message = abi.encodePacked(V5_DEPOSIT_HEADER, gateway.currentStepId());
+
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
+            relay: relayData,
+            relayHash: getV3RelayHash(relayData),
+            updatedOutputAmount: relayData.outputAmount,
+            updatedRecipient: relayData.recipient,
+            updatedMessage: relayData.message,
+            repaymentChainId: jitInputParamsV5.repaymentChainId
+        });
+
+        _fillRelayV3(relayExecution, jitInputParamsV5.repaymentAddress, false);
+    }
+
     /**
      * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
@@ -1317,8 +1374,9 @@ abstract contract SpokePool is
 
         // slither-disable-next-line timestamp
         uint256 currentTime = getCurrentTime();
-        if (currentTime < params.quoteTimestamp || currentTime - params.quoteTimestamp > depositQuoteTimeBuffer)
+        if (currentTime < params.quoteTimestamp || currentTime - params.quoteTimestamp > depositQuoteTimeBuffer) {
             revert InvalidQuoteTimestamp();
+        }
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -1654,6 +1712,22 @@ abstract contract SpokePool is
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
 
+        if (_isV5Fill(relayData.message)) {
+            if (isSlowFill) {
+                revert V5SlowFillNotAllowed();
+            }
+
+            address submitter = gateway.currentSubmitter();
+            if (submitter == address(0)) revert V5RequiresGateway();
+
+            IERC20Upgradeable(relayData.outputToken.toAddress()).safeTransferFrom(
+                submitter,
+                relayExecution.updatedRecipient.toAddress(),
+                relayExecution.updatedOutputAmount
+            );
+            return;
+        }
+
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
@@ -1679,6 +1753,16 @@ abstract contract SpokePool is
                 updatedMessage
             );
         }
+    }
+
+    function _isV5Fill(bytes memory message) internal pure returns (bool) {
+        if (message.length < 32) return false;
+        bytes32 header;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            header := mload(add(message, 32))
+        }
+        return header == V5_DEPOSIT_HEADER;
     }
 
     // Determine whether the exclusivityDeadline implies active exclusivity.
