@@ -214,6 +214,10 @@ abstract contract SpokePool is
     error OFTTokenMismatch();
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
+    /// @notice Thrown when a JIT modification of `outputAmount` would worsen the recipient's terms.
+    error ParamModificationNotAnImprovement();
+    /// @notice Thrown when the authority signature over the JIT modifications is missing or invalid.
+    error InvalidParamModificationSignature();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -1735,6 +1739,19 @@ abstract contract SpokePool is
     IGateway public immutable gateway;
     bytes32 public constant V5_MAGIC_PREFIX = keccak256("V5_MAGIC_PREFIX.V1");
 
+    /// @notice Domain tag mixed into the JIT-modification digest so signatures cannot be replayed across protocols
+    /// or auction versions. Bumped whenever the digest layout changes.
+    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
+
+    // `paramModificationRules` layout (bytes32): the low 20 bytes hold the authority address that must sign
+    // modifications (zero => modifications are permissionless, no signature required), and the high 12 bytes hold a
+    // flag bitfield. We use the lowest 3 bits of that bitfield (read after shifting the rules right by 160). Each
+    // bit gates whether one parameter is modifiable; the per-parameter value rules (e.g. improvement-only) always
+    // apply regardless of whether the modification is signed.
+    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
+
     struct ParamsFromV5Input {
         bytes32 depositor;
         bytes32 recipient;
@@ -1759,7 +1776,7 @@ abstract contract SpokePool is
     struct ParamsFromV5Jit {
         uint256 newAmtOut;
         bytes32 newExclusiveRelayer;
-        bytes32 newExclusivityParameter;
+        uint32 newExclusivityParameter;
         bytes signature;
     }
 
@@ -1776,10 +1793,10 @@ abstract contract SpokePool is
             uint256(keccak256(abi.encodePacked(curStepId, inputParams.depositNonce)))
         );
 
-        // TODO: according to paramModificationRules , apply jitParams to inputParams
-        // _resolveDynamicParams(inputParams, jitParams);
+        // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
+        // per-deposit rules encoded in `inputParams.paramModificationRules`.
+        _resolveDynamicParams(inputParams, jitParams, curStepId);
 
-        // Increment the `numberOfDeposits` counter to ensure a unique deposit ID for this spoke pool.
         DepositV3Params memory params = DepositV3Params({
             depositor: inputParams.depositor,
             recipient: inputParams.recipient,
@@ -1796,6 +1813,67 @@ abstract contract SpokePool is
             message: abi.encodePacked(V5_MAGIC_PREFIX, inputParams.dstStepId)
         });
         _depositV3(params);
+    }
+
+    /**
+     * @notice Applies just-in-time (JIT) modifications carried in `jitParams` to `inputParams`, governed by the
+     * rules packed into `inputParams.paramModificationRules`.
+     * @dev Each modifiable parameter is either static (its `MOD_FLAG_ALLOW_*` bit is unset, so the JIT value is
+     * ignored) or dynamic. Dynamic parameters obey:
+     * - `outputAmount`: improvement-only (the new value must be >= the original so the recipient is never worse off).
+     * - `exclusiveRelayer` / `exclusivityParameter`: set to any value.
+     *
+     * When an authority address is configured (low 20 bytes of the rules are non-zero) the full set of new values
+     * must be signed by it; the value rules above still apply on top of the signature. The digest binds the gateway,
+     * the current step (which is itself bound to this chain via its `chainId`), the deposit nonce and the new values.
+     * Reuse of a signature across deposits is acceptable because the gateway treats each `stepId` as unique. The
+     * check is EIP-1271-aware so the authority may be a smart contract signer.
+     * @dev Mutates `inputParams` in place.
+     */
+    function _resolveDynamicParams(
+        ParamsFromV5Input memory inputParams,
+        ParamsFromV5Jit memory jitParams,
+        bytes32 stepId
+    ) internal view {
+        uint256 rules = uint256(inputParams.paramModificationRules);
+        uint256 flags = rules >> 160;
+        address authority = address(uint160(rules));
+
+        // If an authority is configured, the proposed modification set must be signed by it.
+        if (authority != address(0)) {
+            bytes32 digest = keccak256(
+                abi.encodePacked(
+                    VERSIONED_AUCTION_NAMEHASH,
+                    address(gateway),
+                    stepId,
+                    inputParams.depositNonce,
+                    jitParams.newAmtOut,
+                    jitParams.newExclusiveRelayer,
+                    jitParams.newExclusivityParameter
+                )
+            );
+            if (!SignatureChecker.isValidSignatureNow(authority, digest, jitParams.signature)) {
+                revert InvalidParamModificationSignature();
+            }
+        }
+
+        // outputAmount: improvement-only (recipient is never worse off).
+        if (flags & MOD_FLAG_ALLOW_AMOUNT_OUT != 0) {
+            if (jitParams.newAmtOut < inputParams.outputAmount) {
+                revert ParamModificationNotAnImprovement();
+            }
+            inputParams.outputAmount = jitParams.newAmtOut;
+        }
+
+        // exclusiveRelayer: arbitrary.
+        if (flags & MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER != 0) {
+            inputParams.exclusiveRelayer = jitParams.newExclusiveRelayer;
+        }
+
+        // exclusivityParameter: arbitrary.
+        if (flags & MOD_FLAG_ALLOW_EXCLUSIVITY != 0) {
+            inputParams.exclusivityParameter = jitParams.newExclusivityParameter;
+        }
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
