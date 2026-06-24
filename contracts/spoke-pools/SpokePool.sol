@@ -1023,7 +1023,7 @@ abstract contract SpokePool is
         fillRelay(convertedRelayData, repaymentChainId, msg.sender.toBytes32());
     }
 
-    function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable {
+    function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills {
         // all V3RelayData fields except for exclusiveRelayer, inputAmount, outputAmount, exclusivityDeadline from input
         InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
 
@@ -1045,6 +1045,15 @@ abstract contract SpokePool is
             exclusivityDeadline: jitInputParamsV5.exclusivityDeadline,
             message: new bytes(0)
         });
+
+        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
+        // to fill the relay.
+        if (
+            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != msg.sender
+        ) {
+            revert NotExclusiveRelayer();
+        }
 
         relayData.message = abi.encodePacked(V5_DEPOSIT_HEADER, gateway.currentStepId());
 
