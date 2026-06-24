@@ -91,6 +91,24 @@ function getTrackedFiles(directory: string): Set<string> {
   );
 }
 
+/**
+ * Read a destination chain id that a deploy script returned (e.g. DeployUniversalAdapter.s.sol).
+ * Foundry records a script's return values in the broadcast file's top-level `returns`. The key is the
+ * return variable's name when it is named (e.g. "destinationChainId") and its positional index ("0")
+ * otherwise, so we check the named key, then "0", then fall back to the sole entry. The numeric guard
+ * ignores non-chain-id returns (e.g. an address), so callers safely fall back to the legacy matching.
+ */
+function getReturnedDestinationChainId(data: any): string | undefined {
+  const returns = data?.returns;
+  if (!returns || typeof returns !== "object") return undefined;
+  const keys = Object.keys(returns);
+  const value =
+    returns["destinationChainId"]?.value ??
+    returns["0"]?.value ??
+    (keys.length === 1 ? returns[keys[0]]?.value : undefined);
+  return typeof value === "string" && /^\d+$/.test(value) ? value : undefined;
+}
+
 function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
   const broadcastFiles: BroadcastFile[] = [];
 
@@ -227,42 +245,69 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = (tx.contractName as string | null) ?? "";
 
+          // Special-case the CounterfactualBeacon deploy: the ERC1967Proxy is the canonical, address-
+          // stable registry (every BeaconProxy embeds it). The per-chain CounterfactualBeacon
+          // implementation that lives behind that proxy is not the address callers should resolve, so
+          // skip it. Without this branch the generic `ERC1967Proxy → SpokePool` rewrite below would
+          // misfile the beacon proxy as SpokePool, and `CounterfactualBeacon` in deployed-addresses.json
+          // would point at the per-chain implementation.
+          if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol") {
+            if (contractName === "ERC1967Proxy") {
+              contractName = "CounterfactualBeacon";
+            } else if (contractName === "CounterfactualBeacon") {
+              continue;
+            }
+          }
+
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
           } else if (contractName.endsWith("_SpokePool") || contractName.startsWith("DonationBox")) {
             // skip
             continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
-            let cctpDomainId: string | undefined = undefined;
-            let oftDstEid: string | undefined = undefined;
+            // Preferred: the deploy script records the destination chain id in the broadcast `returns`
+            // (see DeployUniversalAdapter.s.sol). This is unambiguous regardless of how the adapter's
+            // token-bridging routes (CCTP/OFT) are configured.
+            let chainId = getReturnedDestinationChainId(data);
 
-            // nb. This is fragile. @todo: Improve.
-            switch (contractName) {
-              case "Universal_Adapter":
-                cctpDomainId = tx.arguments.at(3);
-                oftDstEid = tx.arguments.at(5);
-                break;
-              case "OP_Adapter":
-                cctpDomainId = tx.arguments.at(6);
-                break;
+            if (chainId === undefined) {
+              // Legacy fallback for broadcasts that predate the returned chain id: infer the destination
+              // by matching the adapter's CCTP domain / OFT EID constructor args against known networks.
+              // nb. This is fragile (e.g. it can't resolve adapters with no CCTP/OFT route). @todo: Remove
+              // once all adapters have been redeployed with the returned destination chain id.
+              let cctpDomainId: string | undefined = undefined;
+              let oftDstEid: string | undefined = undefined;
+              switch (contractName) {
+                case "Universal_Adapter":
+                  cctpDomainId = tx.arguments.at(3);
+                  oftDstEid = tx.arguments.at(5);
+                  break;
+                case "OP_Adapter":
+                  cctpDomainId = tx.arguments.at(6);
+                  break;
+              }
+              const networks = broadcastFile.chainId in TEST_NETWORKS ? TEST_NETWORKS : PRODUCTION_NETWORKS;
+
+              // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches cctpDomainId or oftDstEid
+              chainId = Object.keys(networks).find((chainId) => {
+                const { cctpDomain, oftEid } = networks[Number(chainId)];
+                // Some chains may have properties for cctpDomainId or oftDstEid. Try to check both.
+                return (
+                  (cctpDomain && cctpDomain.toString() === cctpDomainId) || (oftEid && oftEid.toString() === oftDstEid)
+                );
+              });
+
+              if (chainId === undefined) {
+                console.log(
+                  `No destination chainId for ${contractName} at ${tx.contractAddress}: broadcast returns empty ` +
+                    `and no network matched cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}). ` +
+                    `Redeploy with a script that returns the destination chain id to fix the naming.`
+                );
+              }
             }
-            const networks = broadcastFile.chainId in TEST_NETWORKS ? TEST_NETWORKS : PRODUCTION_NETWORKS;
-
-            // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches either cctpDomainId or oftDstEid
-            const chainId = Object.keys(networks).find((chainId) => {
-              const { cctpDomain, oftEid } = networks[Number(chainId)];
-              // Some chains may have properties for cctpDomainId or oftDstEid. Try to check both.
-              return (
-                (cctpDomain && cctpDomain.toString() === cctpDomainId) || (oftEid && oftEid.toString() === oftDstEid)
-              );
-            });
 
             if (chainId !== undefined) {
               contractName += `_${chainId}`;
-            } else {
-              console.log(
-                `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
-              );
             }
           }
 

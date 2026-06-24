@@ -119,6 +119,14 @@
           "address": "0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c",
           "block_number": 24421479
         },
+        "Universal_Adapter_43114": {
+          "address": "0x1af659333172DC502bD71Cf5b889521C97751838",
+          "block_number": 25237918
+        },
+        "Universal_Adapter_5042": {
+          "address": "0xCA5f9960022078F3585a188e06F910eeC29c7eBD",
+          "block_number": 25298498
+        },
         "Blast_Adapter": {
           "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81",
           "block_number": 20221494
@@ -244,10 +252,10 @@
           "block_number": 24690994,
           "transaction_hash": "0x869926fddcfc39456d4479bda50e644dac93aea0f731e1313ac7d5b80134db6c"
         },
-        "Universal_Adapter_43114": {
-          "address": "0x1af659333172DC502bD71Cf5b889521C97751838",
-          "block_number": 25237918,
-          "transaction_hash": "0x26556c4f14f62b56ef0a4359e83d62751e21d4e3fe9eb855e8e84c12dba41853"
+        "Universal_Adapter_4663": {
+          "address": "0xbc5E82035e2C8d4B335Ccb751D6BF47e44Dec678",
+          "block_number": 25382762,
+          "transaction_hash": "0x04704f92ec9d35a7de1a67e58c32e3eefd0f48cf7f9cbf524e270d0e0af53fd0"
         },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
@@ -1243,6 +1251,46 @@
         }
       }
     },
+    "4663": {
+      "chain_name": "Robinhood",
+      "contracts": {
+        "SP1Helios": {
+          "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
+          "block_number": 156307,
+          "transaction_hash": "0x97b05b0011114c1b672ae22d502204686e61c7c4f04fe1123893c17e580cc977"
+        },
+        "Safe": {
+          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
+          "block_number": 156318,
+          "transaction_hash": "0xad27315aea18effcddf4cbd12beaad8e07e442232478466f246511d0afefa3ed"
+        },
+        "SpokePool": {
+          "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978",
+          "block_number": 156309,
+          "transaction_hash": "0xd2d4f305f0ff843b524df7b2d4130cf5e081e7e39db2ea89c483ec14fd7f9608"
+        }
+      }
+    },
+    "5042": {
+      "chain_name": "ARC",
+      "contracts": {
+        "SP1Helios": {
+          "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
+          "block_number": 4681034,
+          "transaction_hash": "0xc2298162df46d25eb878ac7d93d8a07294e9dad0b68d6465835c99c1b522146a"
+        },
+        "Safe": {
+          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
+          "block_number": 4828640,
+          "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
+        },
+        "SpokePool": {
+          "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
+          "block_number": 4694834,
+          "transaction_hash": "0x69697194928da503c12f5ce8455392932f278d1793fa7d919d0d15c57d137a6b"
+        }
+      }
+    },
     "8453": {
       "chain_name": "Base",
       "contracts": {
@@ -1523,9 +1571,9 @@
       "chain_name": "Avalanche",
       "contracts": {
         "SP1Helios": {
-          "address": "0x3BED21dAe767e4Df894B31b14aD32369cE4bad8b",
-          "block_number": 87017813,
-          "transaction_hash": "0x3c91515e112c6603fc8032fe1bc51c6670f39bba287ea931b5b0c7e88463fda0"
+          "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1",
+          "block_number": 88664645,
+          "transaction_hash": "0x0e487629ea2cdd600db790dc6e64b629f0b22067554140d83637c95febdb28c1"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -1533,9 +1581,9 @@
           "transaction_hash": "0x200b98e4ec8b7f99c0a41ea4732e8a11a5c2d4f6915c9d7d43f0bc083de8204a"
         },
         "SpokePool": {
-          "address": "0x292A00f2368187073E80AB94fA03AFD8c796d450",
-          "block_number": 87017827,
-          "transaction_hash": "0x91b03ff4987f357528b49d3b9e0e7e08abbd90719f407f16fecdf77be4ca1bbe"
+          "address": "0x7ba7db70aE338bA74dab72A29b740BC7AcD5AF1b",
+          "block_number": 88664658,
+          "transaction_hash": "0xdfc8606696e800d3cfd39a183769efd273c0a69cabd2f89350b93eddb3058f7a"
         }
       }
     },
@@ -2029,6 +2077,11 @@
     "728126428": {
       "chain_name": "TRON",
       "contracts": {
+        "AcrossEventEmitter": {
+          "address": "TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu",
+          "block_number": 83474885,
+          "transaction_hash": "0b4f2cf11a811768e15cbb50769ebeaf5c0f9be7eadf6f1d7b2618d6745a7b07"
+        },
         "AdminWithdrawManager": {
           "address": "TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC",
           "block_number": 81611914,
@@ -2068,6 +2121,11 @@
           "address": "TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ",
           "block_number": 81812685,
           "transaction_hash": "9a708fb56c6b0bba4e87599f8b1309b479f144badc7a2130d4cd3554836e4481"
+        },
+        "TronMulticallHandler": {
+          "address": "TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ",
+          "block_number": 83478629,
+          "transaction_hash": "d25f4b1756b11788f43b253c9dea29227bffab81b1fea5773ced2b257a5873cc"
         },
         "WithdrawImplementationTron": {
           "address": "THPA5L2jxGE84FHMieds212WH3sRX5Hi9t",

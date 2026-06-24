@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "5.0.16-alpha.2",
+  "version": "5.0.21",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -52,6 +52,7 @@
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts",
     "deploy-safe": "ts-node ./script/safe-multisig/deploySafe.ts",
     "build-tron": "FOUNDRY_PROFILE=tron forge build",
+    "tron-deploy": "ts-node script/tron/deploy-tron.ts",
     "tron-deploy-sp1-auto-verifier": "ts-node script/tron/universal/tron-deploy-sp1-auto-verifier.ts",
     "tron-deploy-sp1-helios": "ts-node script/tron/universal/tron-deploy-sp1-helios.ts",
     "tron-deploy-universal-spokepool": "ts-node script/tron/universal/tron-deploy-universal-spokepool.ts",
@@ -68,7 +69,7 @@
     "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.111",
+    "@across-protocol/constants": "^3.1.115",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",
