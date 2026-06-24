@@ -7,6 +7,8 @@ import "../external/interfaces/WETH9Interface.sol";
 import "../interfaces/SpokePoolMessageHandler.sol";
 import "../interfaces/SpokePoolInterface.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
+import "../interfaces/IGateway.sol";
+import "../interfaces/IAcrossV5ExecutorAdapter.sol";
 import "../upgradeable/MultiCallerUpgradeable.sol";
 import "../upgradeable/EIP712CrossChainUpgradeable.sol";
 import "../upgradeable/AddressLibUpgradeable.sol";
@@ -236,11 +238,13 @@ abstract contract SpokePool is
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        address _gateway
     ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
+        gateway = IGateway(_gateway);
         _disableInitializers();
     }
 
@@ -1726,6 +1730,72 @@ abstract contract SpokePool is
             AddressLibUpgradeable.sendValue(payable(msg.sender), refund);
         }
         _sendOftTransfer(_token, _messenger, sendParam, fee);
+    }
+
+    IGateway public immutable gateway;
+    bytes32 public constant V5_MAGIC_PREFIX = keccak256("V5_MAGIC_PREFIX.V1");
+
+    struct ParamsFromV5Input {
+        bytes32 depositor;
+        bytes32 recipient;
+        bytes32 inputToken;
+        bytes32 outputToken;
+        uint256 inputAmount;
+        uint256 outputAmount;
+        uint256 destinationChainId;
+        bytes32 exclusiveRelayer;
+        // A random number to differentiate 2 different deposits within a single path
+        uint256 depositNonce;
+        uint32 quoteTimestamp;
+        uint32 fillDeadline;
+        uint32 exclusivityParameter;
+        bytes32 dstStepId;
+        // First 12 bytes: flags
+        // [is signed only mod, allow amtOut mod, allow exclusiveRelayer mod, allow exclusivityParameter mod]
+        // Last 20 bytes: address that has to sign the modifications
+        bytes32 paramModificationRules;
+    }
+
+    struct ParamsFromV5Jit {
+        uint256 newAmtOut;
+        bytes32 newExclusiveRelayer;
+        bytes32 newExclusivityParameter;
+        bytes signature;
+    }
+
+    function adapterExecuteAcrossV5(bytes calldata input, bytes calldata jitData) external payable {
+        ParamsFromV5Input memory inputParams = abi.decode(input, (ParamsFromV5Input));
+        ParamsFromV5Jit memory jitParams = abi.decode(jitData, (ParamsFromV5Jit));
+
+        bytes32 curStepId = gateway.currentStepId();
+        uint256 depositId = getUnsafeDepositId(
+            // gateway's submitter serves as a differentiating factor instead of msg.sender, which is going to be Executor for most deposits here
+            gateway.currentSubmitter(),
+            inputParams.depositor,
+            // depositNonce here serves as a differentiator of different depsoits that might come in a single Path execution
+            uint256(keccak256(abi.encodePacked(curStepId, inputParams.depositNonce)))
+        );
+
+        // TODO: according to paramModificationRules , apply jitParams to inputParams
+        // _resolveDynamicParams(inputParams, jitParams);
+
+        // Increment the `numberOfDeposits` counter to ensure a unique deposit ID for this spoke pool.
+        DepositV3Params memory params = DepositV3Params({
+            depositor: inputParams.depositor,
+            recipient: inputParams.recipient,
+            inputToken: inputParams.inputToken,
+            outputToken: inputParams.outputToken,
+            inputAmount: inputParams.inputAmount,
+            outputAmount: inputParams.outputAmount,
+            destinationChainId: inputParams.destinationChainId,
+            exclusiveRelayer: inputParams.exclusiveRelayer,
+            depositId: depositId,
+            quoteTimestamp: inputParams.quoteTimestamp,
+            fillDeadline: inputParams.fillDeadline,
+            exclusivityParameter: inputParams.exclusivityParameter,
+            message: abi.encodePacked(V5_MAGIC_PREFIX, inputParams.dstStepId)
+        });
+        _depositV3(params);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
