@@ -1798,7 +1798,7 @@ abstract contract SpokePool is
 
         // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
         // per-deposit rules encoded in `inputParams.paramModificationRules`.
-        _resolveDynamicParams(inputParams, jitParams, curStepId);
+        _resolveDynamicParams(inputParams, jitParams, gateway.currentPathId());
 
         DepositV3Params memory params = DepositV3Params({
             depositor: inputParams.depositor,
@@ -1828,15 +1828,16 @@ abstract contract SpokePool is
      *
      * When an authority address is configured (low 20 bytes of the rules are non-zero) the full set of new values
      * must be signed by it; the value rules above still apply on top of the signature. The digest binds the gateway,
-     * the current step (which is itself bound to this chain via its `chainId`), the deposit nonce and the new values.
-     * Reuse of a signature across deposits is acceptable because the gateway treats each `stepId` as unique. The
-     * check is EIP-1271-aware so the authority may be a smart contract signer.
+     * the current path (which is bound to this chain), the deposit nonce and the new values. `pathId` is used rather
+     * than `stepId` because a `stepId` is not necessarily scoped to a single chain, so binding to it would let a
+     * signature be replayed on another chain; the deposit nonce keeps the digest unique across deposits within a path.
+     * The check is EIP-1271-aware so the authority may be a smart contract signer.
      * @dev Mutates `inputParams` in place.
      */
     function _resolveDynamicParams(
         ParamsFromV5Input memory inputParams,
         ParamsFromV5Jit memory jitParams,
-        bytes32 stepId
+        bytes32 pathId
     ) internal view {
         uint256 rules = uint256(inputParams.paramModificationRules);
         uint256 flags = rules >> 160;
@@ -1848,7 +1849,7 @@ abstract contract SpokePool is
                 abi.encodePacked(
                     VERSIONED_AUCTION_NAMEHASH,
                     address(gateway),
-                    stepId,
+                    pathId,
                     inputParams.depositNonce,
                     jitParams.newAmtOut,
                     jitParams.newExclusiveRelayer,
