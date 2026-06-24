@@ -1780,7 +1780,10 @@ abstract contract SpokePool is
         bytes signature;
     }
 
-    function adapterExecuteAcrossV5(bytes calldata input, bytes calldata jitData) external payable {
+    function adapterExecuteAcrossV5(
+        bytes calldata input,
+        bytes calldata jitData
+    ) external payable nonReentrant unpausedDeposits {
         ParamsFromV5Input memory inputParams = abi.decode(input, (ParamsFromV5Input));
         ParamsFromV5Jit memory jitParams = abi.decode(jitData, (ParamsFromV5Jit));
 
