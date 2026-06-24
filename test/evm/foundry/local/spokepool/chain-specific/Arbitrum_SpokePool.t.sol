@@ -119,7 +119,8 @@ contract Arbitrum_SpokePoolTest is Test, Constants {
             IERC20(address(usdc)),
             cctpMessenger,
             oftHubEid,
-            TEST_OFT_FEE_CAP
+            TEST_OFT_FEE_CAP,
+            address(0)
         );
 
         // Deploy proxy
@@ -157,7 +158,8 @@ contract Arbitrum_SpokePoolTest is Test, Constants {
             IERC20(address(usdc)),
             cctpMessenger,
             oftHubEid,
-            TEST_OFT_FEE_CAP
+            TEST_OFT_FEE_CAP,
+            address(0)
         );
 
         // Attempt upgrade from non-cross-domain admin should fail

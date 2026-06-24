@@ -40,7 +40,8 @@ contract Testable_Tron_SpokePool is Tron_SpokePool {
             _l2Usdc,
             _cctpTokenMessenger,
             _oftDstEid,
-            _oftFeeCap
+            _oftFeeCap,
+            address(0)
         )
     {} // solhint-disable-line no-empty-blocks
 

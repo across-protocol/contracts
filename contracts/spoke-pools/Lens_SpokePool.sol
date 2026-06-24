@@ -17,7 +17,8 @@ contract Lens_SpokePool is ZkSync_SpokePool {
         uint256 _l1ChainId,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
+        uint32 _fillDeadlineBuffer,
+        address _gateway
     )
         ZkSync_SpokePool(
             _wrappedNativeTokenAddress,
@@ -26,7 +27,8 @@ contract Lens_SpokePool is ZkSync_SpokePool {
             _l1ChainId,
             _cctpTokenMessenger,
             _depositQuoteTimeBuffer,
-            _fillDeadlineBuffer
+            _fillDeadlineBuffer,
+            _gateway
         )
     {}
 }

@@ -32,7 +32,8 @@ contract Tron_SpokePool is Universal_SpokePool {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        address _gateway
     )
         Universal_SpokePool(
             _adminUpdateBufferSeconds,
@@ -44,7 +45,8 @@ contract Tron_SpokePool is Universal_SpokePool {
             _l2Usdc,
             _cctpTokenMessenger,
             _oftDstEid,
-            _oftFeeCap
+            _oftFeeCap,
+            _gateway
         )
     {} // solhint-disable-line no-empty-blocks
 

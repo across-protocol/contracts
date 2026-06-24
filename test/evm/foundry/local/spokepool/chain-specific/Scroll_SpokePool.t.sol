@@ -92,7 +92,8 @@ contract Scroll_SpokePoolTest is Test {
         spokePoolImplementation = new Scroll_SpokePool(
             address(weth),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         // Deploy proxy
@@ -133,7 +134,7 @@ contract Scroll_SpokePoolTest is Test {
 
     function test_onlyCrossDomainOwnerCanUpgrade() public {
         // Deploy new implementation
-        Scroll_SpokePool newImplementation = new Scroll_SpokePool(address(weth), 60 * 60, 9 * 60 * 60);
+        Scroll_SpokePool newImplementation = new Scroll_SpokePool(address(weth), 60 * 60, 9 * 60 * 60, address(0));
 
         // Attempt upgrade from random address should fail
         vm.prank(rando);

@@ -55,7 +55,8 @@ contract MockUniversalSpokePool is Universal_SpokePool {
             _l2Usdc,
             _cctpTokenMessenger,
             _oftDstId,
-            _oftFeeCap
+            _oftFeeCap,
+            address(0)
         )
     {}
 
