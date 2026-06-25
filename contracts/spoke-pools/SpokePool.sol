@@ -1028,20 +1028,24 @@ abstract contract SpokePool is
         // get the rest of params plus repaymentChainId and repaymentAddress from jitData
         JitInputParamsV5 memory jitInputParamsV5 = abi.decode(jitData, (JitInputParamsV5));
 
+        if (jitInputParamsV5.outputAmount < inputParamsV5.minOutputAmount) {
+            revert V5OutputAmountTooLow();
+        }
+
         // Create relayData from above params
         V3RelayData memory relayData = V3RelayData({
-            depositor: inputParamsV5.depositor,
+            depositor: jitInputParamsV5.depositor,
             recipient: inputParamsV5.recipient,
             exclusiveRelayer: jitInputParamsV5.exclusiveRelayer,
-            inputToken: inputParamsV5.inputToken,
+            inputToken: jitInputParamsV5.inputToken,
             outputToken: inputParamsV5.outputToken,
-            inputAmount: inputParamsV5.inputAmount,
+            inputAmount: jitInputParamsV5.inputAmount,
             outputAmount: jitInputParamsV5.outputAmount,
-            originChainId: inputParamsV5.originChainId,
-            depositId: inputParamsV5.depositId,
-            fillDeadline: inputParamsV5.fillDeadline,
+            originChainId: jitInputParamsV5.originChainId,
+            depositId: jitInputParamsV5.depositId,
+            fillDeadline: jitInputParamsV5.fillDeadline,
             exclusivityDeadline: jitInputParamsV5.exclusivityDeadline,
-            message: new bytes(0)
+            message: abi.encodePacked(V5_DEPOSIT_HEADER, gateway.currentStepId())
         });
 
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
@@ -1053,8 +1057,6 @@ abstract contract SpokePool is
             revert NotExclusiveRelayer();
         }
 
-        relayData.message = abi.encodePacked(V5_DEPOSIT_HEADER, gateway.currentStepId());
-
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
             relayHash: getV3RelayHash(relayData),
@@ -1064,7 +1066,7 @@ abstract contract SpokePool is
             repaymentChainId: jitInputParamsV5.repaymentChainId
         });
 
-        _fillRelayV3(relayExecution, jitInputParamsV5.repaymentAddress, false);
+        _fillRelayV5(relayExecution, jitInputParamsV5.repaymentAddress);
     }
 
     /**
@@ -1668,6 +1670,35 @@ abstract contract SpokePool is
     }
 
     /**
+     * @notice Fills a V5 relay. V5 deposits are Gateway-fill-only and are always fast fills: the output tokens
+     * are pulled from the Gateway's current submitter (never from this contract's reserves or msg.sender) and
+     * sent straight to the recipient, with no native-token unwrap and no recipient message handler callback.
+     * Slow fills are not supported for V5 deposits.
+     * @param relayExecution The relay execution parameters.
+     * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
+     */
+    function _fillRelayV5(V3RelayExecutionParams memory relayExecution, bytes32 relayer) internal {
+        V3RelayData memory relayData = relayExecution.relay;
+
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+
+        bytes32 relayHash = relayExecution.relayHash;
+        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
+        fillStatuses[relayHash] = uint256(FillStatus.Filled);
+
+        _emitFilledRelayEvent(relayExecution, relayData, relayer, FillType.FastFill);
+
+        // V5 fills are settled by pulling the output tokens from the Gateway's current submitter.
+        address submitter = gateway.currentSubmitter();
+        if (submitter == address(0)) revert V5RequiresGateway();
+        IERC20Upgradeable(relayData.outputToken.toAddress()).safeTransferFrom(
+            submitter,
+            relayExecution.updatedRecipient.toAddress(),
+            relayExecution.updatedOutputAmount
+        );
+    }
+
+    /**
      * @notice Emits the FilledRelay event for a completed relay fill.
      * @param relayExecution The relay execution parameters.
      * @param relayData The relay data.
@@ -1719,21 +1750,10 @@ abstract contract SpokePool is
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
 
-        if (_isV5Fill(relayData.message)) {
-            if (isSlowFill) {
-                revert V5SlowFillNotAllowed();
-            }
-
-            address submitter = gateway.currentSubmitter();
-            if (submitter == address(0)) revert V5RequiresGateway();
-
-            IERC20Upgradeable(relayData.outputToken.toAddress()).safeTransferFrom(
-                submitter,
-                relayExecution.updatedRecipient.toAddress(),
-                relayExecution.updatedOutputAmount
-            );
-            return;
-        }
+        // V5 fast fills are settled in _fillRelayV5 by pulling from the Gateway submitter and never reach this
+        // shared path. A V5 relay arriving here can only be a slow fill, which is disallowed: V5 deposits are
+        // Gateway-fill-only and must never be paid out of this contract's reserves.
+        if (_isV5Fill(relayData.message)) revert V5SlowFillNotAllowed();
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (outputToken == address(wrappedNativeToken)) {
