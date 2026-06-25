@@ -1391,9 +1391,8 @@ abstract contract SpokePool is
 
         // slither-disable-next-line timestamp
         uint256 currentTime = getCurrentTime();
-        if (currentTime < params.quoteTimestamp || currentTime - params.quoteTimestamp > depositQuoteTimeBuffer) {
+        if (currentTime < params.quoteTimestamp || currentTime - params.quoteTimestamp > depositQuoteTimeBuffer)
             revert InvalidQuoteTimestamp();
-        }
 
         // fillDeadline is relative to the destination chain.
         // Don’t allow fillDeadline to be more than several bundles into the future.
@@ -1681,7 +1680,7 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Shared fill bookkeeping for V3 and V5 fills: validates the fill deadline, marks the relay hash as
+     * @notice Shared fill bookkeeping: validates the fill deadline, marks the relay hash as
      * Filled (reverting on a double fill), and emits the FilledRelay event. Token settlement is handled by the
      * caller, which differs between fill versions.
      * @param relayExecution The relay execution parameters.
@@ -1747,11 +1746,10 @@ abstract contract SpokePool is
      * @notice Transfers tokens to the recipient based on the relay execution parameters.
      * @param relayExecution The relay execution parameters.
      * @param relayData The relay data.
-     * @param from Address the output tokens are pulled from for fast fills (msg.sender for a V3 fill, the Gateway
-     * submitter for a V5 fill). Unused for slow fills, which are paid out of this contract's reserves.
+     * @param from Address the output tokens are pulled from for fast fills.
+     * Unused for slow fills, which are paid out of this contract's reserves.
      * @param isSlowFill Whether this is a slow fill execution.
-     * @param callMessageHandler Whether to invoke the recipient's handleV3AcrossMessage callback. False for V5
-     * fills, whose message carries the V5 header rather than a recipient payload.
+     * @param callMessageHandler Whether to invoke the recipient's handleV3AcrossMessage callback.
      */
     function _transferTokensToRecipient(
         V3RelayExecutionParams memory relayExecution,
