@@ -1636,18 +1636,12 @@ abstract contract SpokePool is
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
     function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
-        V3RelayData memory relayData = relayExecution.relay;
-
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
-
-        bytes32 relayHash = relayExecution.relayHash;
-
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
         // is trivially true. We'll emit this value in the FilledRelay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
-        // be used for a slow fill execution.
+        // be used for a slow fill execution. Computed before _recordFill marks the relay hash as Filled.
         FillType fillType = isSlowFill
             ? FillType.SlowFill // The following is true if this is a fast fill that was sent after a slow fill request.
             : (
@@ -1656,17 +1650,8 @@ abstract contract SpokePool is
                     : FillType.FastFill
             );
 
-        // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
-        // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
-        // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
-        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
-        // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
-        // needs to send back to the HubPool.
-        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
-        fillStatuses[relayHash] = uint256(FillStatus.Filled);
-
-        _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
-        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
+        _recordFill(relayExecution, relayer, fillType);
+        _transferTokensToRecipient(relayExecution, relayExecution.relay, isSlowFill);
     }
 
     /**
@@ -1678,24 +1663,42 @@ abstract contract SpokePool is
      * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
      */
     function _fillRelayV5(V3RelayExecutionParams memory relayExecution, bytes32 relayer) internal {
-        V3RelayData memory relayData = relayExecution.relay;
-
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
-
-        bytes32 relayHash = relayExecution.relayHash;
-        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
-        fillStatuses[relayHash] = uint256(FillStatus.Filled);
-
-        _emitFilledRelayEvent(relayExecution, relayData, relayer, FillType.FastFill);
+        _recordFill(relayExecution, relayer, FillType.FastFill);
 
         // V5 fills are settled by pulling the output tokens from the Gateway's current submitter.
         address submitter = gateway.currentSubmitter();
         if (submitter == address(0)) revert V5RequiresGateway();
-        IERC20Upgradeable(relayData.outputToken.toAddress()).safeTransferFrom(
+        IERC20Upgradeable(relayExecution.relay.outputToken.toAddress()).safeTransferFrom(
             submitter,
             relayExecution.updatedRecipient.toAddress(),
             relayExecution.updatedOutputAmount
         );
+    }
+
+    /**
+     * @notice Shared fill bookkeeping for V3 and V5 fills: validates the fill deadline, marks the relay hash as
+     * Filled (reverting on a double fill), and emits the FilledRelay event. Token settlement is handled by the
+     * caller, which differs between fill versions.
+     * @param relayExecution The relay execution parameters.
+     * @param relayer Address credited as the relayer in the FilledRelay event.
+     * @param fillType The fill type to record in the FilledRelay event.
+     */
+    function _recordFill(V3RelayExecutionParams memory relayExecution, bytes32 relayer, FillType fillType) internal {
+        V3RelayData memory relayData = relayExecution.relay;
+
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+
+        // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
+        // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
+        // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
+        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
+        // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
+        // needs to send back to the HubPool.
+        bytes32 relayHash = relayExecution.relayHash;
+        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
+        fillStatuses[relayHash] = uint256(FillStatus.Filled);
+
+        _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
     }
 
     /**
