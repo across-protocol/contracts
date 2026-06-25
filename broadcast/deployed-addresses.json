@@ -1219,6 +1219,11 @@
     "4663": {
       "chain_name": "Robinhood",
       "contracts": {
+        "MulticallHandler": {
+          "address": "0xa8aD2e87E2043711d8BeC77e8BC3E2683C0ab6BD",
+          "block_number": 193568,
+          "transaction_hash": "0x6ed347ae3ecdd68d307146ef6432bed83cfcdc0e7ff38c0bf62651083ff04803"
+        },
         "SP1Helios": {
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
           "block_number": 156307,
