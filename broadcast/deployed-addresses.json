@@ -1219,6 +1219,11 @@
     "4663": {
       "chain_name": "Robinhood",
       "contracts": {
+        "MulticallHandler": {
+          "address": "0xa8aD2e87E2043711d8BeC77e8BC3E2683C0ab6BD",
+          "block_number": 193568,
+          "transaction_hash": "0x6ed347ae3ecdd68d307146ef6432bed83cfcdc0e7ff38c0bf62651083ff04803"
+        },
         "SP1Helios": {
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
           "block_number": 156307,
@@ -1228,6 +1233,11 @@
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 156318,
           "transaction_hash": "0xad27315aea18effcddf4cbd12beaad8e07e442232478466f246511d0afefa3ed"
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af",
+          "block_number": 194025,
+          "transaction_hash": "0x3d349389a67aa8f77b72a30574a9481ca91ea84c0f749fe5cf70ad5ce55e3cbe"
         },
         "SpokePool": {
           "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978",
