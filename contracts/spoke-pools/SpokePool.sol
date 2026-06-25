@@ -305,6 +305,14 @@ abstract contract SpokePool is
         _;
     }
 
+    // Reverts if `message` belongs to a V5 deposit. V5 deposits are Gateway-fill-only and must never be settled
+    // out of this contract's reserves, so this guards functions (such as the slow-fill path) that must not
+    // process them.
+    modifier nonV5Fill(bytes memory message) {
+        if (_isV5Fill(message)) revert V5SlowFillNotAllowed();
+        _;
+    }
+
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
@@ -1230,7 +1238,7 @@ abstract contract SpokePool is
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
-    ) public override nonReentrant {
+    ) public override nonReentrant nonV5Fill(slowFillLeaf.relayData.message) {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken.toAddress());
@@ -1651,13 +1659,13 @@ abstract contract SpokePool is
             );
 
         _recordFill(relayExecution, relayer, fillType);
-        _transferTokensToRecipient(relayExecution, relayExecution.relay, isSlowFill);
+        _transferTokensToRecipient(relayExecution, relayExecution.relay, msg.sender, isSlowFill, true);
     }
 
     /**
      * @notice Fills a V5 relay. V5 deposits are Gateway-fill-only and are always fast fills: the output tokens
      * are pulled from the Gateway's current submitter (never from this contract's reserves or msg.sender) and
-     * sent straight to the recipient, with no native-token unwrap and no recipient message handler callback.
+     * sent to the recipient via the shared transfer logic, except the recipient message handler is never invoked.
      * Slow fills are not supported for V5 deposits.
      * @param relayExecution The relay execution parameters.
      * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
@@ -1665,14 +1673,11 @@ abstract contract SpokePool is
     function _fillRelayV5(V3RelayExecutionParams memory relayExecution, bytes32 relayer) internal {
         _recordFill(relayExecution, relayer, FillType.FastFill);
 
-        // V5 fills are settled by pulling the output tokens from the Gateway's current submitter.
+        // V5 fills are settled by pulling the output tokens from the Gateway's current submitter, and never invoke
+        // the recipient's message handler (the V5 message carries the V5 header, not a recipient payload).
         address submitter = gateway.currentSubmitter();
         if (submitter == address(0)) revert V5RequiresGateway();
-        IERC20Upgradeable(relayExecution.relay.outputToken.toAddress()).safeTransferFrom(
-            submitter,
-            relayExecution.updatedRecipient.toAddress(),
-            relayExecution.updatedOutputAmount
-        );
+        _transferTokensToRecipient(relayExecution, relayExecution.relay, submitter, false, false);
     }
 
     /**
@@ -1742,21 +1747,22 @@ abstract contract SpokePool is
      * @notice Transfers tokens to the recipient based on the relay execution parameters.
      * @param relayExecution The relay execution parameters.
      * @param relayData The relay data.
+     * @param from Address the output tokens are pulled from for fast fills (msg.sender for a V3 fill, the Gateway
+     * submitter for a V5 fill). Unused for slow fills, which are paid out of this contract's reserves.
      * @param isSlowFill Whether this is a slow fill execution.
+     * @param callMessageHandler Whether to invoke the recipient's handleV3AcrossMessage callback. False for V5
+     * fills, whose message carries the V5 header rather than a recipient payload.
      */
     function _transferTokensToRecipient(
         V3RelayExecutionParams memory relayExecution,
         V3RelayData memory relayData,
-        bool isSlowFill
+        address from,
+        bool isSlowFill,
+        bool callMessageHandler
     ) internal {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
-
-        // V5 fast fills are settled in _fillRelayV5 by pulling from the Gateway submitter and never reach this
-        // shared path. A V5 relay arriving here can only be a slow fill, which is disallowed: V5 deposits are
-        // Gateway-fill-only and must never be paid out of this contract's reserves.
-        if (_isV5Fill(relayData.message)) revert V5SlowFillNotAllowed();
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (outputToken == address(wrappedNativeToken)) {
@@ -1765,21 +1771,21 @@ abstract contract SpokePool is
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
-            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(from, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
-            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(from, recipientToSend, amountToSend);
             else _safeTransfer(outputToken, recipientToSend, amountToSend);
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+        if (callMessageHandler && updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,
-                msg.sender,
+                from,
                 updatedMessage
             );
         }
