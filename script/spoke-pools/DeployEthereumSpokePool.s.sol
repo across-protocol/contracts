@@ -30,7 +30,8 @@ contract DeployEthereumSpokePool is Script, Test, DeploymentUtils {
         bytes memory constructorArgs = abi.encode(
             weth, // _weth
             QUOTE_TIME_BUFFER(), // _quoteTimeBuffer
-            FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
+            FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's

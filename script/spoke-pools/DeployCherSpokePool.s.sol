@@ -37,7 +37,8 @@ contract DeployCherSpokePool is Script, Test, DeploymentUtils {
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             usdcAddress, // _l2Usdc (Cher's bridged USDC that's upgradeable to native)
-            address(0) // _cctpTokenMessenger (set to zero address as per original script)
+            address(0), // _cctpTokenMessenger (set to zero address as per original script)
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to 1

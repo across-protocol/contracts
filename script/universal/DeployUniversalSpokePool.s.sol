@@ -58,7 +58,8 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
             usdcAddress,
             cctpTokenMessenger,
             oftDstEid,
-            oftFeeCap
+            oftFeeCap,
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to 1
