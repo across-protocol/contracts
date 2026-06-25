@@ -225,10 +225,6 @@ abstract contract SpokePool is
     error OFTTokenMismatch();
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
-    /// @notice Thrown when a V5 deposit or fill is attempted outside of a V5 entrypoint / live Gateway execution.
-    error V5RequiresGateway();
-    /// @notice Thrown when a slow fill is attempted against a V5 deposit (V5 deposits are Gateway-fill-only).
-    error V5SlowFillNotAllowed();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -1024,6 +1020,8 @@ abstract contract SpokePool is
     }
 
     function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills {
+        if (msg.sender != address(gateway)) revert V5RequiresGateway();
+
         // all V3RelayData fields except for exclusiveRelayer, inputAmount, outputAmount, exclusivityDeadline from input
         InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
 
@@ -1050,7 +1048,7 @@ abstract contract SpokePool is
         // to fill the relay.
         if (
             _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
+            relayData.exclusiveRelayer.toAddress() != gateway.currentSubmitter()
         ) {
             revert NotExclusiveRelayer();
         }
