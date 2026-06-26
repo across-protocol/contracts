@@ -8,6 +8,9 @@ interface V5SpokePoolInterface {
     error V5MethodNotAllowed();
     /// @notice Thrown when submitter provided output amount is less than min output amount from user.
     error V5OutputAmountTooLow();
+    /// @notice Thrown when native value is sent but there is no executor callback to forward it to, which would
+    /// otherwise strand the value in the SpokePool.
+    error V5UnusedMsgValue();
 
     struct InputParamsV5 {
         bytes32 recipient;
