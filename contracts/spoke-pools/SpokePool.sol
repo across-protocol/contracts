@@ -983,7 +983,7 @@ abstract contract SpokePool is
         V3RelayData memory relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress
-    ) public override nonReentrant unpausedFills {
+    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
         V3RelayExecutionParams memory relayExecution = _buildRelayExecution(relayData, msg.sender, repaymentChainId);
 
         _fillRelayV3(relayExecution, repaymentAddress, false);
@@ -1078,7 +1078,7 @@ abstract contract SpokePool is
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
-    ) public override nonReentrant unpausedFills {
+    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
