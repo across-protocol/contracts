@@ -1048,7 +1048,8 @@ abstract contract SpokePool is
             relayExecution,
             jitInputParamsV5.repaymentAddress,
             inputParamsV5.message,
-            jitInputParamsV5.executorMessage
+            jitInputParamsV5.executorMessage,
+            msg.value
         );
     }
 
@@ -1685,19 +1686,22 @@ abstract contract SpokePool is
 
     /**
      * @notice Fills a V5 relay. V5 deposits are Gateway-fill-only and are always fast fills: the output tokens
-     * are pulled from the Gateway's current submitter (never from this contract's reserves or msg.sender) and
-     * sent to the recipient via the shared transfer logic. After settlement, if the recipient is a contract and a
-     * message was provided, the V5 executor callback (IAcrossV5Executor.executeAcrossV5) is invoked.
+     * are pulled from the Gateway's current submitter and sent to the recipient via the shared transfer logic.
+     * After settlement, if the recipient is a contract and a message was provided, the V5 executor callback
+     * (IAcrossV5Executor.executeAcrossV5) is invoked.
      * @param relayExecution The relay execution parameters.
      * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
      * @param message V5 path command sequence forwarded to the recipient's executeAcrossV5 callback.
      * @param executorMessage Submitter-provided dynamic data forwarded to the recipient's executeAcrossV5 callback.
+     * @param msgValue Native value forwarded to the recipient's executeAcrossV5 callback. Must be zero unless a
+     * callback is invoked, otherwise it would be stranded in this contract.
      */
     function _fillRelayV5(
         V3RelayExecutionParams memory relayExecution,
         bytes32 relayer,
         bytes memory message,
-        bytes memory executorMessage
+        bytes memory executorMessage,
+        uint256 msgValue
     ) internal {
         _recordFill(relayExecution, relayer, FillType.FastFill);
 
@@ -1707,7 +1711,11 @@ abstract contract SpokePool is
 
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
         if (message.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
-            IAcrossV5Executor(recipientToSend).executeAcrossV5(message, executorMessage);
+            IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(message, executorMessage);
+        } else if (msgValue > 0) {
+            // Native value was sent but there is no executor callback to consume it; reject rather than leaving it
+            // stranded in this contract.
+            revert V5UnusedMsgValue();
         }
     }
 
