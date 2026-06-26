@@ -32,8 +32,9 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
-        address _wrappedNativeTokenAddress
-    ) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours, 0, 0, address(0)) {} // solhint-disable-line no-empty-blocks
+        address _wrappedNativeTokenAddress,
+        address _gateway
+    ) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours, 0, 0, _gateway) {} // solhint-disable-line no-empty-blocks
 
     function initialize(uint32 _initialDepositId, address _crossDomainAdmin, address _hubPool) public initializer {
         __Ownable_init();
@@ -133,6 +134,15 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         bool isSlowFill
     ) external {
         _fillRelayV3(relayExecution, relayer, isSlowFill);
+    }
+
+    function fillRelayV5Internal(
+        V3RelayExecutionParams memory relayExecution,
+        bytes32 relayer,
+        bytes memory message,
+        bytes memory executorMessage
+    ) external payable {
+        _fillRelayV5(relayExecution, relayer, message, executorMessage, msg.value);
     }
 
     // This function is nonReentrant in order to allow caller to test whether a different function
