@@ -1669,10 +1669,13 @@ abstract contract SpokePool is
             );
 
         _recordFill(relayExecution, relayer, fillType);
-        _transferTokensToRecipient(relayExecution, relayExecution.relay, msg.sender, isSlowFill);
+        (address outputToken, address recipientToSend) = _transferTokensToRecipient(
+            relayExecution,
+            relayExecution.relay,
+            msg.sender,
+            isSlowFill
+        );
 
-        address recipientToSend = relayExecution.updatedRecipient.toAddress();
-        address outputToken = relayExecution.relay.outputToken.toAddress();
         bytes memory updatedMessage = relayExecution.updatedMessage;
         if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
@@ -1707,9 +1710,13 @@ abstract contract SpokePool is
 
         // V5 fills are settled by pulling the output tokens from the Gateway's current submitter
         address submitter = gateway.currentSubmitter();
-        _transferTokensToRecipient(relayExecution, relayExecution.relay, submitter, false);
+        (, address recipientToSend) = _transferTokensToRecipient(
+            relayExecution,
+            relayExecution.relay,
+            submitter,
+            false
+        );
 
-        address recipientToSend = relayExecution.updatedRecipient.toAddress();
         if (message.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
             IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(message, executorMessage);
         } else if (msgValue > 0) {
@@ -1795,10 +1802,10 @@ abstract contract SpokePool is
         V3RelayData memory relayData,
         address from,
         bool isSlowFill
-    ) internal {
-        address outputToken = relayData.outputToken.toAddress();
+    ) internal returns (address outputToken, address recipientToSend) {
+        outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
-        address recipientToSend = relayExecution.updatedRecipient.toAddress();
+        recipientToSend = relayExecution.updatedRecipient.toAddress();
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (outputToken == address(wrappedNativeToken)) {
