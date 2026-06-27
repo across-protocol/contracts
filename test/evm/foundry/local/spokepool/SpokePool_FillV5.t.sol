@@ -141,6 +141,7 @@ contract SpokePoolFillV5Test is Test {
                 exclusivityDeadline: fillDeadline, // active exclusivity window
                 repaymentChainId: REPAYMENT_CHAIN_ID,
                 repaymentAddress: relayer.toBytes32(),
+                message: _v5Message(), // relay tag the submitter must echo; validated against the gateway step id
                 executorMessage: ""
             });
     }
@@ -218,6 +219,17 @@ contract SpokePoolFillV5Test is Test {
 
         vm.prank(address(gateway));
         vm.expectRevert(V5SpokePoolInterface.V5OutputAmountTooLow.selector);
+        spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
+    }
+
+    function testRevertsWhenRelayMessageDoesNotMatchStepId() public {
+        // The submitter must echo the V5 relay tag (header ++ current step id); anything else is rejected.
+        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        jit.message = abi.encodePacked(spokePool.V5_DEPOSIT_HEADER(), keccak256("wrong-step"));
+
+        vm.prank(address(gateway));
+        vm.expectRevert(V5SpokePoolInterface.V5InvalidMessage.selector);
         spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
     }
 

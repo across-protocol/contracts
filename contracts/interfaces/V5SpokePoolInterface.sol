@@ -11,6 +11,8 @@ interface V5SpokePoolInterface {
     /// @notice Thrown when native value is sent but there is no executor callback to forward it to, which would
     /// otherwise strand the value in the SpokePool.
     error V5UnusedMsgValue();
+    /// @notice Thrown when relayer passes an invalid message
+    error V5InvalidMessage();
 
     struct InputParamsV5 {
         bytes32 recipient;
@@ -31,6 +33,7 @@ interface V5SpokePoolInterface {
         uint32 exclusivityDeadline;
         uint256 repaymentChainId;
         bytes32 repaymentAddress;
+        bytes message;
         bytes executorMessage;
     }
 }

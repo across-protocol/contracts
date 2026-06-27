@@ -1011,16 +1011,34 @@ abstract contract SpokePool is
         fillRelay(convertedRelayData, repaymentChainId, msg.sender.toBytes32());
     }
 
+    /**
+     * @notice Gateway-only entrypoint that fast-fills a V5 deposit. Callable exclusively by the configured Gateway
+     * while it is executing a step. Output tokens are pulled from the Gateway's current submitter and sent to the
+     * recipient. If the recipient is a contract and an executor message is supplied, its IAcrossV5Executor.executeAcrossV5
+     * callback is invoked with any attached msg.value forwarded.
+     * @dev Submitter-provided message is compared against the current stepId from the Gateway's context and must
+     * be of the shape V5_DEPOSIT_HEADER || stepId
+     * @param input ABI-encoded InputParamsV5 — the user/deposit-committed constraints: recipient, outputToken,
+     * minOutputAmount, and the executor message.
+     * @param jitData ABI-encoded JitInputParamsV5 — the submitter's just-in-time fill parameters: depositor,
+     * exclusiveRelayer, inputToken, input/output amounts, origin chain and deposit id, fill/exclusivity deadlines,
+     * repayment chain and address, the relay message tag (must equal abi.encodePacked(V5_DEPOSIT_HEADER,
+     * gateway.currentStepId())), and dynamic executor data forwarded to the recipient's callback.
+     */
     function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills {
-        if (msg.sender != address(gateway)) revert V5RequiresGateway();
+        require(msg.sender == address(gateway), V5RequiresGateway());
 
         InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
 
         JitInputParamsV5 memory jitInputParamsV5 = abi.decode(jitData, (JitInputParamsV5));
 
-        if (jitInputParamsV5.outputAmount < inputParamsV5.minOutputAmount) {
-            revert V5OutputAmountTooLow();
-        }
+        require(jitInputParamsV5.outputAmount >= inputParamsV5.minOutputAmount, V5OutputAmountTooLow());
+
+        // message should be of the form `abi.encode(bytes32, bytes32)` so we need to check length in
+        // case of any trailing bytes
+        require(jitInputParamsV5.message.length == 64, V5InvalidMessage());
+        (bytes32 messageHeader, bytes32 messageStepId) = abi.decode(jitInputParamsV5.message, (bytes32, bytes32));
+        require(messageHeader == V5_DEPOSIT_HEADER && messageStepId == gateway.currentStepId(), V5InvalidMessage());
 
         // Create relayData from above params
         V3RelayData memory relayData = V3RelayData({
@@ -1035,7 +1053,7 @@ abstract contract SpokePool is
             depositId: jitInputParamsV5.depositId,
             fillDeadline: jitInputParamsV5.fillDeadline,
             exclusivityDeadline: jitInputParamsV5.exclusivityDeadline,
-            message: abi.encodePacked(V5_DEPOSIT_HEADER, gateway.currentStepId())
+            message: jitInputParamsV5.message
         });
 
         V3RelayExecutionParams memory relayExecution = _buildRelayExecution(
