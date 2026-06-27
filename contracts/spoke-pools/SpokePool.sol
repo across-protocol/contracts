@@ -1019,7 +1019,7 @@ abstract contract SpokePool is
      * @dev Submitter-provided message is compared against the current stepId from the Gateway's context and must
      * be of the shape V5_DEPOSIT_HEADER || stepId
      * @param input ABI-encoded InputParamsV5 — the user/deposit-committed constraints: recipient, outputToken,
-     * minOutputAmount, and the executor message.
+     * minOutputAmount, and the executor input.
      * @param jitData ABI-encoded JitInputParamsV5 — the submitter's just-in-time fill parameters: depositor,
      * exclusiveRelayer, inputToken, input/output amounts, origin chain and deposit id, fill/exclusivity deadlines,
      * repayment chain and address, the relay message tag (must equal abi.encodePacked(V5_DEPOSIT_HEADER,
@@ -1712,16 +1712,16 @@ abstract contract SpokePool is
      * (IAcrossV5Executor.executeAcrossV5) is invoked.
      * @param relayExecution The relay execution parameters.
      * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
-     * @param message V5 path command sequence forwarded to the recipient's executeAcrossV5 callback.
-     * @param executorMessage Submitter-provided dynamic data forwarded to the recipient's executeAcrossV5 callback.
+     * @param executorInput V5 path command sequence forwarded to the recipient's executeAcrossV5 callback.
+     * @param executorJitInput Submitter-provided dynamic data forwarded to the recipient's executeAcrossV5 callback.
      * @param msgValue Native value forwarded to the recipient's executeAcrossV5 callback. Must be zero unless a
      * callback is invoked, otherwise it would be stranded in this contract.
      */
     function _fillRelayV5(
         V3RelayExecutionParams memory relayExecution,
         bytes32 relayer,
-        bytes memory message,
-        bytes memory executorMessage,
+        bytes memory executorInput,
+        bytes memory executorJitInput,
         uint256 msgValue
     ) internal {
         _recordFill(relayExecution, relayer, FillType.FastFill);
@@ -1735,8 +1735,8 @@ abstract contract SpokePool is
             false
         );
 
-        if (message.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
-            IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(message, executorMessage);
+        if (executorInput.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+            IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(executorInput, executorJitInput);
         } else if (msgValue > 0) {
             // Native value was sent but there is no executor callback to consume it; reject rather than leaving it
             // stranded in this contract.
