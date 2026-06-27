@@ -1065,8 +1065,8 @@ abstract contract SpokePool is
         _fillRelayV5(
             relayExecution,
             jitInputParamsV5.repaymentAddress,
-            inputParamsV5.message,
-            jitInputParamsV5.executorMessage,
+            inputParamsV5.executorInput,
+            jitInputParamsV5.executorJitInput,
             msg.value
         );
     }

@@ -122,7 +122,7 @@ contract SpokePoolFillV5Test is Test {
                 recipient: recipient.toBytes32(),
                 outputToken: address(destErc20).toBytes32(),
                 minOutputAmount: AMOUNT,
-                message: ""
+                executorInput: ""
             });
     }
 
@@ -142,7 +142,7 @@ contract SpokePoolFillV5Test is Test {
                 repaymentChainId: REPAYMENT_CHAIN_ID,
                 repaymentAddress: relayer.toBytes32(),
                 message: _v5Message(), // relay tag the submitter must echo; validated against the gateway step id
-                executorMessage: ""
+                executorJitInput: ""
             });
     }
 
@@ -328,13 +328,13 @@ contract SpokePoolFillV5Test is Test {
 
         V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
         input.recipient = address(executor).toBytes32();
-        input.message = hex"abcd";
+        input.executorInput = hex"abcd";
 
         V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
-        jit.executorMessage = hex"1234";
+        jit.executorJitInput = hex"1234";
 
         vm.expectEmit(true, true, true, true, address(executor));
-        emit MockV5Executor.ExecutedAcrossV5(input.message, jit.executorMessage);
+        emit MockV5Executor.ExecutedAcrossV5(input.executorInput, jit.executorJitInput);
         _execute(input, jit);
 
         // Output tokens were funded to the executor (the recipient) before the callback.
@@ -344,7 +344,7 @@ contract SpokePoolFillV5Test is Test {
     function testNoExecutorCallbackWhenRecipientIsEOA() public {
         // A message is supplied but the recipient is an EOA, so no callback is attempted and the fill still settles.
         V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        input.message = hex"abcd";
+        input.executorInput = hex"abcd";
         V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
 
         _execute(input, jit);
@@ -358,9 +358,9 @@ contract SpokePoolFillV5Test is Test {
 
         V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
         input.recipient = address(executor).toBytes32();
-        input.message = hex"abcd";
+        input.executorInput = hex"abcd";
         V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
-        jit.executorMessage = hex"1234";
+        jit.executorJitInput = hex"1234";
 
         vm.deal(address(gateway), value);
         vm.prank(address(gateway));
@@ -376,7 +376,7 @@ contract SpokePoolFillV5Test is Test {
 
         // A message is supplied but the recipient is an EOA, so no callback fires to consume the native value.
         V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        input.message = hex"abcd";
+        input.executorInput = hex"abcd";
         V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
 
         vm.deal(address(gateway), value);

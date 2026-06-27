@@ -18,7 +18,7 @@ interface V5SpokePoolInterface {
         bytes32 recipient;
         bytes32 outputToken;
         uint256 minOutputAmount;
-        bytes message;
+        bytes executorInput;
     }
 
     struct JitInputParamsV5 {
@@ -34,6 +34,6 @@ interface V5SpokePoolInterface {
         uint256 repaymentChainId;
         bytes32 repaymentAddress;
         bytes message;
-        bytes executorMessage;
+        bytes executorJitInput;
     }
 }
