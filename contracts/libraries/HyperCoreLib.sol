@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
-import { SafeCast } from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { ICoreDepositWallet } from "../external/interfaces/ICoreDepositWallet.sol";
 
 interface ICoreWriter {
@@ -388,7 +388,7 @@ library HyperCoreLib {
      * @return erc20CoreIndex The core token index id
      */
     function toTokenId(address assetBridgeAddress) internal pure returns (uint64) {
-        return uint64(uint160(assetBridgeAddress) - BASE_ASSET_BRIDGE_ADDRESS_UINT256);
+        return SafeCast.toUint64(uint160(assetBridgeAddress) - BASE_ASSET_BRIDGE_ADDRESS_UINT256);
     }
 
     /**
@@ -416,7 +416,7 @@ library HyperCoreLib {
             // Scale down, rounding UP to avoid shortfall on Core
             uint256 scaleDivisor = 10 ** uint8(-decimalDiff);
             amountEVMToSend = (uint256(minimumCoreReceiveAmount) + scaleDivisor - 1) / scaleDivisor; // ceil division
-            amountCoreToReceive = uint64(amountEVMToSend * scaleDivisor);
+            amountCoreToReceive = SafeCast.toUint64(amountEVMToSend * scaleDivisor);
         }
     }
 
@@ -461,7 +461,7 @@ library HyperCoreLib {
         if (decimalsFrom == decimalsTo) {
             return amountDecimalsFrom;
         } else if (decimalsFrom < decimalsTo) {
-            return uint64(amountDecimalsFrom * 10 ** (decimalsTo - decimalsFrom));
+            return SafeCast.toUint64(amountDecimalsFrom * 10 ** (decimalsTo - decimalsFrom));
         } else {
             // round down
             return uint64(amountDecimalsFrom / 10 ** (decimalsFrom - decimalsTo));
