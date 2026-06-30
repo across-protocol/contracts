@@ -7,9 +7,6 @@ import "../external/interfaces/WETH9Interface.sol";
 import "../interfaces/SpokePoolMessageHandler.sol";
 import "../interfaces/SpokePoolInterface.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
-import "../interfaces/IGateway.sol";
-import "../interfaces/IAcrossV5ExecutorAdapter.sol";
-import { ParamsFromV5Input, ParamsFromV5Jit } from "../types/Common.sol";
 import "../upgradeable/MultiCallerUpgradeable.sol";
 import "../upgradeable/EIP712CrossChainUpgradeable.sol";
 import "../upgradeable/AddressLibUpgradeable.sol";
@@ -17,9 +14,10 @@ import "../libraries/AddressConverters.sol";
 import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
+import { IGateway } from "../interfaces/IGateway.sol";
 import { V5SpokePoolInterface } from "../interfaces/V5SpokePoolInterface.sol";
 import { IAcrossV5Executor } from "../interfaces/IAcrossV5Executor.sol";
-import { IGateway } from "../interfaces/IGateway.sol";
+import { IAcrossV5ExecutorAdapter } from "../interfaces/IAcrossV5ExecutorAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -49,6 +47,7 @@ abstract contract SpokePool is
     IDestinationSettler,
     OFTTransportAdapter,
     IAcrossV5Executor,
+    IAcrossV5ExecutorAdapter,
     SafeTransferERC20
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
@@ -144,10 +143,6 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     WETH9Interface public immutable wrappedNativeToken;
 
-    /// @notice Canonical Across V5 Gateway. V5 deposits/fills read the live execution context from this contract.
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    IGateway public immutable gateway;
-
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -157,7 +152,7 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable fillDeadlineBuffer;
 
-    // Across V5 Gateway
+    /// @notice Canonical Across V5 Gateway. V5 deposits/fills read the live execution context from this contract.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     IGateway public immutable gateway;
 
@@ -243,10 +238,6 @@ abstract contract SpokePool is
     error OFTTokenMismatch();
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
-    /// @notice Thrown when a JIT modification of `outputAmount` would worsen the recipient's terms.
-    error ParamModificationNotAnImprovement();
-    /// @notice Thrown when the authority signature over the JIT modifications is missing or invalid.
-    error InvalidParamModificationSignature();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't

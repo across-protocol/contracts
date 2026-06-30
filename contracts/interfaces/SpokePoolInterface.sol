@@ -104,5 +104,4 @@ interface SpokePoolInterface {
     error ExternalCallExecutionFailed();
     error MessageTooShort();
     error ZeroAddressTarget();
-    error InactiveV5Flow();
 }
