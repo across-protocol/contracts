@@ -34,7 +34,8 @@ contract DeployInkSpokePool is Script, Test, DeploymentUtils {
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             address(0), // _l2Usdc
-            address(0) // _cctpTokenMessenger
+            address(0), // _cctpTokenMessenger
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to 1

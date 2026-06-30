@@ -75,14 +75,16 @@ contract Blast_SpokePool is Ovm_SpokePool {
         address usdb,
         address l1Usdb,
         address yieldRecipient,
-        address blastRetriever
+        address blastRetriever,
+        address _gateway
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            _gateway
         )
     {
         USDB = usdb;

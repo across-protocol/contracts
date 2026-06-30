@@ -47,7 +47,8 @@ contract Scroll_SpokePool is SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
+        uint32 _fillDeadlineBuffer,
+        address _gateway
     )
         SpokePool(
             _wrappedNativeTokenAddress,
@@ -55,7 +56,8 @@ contract Scroll_SpokePool is SpokePool {
             _fillDeadlineBuffer,
             // Scroll_SpokePool does not use OFT messaging, setting destination id and fee cap to 0
             0,
-            0
+            0,
+            _gateway
         )
     {} // solhint-disable-line no-empty-blocks
 

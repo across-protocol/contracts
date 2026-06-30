@@ -35,7 +35,8 @@ contract DeployOptimismSpokePool is Script, Test, DeploymentUtils {
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             getUSDCAddress(info.spokeChainId), // _l2Usdc
-            cctpTokenMessenger // _cctpTokenMessenger
+            cctpTokenMessenger, // _cctpTokenMessenger
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's

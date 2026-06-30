@@ -66,7 +66,8 @@ contract Ethereum_SpokePoolTest is Test {
         spokePoolImplementation = new Ethereum_SpokePool(
             address(weth),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         // Deploy proxy with owner as deployer
@@ -90,7 +91,8 @@ contract Ethereum_SpokePoolTest is Test {
         Ethereum_SpokePool newImplementation = new Ethereum_SpokePool(
             address(weth),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         // Attempt upgrade from non-owner should fail

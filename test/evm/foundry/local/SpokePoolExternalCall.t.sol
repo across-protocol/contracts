@@ -23,7 +23,7 @@ contract SpokePoolExternalCallTest is Test {
 
         vm.startPrank(owner);
         ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(mockWETH))),
+            address(new MockSpokePool(address(mockWETH), address(0))),
             abi.encodeCall(MockSpokePool.initialize, (0, owner, address(420)))
         );
         spokePool = MockSpokePool(payable(proxy));

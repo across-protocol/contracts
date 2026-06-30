@@ -29,7 +29,7 @@ contract MultiCallerUpgradeableTest is Test {
         mockWETH = new ERC20("Wrapped Ether", "WETH");
         mockL2WETH = new ERC20("L2 Wrapped Ether", "L2WETH");
 
-        ethereumSpokePool = new Ethereum_SpokePool(address(mockWETH), 0, 0);
+        ethereumSpokePool = new Ethereum_SpokePool(address(mockWETH), 0, 0, address(0));
 
         rando1 = vm.addr(1);
         rando2 = vm.addr(2);

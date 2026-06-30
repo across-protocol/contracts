@@ -132,7 +132,8 @@ contract Optimism_SpokePoolTest is Test {
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER,
             IERC20(address(usdc)),
-            cctpMessenger
+            cctpMessenger,
+            address(0)
         );
 
         // Deploy proxy
@@ -177,7 +178,8 @@ contract Optimism_SpokePoolTest is Test {
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER,
             IERC20(address(usdc)),
-            cctpMessenger
+            cctpMessenger,
+            address(0)
         );
 
         // Attempt upgrade from random address should fail with NotCrossChainCall

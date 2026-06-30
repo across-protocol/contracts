@@ -36,7 +36,8 @@ contract DeployScrollSpokePool is Script, Test, DeploymentUtils {
         bytes memory constructorArgs = abi.encode(
             weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
-            FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
+            FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's

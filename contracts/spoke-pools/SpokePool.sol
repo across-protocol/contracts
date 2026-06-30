@@ -14,6 +14,9 @@ import "../libraries/AddressConverters.sol";
 import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
+import { V5SpokePoolInterface } from "../interfaces/V5SpokePoolInterface.sol";
+import { IAcrossV5Executor } from "../interfaces/IAcrossV5Executor.sol";
+import { IGateway } from "../interfaces/IGateway.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -33,6 +36,7 @@ import "@openzeppelin/contracts-v4/utils/math/SignedMath.sol";
  * @custom:security-contact bugs@across.to
  */
 abstract contract SpokePool is
+    V5SpokePoolInterface,
     V3SpokePoolInterface,
     SpokePoolInterface,
     UUPSUpgradeable,
@@ -41,6 +45,7 @@ abstract contract SpokePool is
     EIP712CrossChainUpgradeable,
     IDestinationSettler,
     OFTTransportAdapter,
+    IAcrossV5Executor,
     SafeTransferERC20
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
@@ -136,6 +141,10 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     WETH9Interface public immutable wrappedNativeToken;
 
+    /// @notice Canonical Across V5 Gateway. V5 deposits/fills read the live execution context from this contract.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    IGateway public immutable gateway;
+
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -151,6 +160,10 @@ abstract contract SpokePool is
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
+
+    /// @notice Magic header marking a deposit as "V5": Gateway-only fillable through the V5 entrypoints.
+    bytes32 public constant V5_DEPOSIT_HEADER = keccak256("AcrossV5Deposit-v1.0.0");
+
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
@@ -229,6 +242,7 @@ abstract contract SpokePool is
      * into the future from the block time of the deposit.
      * @param _oftDstEid destination endpoint id for OFT messaging
      * @param _oftFeeCap fee cap in native token when paying for cross-chain OFT transfers
+     * @param _gateway gateway address
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -236,11 +250,13 @@ abstract contract SpokePool is
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        address _gateway
     ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
+        gateway = IGateway(_gateway);
         _disableInitializers();
     }
 
@@ -286,6 +302,14 @@ abstract contract SpokePool is
 
     modifier unpausedFills() {
         if (pausedFills) revert FillsArePaused();
+        _;
+    }
+
+    // Reverts if `message` belongs to a V5 deposit. V5 deposits are Gateway-fill-only and must never be settled
+    // out of this contract's reserves, so this guards functions (such as the slow-fill path) that must not
+    // process them.
+    modifier nonV5Fill(bytes memory message) {
+        if (_isV5Fill(message)) revert V5MethodNotAllowed();
         _;
     }
 
@@ -959,24 +983,8 @@ abstract contract SpokePool is
         V3RelayData memory relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress
-    ) public override nonReentrant unpausedFills {
-        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-        // to fill the relay.
-        if (
-            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
-        ) {
-            revert NotExclusiveRelayer();
-        }
-
-        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
-            relay: relayData,
-            relayHash: getV3RelayHash(relayData),
-            updatedOutputAmount: relayData.outputAmount,
-            updatedRecipient: relayData.recipient,
-            updatedMessage: relayData.message,
-            repaymentChainId: repaymentChainId
-        });
+    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
+        V3RelayExecutionParams memory relayExecution = _buildRelayExecution(relayData, msg.sender, repaymentChainId);
 
         _fillRelayV3(relayExecution, repaymentAddress, false);
     }
@@ -1001,6 +1009,66 @@ abstract contract SpokePool is
         });
 
         fillRelay(convertedRelayData, repaymentChainId, msg.sender.toBytes32());
+    }
+
+    /**
+     * @notice Gateway-only entrypoint that fast-fills a V5 deposit. Callable exclusively by the configured Gateway
+     * while it is executing a step. Output tokens are pulled from the Gateway's current submitter and sent to the
+     * recipient. If the recipient is a contract and an executor message is supplied, its IAcrossV5Executor.executeAcrossV5
+     * callback is invoked with any attached msg.value forwarded.
+     * @dev Submitter-provided message is compared against the current stepId from the Gateway's context and must
+     * be of the shape V5_DEPOSIT_HEADER || stepId
+     * @param input ABI-encoded InputParamsV5 — the user/deposit-committed constraints: recipient, outputToken,
+     * minOutputAmount, and the executor input.
+     * @param jitData ABI-encoded JitInputParamsV5 — the submitter's just-in-time fill parameters: depositor,
+     * exclusiveRelayer, inputToken, input/output amounts, origin chain and deposit id, fill/exclusivity deadlines,
+     * repayment chain and address, the relay message tag (must equal abi.encodePacked(V5_DEPOSIT_HEADER,
+     * gateway.currentStepId())), and dynamic executor data forwarded to the recipient's callback.
+     */
+    function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills nonReentrant {
+        require(msg.sender == address(gateway), V5RequiresGateway());
+
+        InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
+
+        JitInputParamsV5 memory jitInputParamsV5 = abi.decode(jitData, (JitInputParamsV5));
+
+        require(jitInputParamsV5.outputAmount >= inputParamsV5.minOutputAmount, V5OutputAmountTooLow());
+
+        // message should be of the form `abi.encode(bytes32, bytes32)` so we need to check length in
+        // case of any trailing bytes
+        require(jitInputParamsV5.message.length == 64, V5InvalidMessage());
+        (bytes32 messageHeader, bytes32 messageStepId) = abi.decode(jitInputParamsV5.message, (bytes32, bytes32));
+        require(messageHeader == V5_DEPOSIT_HEADER && messageStepId == gateway.currentStepId(), V5InvalidMessage());
+
+        // Create relayData from above params
+        V3RelayData memory relayData = V3RelayData({
+            depositor: jitInputParamsV5.depositor,
+            recipient: inputParamsV5.recipient,
+            exclusiveRelayer: jitInputParamsV5.exclusiveRelayer,
+            inputToken: jitInputParamsV5.inputToken,
+            outputToken: inputParamsV5.outputToken,
+            inputAmount: jitInputParamsV5.inputAmount,
+            outputAmount: jitInputParamsV5.outputAmount,
+            originChainId: jitInputParamsV5.originChainId,
+            depositId: jitInputParamsV5.depositId,
+            fillDeadline: jitInputParamsV5.fillDeadline,
+            exclusivityDeadline: jitInputParamsV5.exclusivityDeadline,
+            message: jitInputParamsV5.message
+        });
+
+        V3RelayExecutionParams memory relayExecution = _buildRelayExecution(
+            relayData,
+            gateway.currentSubmitter(),
+            jitInputParamsV5.repaymentChainId
+        );
+
+        _fillRelayV5(
+            relayExecution,
+            jitInputParamsV5.repaymentAddress,
+            inputParamsV5.executorInput,
+            jitInputParamsV5.executorJitInput,
+            msg.value
+        );
     }
 
     /**
@@ -1029,7 +1097,7 @@ abstract contract SpokePool is
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
-    ) public override nonReentrant unpausedFills {
+    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
         // to fill the relay.
         if (
@@ -1077,7 +1145,9 @@ abstract contract SpokePool is
      * slow filled. If any of the params are missing or different from the origin chain deposit,
      * then Across will not include a slow fill for the intended deposit.
      */
-    function requestSlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+    function requestSlowFill(
+        V3RelayData calldata relayData
+    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
         uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
@@ -1164,7 +1234,7 @@ abstract contract SpokePool is
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
-    ) public override nonReentrant {
+    ) public override nonReentrant nonV5Fill(slowFillLeaf.relayData.message) {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken.toAddress());
@@ -1566,21 +1636,48 @@ abstract contract SpokePool is
         return bytes3(account.code) == EIP7702_PREFIX;
     }
 
+    /**
+     * @notice Validates fill exclusivity for the given filler and builds the relay execution params shared by the
+     * fill entrypoints. Reverts NotExclusiveRelayer if exclusivity is active and `filler` is not the exclusive
+     * relayer.
+     * @param relayData The relay data being filled.
+     * @param filler Address attempting the fill: msg.sender for fillRelay, the Gateway submitter for a V5 fill.
+     * @param repaymentChainId Chain where the relayer wants to be refunded after the challenge window.
+     */
+    function _buildRelayExecution(
+        V3RelayData memory relayData,
+        address filler,
+        uint256 repaymentChainId
+    ) internal view returns (V3RelayExecutionParams memory) {
+        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
+        // to fill the relay.
+        if (
+            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
+            relayData.exclusiveRelayer.toAddress() != filler
+        ) {
+            revert NotExclusiveRelayer();
+        }
+
+        return
+            V3RelayExecutionParams({
+                relay: relayData,
+                relayHash: getV3RelayHash(relayData),
+                updatedOutputAmount: relayData.outputAmount,
+                updatedRecipient: relayData.recipient,
+                updatedMessage: relayData.message,
+                repaymentChainId: repaymentChainId
+            });
+    }
+
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
     function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
-        V3RelayData memory relayData = relayExecution.relay;
-
-        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
-
-        bytes32 relayHash = relayExecution.relayHash;
-
         // If a slow fill for this fill was requested then the relayFills value for this hash will be
         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
         // is trivially true. We'll emit this value in the FilledRelay
         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
-        // be used for a slow fill execution.
+        // be used for a slow fill execution. Computed before _recordFill marks the relay hash as Filled.
         FillType fillType = isSlowFill
             ? FillType.SlowFill // The following is true if this is a fast fill that was sent after a slow fill request.
             : (
@@ -1589,17 +1686,88 @@ abstract contract SpokePool is
                     : FillType.FastFill
             );
 
+        _recordFill(relayExecution, relayer, fillType);
+        (address outputToken, address recipientToSend) = _transferTokensToRecipient(
+            relayExecution,
+            relayExecution.relay,
+            msg.sender,
+            isSlowFill
+        );
+
+        bytes memory updatedMessage = relayExecution.updatedMessage;
+        if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+            AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
+                outputToken,
+                relayExecution.updatedOutputAmount,
+                msg.sender,
+                updatedMessage
+            );
+        }
+    }
+
+    /**
+     * @notice Fills a V5 relay. V5 deposits are Gateway-fill-only and are always fast fills: the output tokens
+     * are pulled from the Gateway's current submitter and sent to the recipient via the shared transfer logic.
+     * After settlement, if the recipient is a contract and a message was provided, the V5 executor callback
+     * (IAcrossV5Executor.executeAcrossV5) is invoked.
+     * @param relayExecution The relay execution parameters.
+     * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
+     * @param executorInput V5 path command sequence forwarded to the recipient's executeAcrossV5 callback.
+     * @param executorJitInput Submitter-provided dynamic data forwarded to the recipient's executeAcrossV5 callback.
+     * @param msgValue Native value forwarded to the recipient's executeAcrossV5 callback. Must be zero unless a
+     * callback is invoked, otherwise it would be stranded in this contract.
+     */
+    function _fillRelayV5(
+        V3RelayExecutionParams memory relayExecution,
+        bytes32 relayer,
+        bytes memory executorInput,
+        bytes memory executorJitInput,
+        uint256 msgValue
+    ) internal {
+        _recordFill(relayExecution, relayer, FillType.FastFill);
+
+        // V5 fills are settled by pulling the output tokens from the Gateway's current submitter
+        address submitter = gateway.currentSubmitter();
+        (, address recipientToSend) = _transferTokensToRecipient(
+            relayExecution,
+            relayExecution.relay,
+            submitter,
+            false
+        );
+
+        if (executorInput.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+            IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(executorInput, executorJitInput);
+        } else if (msgValue > 0) {
+            // Native value was sent but there is no executor callback to consume it; reject rather than leaving it
+            // stranded in this contract.
+            revert V5UnusedMsgValue();
+        }
+    }
+
+    /**
+     * @notice Shared fill bookkeeping: validates the fill deadline, marks the relay hash as
+     * Filled (reverting on a double fill), and emits the FilledRelay event. Token settlement is handled by the
+     * caller, which differs between fill versions.
+     * @param relayExecution The relay execution parameters.
+     * @param relayer Address credited as the relayer in the FilledRelay event.
+     * @param fillType The fill type to record in the FilledRelay event.
+     */
+    function _recordFill(V3RelayExecutionParams memory relayExecution, bytes32 relayer, FillType fillType) internal {
+        V3RelayData memory relayData = relayExecution.relay;
+
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+
         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
         // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
         // needs to send back to the HubPool.
+        bytes32 relayHash = relayExecution.relayHash;
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
         fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
         _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
-        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
     }
 
     /**
@@ -1643,16 +1811,19 @@ abstract contract SpokePool is
      * @notice Transfers tokens to the recipient based on the relay execution parameters.
      * @param relayExecution The relay execution parameters.
      * @param relayData The relay data.
+     * @param from Address the output tokens are pulled from for fast fills.
+     * Unused for slow fills, which are paid out of this contract's reserves.
      * @param isSlowFill Whether this is a slow fill execution.
      */
     function _transferTokensToRecipient(
         V3RelayExecutionParams memory relayExecution,
         V3RelayData memory relayData,
+        address from,
         bool isSlowFill
-    ) internal {
-        address outputToken = relayData.outputToken.toAddress();
+    ) internal returns (address outputToken, address recipientToSend) {
+        outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
-        address recipientToSend = relayExecution.updatedRecipient.toAddress();
+        recipientToSend = relayExecution.updatedRecipient.toAddress();
 
         // If relay token is wrappedNativeToken then unwrap and send native token.
         if (outputToken == address(wrappedNativeToken)) {
@@ -1661,24 +1832,24 @@ abstract contract SpokePool is
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
             // need to unwrap it to native token before sending to the user.
-            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(from, address(this), amountToSend);
             _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
             // Else, this is a normal ERC20 token. Send to recipient.
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
-            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(from, recipientToSend, amountToSend);
             else _safeTransfer(outputToken, recipientToSend, amountToSend);
         }
+    }
 
-        bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
-            AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
-                outputToken,
-                amountToSend,
-                msg.sender,
-                updatedMessage
-            );
+    function _isV5Fill(bytes memory message) internal pure returns (bool) {
+        if (message.length < 32) return false;
+        bytes32 header;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            header := mload(add(message, 32))
         }
+        return header == V5_DEPOSIT_HEADER;
     }
 
     // Determine whether the exclusivityDeadline implies active exclusivity.
