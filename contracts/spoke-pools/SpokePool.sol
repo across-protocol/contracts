@@ -180,7 +180,7 @@ abstract contract SpokePool is
     bytes3 internal constant EIP7702_PREFIX = 0xef0100;
 
     // Magic prefix prepended to the deposit `message` so the protocol can differentiate a V5 deposit from a standard one
-    bytes32 public constant V5_MAGIC_PREFIX = keccak256("V5_MAGIC_PREFIX.V1");
+    bytes32 public constant V5_MAGIC_PREFIX = keccak256("AcrossV5MessagePrefix.V1");
 
     /// @notice Domain tag mixed into the JIT-modification digest
     bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
@@ -1760,9 +1760,11 @@ abstract contract SpokePool is
         ParamsFromV5Jit memory jitParams = abi.decode(jitData, (ParamsFromV5Jit));
 
         bytes32 curPathId = gateway.currentPathId();
+        address curSubmitter = gateway.currentSubmitter();
+        if (curSubmitter == address(0)) revert InactiveV5Flow();
         uint256 depositId = getUnsafeDepositId(
             // gateway's submitter serves as a differentiating factor instead of msg.sender, which is going to be Executor for most deposits here
-            gateway.currentSubmitter(),
+            curSubmitter,
             inputParams.depositor,
             // depositNonce here serves as a differentiator of different deposits that might come in a single Path execution
             uint256(keccak256(abi.encodePacked(curPathId, inputParams.depositNonce)))
