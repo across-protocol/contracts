@@ -14,9 +14,10 @@ import "../libraries/AddressConverters.sol";
 import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
+import { IGateway } from "../interfaces/IGateway.sol";
 import { V5SpokePoolInterface } from "../interfaces/V5SpokePoolInterface.sol";
 import { IAcrossV5Executor } from "../interfaces/IAcrossV5Executor.sol";
-import { IGateway } from "../interfaces/IGateway.sol";
+import { IAcrossV5ExecutorAdapter } from "../interfaces/IAcrossV5ExecutorAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -46,6 +47,7 @@ abstract contract SpokePool is
     IDestinationSettler,
     OFTTransportAdapter,
     IAcrossV5Executor,
+    IAcrossV5ExecutorAdapter,
     SafeTransferERC20
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
@@ -141,10 +143,6 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     WETH9Interface public immutable wrappedNativeToken;
 
-    /// @notice Canonical Across V5 Gateway. V5 deposits/fills read the live execution context from this contract.
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    IGateway public immutable gateway;
-
     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
     // caller to use an approximately "current" realized fee.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -153,6 +151,10 @@ abstract contract SpokePool is
     // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable fillDeadlineBuffer;
+
+    /// @notice Canonical Across V5 Gateway. V5 deposits/fills read the live execution context from this contract.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    IGateway public immutable gateway;
 
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
@@ -184,6 +186,17 @@ abstract contract SpokePool is
 
     // EIP-7702 prefix for delegated wallets.
     bytes3 internal constant EIP7702_PREFIX = 0xef0100;
+
+    // Magic prefix prepended to the deposit `message` so the protocol can differentiate a V5 deposit from a standard one
+    bytes32 public constant V5_MAGIC_PREFIX = keccak256("AcrossV5MessagePrefix.V1");
+
+    /// @notice Domain tag mixed into the JIT-modification digest
+    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
+
+    // Bit flags packed into the high 12 bytes of `ParamsFromV5Input.paramModificationRules`
+    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
 
     /****************************************
      *                EVENTS                *
@@ -1897,6 +1910,100 @@ abstract contract SpokePool is
             AddressLibUpgradeable.sendValue(payable(msg.sender), refund);
         }
         _sendOftTransfer(_token, _messenger, sendParam, fee);
+    }
+
+    function adapterExecuteAcrossV5(
+        bytes calldata input,
+        bytes calldata jitData
+    ) external payable nonReentrant unpausedDeposits {
+        ParamsFromV5Input memory inputParams = abi.decode(input, (ParamsFromV5Input));
+        ParamsFromV5Jit memory jitParams = abi.decode(jitData, (ParamsFromV5Jit));
+
+        bytes32 curPathId = gateway.currentPathId();
+        address curSubmitter = gateway.currentSubmitter();
+        if (curSubmitter == address(0)) revert InactiveV5Flow();
+        uint256 depositId = getUnsafeDepositId(
+            // gateway's submitter serves as a differentiating factor instead of msg.sender, which is going to be Executor for most deposits here
+            curSubmitter,
+            inputParams.depositor,
+            // depositNonce here serves as a differentiator of different deposits that might come in a single Path execution
+            uint256(keccak256(abi.encodePacked(curPathId, inputParams.depositNonce)))
+        );
+
+        // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
+        // per-deposit rules encoded in `inputParams.paramModificationRules`.
+        _resolveDynamicParams(inputParams, jitParams, curPathId);
+
+        DepositV3Params memory params = DepositV3Params({
+            depositor: inputParams.depositor,
+            recipient: inputParams.recipient,
+            inputToken: inputParams.inputToken,
+            outputToken: inputParams.outputToken,
+            inputAmount: inputParams.inputAmount,
+            outputAmount: inputParams.outputAmount,
+            destinationChainId: inputParams.destinationChainId,
+            exclusiveRelayer: inputParams.exclusiveRelayer,
+            depositId: depositId,
+            quoteTimestamp: inputParams.quoteTimestamp,
+            fillDeadline: inputParams.fillDeadline,
+            exclusivityParameter: inputParams.exclusivityParameter,
+            message: abi.encodePacked(V5_MAGIC_PREFIX, inputParams.dstStepId)
+        });
+        _depositV3(params);
+    }
+
+    /**
+     * @notice Applies just-in-time (JIT) modifications carried in `jitParams` to `inputParams`, governed by the
+     * rules packed into `inputParams.paramModificationRules`.
+     * @dev Each modifiable parameter is either static (its `MOD_FLAG_ALLOW_*` bit is unset, so the JIT value is
+     * ignored) or dynamic. Dynamic parameters obey:
+     * - `outputAmount`: improvement-only (the new value must be >= the original so the recipient is never worse off).
+     * - `exclusiveRelayer` / `exclusivityParameter`: set to any value.
+     */
+    function _resolveDynamicParams(
+        ParamsFromV5Input memory inputParams,
+        ParamsFromV5Jit memory jitParams,
+        bytes32 pathId
+    ) internal view {
+        uint256 rules = uint256(inputParams.paramModificationRules);
+        uint256 flags = rules >> 160;
+        address authority = address(uint160(rules));
+
+        // If an authority is configured, the proposed modification set must be signed by it.
+        if (authority != address(0)) {
+            bytes32 digest = keccak256(
+                abi.encodePacked(
+                    VERSIONED_AUCTION_NAMEHASH,
+                    address(gateway),
+                    pathId,
+                    inputParams.depositNonce,
+                    jitParams.newAmtOut,
+                    jitParams.newExclusiveRelayer,
+                    jitParams.newExclusivityParameter
+                )
+            );
+            if (!SignatureChecker.isValidSignatureNow(authority, digest, jitParams.signature)) {
+                revert InvalidParamModificationSignature();
+            }
+        }
+
+        // outputAmount: improvement-only (recipient is never worse off).
+        if (flags & MOD_FLAG_ALLOW_AMOUNT_OUT != 0) {
+            if (jitParams.newAmtOut < inputParams.outputAmount) {
+                revert ParamModificationNotAnImprovement();
+            }
+            inputParams.outputAmount = jitParams.newAmtOut;
+        }
+
+        // exclusiveRelayer: arbitrary.
+        if (flags & MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER != 0) {
+            inputParams.exclusiveRelayer = jitParams.newExclusiveRelayer;
+        }
+
+        // exclusivityParameter: arbitrary.
+        if (flags & MOD_FLAG_ALLOW_EXCLUSIVITY != 0) {
+            inputParams.exclusivityParameter = jitParams.newExclusivityParameter;
+        }
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
