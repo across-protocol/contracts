@@ -1739,19 +1739,6 @@ abstract contract SpokePool is
     IGateway public immutable gateway;
     bytes32 public constant V5_MAGIC_PREFIX = keccak256("V5_MAGIC_PREFIX.V1");
 
-    /// @notice Domain tag mixed into the JIT-modification digest so signatures cannot be replayed across protocols
-    /// or auction versions. Bumped whenever the digest layout changes.
-    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
-
-    // `paramModificationRules` layout (bytes32): the low 20 bytes hold the authority address that must sign
-    // modifications (zero => modifications are permissionless, no signature required), and the high 12 bytes hold a
-    // flag bitfield. We use the lowest 3 bits of that bitfield (read after shifting the rules right by 160). Each
-    // bit gates whether one parameter is modifiable; the per-parameter value rules (e.g. improvement-only) always
-    // apply regardless of whether the modification is signed.
-    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
-    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
-    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
-
     struct ParamsFromV5Input {
         bytes32 depositor;
         bytes32 recipient;
@@ -1767,9 +1754,8 @@ abstract contract SpokePool is
         uint32 fillDeadline;
         uint32 exclusivityParameter;
         bytes32 dstStepId;
-        // First 12 bytes: flags
-        // [is signed only mod, allow amtOut mod, allow exclusiveRelayer mod, allow exclusivityParameter mod]
-        // Last 20 bytes: address that has to sign the modifications
+        // Deposit modification rules. Packing: (high 12 bytes for modify permisison flags, low 20 bytes for signing authority if required)
+        // Current flags: bit 0: outputAmount, bit 1: exclusiveRelayer, bit 2: exclusivityParameter
         bytes32 paramModificationRules;
     }
 
@@ -1787,18 +1773,18 @@ abstract contract SpokePool is
         ParamsFromV5Input memory inputParams = abi.decode(input, (ParamsFromV5Input));
         ParamsFromV5Jit memory jitParams = abi.decode(jitData, (ParamsFromV5Jit));
 
-        bytes32 curStepId = gateway.currentStepId();
+        bytes32 curPathId = gateway.currentPathId();
         uint256 depositId = getUnsafeDepositId(
             // gateway's submitter serves as a differentiating factor instead of msg.sender, which is going to be Executor for most deposits here
             gateway.currentSubmitter(),
             inputParams.depositor,
-            // depositNonce here serves as a differentiator of different depsoits that might come in a single Path execution
-            uint256(keccak256(abi.encodePacked(curStepId, inputParams.depositNonce)))
+            // depositNonce here serves as a differentiator of different deposits that might come in a single Path execution
+            uint256(keccak256(abi.encodePacked(curPathId, inputParams.depositNonce)))
         );
 
         // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
         // per-deposit rules encoded in `inputParams.paramModificationRules`.
-        _resolveDynamicParams(inputParams, jitParams, gateway.currentPathId());
+        _resolveDynamicParams(inputParams, jitParams, curPathId);
 
         DepositV3Params memory params = DepositV3Params({
             depositor: inputParams.depositor,
@@ -1818,6 +1804,14 @@ abstract contract SpokePool is
         _depositV3(params);
     }
 
+    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
+
+    /// @notice Domain tag mixed into the JIT-modification digest so signatures cannot be replayed across protocols
+    /// or auction versions. Bumped whenever the digest layout changes.
+    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
+
     /**
      * @notice Applies just-in-time (JIT) modifications carried in `jitParams` to `inputParams`, governed by the
      * rules packed into `inputParams.paramModificationRules`.
@@ -1825,14 +1819,6 @@ abstract contract SpokePool is
      * ignored) or dynamic. Dynamic parameters obey:
      * - `outputAmount`: improvement-only (the new value must be >= the original so the recipient is never worse off).
      * - `exclusiveRelayer` / `exclusivityParameter`: set to any value.
-     *
-     * When an authority address is configured (low 20 bytes of the rules are non-zero) the full set of new values
-     * must be signed by it; the value rules above still apply on top of the signature. The digest binds the gateway,
-     * the current path (which is bound to this chain), the deposit nonce and the new values. `pathId` is used rather
-     * than `stepId` because a `stepId` is not necessarily scoped to a single chain, so binding to it would let a
-     * signature be replayed on another chain; the deposit nonce keeps the digest unique across deposits within a path.
-     * The check is EIP-1271-aware so the authority may be a smart contract signer.
-     * @dev Mutates `inputParams` in place.
      */
     function _resolveDynamicParams(
         ParamsFromV5Input memory inputParams,
