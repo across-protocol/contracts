@@ -41,7 +41,8 @@ contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
             getUSDCAddress(info.spokeChainId), // _usdc
             cctpTokenMessenger, // _cctpTokenMessenger
             getOftEid(info.hubChainId), // _oftDstEid
-            oftFeeCap // _oftFeeCap
+            oftFeeCap, // _oftFeeCap
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's

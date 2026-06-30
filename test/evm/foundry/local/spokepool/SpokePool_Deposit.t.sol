@@ -72,7 +72,7 @@ contract SpokePoolDepositTest is Test {
 
         // Deploy SpokePool via proxy
         vm.startPrank(owner);
-        MockSpokePool implementation = new MockSpokePool(address(weth));
+        MockSpokePool implementation = new MockSpokePool(address(weth), address(0));
         address proxy = address(
             new ERC1967Proxy(
                 address(implementation),

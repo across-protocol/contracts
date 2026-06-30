@@ -15,6 +15,8 @@ interface IGateway {
 
     event StepExecuted(bytes32 indexed stepId, bytes32 indexed pathId, address submitter);
 
+    function currentStepId() external view returns (bytes32 stepId_);
+
     /// @notice Active path id for the currently executing step, or bytes32(0) when idle.
     function currentPathId() external view returns (bytes32 pathId_);
 

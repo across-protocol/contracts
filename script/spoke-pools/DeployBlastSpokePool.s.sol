@@ -51,7 +51,8 @@ contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
             usdb, // usdb
             dai, // l1Usdb (DAI)
             YIELD_RECIPIENT, // yieldRecipient
-            blastRetriever // blastRetriever
+            blastRetriever, // blastRetriever
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
