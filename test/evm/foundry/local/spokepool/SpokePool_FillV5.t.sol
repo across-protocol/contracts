@@ -148,7 +148,7 @@ contract SpokePoolFillV5Test is Test {
 
     /// @dev The message SpokePool stamps onto every V5 relay: the V5 header followed by the gateway step id.
     function _v5Message() internal view returns (bytes memory) {
-        return abi.encodePacked(spokePool.V5_DEPOSIT_HEADER(), STEP_ID);
+        return abi.encodePacked(spokePool.V5_MAGIC_PREFIX(), STEP_ID);
     }
 
     function _relayData(
@@ -226,7 +226,7 @@ contract SpokePoolFillV5Test is Test {
         // The submitter must echo the V5 relay tag (header ++ current step id); anything else is rejected.
         V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
         V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
-        jit.message = abi.encodePacked(spokePool.V5_DEPOSIT_HEADER(), keccak256("wrong-step"));
+        jit.message = abi.encodePacked(spokePool.V5_MAGIC_PREFIX(), keccak256("wrong-step"));
 
         vm.prank(address(gateway));
         vm.expectRevert(V5SpokePoolInterface.V5InvalidMessage.selector);
@@ -419,7 +419,7 @@ contract SpokePoolFillV5Test is Test {
                 depositId: FIRST_DEPOSIT_ID,
                 fillDeadline: uint32(spokePool.getCurrentTime()) + 1000,
                 exclusivityDeadline: 0,
-                message: abi.encodePacked(spokePool.V5_DEPOSIT_HEADER())
+                message: abi.encodePacked(spokePool.V5_MAGIC_PREFIX())
             });
     }
 

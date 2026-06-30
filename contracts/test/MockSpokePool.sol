@@ -142,7 +142,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         bytes memory message,
         bytes memory executorMessage
     ) external payable {
-        _fillRelayV5(relayExecution, relayer, message, executorMessage, msg.value);
+        _fillRelayV5(relayExecution, relayer, message, executorMessage, gateway.currentSubmitter(), msg.value);
     }
 
     // This function is nonReentrant in order to allow caller to test whether a different function

@@ -20,6 +20,15 @@ interface V5SpokePoolInterface {
     /// @notice Thrown when the authority signature over the JIT modifications is missing or invalid.
     error InvalidParamModificationSignature();
 
+    /// @notice Discriminates the action encoded in the `input` payload of `adapterExecuteAcrossV5`.
+    /// @dev `input` is `abi.encodePacked(bytes1(uint8(action)), abi.encode(actionInput))`: the leading byte selects the
+    /// action and the remainder is the action-specific payload — `ParamsFromV5Input`/`ParamsFromV5Jit` for `Deposit`,
+    /// `InputParamsV5`/`JitInputParamsV5` for `Fill`.
+    enum V5AdapterAction {
+        Deposit,
+        Fill
+    }
+
     struct InputParamsV5 {
         bytes32 recipient;
         bytes32 outputToken;
