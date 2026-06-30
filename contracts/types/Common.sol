@@ -42,3 +42,33 @@ struct ExecutionContext {
     bytes32 pathId;
     address submitter;
 }
+
+/// @notice Deposit parameters the Executor ABI-encodes into the `input` payload of `adapterExecuteAcrossV5`.
+struct ParamsFromV5Input {
+    bytes32 depositor;
+    bytes32 recipient;
+    bytes32 inputToken;
+    bytes32 outputToken;
+    uint256 inputAmount;
+    uint256 outputAmount;
+    uint256 destinationChainId;
+    bytes32 exclusiveRelayer;
+    // A random number to differentiate 2 different deposits within a single path
+    uint256 depositNonce;
+    uint32 quoteTimestamp;
+    uint32 fillDeadline;
+    uint32 exclusivityParameter;
+    bytes32 dstStepId;
+    // Deposit modification rules. Packing: (high 12 bytes for modify permisison flags, low 20 bytes for signing authority if required)
+    // Current flags: bit 0: outputAmount, bit 1: exclusiveRelayer, bit 2: exclusivityParameter
+    bytes32 paramModificationRules;
+}
+
+/// @notice Just-in-time modification values the Executor ABI-encodes into the `jitData` payload of
+/// `adapterExecuteAcrossV5`, applied subject to `ParamsFromV5Input.paramModificationRules`.
+struct ParamsFromV5Jit {
+    uint256 newAmtOut;
+    bytes32 newExclusiveRelayer;
+    uint32 newExclusivityParameter;
+    bytes signature;
+}

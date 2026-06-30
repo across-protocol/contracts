@@ -9,6 +9,7 @@ import "../interfaces/SpokePoolInterface.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 import "../interfaces/IGateway.sol";
 import "../interfaces/IAcrossV5ExecutorAdapter.sol";
+import { ParamsFromV5Input, ParamsFromV5Jit } from "../types/Common.sol";
 import "../upgradeable/MultiCallerUpgradeable.sol";
 import "../upgradeable/EIP712CrossChainUpgradeable.sol";
 import "../upgradeable/AddressLibUpgradeable.sol";
@@ -147,6 +148,10 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable fillDeadlineBuffer;
 
+    // Across V5 Gateway
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    IGateway public immutable gateway;
+
     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
 
     bytes32 public constant UPDATE_BYTES32_DEPOSIT_DETAILS_HASH =
@@ -173,6 +178,17 @@ abstract contract SpokePool is
 
     // EIP-7702 prefix for delegated wallets.
     bytes3 internal constant EIP7702_PREFIX = 0xef0100;
+
+    // Magic prefix prepended to the deposit `message` so the protocol can differentiate a V5 deposit from a standard one
+    bytes32 public constant V5_MAGIC_PREFIX = keccak256("V5_MAGIC_PREFIX.V1");
+
+    /// @notice Domain tag mixed into the JIT-modification digest
+    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
+
+    // Bit flags packed into the high 12 bytes of `ParamsFromV5Input.paramModificationRules`
+    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
+    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
 
     /****************************************
      *                EVENTS                *
@@ -1736,36 +1752,6 @@ abstract contract SpokePool is
         _sendOftTransfer(_token, _messenger, sendParam, fee);
     }
 
-    IGateway public immutable gateway;
-    bytes32 public constant V5_MAGIC_PREFIX = keccak256("V5_MAGIC_PREFIX.V1");
-
-    struct ParamsFromV5Input {
-        bytes32 depositor;
-        bytes32 recipient;
-        bytes32 inputToken;
-        bytes32 outputToken;
-        uint256 inputAmount;
-        uint256 outputAmount;
-        uint256 destinationChainId;
-        bytes32 exclusiveRelayer;
-        // A random number to differentiate 2 different deposits within a single path
-        uint256 depositNonce;
-        uint32 quoteTimestamp;
-        uint32 fillDeadline;
-        uint32 exclusivityParameter;
-        bytes32 dstStepId;
-        // Deposit modification rules. Packing: (high 12 bytes for modify permisison flags, low 20 bytes for signing authority if required)
-        // Current flags: bit 0: outputAmount, bit 1: exclusiveRelayer, bit 2: exclusivityParameter
-        bytes32 paramModificationRules;
-    }
-
-    struct ParamsFromV5Jit {
-        uint256 newAmtOut;
-        bytes32 newExclusiveRelayer;
-        uint32 newExclusivityParameter;
-        bytes signature;
-    }
-
     function adapterExecuteAcrossV5(
         bytes calldata input,
         bytes calldata jitData
@@ -1803,14 +1789,6 @@ abstract contract SpokePool is
         });
         _depositV3(params);
     }
-
-    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
-    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
-    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
-
-    /// @notice Domain tag mixed into the JIT-modification digest so signatures cannot be replayed across protocols
-    /// or auction versions. Bumped whenever the digest layout changes.
-    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
 
     /**
      * @notice Applies just-in-time (JIT) modifications carried in `jitParams` to `inputParams`, governed by the
