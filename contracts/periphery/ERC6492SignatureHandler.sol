@@ -56,15 +56,16 @@ abstract contract ERC6492SignatureHandler {
     function _handleERC6492Signature(bytes calldata signature) internal returns (bytes memory) {
         // An ERC-6492 signature is at least the 32-byte magic suffix; anything shorter passes through.
         uint256 signatureLength = signature.length;
-        if (signatureLength < 32) return signature;
+        if (signatureLength < _ERC6492_MAGIC_VALUE.length) return signature;
 
         // Pass through unless the trailing 32 bytes are the ERC-6492 magic value.
-        if (bytes32(signature[signatureLength - 32:]) != _ERC6492_MAGIC_VALUE) return signature;
+        if (bytes32(signature[signatureLength - _ERC6492_MAGIC_VALUE.length:]) != _ERC6492_MAGIC_VALUE)
+            return signature;
 
         // Decode the wrapped (factory, factoryCalldata, innerSignature) directly from the calldata
         // slice that strips the magic suffix.
         (address prepareTarget, bytes memory prepareData, bytes memory innerSignature) = abi.decode(
-            signature[:signatureLength - 32],
+            signature[:signatureLength - _ERC6492_MAGIC_VALUE.length],
             (address, bytes, bytes)
         );
 
