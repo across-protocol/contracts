@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "5.0.20",
+  "version": "5.0.21",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -69,7 +69,7 @@
     "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.115",
+    "@across-protocol/constants": "^3.1.118",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",

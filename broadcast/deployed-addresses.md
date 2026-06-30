@@ -316,11 +316,11 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Robinhood (4663)
 
-| Contract Name | Address                                                                                                                                       |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.testnet.chain.robinhood.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.testnet.chain.robinhood.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
-| SpokePool     | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://explorer.testnet.chain.robinhood.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
+| Contract Name | Address                                                                                                                                |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://robinhoodchain.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://robinhoodchain.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool     | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://robinhoodchain.blockscout.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
 
 ## ARC (5042)
 
