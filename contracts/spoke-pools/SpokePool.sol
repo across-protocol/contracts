@@ -1025,7 +1025,7 @@ abstract contract SpokePool is
      * repayment chain and address, the relay message tag (must equal abi.encodePacked(V5_DEPOSIT_HEADER,
      * gateway.currentStepId())), and dynamic executor data forwarded to the recipient's callback.
      */
-    function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills {
+    function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills nonReentrant {
         require(msg.sender == address(gateway), V5RequiresGateway());
 
         InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
