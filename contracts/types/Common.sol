@@ -53,7 +53,6 @@ struct ParamsFromV5Input {
     uint256 outputAmount;
     uint256 destinationChainId;
     bytes32 exclusiveRelayer;
-    // A random number to differentiate 2 different deposits within a single path
     uint256 depositNonce;
     uint32 quoteTimestamp;
     uint32 fillDeadline;
