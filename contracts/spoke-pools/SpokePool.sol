@@ -481,8 +481,8 @@ abstract contract SpokePool is
      ********************************************/
 
     /**
-     * @notice Single Executor adapter entrypoint for V5 flows (invoked as an `ADAPTER_CALL` tape step). Dispatches to
-     * a deposit or a fill based on the leading action discriminator, so the Executor can compose V5 deposits and fills.
+     * @notice Single Executor adapter entrypoint for V5 flows. Dispatches to a deposit or a fill based on the leading
+     * action discriminator, so the Executor can compose V5 deposits and fills.
      * @dev `input` is `abi.encodePacked(bytes1(uint8(V5AdapterAction)), abi.encode(actionInput))`: the leading byte is
      * the action discriminator and the remainder is the action-specific payload (`V5DepositInput` for deposits,
      * `V5FillInput` for fills); `jitData` is the matching JIT payload (`V5DepositJit` / `V5FillJit`).
@@ -1445,6 +1445,12 @@ abstract contract SpokePool is
         );
     }
 
+    /**
+     * @notice Deposit branch of `adapterExecuteAcrossV5`: as an `ADAPTER_CALL` step (input tokens pulled from the
+     * Executor, live Gateway execution required), creates a V5-stamped Across deposit after applying any JIT auction params.
+     * @param input ABI-encoded `V5DepositInput` — committed deposit params + param-modification rules.
+     * @param jitData ABI-encoded `V5DepositJit` — the submitter's JIT modifications and authorizing signature.
+     */
     function _adapterDepositAcrossV5(bytes calldata input, bytes calldata jitData) internal unpausedDeposits {
         V5DepositInput memory inputParams = abi.decode(input, (V5DepositInput));
         V5DepositJit memory jitParams = abi.decode(jitData, (V5DepositJit));
@@ -1775,15 +1781,11 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Shared V5 fast-fill core used by both the Gateway entrypoint (`executeAcrossV5`) and the Executor
-     * adapter entrypoint (`_adapterFillAcrossV5`). Enforces `minOutputAmount`, validates the submitter-echoed relay
-     * tag against the live Gateway step (the witness), enforces exclusivity against the current submitter, records the
-     * fill, settles the output tokens pulled from `from`, and invokes the recipient's `IAcrossV5Executor` callback when
-     * the recipient is a contract and an executor input is supplied.
+     * @notice Validates min output and the relay-tag witness, enforces exclusivity vs the submitter, records the fill,
+     * settles output tokens from `from`, and invokes the recipient's executor callback if any.
      * @param fillInput User/deposit-committed fill constraints: recipient, output token, min output, executor input.
      * @param fillJit Submitter's just-in-time fill parameters: amounts, deposit id, deadlines, exclusivity, relay tag.
-     * @param from Address the output tokens are pulled from — the Gateway's current submitter for `executeAcrossV5`,
-     * or the Executor (`msg.sender`) for the adapter fill.
+     * @param from Address the output tokens are pulled from — the Gateway submitter (`executeAcrossV5`) or Executor (adapter).
      * @param msgValue Native value forwarded to the recipient's executor callback (reverts if sent with no callback).
      */
     function _fillV5(V5FillInput memory fillInput, V5FillJit memory fillJit, address from, uint256 msgValue) internal {
