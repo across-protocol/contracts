@@ -136,15 +136,6 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         _fillRelayV3(relayExecution, relayer, isSlowFill);
     }
 
-    function fillRelayV5Internal(
-        V3RelayExecutionParams memory relayExecution,
-        bytes32 relayer,
-        bytes memory message,
-        bytes memory executorMessage
-    ) external payable {
-        _fillRelayV5(relayExecution, relayer, message, executorMessage, gateway.currentSubmitter(), msg.value);
-    }
-
     // This function is nonReentrant in order to allow caller to test whether a different function
     // is reentrancy protected or not.
     function callback(bytes memory data) external payable nonReentrant {

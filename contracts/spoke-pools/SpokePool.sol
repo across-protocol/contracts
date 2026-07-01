@@ -497,60 +497,6 @@ abstract contract SpokePool is
         }
     }
 
-    function _adapterDepositAcrossV5(bytes calldata input, bytes calldata jitData) internal unpausedDeposits {
-        V5DepositInput memory inputParams = abi.decode(input, (V5DepositInput));
-        V5DepositJit memory jitParams = abi.decode(jitData, (V5DepositJit));
-
-        bytes32 curPathId = gateway.currentPathId();
-        address curSubmitter = gateway.currentSubmitter();
-        if (curSubmitter == address(0)) revert InactiveV5Flow();
-        uint256 depositId = getUnsafeDepositId(
-            // gateway's submitter serves as a differentiating factor instead of msg.sender, which is going to be Executor for most deposits here
-            curSubmitter,
-            inputParams.depositor,
-            // depositNonce here serves as a differentiator of different deposits that might come in a single Path execution
-            uint256(keccak256(abi.encodePacked(curPathId, inputParams.depositNonce)))
-        );
-
-        // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
-        // per-deposit rules encoded in `inputParams.paramModificationRules`.
-        _resolveDynamicParams(inputParams, jitParams, curPathId);
-
-        DepositV3Params memory params = DepositV3Params({
-            depositor: inputParams.depositor,
-            recipient: inputParams.recipient,
-            inputToken: inputParams.inputToken,
-            outputToken: inputParams.outputToken,
-            inputAmount: inputParams.inputAmount,
-            outputAmount: inputParams.outputAmount,
-            destinationChainId: inputParams.destinationChainId,
-            exclusiveRelayer: inputParams.exclusiveRelayer,
-            depositId: depositId,
-            quoteTimestamp: inputParams.quoteTimestamp,
-            fillDeadline: inputParams.fillDeadline,
-            exclusivityParameter: inputParams.exclusivityParameter,
-            message: abi.encodePacked(V5_MAGIC_PREFIX, inputParams.dstStepId)
-        });
-        _depositV3(params);
-    }
-
-    /**
-     * @notice Executor-driven V5 fast fill — the fill counterpart of the deposit adapter. Unlike `executeAcrossV5`
-     * (called directly by the Gateway), this runs as an `ADAPTER_CALL` tape step, so output tokens are pulled from
-     * `msg.sender` (the Executor) rather than from the Gateway's submitter. The fill is bound to the live Gateway step
-     * via the witness, and exclusivity is enforced against the current submitter.
-     */
-    function _adapterFillAcrossV5(bytes calldata input, bytes calldata jitData) internal unpausedFills {
-        // Require a live Gateway execution; the caller (Executor) is implicitly authorized by this context.
-        if (gateway.currentSubmitter() == address(0)) revert InactiveV5Flow();
-
-        V5FillInput memory fillInput = abi.decode(input, (V5FillInput));
-        V5FillJit memory fillJit = abi.decode(jitData, (V5FillJit));
-
-        // Output tokens are pulled from the Executor (msg.sender), which holds the budget for this Path step.
-        _fillV5(fillInput, fillJit, msg.sender, msg.value);
-    }
-
     /**
      * @notice Previously, this function allowed the caller to specify the exclusivityDeadline, otherwise known as the
      * as exact timestamp on the destination chain before which only the exclusiveRelayer could fill the deposit. Now,
@@ -1118,64 +1064,6 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Shared V5 fast-fill core used by both the Gateway entrypoint (`executeAcrossV5`) and the Executor
-     * adapter entrypoint (`_adapterFillAcrossV5`). Validates the submitter-echoed relay tag against the live Gateway
-     * step, enforces exclusivity against the current submitter, records the fill, and settles output tokens pulled
-     * from `from`.
-     * @param from Address the output tokens are pulled from — the Gateway's submitter for `executeAcrossV5`, the
-     * Executor (`msg.sender`) for the adapter fill.
-     */
-    function _fillV5(V5FillInput memory fillInput, V5FillJit memory fillJit, address from, uint256 msgValue) internal {
-        require(fillJit.outputAmount >= fillInput.minOutputAmount, V5OutputAmountTooLow());
-
-        // message should be of the form `abi.encode(bytes32, bytes32)` so we need to check length in
-        // case of any trailing bytes
-        require(fillJit.message.length == 64, V5InvalidMessage());
-        (bytes32 messageHeader, bytes32 messageStepId) = abi.decode(fillJit.message, (bytes32, bytes32));
-        require(messageHeader == V5_MAGIC_PREFIX && messageStepId == gateway.currentStepId(), V5InvalidMessage());
-
-        // Build relay execution params. The relayData struct assembly lives in a helper frame to keep this
-        // function within EVM stack limits.
-        V3RelayExecutionParams memory relayExecution = _buildRelayExecution(
-            _v5RelayData(fillInput, fillJit),
-            gateway.currentSubmitter(),
-            fillJit.repaymentChainId
-        );
-
-        _fillRelayV5(
-            relayExecution,
-            fillJit.repaymentAddress,
-            fillInput.executorInput,
-            fillJit.executorJitInput,
-            from,
-            msgValue
-        );
-    }
-
-    /// @notice Assembles the V5 `V3RelayData` from the user-committed (`fillInput`) and submitter-committed
-    /// (`fillJit`) params. Isolated in its own frame so `_fillV5` stays within EVM stack limits.
-    function _v5RelayData(
-        V5FillInput memory fillInput,
-        V5FillJit memory fillJit
-    ) internal pure returns (V3RelayData memory) {
-        return
-            V3RelayData({
-                depositor: fillJit.depositor,
-                recipient: fillInput.recipient,
-                exclusiveRelayer: fillJit.exclusiveRelayer,
-                inputToken: fillJit.inputToken,
-                outputToken: fillInput.outputToken,
-                inputAmount: fillJit.inputAmount,
-                outputAmount: fillJit.outputAmount,
-                originChainId: fillJit.originChainId,
-                depositId: fillJit.depositId,
-                fillDeadline: fillJit.fillDeadline,
-                exclusivityDeadline: fillJit.exclusivityDeadline,
-                message: fillJit.message
-            });
-    }
-
-    /**
      * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
      * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
@@ -1557,6 +1445,43 @@ abstract contract SpokePool is
         );
     }
 
+    function _adapterDepositAcrossV5(bytes calldata input, bytes calldata jitData) internal unpausedDeposits {
+        V5DepositInput memory inputParams = abi.decode(input, (V5DepositInput));
+        V5DepositJit memory jitParams = abi.decode(jitData, (V5DepositJit));
+
+        bytes32 curPathId = gateway.currentPathId();
+        address curSubmitter = gateway.currentSubmitter();
+        if (curSubmitter == address(0)) revert InactiveV5Flow();
+        uint256 depositId = getUnsafeDepositId(
+            // gateway's submitter serves as a differentiating factor instead of msg.sender, which is going to be Executor for most deposits here
+            curSubmitter,
+            inputParams.depositor,
+            // depositNonce here serves as a differentiator of different deposits that might come in a single Path execution
+            uint256(keccak256(abi.encodePacked(curPathId, inputParams.depositNonce)))
+        );
+
+        // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
+        // per-deposit rules encoded in `inputParams.paramModificationRules`.
+        _resolveDynamicParams(inputParams, jitParams, curPathId);
+
+        DepositV3Params memory params = DepositV3Params({
+            depositor: inputParams.depositor,
+            recipient: inputParams.recipient,
+            inputToken: inputParams.inputToken,
+            outputToken: inputParams.outputToken,
+            inputAmount: inputParams.inputAmount,
+            outputAmount: inputParams.outputAmount,
+            destinationChainId: inputParams.destinationChainId,
+            exclusiveRelayer: inputParams.exclusiveRelayer,
+            depositId: depositId,
+            quoteTimestamp: inputParams.quoteTimestamp,
+            fillDeadline: inputParams.fillDeadline,
+            exclusivityParameter: inputParams.exclusivityParameter,
+            message: abi.encodePacked(V5_MAGIC_PREFIX, inputParams.dstStepId)
+        });
+        _depositV3(params);
+    }
+
     function _distributeRelayerRefunds(
         uint256 _chainId,
         uint256 amountToReturn,
@@ -1810,33 +1735,85 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Fills a V5 relay. V5 deposits are Gateway-fill-only and are always fast fills: the output tokens
-     * are pulled from the Gateway's current submitter and sent to the recipient via the shared transfer logic.
-     * After settlement, if the recipient is a contract and a message was provided, the V5 executor callback
-     * (IAcrossV5Executor.executeAcrossV5) is invoked.
-     * @param relayExecution The relay execution parameters.
-     * @param relayer Address credited as the relayer (the repayment address) in the FilledRelay event.
-     * @param executorInput V5 path command sequence forwarded to the recipient's executeAcrossV5 callback.
-     * @param executorJitInput Submitter-provided dynamic data forwarded to the recipient's executeAcrossV5 callback.
-     * @param msgValue Native value forwarded to the recipient's executeAcrossV5 callback. Must be zero unless a
-     * callback is invoked, otherwise it would be stranded in this contract.
+     * @notice Executor-driven V5 fast fill — the fill counterpart of the deposit adapter. Unlike `executeAcrossV5`
+     * (called directly by the Gateway), this runs as an `ADAPTER_CALL` tape step, so output tokens are pulled from
+     * `msg.sender` (the Executor) rather than from the Gateway's submitter. The fill is bound to the live Gateway step
+     * via the witness, and exclusivity is enforced against the current submitter.
      */
-    function _fillRelayV5(
-        V3RelayExecutionParams memory relayExecution,
-        bytes32 relayer,
-        bytes memory executorInput,
-        bytes memory executorJitInput,
-        address from,
-        uint256 msgValue
-    ) internal {
-        _recordFill(relayExecution, relayer, FillType.FastFill);
+    function _adapterFillAcrossV5(bytes calldata input, bytes calldata jitData) internal unpausedFills {
+        // Require a live Gateway execution; the caller (Executor) is implicitly authorized by this context.
+        if (gateway.currentSubmitter() == address(0)) revert InactiveV5Flow();
+
+        V5FillInput memory fillInput = abi.decode(input, (V5FillInput));
+        V5FillJit memory fillJit = abi.decode(jitData, (V5FillJit));
+
+        // Output tokens are pulled from the Executor (msg.sender), which holds the budget for this Path step.
+        _fillV5(fillInput, fillJit, msg.sender, msg.value);
+    }
+
+    /// @notice Assembles the V5 `V3RelayData` from the user-committed (`fillInput`) and submitter-committed
+    /// (`fillJit`) params. Isolated in its own frame so `_fillV5` stays within EVM stack limits.
+    function _v5RelayData(
+        V5FillInput memory fillInput,
+        V5FillJit memory fillJit
+    ) internal pure returns (V3RelayData memory) {
+        return
+            V3RelayData({
+                depositor: fillJit.depositor,
+                recipient: fillInput.recipient,
+                exclusiveRelayer: fillJit.exclusiveRelayer,
+                inputToken: fillJit.inputToken,
+                outputToken: fillInput.outputToken,
+                inputAmount: fillJit.inputAmount,
+                outputAmount: fillJit.outputAmount,
+                originChainId: fillJit.originChainId,
+                depositId: fillJit.depositId,
+                fillDeadline: fillJit.fillDeadline,
+                exclusivityDeadline: fillJit.exclusivityDeadline,
+                message: fillJit.message
+            });
+    }
+
+    /**
+     * @notice Shared V5 fast-fill core used by both the Gateway entrypoint (`executeAcrossV5`) and the Executor
+     * adapter entrypoint (`_adapterFillAcrossV5`). Enforces `minOutputAmount`, validates the submitter-echoed relay
+     * tag against the live Gateway step (the witness), enforces exclusivity against the current submitter, records the
+     * fill, settles the output tokens pulled from `from`, and invokes the recipient's `IAcrossV5Executor` callback when
+     * the recipient is a contract and an executor input is supplied.
+     * @param fillInput User/deposit-committed fill constraints: recipient, output token, min output, executor input.
+     * @param fillJit Submitter's just-in-time fill parameters: amounts, deposit id, deadlines, exclusivity, relay tag.
+     * @param from Address the output tokens are pulled from — the Gateway's current submitter for `executeAcrossV5`,
+     * or the Executor (`msg.sender`) for the adapter fill.
+     * @param msgValue Native value forwarded to the recipient's executor callback (reverts if sent with no callback).
+     */
+    function _fillV5(V5FillInput memory fillInput, V5FillJit memory fillJit, address from, uint256 msgValue) internal {
+        require(fillJit.outputAmount >= fillInput.minOutputAmount, V5OutputAmountTooLow());
+
+        // message should be of the form `abi.encode(bytes32, bytes32)` so we need to check length in
+        // case of any trailing bytes
+        require(fillJit.message.length == 64, V5InvalidMessage());
+        (bytes32 messageHeader, bytes32 messageStepId) = abi.decode(fillJit.message, (bytes32, bytes32));
+        require(messageHeader == V5_MAGIC_PREFIX && messageStepId == gateway.currentStepId(), V5InvalidMessage());
+
+        // Build relay execution params. The relayData struct assembly lives in a helper frame to keep this
+        // function within EVM stack limits.
+        V3RelayExecutionParams memory relayExecution = _buildRelayExecution(
+            _v5RelayData(fillInput, fillJit),
+            gateway.currentSubmitter(),
+            fillJit.repaymentChainId
+        );
+
+        _recordFill(relayExecution, fillJit.repaymentAddress, FillType.FastFill);
 
         // V5 fills are settled by pulling the output tokens from `from`: the Gateway's current submitter for
         // Gateway-driven fills, or the Executor (msg.sender) for adapter-driven fills.
         (, address recipientToSend) = _transferTokensToRecipient(relayExecution, relayExecution.relay, from, false);
 
-        if (executorInput.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
-            IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(executorInput, executorJitInput);
+        if (fillInput.executorInput.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+            IAcrossV5Executor(recipientToSend).executeAcrossV5{ value: msgValue }(
+                fillInput.executorInput,
+                fillJit.executorJitInput
+            );
         } else if (msgValue > 0) {
             // Native value was sent but there is no executor callback to consume it; reject rather than leaving it
             // stranded in this contract.
