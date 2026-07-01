@@ -116,9 +116,9 @@ contract SpokePoolFillV5Test is Test {
                             HELPERS
     //////////////////////////////////////////////////////////////*/
 
-    function _defaultInput() internal view returns (V5SpokePoolInterface.InputParamsV5 memory) {
+    function _defaultInput() internal view returns (V5SpokePoolInterface.V5FillInput memory) {
         return
-            V5SpokePoolInterface.InputParamsV5({
+            V5SpokePoolInterface.V5FillInput({
                 recipient: recipient.toBytes32(),
                 outputToken: address(destErc20).toBytes32(),
                 minOutputAmount: AMOUNT,
@@ -126,10 +126,10 @@ contract SpokePoolFillV5Test is Test {
             });
     }
 
-    function _defaultJit() internal view returns (V5SpokePoolInterface.JitInputParamsV5 memory) {
+    function _defaultJit() internal view returns (V5SpokePoolInterface.V5FillJit memory) {
         uint32 fillDeadline = uint32(spokePool.getCurrentTime()) + 1000;
         return
-            V5SpokePoolInterface.JitInputParamsV5({
+            V5SpokePoolInterface.V5FillJit({
                 depositor: depositor.toBytes32(),
                 exclusiveRelayer: submitter.toBytes32(), // submitter is the exclusive relayer by default
                 inputToken: address(erc20).toBytes32(),
@@ -152,8 +152,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function _relayData(
-        V5SpokePoolInterface.InputParamsV5 memory input,
-        V5SpokePoolInterface.JitInputParamsV5 memory jit
+        V5SpokePoolInterface.V5FillInput memory input,
+        V5SpokePoolInterface.V5FillJit memory jit
     ) internal view returns (V3SpokePoolInterface.V3RelayData memory) {
         return
             V3SpokePoolInterface.V3RelayData({
@@ -173,15 +173,15 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function _relayHash(
-        V5SpokePoolInterface.InputParamsV5 memory input,
-        V5SpokePoolInterface.JitInputParamsV5 memory jit
+        V5SpokePoolInterface.V5FillInput memory input,
+        V5SpokePoolInterface.V5FillJit memory jit
     ) internal view returns (bytes32) {
         return keccak256(abi.encode(_relayData(input, jit), DESTINATION_CHAIN_ID));
     }
 
     function _execute(
-        V5SpokePoolInterface.InputParamsV5 memory input,
-        V5SpokePoolInterface.JitInputParamsV5 memory jit
+        V5SpokePoolInterface.V5FillInput memory input,
+        V5SpokePoolInterface.V5FillJit memory jit
     ) internal {
         vm.prank(address(gateway));
         spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
@@ -192,8 +192,8 @@ contract SpokePoolFillV5Test is Test {
     //////////////////////////////////////////////////////////////*/
 
     function testOnlyGatewayCanExecute() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         vm.prank(relayer);
         vm.expectRevert(V5SpokePoolInterface.V5RequiresGateway.selector);
@@ -204,8 +204,8 @@ contract SpokePoolFillV5Test is Test {
         vm.prank(owner);
         spokePool.pauseFills(true);
 
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         vm.prank(address(gateway));
         vm.expectRevert(SpokePoolInterface.FillsArePaused.selector);
@@ -213,8 +213,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testRevertsWhenOutputAmountBelowMin() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.outputAmount = input.minOutputAmount - 1;
 
         vm.prank(address(gateway));
@@ -224,8 +224,8 @@ contract SpokePoolFillV5Test is Test {
 
     function testRevertsWhenRelayMessageDoesNotMatchStepId() public {
         // The submitter must echo the V5 relay tag (header ++ current step id); anything else is rejected.
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.message = abi.encodePacked(spokePool.V5_MAGIC_PREFIX(), keccak256("wrong-step"));
 
         vm.prank(address(gateway));
@@ -234,8 +234,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testRevertsWhenSubmitterIsNotExclusiveRelayer() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.exclusiveRelayer = relayer.toBytes32(); // someone other than the submitter
 
         vm.prank(address(gateway));
@@ -244,8 +244,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testFillsWhenExclusivityHasExpiredEvenIfSubmitterNotExclusive() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.exclusiveRelayer = relayer.toBytes32();
         jit.exclusivityDeadline = 0; // exclusivity already over
 
@@ -255,9 +255,9 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testRevertsWhenFillDeadlinePassed() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.minOutputAmount = 0;
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.fillDeadline = 0;
         jit.exclusivityDeadline = 0;
 
@@ -267,8 +267,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testHappyPathPullsFromSubmitterAndSetsFillStatus() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         uint256 submitterBefore = destErc20.balanceOf(submitter);
         uint256 recipientBefore = destErc20.balanceOf(recipient);
@@ -281,8 +281,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testEmitsFilledRelayEvent() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         bytes32 messageHash = keccak256(_v5Message());
 
@@ -313,8 +313,8 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testCannotDoubleFill() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         _execute(input, jit);
 
@@ -326,11 +326,11 @@ contract SpokePoolFillV5Test is Test {
     function testInvokesExecutorCallbackWhenRecipientIsContract() public {
         MockV5Executor executor = new MockV5Executor();
 
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.recipient = address(executor).toBytes32();
         input.executorInput = hex"abcd";
 
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.executorJitInput = hex"1234";
 
         vm.expectEmit(true, true, true, true, address(executor));
@@ -343,9 +343,9 @@ contract SpokePoolFillV5Test is Test {
 
     function testNoExecutorCallbackWhenRecipientIsEOA() public {
         // A message is supplied but the recipient is an EOA, so no callback is attempted and the fill still settles.
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.executorInput = hex"abcd";
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         _execute(input, jit);
 
@@ -356,10 +356,10 @@ contract SpokePoolFillV5Test is Test {
         MockV5Executor executor = new MockV5Executor();
         uint256 value = 1 ether;
 
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.recipient = address(executor).toBytes32();
         input.executorInput = hex"abcd";
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
         jit.executorJitInput = hex"1234";
 
         vm.deal(address(gateway), value);
@@ -375,9 +375,9 @@ contract SpokePoolFillV5Test is Test {
         uint256 value = 1 ether;
 
         // A message is supplied but the recipient is an EOA, so no callback fires to consume the native value.
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.executorInput = hex"abcd";
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         vm.deal(address(gateway), value);
         vm.prank(address(gateway));
@@ -386,9 +386,9 @@ contract SpokePoolFillV5Test is Test {
     }
 
     function testUnwrapsNativeTokenToRecipient() public {
-        V5SpokePoolInterface.InputParamsV5 memory input = _defaultInput();
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.outputToken = address(weth).toBytes32();
-        V5SpokePoolInterface.JitInputParamsV5 memory jit = _defaultJit();
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         uint256 recipientEthBefore = recipient.balance;
         uint256 submitterWethBefore = weth.balanceOf(submitter);

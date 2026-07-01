@@ -191,7 +191,7 @@ abstract contract SpokePool is
     /// @notice Domain tag mixed into the JIT-modification digest
     bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
 
-    // Bit flags packed into the high 12 bytes of `ParamsFromV5Input.paramModificationRules`
+    // Bit flags packed into the high 12 bytes of `V5DepositInput.paramModificationRules`
     uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
     uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
     uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
@@ -482,11 +482,10 @@ abstract contract SpokePool is
 
     /**
      * @notice Single Executor adapter entrypoint for V5 flows (invoked as an `ADAPTER_CALL` tape step). Dispatches to
-     * a deposit or a fill based on the leading action discriminator, so the Executor can compose V5 deposits and fills
-     * without a dedicated Executor command per action.
+     * a deposit or a fill based on the leading action discriminator, so the Executor can compose V5 deposits and fills.
      * @dev `input` is `abi.encodePacked(bytes1(uint8(V5AdapterAction)), abi.encode(actionInput))`: the leading byte is
-     * the action discriminator and the remainder is the action-specific payload (`ParamsFromV5Input` for deposits,
-     * `InputParamsV5` for fills); `jitData` is the matching JIT payload (`ParamsFromV5Jit` / `JitInputParamsV5`).
+     * the action discriminator and the remainder is the action-specific payload (`V5DepositInput` for deposits,
+     * `V5FillInput` for fills); `jitData` is the matching JIT payload (`V5DepositJit` / `V5FillJit`).
      * Callable by anyone, but every branch requires a live Gateway execution (non-zero current submitter).
      */
     function adapterExecuteAcrossV5(bytes calldata input, bytes calldata jitData) external payable nonReentrant {
@@ -499,8 +498,8 @@ abstract contract SpokePool is
     }
 
     function _adapterDepositAcrossV5(bytes calldata input, bytes calldata jitData) internal unpausedDeposits {
-        ParamsFromV5Input memory inputParams = abi.decode(input, (ParamsFromV5Input));
-        ParamsFromV5Jit memory jitParams = abi.decode(jitData, (ParamsFromV5Jit));
+        V5DepositInput memory inputParams = abi.decode(input, (V5DepositInput));
+        V5DepositJit memory jitParams = abi.decode(jitData, (V5DepositJit));
 
         bytes32 curPathId = gateway.currentPathId();
         address curSubmitter = gateway.currentSubmitter();
@@ -545,11 +544,11 @@ abstract contract SpokePool is
         // Require a live Gateway execution; the caller (Executor) is implicitly authorized by this context.
         if (gateway.currentSubmitter() == address(0)) revert InactiveV5Flow();
 
-        InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
-        JitInputParamsV5 memory jitInputParamsV5 = abi.decode(jitData, (JitInputParamsV5));
+        V5FillInput memory fillInput = abi.decode(input, (V5FillInput));
+        V5FillJit memory fillJit = abi.decode(jitData, (V5FillJit));
 
         // Output tokens are pulled from the Executor (msg.sender), which holds the budget for this Path step.
-        _fillV5(inputParamsV5, jitInputParamsV5, msg.sender, msg.value);
+        _fillV5(fillInput, fillJit, msg.sender, msg.value);
     }
 
     /**
@@ -1101,9 +1100,9 @@ abstract contract SpokePool is
      * callback is invoked with any attached msg.value forwarded.
      * @dev Submitter-provided message is compared against the current stepId from the Gateway's context and must
      * be of the shape V5_MAGIC_PREFIX || stepId
-     * @param input ABI-encoded InputParamsV5 — the user/deposit-committed constraints: recipient, outputToken,
+     * @param input ABI-encoded V5FillInput — the user/deposit-committed constraints: recipient, outputToken,
      * minOutputAmount, and the executor input.
-     * @param jitData ABI-encoded JitInputParamsV5 — the submitter's just-in-time fill parameters: depositor,
+     * @param jitData ABI-encoded V5FillJit — the submitter's just-in-time fill parameters: depositor,
      * exclusiveRelayer, inputToken, input/output amounts, origin chain and deposit id, fill/exclusivity deadlines,
      * repayment chain and address, the relay message tag (must equal abi.encodePacked(V5_MAGIC_PREFIX,
      * gateway.currentStepId())), and dynamic executor data forwarded to the recipient's callback.
@@ -1111,11 +1110,11 @@ abstract contract SpokePool is
     function executeAcrossV5(bytes calldata input, bytes calldata jitData) external payable unpausedFills nonReentrant {
         require(msg.sender == address(gateway), V5RequiresGateway());
 
-        InputParamsV5 memory inputParamsV5 = abi.decode(input, (InputParamsV5));
-        JitInputParamsV5 memory jitInputParamsV5 = abi.decode(jitData, (JitInputParamsV5));
+        V5FillInput memory fillInput = abi.decode(input, (V5FillInput));
+        V5FillJit memory fillJit = abi.decode(jitData, (V5FillJit));
 
         // Gateway-driven V5 fills pull output tokens from the Gateway's current submitter.
-        _fillV5(inputParamsV5, jitInputParamsV5, gateway.currentSubmitter(), msg.value);
+        _fillV5(fillInput, fillJit, gateway.currentSubmitter(), msg.value);
     }
 
     /**
@@ -1126,58 +1125,53 @@ abstract contract SpokePool is
      * @param from Address the output tokens are pulled from — the Gateway's submitter for `executeAcrossV5`, the
      * Executor (`msg.sender`) for the adapter fill.
      */
-    function _fillV5(
-        InputParamsV5 memory inputParamsV5,
-        JitInputParamsV5 memory jitInputParamsV5,
-        address from,
-        uint256 msgValue
-    ) internal {
-        require(jitInputParamsV5.outputAmount >= inputParamsV5.minOutputAmount, V5OutputAmountTooLow());
+    function _fillV5(V5FillInput memory fillInput, V5FillJit memory fillJit, address from, uint256 msgValue) internal {
+        require(fillJit.outputAmount >= fillInput.minOutputAmount, V5OutputAmountTooLow());
 
         // message should be of the form `abi.encode(bytes32, bytes32)` so we need to check length in
         // case of any trailing bytes
-        require(jitInputParamsV5.message.length == 64, V5InvalidMessage());
-        (bytes32 messageHeader, bytes32 messageStepId) = abi.decode(jitInputParamsV5.message, (bytes32, bytes32));
+        require(fillJit.message.length == 64, V5InvalidMessage());
+        (bytes32 messageHeader, bytes32 messageStepId) = abi.decode(fillJit.message, (bytes32, bytes32));
         require(messageHeader == V5_MAGIC_PREFIX && messageStepId == gateway.currentStepId(), V5InvalidMessage());
 
         // Build relay execution params. The relayData struct assembly lives in a helper frame to keep this
         // function within EVM stack limits.
         V3RelayExecutionParams memory relayExecution = _buildRelayExecution(
-            _v5RelayData(inputParamsV5, jitInputParamsV5),
+            _v5RelayData(fillInput, fillJit),
             gateway.currentSubmitter(),
-            jitInputParamsV5.repaymentChainId
+            fillJit.repaymentChainId
         );
 
         _fillRelayV5(
             relayExecution,
-            jitInputParamsV5.repaymentAddress,
-            inputParamsV5.executorInput,
-            jitInputParamsV5.executorJitInput,
+            fillJit.repaymentAddress,
+            fillInput.executorInput,
+            fillJit.executorJitInput,
             from,
             msgValue
         );
     }
 
-    /// @notice Assembles the V5 `V3RelayData` from the user-committed (`inputParamsV5`) and submitter-committed
-    /// (`jitInputParamsV5`) params. Isolated in its own frame so `_fillV5` stays within EVM stack limits.
+    /// @notice Assembles the V5 `V3RelayData` from the user-committed (`fillInput`) and submitter-committed
+    /// (`fillJit`) params. Isolated in its own frame so `_fillV5` stays within EVM stack limits.
     function _v5RelayData(
-        InputParamsV5 memory inputParamsV5,
-        JitInputParamsV5 memory jitInputParamsV5
+        V5FillInput memory fillInput,
+        V5FillJit memory fillJit
     ) internal pure returns (V3RelayData memory) {
         return
             V3RelayData({
-                depositor: jitInputParamsV5.depositor,
-                recipient: inputParamsV5.recipient,
-                exclusiveRelayer: jitInputParamsV5.exclusiveRelayer,
-                inputToken: jitInputParamsV5.inputToken,
-                outputToken: inputParamsV5.outputToken,
-                inputAmount: jitInputParamsV5.inputAmount,
-                outputAmount: jitInputParamsV5.outputAmount,
-                originChainId: jitInputParamsV5.originChainId,
-                depositId: jitInputParamsV5.depositId,
-                fillDeadline: jitInputParamsV5.fillDeadline,
-                exclusivityDeadline: jitInputParamsV5.exclusivityDeadline,
-                message: jitInputParamsV5.message
+                depositor: fillJit.depositor,
+                recipient: fillInput.recipient,
+                exclusiveRelayer: fillJit.exclusiveRelayer,
+                inputToken: fillJit.inputToken,
+                outputToken: fillInput.outputToken,
+                inputAmount: fillJit.inputAmount,
+                outputAmount: fillJit.outputAmount,
+                originChainId: fillJit.originChainId,
+                depositId: fillJit.depositId,
+                fillDeadline: fillJit.fillDeadline,
+                exclusivityDeadline: fillJit.exclusivityDeadline,
+                message: fillJit.message
             });
     }
 
@@ -2014,8 +2008,8 @@ abstract contract SpokePool is
      * - `exclusiveRelayer` / `exclusivityParameter`: set to any value.
      */
     function _resolveDynamicParams(
-        ParamsFromV5Input memory inputParams,
-        ParamsFromV5Jit memory jitParams,
+        V5DepositInput memory inputParams,
+        V5DepositJit memory jitParams,
         bytes32 pathId
     ) internal view {
         uint256 rules = uint256(inputParams.paramModificationRules);

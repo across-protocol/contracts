@@ -22,21 +22,21 @@ interface V5SpokePoolInterface {
 
     /// @notice Discriminates the action encoded in the `input` payload of `adapterExecuteAcrossV5`.
     /// @dev `input` is `abi.encodePacked(bytes1(uint8(action)), abi.encode(actionInput))`: the leading byte selects the
-    /// action and the remainder is the action-specific payload — `ParamsFromV5Input`/`ParamsFromV5Jit` for `Deposit`,
-    /// `InputParamsV5`/`JitInputParamsV5` for `Fill`.
+    /// action and the remainder is the action-specific payload — `V5DepositInput`/`V5DepositJit` for `Deposit`,
+    /// `V5FillInput`/`V5FillJit` for `Fill`.
     enum V5AdapterAction {
         Deposit,
         Fill
     }
 
-    struct InputParamsV5 {
+    struct V5FillInput {
         bytes32 recipient;
         bytes32 outputToken;
         uint256 minOutputAmount;
         bytes executorInput;
     }
 
-    struct JitInputParamsV5 {
+    struct V5FillJit {
         bytes32 depositor;
         bytes32 exclusiveRelayer;
         bytes32 inputToken;
@@ -53,7 +53,7 @@ interface V5SpokePoolInterface {
     }
 
     /// @notice Deposit parameters the Executor ABI-encodes into the `input` payload of `adapterExecuteAcrossV5`.
-    struct ParamsFromV5Input {
+    struct V5DepositInput {
         bytes32 depositor;
         bytes32 recipient;
         bytes32 inputToken;
@@ -73,8 +73,8 @@ interface V5SpokePoolInterface {
     }
 
     /// @notice Just-in-time modification values the Executor ABI-encodes into the `jitData` payload of
-    /// `adapterExecuteAcrossV5`, applied subject to `ParamsFromV5Input.paramModificationRules`.
-    struct ParamsFromV5Jit {
+    /// `adapterExecuteAcrossV5`, applied subject to `V5DepositInput.paramModificationRules`.
+    struct V5DepositJit {
         uint256 newAmtOut;
         bytes32 newExclusiveRelayer;
         uint32 newExclusivityParameter;
