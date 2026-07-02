@@ -68,7 +68,8 @@ interface V5SpokePoolInterface {
     error V5FillOnly();
     /// @notice Thrown when the submitter-resolved output amount is below the committed floor.
     error V5OutputAmountTooLow();
-    /// @notice Thrown when native value is sent to a V5 fill, which has no consumer for it.
+    /// @notice Thrown when native value is sent to a V5 fill entrypoint. Fills never accept native value; the
+    /// V5 entrypoints are payable only because the executor/adapter interfaces require it.
     error V5UnusedMsgValue();
     /// @notice Thrown when an adapter-mode fill commits a callback message (adapter fills have no trailing call;
     /// delivery-then-action belongs in the tape).

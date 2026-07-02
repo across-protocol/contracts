@@ -1025,15 +1025,16 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Fills a V5 deposit as the terminal action of an Across V5 Gateway execution (spoke-as-executor
-     * mode: the SpokePool is the path-committed executor, called directly by the Gateway).
+     * @notice Fills a V5 deposit as the entire Across V5 Gateway execution (spoke-as-executor mode: the user's
+     * path commits the SpokePool itself as the executor, so the Gateway calls this entrypoint directly).
      * @dev Because the committed input is a fixed struct — a submitter can parse the complete execution
      * semantics before calling `Gateway.execute()` — this mode (and only this mode) pulls the output tokens
      * from the Gateway's current submitter, using the same standing approval relayers already hold for
      * `fillRelay`. The fill is terminal: after delivering to the committed recipient, a committed callback
      * message (if any) triggers the contract recipient's `handleV3AcrossMessage` hook with the submitter
      * reported as relayer, and nothing else runs.
-     * @param message Path-committed `abi.encode(V5FillInput)`: the acceptance bounds.
+     * @param message Path-committed `abi.encode(V5FillInput)`: the user's acceptance bounds (recipient, output
+     * token, minimum output amount, callback message).
      * @param executorMessage Submitter-supplied `abi.encode(V5FillJit)`: the remaining relay data and
      * repayment fields.
      */
@@ -1042,6 +1043,9 @@ abstract contract SpokePool is
         bytes calldata executorMessage
     ) external payable override nonReentrant unpausedFills {
         if (msg.sender != address(gateway)) revert V5NotGateway();
+        // Fills never accept native value — the V3 fill entrypoints are not even payable. This entrypoint is
+        // payable only because the V5 executor interface requires it, so reject any value rather than strand it.
+        if (msg.value > 0) revert V5UnusedMsgValue();
 
         _fillV5(
             abi.decode(message, (V5FillInput)),
@@ -1051,15 +1055,14 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Fills a V5 deposit mid-tape as an Across V5 funding adapter (spoke-as-adapter mode: the
-     * SpokePool is an ADAPTER_CALL target inside a path-committed command tape).
-     * @dev Callable only by the live step's committed executor. The Gateway populates `currentExecutor()` just
-     * for the duration of the executor call, so this single check proves both that an `execute()` is in flight
-     * past the uncommitted funding loop and that `input` is tape-committed (assuming a closed committed
-     * executor — a root-construction rule). Output tokens are pulled from `msg.sender` — the execution's own
-     * balance — never from standing submitter allowances, so a submitter executing an imperfectly-understood
-     * tape risks only what the execution was funded with. There is no trailing call: delivery-then-action is
-     * expressed by tape position.
+     * @notice Fills a V5 deposit as one step inside an Across V5 Gateway execution (spoke-as-adapter mode:
+     * the SpokePool is a funding-adapter target invoked mid-sequence by the executor running the user's
+     * committed commands).
+     * @dev Callable only by the committed executor of the live Gateway execution. Output tokens are pulled
+     * from `msg.sender` — the executing contract's own balance, funded by the Gateway or by earlier steps —
+     * never from a standing submitter allowance, so a submitter executing a command sequence they don't fully
+     * understand risks only what that execution was explicitly funded with. There is no trailing call after
+     * delivery: anything that should happen next is expressed as later steps of the committed sequence.
      * @param input Tape-committed action payload: a leading `V5AdapterAction` byte followed by the ABI-encoded
      * action input (`V5FillInput` for fills). The deposit action is not implemented yet.
      * @param jitData Submitter-supplied `abi.encode(V5FillJit)`.
@@ -1068,9 +1071,13 @@ abstract contract SpokePool is
         bytes calldata input,
         bytes calldata jitData
     ) external payable override nonReentrant unpausedFills {
-        // `msg.sender` is never zero, so the idle and funding-loop states (currentExecutor() == 0) are
-        // rejected by the same comparison.
+        // Check that a Gateway execution is active and that the caller is its committed executor, directly.
+        // For closed executors (only callable through the Gateway), this means `input` is committed in the
+        // user's path rather than chosen by whoever gained control mid-execution.
         if (msg.sender != gateway.currentExecutor()) revert V5NotCurrentExecutor();
+        // Fills never accept native value — the V3 fill entrypoints are not even payable. This entrypoint is
+        // payable only because the V5 adapter interface requires it, so reject any value rather than strand it.
+        if (msg.value > 0) revert V5UnusedMsgValue();
         if (V5AdapterAction(uint8(input[0])) == V5AdapterAction.Deposit) revert V5DepositNotImplemented();
 
         V5FillInput memory fillInput = abi.decode(input[1:], (V5FillInput));
@@ -1664,8 +1671,6 @@ abstract contract SpokePool is
      * or msg.sender, the executing tape's own balance (adapter mode).
      */
     function _fillV5(V5FillInput memory fillInput, V5FillJit memory fillJit, address payer) internal {
-        // V5 fills have no consumer for native value; reject rather than stranding it in this contract.
-        if (msg.value > 0) revert V5UnusedMsgValue();
         if (fillJit.outputAmount < fillInput.minOutputAmount) revert V5OutputAmountTooLow();
         _requireExclusiveFiller(fillJit.exclusivityDeadline, fillJit.exclusiveRelayer, gateway.currentSubmitter());
 
