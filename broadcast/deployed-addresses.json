@@ -1525,20 +1525,35 @@
     "43114": {
       "chain_name": "Avalanche",
       "contracts": {
+        "AcrossEventEmitter": {
+          "address": "0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11",
+          "block_number": 89365316,
+          "transaction_hash": "0x6c0ef4743bef8562f3f9a8109d57c484eab2dbc3f136b245b2d8643fff2ba581"
+        },
+        "MulticallHandler": {
+          "address": "0x9610954AcDCA5FF7905f051A040ce33fe613c60e",
+          "block_number": 89365289,
+          "transaction_hash": "0x04122b91216c818b21a21c7ce9f484d5d87639ac66655e41bad3d980f5247e63"
+        },
         "SP1Helios": {
-          "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1",
-          "block_number": 88664645,
-          "transaction_hash": "0x0e487629ea2cdd600db790dc6e64b629f0b22067554140d83637c95febdb28c1"
+          "address": "0x196767568F848fF7607145A7C1f3CDE44bb4Ce98",
+          "block_number": 89364251,
+          "transaction_hash": "0x249152c5bd94c30856a89f2a7ff8125cd9f9421047b00009cba0b93e7429e65c"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 86958004,
           "transaction_hash": "0x200b98e4ec8b7f99c0a41ea4732e8a11a5c2d4f6915c9d7d43f0bc083de8204a"
         },
+        "SpokePoolPeriphery": {
+          "address": "0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af",
+          "block_number": 89365218,
+          "transaction_hash": "0x0f1dffe44baa484b51b7401bafaae9bc27efc3869b081a5f60f576dc041d1ce1"
+        },
         "SpokePool": {
-          "address": "0x7ba7db70aE338bA74dab72A29b740BC7AcD5AF1b",
-          "block_number": 88664658,
-          "transaction_hash": "0x4a25e5db22f142438cedbd781768abf67ac01e6a2c591f7300fdf27103fefcd8"
+          "address": "0xFE9D541c92E4e90437C7152A00244886dE37a658",
+          "block_number": 89364263,
+          "transaction_hash": "0x170aa84f779561b2d9760ad85845d1f3f4e3b0872885c22226146839449a5046"
         }
       }
     },
