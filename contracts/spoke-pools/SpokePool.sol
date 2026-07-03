@@ -989,14 +989,7 @@ abstract contract SpokePool is
         uint256 repaymentChainId,
         bytes32 repaymentAddress
     ) public override nonReentrant unpausedFills {
-        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-        // to fill the relay.
-        if (
-            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
-        ) {
-            revert NotExclusiveRelayer();
-        }
+        _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
@@ -1089,14 +1082,7 @@ abstract contract SpokePool is
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
     ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
-        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-        // to fill the relay.
-        if (
-            _fillIsExclusive(relayData.exclusivityDeadline, uint32(getCurrentTime())) &&
-            relayData.exclusiveRelayer.toAddress() != msg.sender
-        ) {
-            revert NotExclusiveRelayer();
-        }
+        _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,
