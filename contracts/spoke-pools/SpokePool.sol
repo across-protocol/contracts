@@ -188,14 +188,6 @@ abstract contract SpokePool is
     // deposits are only consumable through the Gateway-context-checked V5 fill entrypoints.
     bytes32 public constant V5_MAGIC_PREFIX = keccak256("AcrossV5MessagePrefix.V1");
 
-    // Domain tag mixed into the digest an authority signs to approve JIT modifications to a V5 deposit.
-    bytes32 public constant VERSIONED_AUCTION_NAMEHASH = keccak256("AcrossV5Auction.v1");
-
-    // Bit flags packed into the high 12 bytes of `V5DepositInput.paramModificationRules`.
-    uint256 internal constant MOD_FLAG_ALLOW_AMOUNT_OUT = 1 << 0; // `outputAmount` may be modified (improvement-only)
-    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER = 1 << 1; // `exclusiveRelayer` may be modified (arbitrary)
-    uint256 internal constant MOD_FLAG_ALLOW_EXCLUSIVITY = 1 << 2; // `exclusivityParameter` may be modified (arbitrary)
-
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -1063,17 +1055,18 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Executes a V5 action — a deposit or a fill — as one step inside an Across V5 Gateway execution
-     * (spoke-as-adapter mode: the SpokePool is a funding-adapter target invoked mid-sequence by the executor
-     * running the user's committed commands).
-     * @dev Callable only by the committed executor of the live Gateway execution. Tokens are always pulled
-     * from `msg.sender` — the executing contract's own balance, funded by the Gateway or by earlier steps —
-     * never from a standing submitter allowance, so a submitter executing a command sequence they don't fully
-     * understand risks only what that execution was explicitly funded with. Fills have no trailing call after
-     * delivery: anything that should happen next is expressed as later steps of the committed sequence.
-     * @param input Tape-committed action payload: a leading `V5AdapterAction` byte followed by the ABI-encoded
-     * action input (`V5DepositInput` for deposits, `V5FillInput` for fills).
-     * @param jitData Submitter-supplied JIT payload matching the action (`V5DepositJit` / `V5FillJit`).
+     * @notice Fills a V5 deposit as one step inside an Across V5 Gateway execution (spoke-as-adapter mode: the
+     * SpokePool is a funding-adapter target invoked mid-sequence by the executor running the user's committed
+     * commands).
+     * @dev Callable only by the committed executor of the live Gateway execution. Output tokens are always
+     * pulled from `msg.sender` — the executing contract's own balance, funded by the Gateway or by earlier
+     * steps — never from a standing submitter allowance, so a submitter executing a command sequence they
+     * don't fully understand risks only what that execution was explicitly funded with. The fill has no
+     * trailing call after delivery: anything that should happen next is expressed as later steps of the
+     * committed sequence.
+     * @param input Tape-committed `abi.encode(V5FillInput)`: the user's acceptance bounds (recipient, output
+     * token, minimum output amount; no callback message may be committed).
+     * @param jitData Submitter-supplied `abi.encode(V5FillJit)`: the remaining relay data and repayment fields.
      */
     function adapterExecuteAcrossV5(
         bytes calldata input,
@@ -1083,19 +1076,14 @@ abstract contract SpokePool is
         // For closed executors (only callable through the Gateway), this means `input` is committed in the
         // user's path rather than chosen by whoever gained control mid-execution.
         if (msg.sender != gateway.currentExecutor()) revert V5NotCurrentExecutor();
+        // Fills never accept native value — the V3 fill entrypoints are not even payable. This entrypoint is
+        // payable only because the V5 adapter interface requires it, so reject any value rather than strand it.
+        if (msg.value > 0) revert V5UnusedMsgValue();
 
-        if (V5AdapterAction(uint8(input[0])) == V5AdapterAction.Deposit) {
-            _depositV5(input[1:], jitData);
-        } else {
-            // Fills never accept native value — the V3 fill entrypoints are not even payable. Only the deposit
-            // action may use msg.value (to wrap native input), so the check lives on this branch.
-            if (msg.value > 0) revert V5UnusedMsgValue();
+        V5FillInput memory fillInput = abi.decode(input, (V5FillInput));
+        if (fillInput.message.length != 0) revert V5CallbackNotAllowed();
 
-            V5FillInput memory fillInput = abi.decode(input[1:], (V5FillInput));
-            if (fillInput.message.length != 0) revert V5CallbackNotAllowed();
-
-            _fillV5(fillInput, abi.decode(jitData, (V5FillJit)), msg.sender);
-        }
+        _fillV5(fillInput, abi.decode(jitData, (V5FillJit)), msg.sender);
     }
 
     /**
@@ -1471,107 +1459,6 @@ abstract contract SpokePool is
             params.exclusiveRelayer,
             params.message
         );
-    }
-
-    /**
-     * @notice Deposit action of `adapterExecuteAcrossV5`: creates a V5-tagged Across deposit from the
-     * path-committed parameters, after applying any authorized just-in-time modifications (e.g. an offchain
-     * auction outcome). Input tokens are pulled from the caller, like every V5 adapter action.
-     * @dev The deposit message is stamped `V5_MAGIC_PREFIX || dstStepId`, committing the deposit to a single
-     * destination Gateway execution root: on the destination chain it is quarantined from all non-V5
-     * settlement paths and consumable only by a V5 fill running under that root.
-     * @param input Tape-committed `abi.encode(V5DepositInput)`.
-     * @param jitData Submitter-supplied `abi.encode(V5DepositJit)`.
-     */
-    function _depositV5(bytes calldata input, bytes calldata jitData) internal unpausedDeposits {
-        V5DepositInput memory inputParams = abi.decode(input, (V5DepositInput));
-        V5DepositJit memory jitParams = abi.decode(jitData, (V5DepositJit));
-
-        bytes32 curPathId = gateway.currentPathId();
-        // The Gateway's current submitter (not msg.sender, which is the shared Executor for adapter deposits)
-        // namespaces the deposit id; the path id and committed nonce differentiate multiple deposits within a
-        // single path execution.
-        uint256 depositId = getUnsafeDepositId(
-            gateway.currentSubmitter(),
-            inputParams.depositor,
-            uint256(keccak256(abi.encodePacked(curPathId, inputParams.depositNonce)))
-        );
-
-        // Apply any just-in-time modifications (e.g. auction outcome) to `inputParams` in place, subject to the
-        // per-deposit rules encoded in `inputParams.paramModificationRules`.
-        _resolveDynamicParams(inputParams, jitParams, curPathId);
-
-        _depositV3(
-            DepositV3Params({
-                depositor: inputParams.depositor,
-                recipient: inputParams.recipient,
-                inputToken: inputParams.inputToken,
-                outputToken: inputParams.outputToken,
-                inputAmount: inputParams.inputAmount,
-                outputAmount: inputParams.outputAmount,
-                destinationChainId: inputParams.destinationChainId,
-                exclusiveRelayer: inputParams.exclusiveRelayer,
-                depositId: depositId,
-                quoteTimestamp: inputParams.quoteTimestamp,
-                fillDeadline: inputParams.fillDeadline,
-                exclusivityParameter: inputParams.exclusivityParameter,
-                message: abi.encodePacked(V5_MAGIC_PREFIX, inputParams.dstStepId)
-            })
-        );
-    }
-
-    /**
-     * @notice Applies just-in-time (JIT) modifications carried in `jitParams` to `inputParams`, governed by the
-     * rules packed into `inputParams.paramModificationRules`.
-     * @dev Each modifiable parameter is either static (its `MOD_FLAG_ALLOW_*` bit is unset, so the JIT value is
-     * ignored) or dynamic. Dynamic parameters obey:
-     * - `outputAmount`: improvement-only (the new value must be >= the original so the recipient is never worse off).
-     * - `exclusiveRelayer` / `exclusivityParameter`: set to any value.
-     */
-    function _resolveDynamicParams(
-        V5DepositInput memory inputParams,
-        V5DepositJit memory jitParams,
-        bytes32 pathId
-    ) internal view {
-        uint256 rules = uint256(inputParams.paramModificationRules);
-        uint256 flags = rules >> 160;
-        address authority = address(uint160(rules));
-
-        // If an authority is configured, the proposed modification set must be signed by it.
-        if (authority != address(0)) {
-            bytes32 digest = keccak256(
-                abi.encodePacked(
-                    VERSIONED_AUCTION_NAMEHASH,
-                    address(gateway),
-                    pathId,
-                    inputParams.depositNonce,
-                    jitParams.newOutputAmount,
-                    jitParams.newExclusiveRelayer,
-                    jitParams.newExclusivityParameter
-                )
-            );
-            if (!SignatureChecker.isValidSignatureNow(authority, digest, jitParams.signature)) {
-                revert InvalidParamModificationSignature();
-            }
-        }
-
-        // outputAmount: improvement-only (recipient is never worse off).
-        if (flags & MOD_FLAG_ALLOW_AMOUNT_OUT != 0) {
-            if (jitParams.newOutputAmount < inputParams.outputAmount) {
-                revert ParamModificationNotAnImprovement();
-            }
-            inputParams.outputAmount = jitParams.newOutputAmount;
-        }
-
-        // exclusiveRelayer: arbitrary.
-        if (flags & MOD_FLAG_ALLOW_EXCLUSIVE_RELAYER != 0) {
-            inputParams.exclusiveRelayer = jitParams.newExclusiveRelayer;
-        }
-
-        // exclusivityParameter: arbitrary.
-        if (flags & MOD_FLAG_ALLOW_EXCLUSIVITY != 0) {
-            inputParams.exclusivityParameter = jitParams.newExclusivityParameter;
-        }
     }
 
     function _distributeRelayerRefunds(
