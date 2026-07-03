@@ -457,14 +457,8 @@ contract SpokePoolFillV5Test is Test {
             });
     }
 
-    function testFillRelayRejectsV5TaggedMessage() public {
-        // Build relay data (which makes view calls) before arming expectRevert.
-        V3SpokePoolInterface.V3RelayData memory relayData = _v5TaggedRelayData();
-
-        vm.prank(relayer);
-        vm.expectRevert(V5SpokePoolInterface.V5FillOnly.selector);
-        spokePool.fillRelay(relayData, REPAYMENT_CHAIN_ID, relayer.toBytes32());
-    }
+    // Note: `fillRelay` itself deliberately accepts V5-tagged messages — periphery V5 executors consume
+    // deposits through it, gated by the deposit's exclusivity parameters (see SpokePool_V5Quarantine.t.sol).
 
     function testFillRelayWithUpdatedDepositRejectsV5TaggedMessage() public {
         V3SpokePoolInterface.V3RelayData memory relayData = _v5TaggedRelayData();
