@@ -16,19 +16,10 @@ pragma solidity ^0.8.0;
  * - adapter mode (`adapterExecuteAcrossV5`): the SpokePool is an ADAPTER_CALL target inside a command tape,
  *   called by the live step's committed executor.
  *
- * On the source side, V5 deposits are created through the same adapter entrypoint (`V5AdapterAction.Deposit`):
- * the user commits the deposit parameters (`V5DepositInput`) in their path, and the submitter may adjust a
- * whitelisted subset of them just-in-time (`V5DepositJit`) — e.g. to apply an offchain auction outcome —
- * subject to the deposit's `paramModificationRules`.
+ * V5 deposits themselves are created outside the SpokePool (e.g. by a V5 planner or adapter on the source
+ * chain) as ordinary Across deposits whose message is the stamped witness.
  */
 interface V5SpokePoolInterface {
-    /// @notice Discriminates the action encoded in the tape-committed `input` of `adapterExecuteAcrossV5`:
-    /// `input = abi.encodePacked(uint8(action), abi.encode(actionInput))`.
-    enum V5AdapterAction {
-        Deposit,
-        Fill
-    }
-
     /// @notice Deposit-committed acceptance bounds for a V5 fill, committed in the path leaf under the
     /// deposit's witness root rather than crossing the bridge.
     struct V5FillInput {
@@ -62,42 +53,6 @@ interface V5SpokePoolInterface {
         bytes32 repaymentAddress;
     }
 
-    /// @notice Path-committed deposit parameters for the `V5AdapterAction.Deposit` action of
-    /// `adapterExecuteAcrossV5`. Mirrors the `deposit()` parameters, except the deposit id is derived from the
-    /// live Gateway context and the message is stamped from `dstStepId`.
-    struct V5DepositInput {
-        bytes32 depositor;
-        bytes32 recipient;
-        bytes32 inputToken;
-        bytes32 outputToken;
-        uint256 inputAmount;
-        uint256 outputAmount;
-        uint256 destinationChainId;
-        bytes32 exclusiveRelayer;
-        // Differentiates multiple deposits committed within a single path execution.
-        uint256 depositNonce;
-        uint32 quoteTimestamp;
-        uint32 fillDeadline;
-        uint32 exclusivityParameter;
-        // Destination Gateway execution root (stepId) allowed to consume this deposit; stamped into the
-        // deposit message as `V5_MAGIC_PREFIX || dstStepId`.
-        bytes32 dstStepId;
-        // Deposit modification rules. Packing: high 12 bytes for modify-permission flags, low 20 bytes for the
-        // signing authority if one is required. Current flags: bit 0: outputAmount, bit 1: exclusiveRelayer,
-        // bit 2: exclusivityParameter.
-        bytes32 paramModificationRules;
-    }
-
-    /// @notice Submitter-supplied just-in-time modification values for a V5 deposit, applied subject to
-    /// `V5DepositInput.paramModificationRules`.
-    struct V5DepositJit {
-        uint256 newOutputAmount;
-        bytes32 newExclusiveRelayer;
-        uint32 newExclusivityParameter;
-        // Authority signature over the modification set; required when `paramModificationRules` names one.
-        bytes signature;
-    }
-
     /// @notice Thrown when `executeAcrossV5` is called by anyone other than the Gateway.
     error V5NotGateway();
     /// @notice Thrown when `adapterExecuteAcrossV5` is called by anyone other than the live step's committed
@@ -109,14 +64,10 @@ interface V5SpokePoolInterface {
     error V5FillOnly();
     /// @notice Thrown when the submitter-resolved output amount is below the committed floor.
     error V5OutputAmountTooLow();
-    /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value; of the V5
-    /// actions only the deposit can use msg.value (to wrap native input).
+    /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value; the V5
+    /// entrypoints are payable only because the external V5 interfaces require it.
     error V5UnusedMsgValue();
     /// @notice Thrown when an adapter-mode fill commits a callback message (adapter fills have no trailing call;
     /// delivery-then-action belongs in the tape).
     error V5CallbackNotAllowed();
-    /// @notice Thrown when a JIT modification of `outputAmount` would worsen the recipient's terms.
-    error ParamModificationNotAnImprovement();
-    /// @notice Thrown when the authority signature over the JIT modifications is missing or invalid.
-    error InvalidParamModificationSignature();
 }

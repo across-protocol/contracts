@@ -12,7 +12,7 @@ import { V3SpokePoolInterface } from "../../../../../contracts/interfaces/V3Spok
 import { V5SpokePoolInterface } from "../../../../../contracts/interfaces/V5SpokePoolInterface.sol";
 import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
-/// @notice Tests for the Executor-driven V5 fill path: `adapterExecuteAcrossV5` with the `Fill` action.
+/// @notice Tests for the Executor-driven V5 fill path: `adapterExecuteAcrossV5`.
 /// @dev This mirrors the Gateway-direct `executeAcrossV5` suite but exercises the differences of the adapter
 /// path:
 /// (1) it is callable ONLY by the live step's committed executor (`gateway.currentExecutor()`), which reads
@@ -161,9 +161,9 @@ contract SpokePoolFillAdapterTest is Test {
         return abi.encodePacked(spokePool.V5_MAGIC_PREFIX(), STEP_ID);
     }
 
-    /// @dev Encodes the adapter `input` for a fill: the 1-byte `Fill` action prefix followed by the ABI-encoded input.
+    /// @dev Encodes the adapter `input` for a fill: the ABI-encoded `V5FillInput`.
     function _fillPayload(V5SpokePoolInterface.V5FillInput memory input) internal pure returns (bytes memory) {
-        return abi.encodePacked(bytes1(uint8(V5SpokePoolInterface.V5AdapterAction.Fill)), abi.encode(input));
+        return abi.encode(input);
     }
 
     /// @dev Executes an adapter fill as `caller`, which funds the output tokens.
@@ -381,7 +381,7 @@ contract SpokePoolFillAdapterTest is Test {
     }
 
     function testRevertsOnMsgValue() public {
-        // Fills never accept native value; only the deposit action of this entrypoint may use msg.value.
+        // Fills never accept native value; the entrypoint is payable only because the adapter interface requires it.
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
