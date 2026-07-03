@@ -306,18 +306,6 @@ abstract contract SpokePool is
         _;
     }
 
-    // Hard-quarantines V5-tagged deposits from the settlement paths that V5 fills never use (updated fills,
-    // slow-fill requests and executions). V5 deposits commit to a Gateway execution witness in `message`
-    // and are consumed either through `executeAcrossV5` (this pool as the path executor) or through plain
-    // `fillRelay` by their exclusive relayer — a periphery V5 executor contract. Both consumers reconstruct
-    // and bind the witness against the live Gateway execution; `fillRelay` therefore stays open and is
-    // gated by the deposit's own exclusivity parameters, while the remaining paths would let the witness
-    // binding be bypassed (delivering outside any Gateway execution) and are blocked outright.
-    modifier nonV5Fill(bytes memory message) {
-        if (_isV5Message(message)) revert V5FillOnly();
-        _;
-    }
-
     /**************************************
      *          ADMIN FUNCTIONS           *
      **************************************/
@@ -1081,7 +1069,7 @@ abstract contract SpokePool is
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
-    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
+    ) public override nonReentrant unpausedFills {
         _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
@@ -1122,9 +1110,7 @@ abstract contract SpokePool is
      * slow filled. If any of the params are missing or different from the origin chain deposit,
      * then Across will not include a slow fill for the intended deposit.
      */
-    function requestSlowFill(
-        V3RelayData calldata relayData
-    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
+    function requestSlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
         uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
@@ -1211,7 +1197,7 @@ abstract contract SpokePool is
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
-    ) public override nonReentrant nonV5Fill(slowFillLeaf.relayData.message) {
+    ) public override nonReentrant {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken.toAddress());
