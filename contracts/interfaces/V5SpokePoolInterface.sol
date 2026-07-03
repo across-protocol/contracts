@@ -13,8 +13,9 @@ pragma solidity ^0.8.0;
  *
  * `executeAcrossV5` is the executor-mode entrypoint: the user's path commits the SpokePool itself as the
  * executor, so the Gateway calls it directly and the entire execution is one V5 fill. V5 deposits are
- * alternatively consumable through plain `fillRelay` by a periphery executor committed as the deposit's
- * exclusive relayer. V5 deposits themselves are created outside the SpokePool (see the Across V5
+ * alternatively consumable through plain `fillRelay` by a periphery executor running inside the committed
+ * Gateway execution — the pool requires the relay's stepId to be live on the Gateway whenever the message
+ * is V5-tagged. V5 deposits themselves are created outside the SpokePool (see the Across V5
  * SpokePoolExecutor) as ordinary Across deposits whose message is the stamped witness.
  */
 interface V5SpokePoolInterface {
@@ -52,6 +53,14 @@ interface V5SpokePoolInterface {
 
     /// @notice Thrown when `executeAcrossV5` is called by anyone other than the Gateway.
     error V5NotGateway();
+    /// @notice Thrown when a V5-tagged relay reaches a fill path while its committed Gateway execution is
+    /// not live — the stepId carried in the relay message must equal `gateway.currentStepId()` at
+    /// settlement time.
+    error V5FillOutsideGatewayExecution();
+    /// @notice Thrown when a V5-tagged relay reaches a slow-fill path. V5 deposits are fast-fill only:
+    /// slow fills settle out of pool reserves outside any Gateway execution, so they can never honor the
+    /// witness.
+    error V5SlowFillNotAllowed();
     /// @notice Thrown when the submitter-resolved output amount is below the committed floor.
     error V5OutputAmountTooLow();
     /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value; the V5

@@ -183,7 +183,9 @@ abstract contract SpokePool is
 
     // Magic prefix tagging a deposit message as an Across V5 witness: `message = V5_MAGIC_PREFIX || stepId`,
     // where stepId is the Merkle root of the Gateway execution allowed to consume the deposit. V5-tagged
-    // deposits are only consumable through the Gateway-context-checked V5 fill entrypoints.
+    // deposits are only fillable while that execution is live on the Gateway (see `onlyLiveV5`) — either
+    // through `executeAcrossV5` or through `fillRelay` from inside the committed step — and are never
+    // slow-fillable (see `nonV5Flow`).
     bytes32 public constant V5_MAGIC_PREFIX = keccak256("AcrossV5MessagePrefix.V1");
 
     /****************************************
@@ -303,6 +305,23 @@ abstract contract SpokePool is
 
     modifier unpausedFills() {
         if (pausedFills) revert FillsArePaused();
+        _;
+    }
+
+    // A V5-tagged relay commits to a Gateway execution root in its message (`V5_MAGIC_PREFIX || stepId`);
+    // it is fillable only while that exact execution is live on the Gateway — i.e. from inside the
+    // committed step, in the same transaction. This binds V5 deposit consumption to the committed
+    // destination execution: outside it, fast and updated fills revert. Non-V5 messages pass through
+    // untouched.
+    modifier onlyLiveV5(bytes memory message) {
+        _requireLiveV5Step(message);
+        _;
+    }
+
+    // V5 deposits are fast-fill only: slow fills settle out of pool reserves outside any Gateway
+    // execution, so they can never honor the witness and are rejected outright.
+    modifier nonV5Flow(bytes memory message) {
+        if (_isV5Message(message)) revert V5SlowFillNotAllowed();
         _;
     }
 
@@ -976,7 +995,7 @@ abstract contract SpokePool is
         V3RelayData memory relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress
-    ) public override nonReentrant unpausedFills {
+    ) public override nonReentrant unpausedFills onlyLiveV5(relayData.message) {
         _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
@@ -1069,7 +1088,7 @@ abstract contract SpokePool is
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
-    ) public override nonReentrant unpausedFills {
+    ) public override nonReentrant unpausedFills onlyLiveV5(relayData.message) {
         _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
@@ -1110,7 +1129,9 @@ abstract contract SpokePool is
      * slow filled. If any of the params are missing or different from the origin chain deposit,
      * then Across will not include a slow fill for the intended deposit.
      */
-    function requestSlowFill(V3RelayData calldata relayData) public override nonReentrant unpausedFills {
+    function requestSlowFill(
+        V3RelayData calldata relayData
+    ) public override nonReentrant unpausedFills nonV5Flow(relayData.message) {
         uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
@@ -1197,7 +1218,7 @@ abstract contract SpokePool is
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
-    ) public override nonReentrant {
+    ) public override nonReentrant nonV5Flow(slowFillLeaf.relayData.message) {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken.toAddress());
@@ -1798,9 +1819,8 @@ abstract contract SpokePool is
         return exclusivityDeadline >= currentTime;
     }
 
-    // Returns true if `message` is V5-tagged (starts with V5_MAGIC_PREFIX), meaning the deposit is
-    // settleable only through `executeAcrossV5` or through `fillRelay` by its exclusive relayer (a V5
-    // executor contract).
+    // Returns true if `message` is V5-tagged (starts with V5_MAGIC_PREFIX), meaning the relay is
+    // settleable only while its committed Gateway execution is live (see `onlyLiveV5`).
     function _isV5Message(bytes memory message) internal pure returns (bool) {
         if (message.length < 32) return false;
         bytes32 header;
@@ -1809,6 +1829,20 @@ abstract contract SpokePool is
             header := mload(add(message, 32))
         }
         return header == V5_MAGIC_PREFIX;
+    }
+
+    // Reverts unless a V5-tagged `message`'s committed stepId is currently live on the Gateway. A V5
+    // message shorter than the full `V5_MAGIC_PREFIX || stepId` shape can never match, and a pool deployed
+    // without a Gateway has V5 settlement disabled entirely.
+    function _requireLiveV5Step(bytes memory message) internal view {
+        if (!_isV5Message(message)) return;
+        if (message.length < 64 || address(gateway) == address(0)) revert V5FillOutsideGatewayExecution();
+        bytes32 stepId;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            stepId := mload(add(message, 64))
+        }
+        if (gateway.currentStepId() != stepId) revert V5FillOutsideGatewayExecution();
     }
 
     // Helper for emitting message hash. For easier easier human readability we return bytes32(0) for empty message.
