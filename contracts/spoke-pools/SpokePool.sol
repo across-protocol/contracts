@@ -17,7 +17,6 @@ import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
 import { V5SpokePoolInterface } from "../interfaces/V5SpokePoolInterface.sol";
 import { IGateway } from "../external/interfaces/IGateway.sol";
 import { IAcrossV5Executor } from "../external/interfaces/IAcrossV5Executor.sol";
-import { IAcrossV5ExecutorAdapter } from "../external/interfaces/IAcrossV5ExecutorAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -47,7 +46,6 @@ abstract contract SpokePool is
     IDestinationSettler,
     OFTTransportAdapter,
     IAcrossV5Executor,
-    IAcrossV5ExecutorAdapter,
     SafeTransferERC20
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
@@ -152,7 +150,7 @@ abstract contract SpokePool is
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable fillDeadlineBuffer;
 
-    // Across V5 Gateway whose live execution context authenticates and parameterizes V5 fills.
+    // Across V5 Gateway whose live execution context authenticates and parameterizes executor-mode V5 fills.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     IGateway public immutable gateway;
 
@@ -185,7 +183,9 @@ abstract contract SpokePool is
 
     // Magic prefix tagging a deposit message as an Across V5 witness: `message = V5_MAGIC_PREFIX || stepId`,
     // where stepId is the Merkle root of the Gateway execution allowed to consume the deposit. V5-tagged
-    // deposits are only consumable through the Gateway-context-checked V5 fill entrypoints.
+    // deposits are only fillable while that execution is live on the Gateway (see `onlyLiveV5`) — either
+    // through `executeAcrossV5` or through `fillRelay` from inside the committed step — and are never
+    // slow-fillable (see `nonV5Flow`).
     bytes32 public constant V5_MAGIC_PREFIX = keccak256("AcrossV5MessagePrefix.V1");
 
     /****************************************
@@ -308,12 +308,20 @@ abstract contract SpokePool is
         _;
     }
 
-    // Quarantines V5-tagged deposits from non-V5 settlement paths (regular fills, updated fills, slow-fill
-    // requests and executions). V5 deposits commit to a Gateway execution witness in `message` and are only
-    // consumable through the V5 entrypoints that check it; without this guard the witness binding would be
-    // bypassable.
-    modifier nonV5Fill(bytes memory message) {
-        if (_isV5Message(message)) revert V5FillOnly();
+    // A V5-tagged relay commits to a Gateway execution root in its message (`V5_MAGIC_PREFIX || stepId`);
+    // it is fillable only while that exact execution is live on the Gateway — i.e. from inside the
+    // committed step, in the same transaction. This binds V5 deposit consumption to the committed
+    // destination execution: outside it, fast and updated fills revert. Non-V5 messages pass through
+    // untouched.
+    modifier onlyLiveV5(bytes memory message) {
+        _requireLiveV5Step(message);
+        _;
+    }
+
+    // V5 deposits are fast-fill only: slow fills settle out of pool reserves outside any Gateway
+    // execution, so they can never honor the witness and are rejected outright.
+    modifier nonV5Flow(bytes memory message) {
+        if (_isV5Message(message)) revert V5SlowFillNotAllowed();
         _;
     }
 
@@ -987,7 +995,7 @@ abstract contract SpokePool is
         V3RelayData memory relayData,
         uint256 repaymentChainId,
         bytes32 repaymentAddress
-    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
+    ) public override nonReentrant unpausedFills onlyLiveV5(relayData.message) {
         _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
@@ -1055,38 +1063,6 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Fills a V5 deposit as one step inside an Across V5 Gateway execution (spoke-as-adapter mode: the
-     * SpokePool is a funding-adapter target invoked mid-sequence by the executor running the user's committed
-     * commands).
-     * @dev Callable only by the committed executor of the live Gateway execution. Output tokens are always
-     * pulled from `msg.sender` — the executing contract's own balance, funded by the Gateway or by earlier
-     * steps — never from a standing submitter allowance, so a submitter executing a command sequence they
-     * don't fully understand risks only what that execution was explicitly funded with. The fill has no
-     * trailing call after delivery: anything that should happen next is expressed as later steps of the
-     * committed sequence.
-     * @param input Tape-committed `abi.encode(V5FillInput)`: the user's acceptance bounds (recipient, output
-     * token, minimum output amount; no callback message may be committed).
-     * @param jitData Submitter-supplied `abi.encode(V5FillJit)`: the remaining relay data and repayment fields.
-     */
-    function adapterExecuteAcrossV5(
-        bytes calldata input,
-        bytes calldata jitData
-    ) external payable override nonReentrant {
-        // Check that a Gateway execution is active and that the caller is its committed executor, directly.
-        // For closed executors (only callable through the Gateway), this means `input` is committed in the
-        // user's path rather than chosen by whoever gained control mid-execution.
-        if (msg.sender != gateway.currentExecutor()) revert V5NotCurrentExecutor();
-        // Fills never accept native value — the V3 fill entrypoints are not even payable. This entrypoint is
-        // payable only because the V5 adapter interface requires it, so reject any value rather than strand it.
-        if (msg.value > 0) revert V5UnusedMsgValue();
-
-        V5FillInput memory fillInput = abi.decode(input, (V5FillInput));
-        if (fillInput.message.length != 0) revert V5CallbackNotAllowed();
-
-        _fillV5(fillInput, abi.decode(jitData, (V5FillJit)), msg.sender);
-    }
-
-    /**
      * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
      * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
@@ -1112,7 +1088,7 @@ abstract contract SpokePool is
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
         bytes calldata depositorSignature
-    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
+    ) public override nonReentrant unpausedFills onlyLiveV5(relayData.message) {
         _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, msg.sender);
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
@@ -1155,7 +1131,7 @@ abstract contract SpokePool is
      */
     function requestSlowFill(
         V3RelayData calldata relayData
-    ) public override nonReentrant unpausedFills nonV5Fill(relayData.message) {
+    ) public override nonReentrant unpausedFills nonV5Flow(relayData.message) {
         uint32 currentTime = uint32(getCurrentTime());
         // If a depositor has set an exclusivity deadline, then only the exclusive relayer should be able to
         // fast fill within this deadline. Moreover, the depositor should expect to get *fast* filled within
@@ -1242,7 +1218,7 @@ abstract contract SpokePool is
         V3SlowFill calldata slowFillLeaf,
         uint32 rootBundleId,
         bytes32[] calldata proof
-    ) public override nonReentrant nonV5Fill(slowFillLeaf.relayData.message) {
+    ) public override nonReentrant nonV5Flow(slowFillLeaf.relayData.message) {
         V3RelayData memory relayData = slowFillLeaf.relayData;
 
         _preExecuteLeafHook(relayData.outputToken.toAddress());
@@ -1820,7 +1796,15 @@ abstract contract SpokePool is
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
+        // A V5-tagged message is a Gateway execution witness, not a payload for the recipient: any
+        // post-delivery action is committed in the Gateway execution consuming the deposit, so the
+        // callback is skipped rather than forcing V5 recipients to implement the handler. (Executor-mode V5
+        // fills substitute the path-committed callback message here, which is not V5-tagged.)
+        if (
+            updatedMessage.length > 0 &&
+            AddressLibUpgradeable.isContract(recipientToSend) &&
+            !_isV5Message(updatedMessage)
+        ) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,
@@ -1835,8 +1819,8 @@ abstract contract SpokePool is
         return exclusivityDeadline >= currentTime;
     }
 
-    // Returns true if `message` is V5-tagged (starts with V5_MAGIC_PREFIX), meaning the deposit is consumable
-    // only through the V5 fill entrypoints.
+    // Returns true if `message` is V5-tagged (starts with V5_MAGIC_PREFIX), meaning the relay is
+    // settleable only while its committed Gateway execution is live (see `onlyLiveV5`).
     function _isV5Message(bytes memory message) internal pure returns (bool) {
         if (message.length < 32) return false;
         bytes32 header;
@@ -1845,6 +1829,20 @@ abstract contract SpokePool is
             header := mload(add(message, 32))
         }
         return header == V5_MAGIC_PREFIX;
+    }
+
+    // Reverts unless a V5-tagged `message`'s committed stepId is currently live on the Gateway. A V5
+    // message shorter than the full `V5_MAGIC_PREFIX || stepId` shape can never match, and a pool deployed
+    // without a Gateway has V5 settlement disabled entirely.
+    function _requireLiveV5Step(bytes memory message) internal view {
+        if (!_isV5Message(message)) return;
+        if (message.length < 64 || address(gateway) == address(0)) revert V5FillOutsideGatewayExecution();
+        bytes32 stepId;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            stepId := mload(add(message, 64))
+        }
+        if (gateway.currentStepId() != stepId) revert V5FillOutsideGatewayExecution();
     }
 
     // Helper for emitting message hash. For easier easier human readability we return bytes32(0) for empty message.
