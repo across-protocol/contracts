@@ -28,6 +28,10 @@ fallback_oz = true
 mode = '3'
 zksolc = "1.5.15"
 
+[profile.sizeopt]
+# Some contracts don't fit into the size limit if we deploy them with default optimizer_runs
+optimizer_runs = 1
+
 [profile.mintburn]
 # Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
 optimizer_runs = 300
