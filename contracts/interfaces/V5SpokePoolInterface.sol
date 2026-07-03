@@ -14,7 +14,8 @@ pragma solidity ^0.8.0;
  * `executeAcrossV5` is the executor-mode entrypoint: the user's path commits the SpokePool itself as the
  * executor, so the Gateway calls it directly and the entire execution is one V5 fill. V5 deposits are
  * alternatively consumable through plain `fillRelay` by a periphery executor committed as the deposit's
- * exclusive relayer; V5 deposits are created periphery-side (see the Across V5 SpokePoolExecutor).
+ * exclusive relayer. V5 deposits themselves are created outside the SpokePool (see the Across V5
+ * SpokePoolExecutor) as ordinary Across deposits whose message is the stamped witness.
  */
 interface V5SpokePoolInterface {
     /// @notice Deposit-committed acceptance bounds for a V5 fill, committed in the path leaf under the
@@ -56,6 +57,7 @@ interface V5SpokePoolInterface {
     error V5FillOnly();
     /// @notice Thrown when the submitter-resolved output amount is below the committed floor.
     error V5OutputAmountTooLow();
-    /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value.
+    /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value; the V5
+    /// entrypoint is payable only because the external V5 executor interface requires it.
     error V5UnusedMsgValue();
 }
