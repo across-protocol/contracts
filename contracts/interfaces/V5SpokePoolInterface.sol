@@ -52,9 +52,6 @@ interface V5SpokePoolInterface {
 
     /// @notice Thrown when `executeAcrossV5` is called by anyone other than the Gateway.
     error V5NotGateway();
-    /// @notice Thrown when a V5-tagged deposit reaches a settlement path that V5 fills never use (updated
-    /// fills, slow-fill requests and executions).
-    error V5FillOnly();
     /// @notice Thrown when the submitter-resolved output amount is below the committed floor.
     error V5OutputAmountTooLow();
     /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value; the V5
