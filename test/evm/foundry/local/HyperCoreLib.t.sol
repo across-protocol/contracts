@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // Wrapper contract to expose internal library functions for testing
 contract HyperCoreLibWrapper {
@@ -28,7 +29,7 @@ contract HyperCoreLibTest is Test {
     function testMaximumEVMSendAmountToAmounts_RevertsWhenCoreAmountExceedsUint64Max_ZeroDecimalDiff() public {
         uint256 tooLargeAmount = uint256(type(uint64).max) + 1;
 
-        vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 64, tooLargeAmount));
         wrapper.maximumEVMSendAmountToAmounts(tooLargeAmount, 0);
     }
 
@@ -55,7 +56,7 @@ contract HyperCoreLibTest is Test {
         uint256 evmAmount = uint256(type(uint64).max / 1e6) + 1; // Just over the limit
         int8 decimalDiff = -6;
 
-        vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 64, evmAmount * 1e6));
         wrapper.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
     }
 
