@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { V3SpokePoolInterface } from "./V3SpokePoolInterface.sol";
+
 /**
  * @notice Types and errors for Across V5 SpokePool deposits and fills.
  *
  * A V5 deposit carries only a witness across the bridge: `message = V5_MAGIC_PREFIX || stepId`, where `stepId`
  * is the Merkle root of the Gateway execution allowed to consume it. Everything else the destination must honor
- * is committed in the destination path leaf as `V5FillInput`; the submitter supplies the remaining relay data
- * just-in-time as `V5FillJit`. The two together, plus the live stepId read from the Gateway, reconstruct the
- * deposit's `V3RelayData` — so the computed relay hash only matches a real deposit when the committed root is
- * the one being executed.
+ * is committed in the destination path leaf as `V5FillInput`; the submitter supplies the deposit's `V3RelayData`
+ * verbatim just-in-time as `V5FillJit`. The SpokePool validates the committed bounds — and the witness, against
+ * the live stepId read from the Gateway — before hashing the supplied relay data, so the relay hash only matches
+ * a real deposit when the committed root is the one being executed.
  *
  * V5 deposits are consumable in two modes:
  * - executor mode (`executeAcrossV5`): the SpokePool is the path executor, called directly by the Gateway.
@@ -35,19 +37,12 @@ interface V5SpokePoolInterface {
         bytes message;
     }
 
-    /// @notice Submitter-supplied relay data for a V5 fill: competition parameters and facts the submitter
-    /// proves by paying for the fill, plus their repayment preferences.
+    /// @notice Submitter-supplied relay data for a V5 fill, plus their repayment preferences.
     struct V5FillJit {
-        bytes32 depositor;
-        bytes32 inputToken;
-        uint256 inputAmount;
-        // Resolved output amount; must be at least `V5FillInput.minOutputAmount`.
-        uint256 outputAmount;
-        uint256 originChainId;
-        uint256 depositId;
-        uint32 fillDeadline;
-        uint32 exclusivityDeadline;
-        bytes32 exclusiveRelayer;
+        // The deposit's relay data, passed verbatim. `recipient`, `outputToken` and `message` must match the
+        // committed `V5FillInput` / live Gateway stepId, and `outputAmount` must meet the committed floor; the
+        // remaining fields are competition parameters and facts the submitter proves by paying for the fill.
+        V3SpokePoolInterface.V3RelayData relayData;
         // Chain and address where the filler wants their refund.
         uint256 repaymentChainId;
         bytes32 repaymentAddress;
@@ -62,6 +57,9 @@ interface V5SpokePoolInterface {
     /// slow-fill requests and executions). V5 deposits are consumable only through the witness-checked V5
     /// entrypoints.
     error V5FillOnly();
+    /// @notice Thrown when the submitter-supplied relay data contradicts the committed `V5FillInput` or the
+    /// live Gateway stepId (recipient, output token, or witness message mismatch).
+    error V5CommitmentMismatch();
     /// @notice Thrown when the submitter-resolved output amount is below the committed floor.
     error V5OutputAmountTooLow();
     /// @notice Thrown when native value is sent to a V5 fill. Fills never accept native value; the V5

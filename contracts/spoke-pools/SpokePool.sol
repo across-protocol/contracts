@@ -1035,8 +1035,8 @@ abstract contract SpokePool is
      * reported as relayer, and nothing else runs.
      * @param message Path-committed `abi.encode(V5FillInput)`: the user's acceptance bounds (recipient, output
      * token, minimum output amount, callback message).
-     * @param executorMessage Submitter-supplied `abi.encode(V5FillJit)`: the remaining relay data and
-     * repayment fields.
+     * @param executorMessage Submitter-supplied `abi.encode(V5FillJit)`: the deposit's relay data, passed
+     * verbatim, and repayment fields.
      */
     function executeAcrossV5(
         bytes calldata message,
@@ -1066,7 +1066,8 @@ abstract contract SpokePool is
      * committed sequence.
      * @param input Tape-committed `abi.encode(V5FillInput)`: the user's acceptance bounds (recipient, output
      * token, minimum output amount; no callback message may be committed).
-     * @param jitData Submitter-supplied `abi.encode(V5FillJit)`: the remaining relay data and repayment fields.
+     * @param jitData Submitter-supplied `abi.encode(V5FillJit)`: the deposit's relay data, passed verbatim,
+     * and repayment fields.
      */
     function adapterExecuteAcrossV5(
         bytes calldata input,
@@ -1660,34 +1661,28 @@ abstract contract SpokePool is
      * @notice Shared core of both V5 fill modes: validates the committed acceptance bounds against the
      * submitter-supplied relay data, binds the fill to the live Gateway execution, and settles it through the
      * standard fill pipeline (fill-status ledger, FilledRelay event, token transfer, optional callback).
-     * @dev The relay `message` is constructed — not validated — as `V5_MAGIC_PREFIX || gateway.currentStepId()`,
-     * so the computed relay hash only matches a real deposit if that deposit committed to the root being
-     * executed. Marking that hash filled is the replay protection. Exclusivity is judged against the Gateway's
-     * current submitter in both modes: identity for relayer competition is decoupled from where funds are
-     * pulled.
+     * @dev The supplied relay data is hashed verbatim, so every `V5FillInput` commitment must be explicitly
+     * checked against it here — recipient, output token, the output-amount floor, and the witness
+     * `message == V5_MAGIC_PREFIX || gateway.currentStepId()`. The witness check makes the relay hash only
+     * match a real deposit if that deposit committed to the root being executed; marking that hash filled is
+     * the replay protection. The unchecked relay-data fields are competition parameters the submitter proves
+     * by paying: a wrong value yields a hash matching no real deposit, forfeiting the refund. Exclusivity is
+     * judged against the Gateway's current submitter in both modes: identity for relayer competition is
+     * decoupled from where funds are pulled.
      * @param fillInput Deposit-committed acceptance bounds.
      * @param fillJit Submitter-supplied relay data and repayment fields.
      * @param payer Address the output tokens are pulled from: the Gateway's current submitter (executor mode)
      * or msg.sender, the executing tape's own balance (adapter mode).
      */
     function _fillV5(V5FillInput memory fillInput, V5FillJit memory fillJit, address payer) internal unpausedFills {
-        if (fillJit.outputAmount < fillInput.minOutputAmount) revert V5OutputAmountTooLow();
-        _requireExclusiveFiller(fillJit.exclusivityDeadline, fillJit.exclusiveRelayer, gateway.currentSubmitter());
-
-        V3RelayData memory relayData = V3RelayData({
-            depositor: fillJit.depositor,
-            recipient: fillInput.recipient,
-            exclusiveRelayer: fillJit.exclusiveRelayer,
-            inputToken: fillJit.inputToken,
-            outputToken: fillInput.outputToken,
-            inputAmount: fillJit.inputAmount,
-            outputAmount: fillJit.outputAmount,
-            originChainId: fillJit.originChainId,
-            depositId: fillJit.depositId,
-            fillDeadline: fillJit.fillDeadline,
-            exclusivityDeadline: fillJit.exclusivityDeadline,
-            message: abi.encodePacked(V5_MAGIC_PREFIX, gateway.currentStepId())
-        });
+        V3RelayData memory relayData = fillJit.relayData;
+        if (
+            relayData.recipient != fillInput.recipient ||
+            relayData.outputToken != fillInput.outputToken ||
+            keccak256(relayData.message) != keccak256(abi.encodePacked(V5_MAGIC_PREFIX, gateway.currentStepId()))
+        ) revert V5CommitmentMismatch();
+        if (relayData.outputAmount < fillInput.minOutputAmount) revert V5OutputAmountTooLow();
+        _requireExclusiveFiller(relayData.exclusivityDeadline, relayData.exclusiveRelayer, gateway.currentSubmitter());
 
         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
             relay: relayData,

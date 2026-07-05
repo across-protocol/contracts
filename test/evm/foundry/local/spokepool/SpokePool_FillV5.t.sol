@@ -140,54 +140,33 @@ contract SpokePoolFillV5Test is Test {
         uint32 fillDeadline = uint32(spokePool.getCurrentTime()) + 1000;
         return
             V5SpokePoolInterface.V5FillJit({
-                depositor: depositor.toBytes32(),
-                inputToken: address(erc20).toBytes32(),
-                inputAmount: AMOUNT,
-                outputAmount: AMOUNT,
-                originChainId: ORIGIN_CHAIN_ID,
-                depositId: FIRST_DEPOSIT_ID,
-                fillDeadline: fillDeadline,
-                exclusivityDeadline: fillDeadline, // active exclusivity window
-                exclusiveRelayer: submitter.toBytes32(), // submitter is the exclusive relayer by default
+                relayData: V3SpokePoolInterface.V3RelayData({
+                    depositor: depositor.toBytes32(),
+                    recipient: recipient.toBytes32(), // must match the committed input
+                    exclusiveRelayer: submitter.toBytes32(), // submitter is the exclusive relayer by default
+                    inputToken: address(erc20).toBytes32(),
+                    outputToken: address(destErc20).toBytes32(), // must match the committed input
+                    inputAmount: AMOUNT,
+                    outputAmount: AMOUNT,
+                    originChainId: ORIGIN_CHAIN_ID,
+                    depositId: FIRST_DEPOSIT_ID,
+                    fillDeadline: fillDeadline,
+                    exclusivityDeadline: fillDeadline, // active exclusivity window
+                    message: _v5Message(STEP_ID) // the witness: must match the live gateway step id
+                }),
                 repaymentChainId: REPAYMENT_CHAIN_ID,
                 repaymentAddress: relayer.toBytes32()
             });
     }
 
-    /// @dev The message SpokePool stamps onto every V5 relay: the V5 header followed by the live gateway step
-    /// id. It is constructed by the SpokePool — never supplied by the submitter.
+    /// @dev The witness message every V5 relay must carry: the V5 header followed by a gateway step id. It is
+    /// supplied verbatim by the submitter and validated by the SpokePool against the LIVE step id.
     function _v5Message(bytes32 stepId) internal view returns (bytes memory) {
         return abi.encodePacked(spokePool.V5_MAGIC_PREFIX(), stepId);
     }
 
-    function _relayData(
-        V5SpokePoolInterface.V5FillInput memory input,
-        V5SpokePoolInterface.V5FillJit memory jit,
-        bytes32 stepId
-    ) internal view returns (V3SpokePoolInterface.V3RelayData memory) {
-        return
-            V3SpokePoolInterface.V3RelayData({
-                depositor: jit.depositor,
-                recipient: input.recipient,
-                exclusiveRelayer: jit.exclusiveRelayer,
-                inputToken: jit.inputToken,
-                outputToken: input.outputToken,
-                inputAmount: jit.inputAmount,
-                outputAmount: jit.outputAmount,
-                originChainId: jit.originChainId,
-                depositId: jit.depositId,
-                fillDeadline: jit.fillDeadline,
-                exclusivityDeadline: jit.exclusivityDeadline,
-                message: _v5Message(stepId)
-            });
-    }
-
-    function _relayHash(
-        V5SpokePoolInterface.V5FillInput memory input,
-        V5SpokePoolInterface.V5FillJit memory jit,
-        bytes32 stepId
-    ) internal view returns (bytes32) {
-        return keccak256(abi.encode(_relayData(input, jit, stepId), DESTINATION_CHAIN_ID));
+    function _relayHash(V5SpokePoolInterface.V5FillJit memory jit) internal pure returns (bytes32) {
+        return keccak256(abi.encode(jit.relayData, DESTINATION_CHAIN_ID));
     }
 
     function _execute(
@@ -226,35 +205,67 @@ contract SpokePoolFillV5Test is Test {
     function testRevertsWhenOutputAmountBelowMin() public {
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
-        jit.outputAmount = input.minOutputAmount - 1;
+        jit.relayData.outputAmount = input.minOutputAmount - 1;
 
         vm.prank(address(gateway));
         vm.expectRevert(V5SpokePoolInterface.V5OutputAmountTooLow.selector);
         spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
     }
 
+    function testRevertsOnCommitmentMismatch() public {
+        // Each committed acceptance bound must be honored by the supplied relay data: recipient, output token
+        // and the witness message are validated field-by-field, never overwritten.
+        V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
+
+        V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
+        jit.relayData.recipient = relayer.toBytes32();
+        vm.prank(address(gateway));
+        vm.expectRevert(V5SpokePoolInterface.V5CommitmentMismatch.selector);
+        spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
+
+        jit = _defaultJit();
+        jit.relayData.outputToken = address(weth).toBytes32();
+        vm.prank(address(gateway));
+        vm.expectRevert(V5SpokePoolInterface.V5CommitmentMismatch.selector);
+        spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
+
+        jit = _defaultJit();
+        jit.relayData.message = abi.encodePacked(spokePool.V5_MAGIC_PREFIX()); // malformed witness: no step id
+        vm.prank(address(gateway));
+        vm.expectRevert(V5SpokePoolInterface.V5CommitmentMismatch.selector);
+        spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
+    }
+
     function testRelayHashBindsToLiveStepId() public {
-        // The relay message is constructed from the LIVE gateway step id, so the same (input, jit) pair marks a
-        // different relay hash under a different step id: the fill can only consume a deposit that committed to
-        // the root being executed.
+        // The witness message is validated against the LIVE gateway step id, so relay data committing to one
+        // root cannot fill while another root is executing, and re-committing to the new root fills a distinct
+        // relay hash: the fill can only consume a deposit that committed to the root being executed.
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
 
         _execute(input, jit);
-        assertEq(spokePool.fillStatuses(_relayHash(input, jit, STEP_ID)), FILL_STATUS_FILLED);
+        bytes32 firstRelayHash = _relayHash(jit);
+        assertEq(spokePool.fillStatuses(firstRelayHash), FILL_STATUS_FILLED);
 
         bytes32 otherStepId = keccak256("step-2");
         gateway.setStepId(otherStepId);
 
-        // Same params under another live root: a distinct relay is filled, the first hash is untouched.
+        // The stale witness no longer matches the live root.
+        vm.prank(address(gateway));
+        vm.expectRevert(V5SpokePoolInterface.V5CommitmentMismatch.selector);
+        spokePool.executeAcrossV5(abi.encode(input), abi.encode(jit));
+
+        // Same params committed to the new root: a distinct relay is filled, the first hash is untouched.
+        jit.relayData.message = _v5Message(otherStepId);
         _execute(input, jit);
-        assertEq(spokePool.fillStatuses(_relayHash(input, jit, otherStepId)), FILL_STATUS_FILLED);
+        assertTrue(_relayHash(jit) != firstRelayHash);
+        assertEq(spokePool.fillStatuses(_relayHash(jit)), FILL_STATUS_FILLED);
     }
 
     function testRevertsWhenSubmitterIsNotExclusiveRelayer() public {
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
-        jit.exclusiveRelayer = relayer.toBytes32(); // someone other than the submitter
+        jit.relayData.exclusiveRelayer = relayer.toBytes32(); // someone other than the submitter
 
         vm.prank(address(gateway));
         vm.expectRevert(V3SpokePoolInterface.NotExclusiveRelayer.selector);
@@ -264,8 +275,8 @@ contract SpokePoolFillV5Test is Test {
     function testFillsWhenExclusivityHasExpiredEvenIfSubmitterNotExclusive() public {
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
-        jit.exclusiveRelayer = relayer.toBytes32();
-        jit.exclusivityDeadline = 0; // exclusivity already over
+        jit.relayData.exclusiveRelayer = relayer.toBytes32();
+        jit.relayData.exclusivityDeadline = 0; // exclusivity already over
 
         _execute(input, jit);
 
@@ -276,8 +287,8 @@ contract SpokePoolFillV5Test is Test {
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.minOutputAmount = 0;
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
-        jit.fillDeadline = 0;
-        jit.exclusivityDeadline = 0;
+        jit.relayData.fillDeadline = 0;
+        jit.relayData.exclusivityDeadline = 0;
 
         vm.prank(address(gateway));
         vm.expectRevert(V3SpokePoolInterface.ExpiredFillDeadline.selector);
@@ -295,7 +306,7 @@ contract SpokePoolFillV5Test is Test {
 
         assertEq(destErc20.balanceOf(submitter), submitterBefore - AMOUNT);
         assertEq(destErc20.balanceOf(recipient), recipientBefore + AMOUNT);
-        assertEq(spokePool.fillStatuses(_relayHash(input, jit, STEP_ID)), FILL_STATUS_FILLED);
+        assertEq(spokePool.fillStatuses(_relayHash(jit)), FILL_STATUS_FILLED);
     }
 
     function testEmitsFilledRelayEvent() public {
@@ -308,24 +319,24 @@ contract SpokePoolFillV5Test is Test {
 
         vm.expectEmit(true, true, true, true);
         emit FilledRelay(
-            jit.inputToken,
+            jit.relayData.inputToken,
             input.outputToken,
-            jit.inputAmount,
-            jit.outputAmount,
+            jit.relayData.inputAmount,
+            jit.relayData.outputAmount,
             jit.repaymentChainId,
-            jit.originChainId,
-            jit.depositId,
-            jit.fillDeadline,
-            jit.exclusivityDeadline,
-            jit.exclusiveRelayer,
+            jit.relayData.originChainId,
+            jit.relayData.depositId,
+            jit.relayData.fillDeadline,
+            jit.relayData.exclusivityDeadline,
+            jit.relayData.exclusiveRelayer,
             jit.repaymentAddress,
-            jit.depositor,
+            jit.relayData.depositor,
             input.recipient,
             messageHash,
             V3SpokePoolInterface.V3RelayExecutionEventInfo({
                 updatedRecipient: input.recipient,
                 updatedMessageHash: bytes32(0),
-                updatedOutputAmount: jit.outputAmount,
+                updatedOutputAmount: jit.relayData.outputAmount,
                 fillType: V3SpokePoolInterface.FillType.FastFill
             })
         );
@@ -351,6 +362,7 @@ contract SpokePoolFillV5Test is Test {
         input.message = hex"abcd";
 
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
+        jit.relayData.recipient = input.recipient;
 
         // The committed message is delivered through the standard v3 hook, with the SUBMITTER reported as the
         // relayer (identity for competition, and the account that funded the fill).
@@ -380,27 +392,28 @@ contract SpokePoolFillV5Test is Test {
         input.recipient = address(handler).toBytes32();
         input.message = hex"abcd";
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
+        jit.relayData.recipient = input.recipient;
 
         vm.expectEmit(true, true, true, true);
         emit FilledRelay(
-            jit.inputToken,
+            jit.relayData.inputToken,
             input.outputToken,
-            jit.inputAmount,
-            jit.outputAmount,
+            jit.relayData.inputAmount,
+            jit.relayData.outputAmount,
             jit.repaymentChainId,
-            jit.originChainId,
-            jit.depositId,
-            jit.fillDeadline,
-            jit.exclusivityDeadline,
-            jit.exclusiveRelayer,
+            jit.relayData.originChainId,
+            jit.relayData.depositId,
+            jit.relayData.fillDeadline,
+            jit.relayData.exclusivityDeadline,
+            jit.relayData.exclusiveRelayer,
             jit.repaymentAddress,
-            jit.depositor,
+            jit.relayData.depositor,
             input.recipient,
             keccak256(_v5Message(STEP_ID)),
             V3SpokePoolInterface.V3RelayExecutionEventInfo({
                 updatedRecipient: input.recipient,
                 updatedMessageHash: keccak256(hex"abcd"),
-                updatedOutputAmount: jit.outputAmount,
+                updatedOutputAmount: jit.relayData.outputAmount,
                 fillType: V3SpokePoolInterface.FillType.FastFill
             })
         );
@@ -423,6 +436,7 @@ contract SpokePoolFillV5Test is Test {
         V5SpokePoolInterface.V5FillInput memory input = _defaultInput();
         input.outputToken = address(weth).toBytes32();
         V5SpokePoolInterface.V5FillJit memory jit = _defaultJit();
+        jit.relayData.outputToken = input.outputToken;
 
         uint256 recipientEthBefore = recipient.balance;
         uint256 submitterWethBefore = weth.balanceOf(submitter);
