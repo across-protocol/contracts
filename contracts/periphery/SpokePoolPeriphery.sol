@@ -397,11 +397,10 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
-        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         IERC20AuthBytes(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
+            swapAndDepositData.swapTokenAmount + swapAndDepositData.submissionFees.amount,
             validAfter,
             validBefore,
             witness,
