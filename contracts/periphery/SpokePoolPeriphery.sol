@@ -383,14 +383,13 @@ contract SpokePoolPeriphery is
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
-        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
         IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
+            swapAndDepositData.swapTokenAmount + swapAndDepositData.submissionFees.amount,
             validAfter,
             validBefore,
             witness,
@@ -416,14 +415,13 @@ contract SpokePoolPeriphery is
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
-        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
         // the inner signature. The token remains the verifier; we only ensure the signer has code.
         bytes memory innerSignature = _handleERC6492Signature(receiveWithAuthSignature);
         IERC20AuthBytes(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
+            swapAndDepositData.swapTokenAmount + swapAndDepositData.submissionFees.amount,
             validAfter,
             validBefore,
             witness,
