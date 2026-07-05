@@ -204,8 +204,6 @@ contract SpokePoolPeriphery is
     ) EIP712("ACROSS-PERIPHERY", "1.0.0") ERC6492SignatureHandler(_multicall3) {
         require(address(_permit2) != address(0), "Permit2 cannot be zero address");
         require(_isContract(address(_permit2)), "Permit2 must be a contract");
-        require(_multicall3 != address(0), "Multicall3 cannot be zero address");
-        require(_isContract(_multicall3), "Multicall3 must be a contract");
         permit2 = _permit2;
 
         // Deploy the swap proxy with reference to the permit2 address
@@ -329,6 +327,9 @@ contract SpokePoolPeriphery is
      * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
      * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
+     * @dev Permit2 verifies both EOA (ECDSA) and contract (EIP-1271) signatures. The signature may be
+     * ERC-6492 wrapped to additionally support counterfactual (not-yet-deployed) contract wallets; see
+     * `_handleERC6492Signature`.
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -345,13 +346,16 @@ contract SpokePoolPeriphery is
             requestedAmount: swapAndDepositData.swapTokenAmount + _submissionFeeAmount
         });
 
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. Permit2 remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(signature);
         permit2.permitWitnessTransferFrom(
             permit,
             transferDetails,
             signatureOwner,
             witness,
             PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING,
-            signature
+            innerSignature
         );
         _paySubmissionFees(
             swapAndDepositData.swapToken,
@@ -503,6 +507,9 @@ contract SpokePoolPeriphery is
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Permit2 verifies both EOA (ECDSA) and contract (EIP-1271) signatures. The signature may be
+     * ERC-6492 wrapped to additionally support counterfactual (not-yet-deployed) contract wallets; see
+     * `_handleERC6492Signature`.
      */
     function depositWithPermit2(
         address signatureOwner,
@@ -519,13 +526,16 @@ contract SpokePoolPeriphery is
             requestedAmount: depositData.inputAmount + _submissionFeeAmount
         });
 
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. Permit2 remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(signature);
         permit2.permitWitnessTransferFrom(
             permit,
             transferDetails,
             signatureOwner,
             witness,
             PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING,
-            signature
+            innerSignature
         );
         _paySubmissionFees(
             depositData.baseDepositData.inputToken,

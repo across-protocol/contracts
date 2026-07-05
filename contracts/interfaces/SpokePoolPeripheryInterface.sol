@@ -184,10 +184,13 @@ interface SpokePoolPeripheryInterface {
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
      * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @dev `signature` may be ERC-6492 wrapped. When it is, the embedded factory call is executed first
+     * (deploying a counterfactual contract-wallet signer) before permit2 verifies the unwrapped inner
+     * signature. See ERC6492SignatureHandler.
      * @param signatureOwner The owner of the permit2 signature and depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param permit The permit data signed over by the owner.
-     * @param signature The permit2 signature to verify against the deposit data.
+     * @param signature The permit2 signature to verify against the deposit data (EOA, EIP-1271, or ERC-6492 wrapped).
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -269,10 +272,13 @@ interface SpokePoolPeripheryInterface {
      * @notice Uses permit2 to transfer and submit an Across deposit to the Spoke Pool contract.
      * @dev This function assumes the caller has properly set an allowance for the permit2 contract on this network.
      * @dev This function assumes that the amount of token to be swapped is equal to the amount of the token to be received from permit2.
+     * @dev `signature` may be ERC-6492 wrapped. When it is, the embedded factory call is executed first
+     * (deploying a counterfactual contract-wallet signer) before permit2 verifies the unwrapped inner
+     * signature. See ERC6492SignatureHandler.
      * @param signatureOwner The owner of the permit2 signature and depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params we'll send after the swap.
      * @param permit The permit data signed over by the owner.
-     * @param signature The permit2 signature to verify against the deposit data.
+     * @param signature The permit2 signature to verify against the deposit data (EOA, EIP-1271, or ERC-6492 wrapped).
      */
     function depositWithPermit2(
         address signatureOwner,
