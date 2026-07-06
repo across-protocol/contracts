@@ -77,7 +77,7 @@ abstract contract ERC6492SignatureHandler {
         // the downstream verifier is the source of truth on signature validity.
         IMulticall3.Call[] memory calls = new IMulticall3.Call[](1);
         calls[0] = IMulticall3.Call(prepareTarget, prepareData);
-        multicall3.tryAggregate(false, calls);
+        multicall3.tryAggregate({ requireSuccess: false, calls: calls });
 
         return innerSignature;
     }
