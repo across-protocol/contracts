@@ -1642,6 +1642,194 @@ contract SpokePoolPeripheryTest is Test {
         assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
+    function testPermit2DepositERC6492CounterfactualWallet() public {
+        uint256 walletOwnerKey = 0xB0B;
+        address walletOwner = vm.addr(walletOwnerKey);
+        bytes32 salt = keccak256("erc6492-permit2-deposit-wallet");
+
+        CounterfactualWalletFactory factory = new CounterfactualWalletFactory();
+        address wallet = factory.getWalletAddress(walletOwner, salt);
+        assertEq(wallet.code.length, 0);
+
+        // Fund the not-yet-deployed wallet and give permit2 an allowance from it. In production the
+        // approval would be executed by the wallet itself (e.g. batched into its deployment/init).
+        deal(address(mockERC20), wallet, mintAmountWithSubmissionFee, true);
+        vm.prank(wallet);
+        mockERC20.approve(address(permit2), mintAmountWithSubmissionFee);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            wallet
+        );
+
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockERC20), amount: mintAmountWithSubmissionFee }),
+            nonce: depositData.nonce,
+            deadline: block.timestamp + 100
+        });
+
+        // The wallet owner EOA signs the permit2 witness digest; permit2 verifies it against the
+        // (about-to-be-deployed) wallet via EIP-1271.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            walletOwnerKey,
+            _permit2WitnessDigest(
+                permit,
+                PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING,
+                hashUtils.hashDepositData(depositData)
+            )
+        );
+
+        // Wrap with the ERC-6492 factory call that deploys the wallet.
+        bytes memory wrappedSignature = _wrapERC6492(
+            address(factory),
+            abi.encodeCall(CounterfactualWalletFactory.createWallet, (walletOwner, salt)),
+            bytes.concat(r, s, bytes1(v))
+        );
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            wallet,
+            wallet,
+            spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
+            depositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            wallet.toBytes32(),
+            wallet.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithPermit2(wallet, depositData, permit, wrappedSignature);
+
+        // The prepare step materialized the wallet and the deposit went through.
+        assertGt(wallet.code.length, 0);
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testPermit2SwapAndBridgeERC6492CounterfactualWallet() public {
+        // Deal exchange WETH since we swap an ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        uint256 walletOwnerKey = 0xB0B;
+        address walletOwner = vm.addr(walletOwnerKey);
+        bytes32 salt = keccak256("erc6492-permit2-swap-wallet");
+
+        CounterfactualWalletFactory factory = new CounterfactualWalletFactory();
+        address wallet = factory.getWalletAddress(walletOwner, salt);
+        assertEq(wallet.code.length, 0);
+
+        deal(address(mockERC20), wallet, mintAmountWithSubmissionFee, true);
+        vm.prank(wallet);
+        mockERC20.approve(address(permit2), mintAmountWithSubmissionFee);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            wallet,
+            true,
+            1
+        );
+
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockERC20), amount: mintAmountWithSubmissionFee }),
+            nonce: swapAndDepositData.nonce,
+            deadline: block.timestamp + 100
+        });
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            walletOwnerKey,
+            _permit2WitnessDigest(
+                permit,
+                PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING,
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+
+        bytes memory wrappedSignature = _wrapERC6492(
+            address(factory),
+            abi.encodeCall(CounterfactualWalletFactory.createWallet, (walletOwner, salt)),
+            bytes.concat(r, s, bytes1(v))
+        );
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            wallet,
+            wallet,
+            spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
+            swapAndDepositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockWETH).toBytes32(),
+            address(mockWETH).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            wallet.toBytes32(),
+            wallet.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithPermit2(wallet, swapAndDepositData, permit, wrappedSignature);
+
+        assertGt(wallet.code.length, 0);
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    // Computes the permit2 PermitWitnessTransferFrom digest that `signatureOwner` must sign, with the
+    // periphery as spender.
+    function _permit2WitnessDigest(
+        IPermit2.PermitTransferFrom memory permit,
+        string memory witnessTypeString,
+        bytes32 witness
+    ) internal view returns (bytes32) {
+        bytes32 typehash = keccak256(abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, witnessTypeString));
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+        return
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    domainSeparator,
+                    keccak256(
+                        abi.encode(
+                            typehash,
+                            tokenPermissions,
+                            address(spokePoolPeriphery),
+                            permit.nonce,
+                            permit.deadline,
+                            witness
+                        )
+                    )
+                )
+            );
+    }
+
     function _wrapERC6492(
         address factory,
         bytes memory factoryCalldata,

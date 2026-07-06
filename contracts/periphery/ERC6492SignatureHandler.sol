@@ -7,10 +7,11 @@ import { IMulticall3 } from "../external/interfaces/IMulticall3.sol";
  * @title ERC6492SignatureHandler
  * @notice Base contract that performs the "prepare" (deploy) step of an ERC-6492 signature without
  * being the signature verifier itself.
- * @dev Some downstream verifiers — most importantly the ERC-3009 `receiveWithAuthorization(...,bytes)`
- * overload on tokens such as USDC v2.2 — validate contract-wallet signatures via EIP-1271 but have no
- * concept of ERC-6492. A signature from a *counterfactual* (not-yet-deployed) smart-contract wallet
- * therefore fails, because there is no code at the signer's address to call `isValidSignature` on.
+ * @dev Some downstream verifiers — the ERC-3009 `receiveWithAuthorization(...,bytes)` overload on
+ * tokens such as USDC v2.2, and Uniswap's Permit2 — validate contract-wallet signatures via EIP-1271
+ * but have no concept of ERC-6492. A signature from a *counterfactual* (not-yet-deployed)
+ * smart-contract wallet therefore fails, because there is no code at the signer's address to call
+ * `isValidSignature` on.
  *
  * ERC-6492 (https://eips.ethereum.org/EIPS/eip-6492) solves this by wrapping the real signature with
  * the factory call needed to deploy the wallet. Since we cannot change the token's verification, we
@@ -43,6 +44,8 @@ abstract contract ERC6492SignatureHandler {
      * @param _multicall3 Address of the canonical Multicall3 singleton used to route prepare calls.
      */
     constructor(address _multicall3) {
+        require(_multicall3 != address(0), "Multicall3 cannot be zero address");
+        require(_multicall3.code.length > 0, "Multicall3 must be a contract");
         multicall3 = IMulticall3(_multicall3);
     }
 
