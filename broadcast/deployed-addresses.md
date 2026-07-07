@@ -93,17 +93,18 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                              |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://bscscan.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
-| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://bscscan.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
-| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://bscscan.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
-| CounterfactualDepositSpokePool | [0x06bB891F8A0cB883e88072285DF0F36f5F1ec73b](https://bscscan.com/address/0x06bB891F8A0cB883e88072285DF0F36f5F1ec73b) |
+| AdminWithdrawManager           | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://bscscan.com/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://bscscan.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://bscscan.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://bscscan.com/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://bscscan.com/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://bscscan.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://bscscan.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                      | [0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922](https://bscscan.com/address/0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922) |
 | SpokePool                      | [0x4e8E101924eDE233C13e2D8622DC8aED2872d505](https://bscscan.com/address/0x4e8E101924eDE233C13e2D8622DC8aED2872d505) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://bscscan.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://bscscan.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://bscscan.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+| WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://bscscan.com/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Unichain (130)
 
