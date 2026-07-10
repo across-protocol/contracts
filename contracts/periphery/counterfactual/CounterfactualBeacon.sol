@@ -36,6 +36,21 @@ struct CounterfactualChainConfig {
     uint256 usdcSpokePoolMaxExecutionFee;
     uint256 usdtSpokePoolMaxExecutionFee;
     uint256 wethSpokePoolMaxExecutionFee;
+    // --- V5 counterfactual (Gateway-routed) config ---
+    /// @dev The V5 `Gateway` on this chain; the `GatewayForwarder` resolves it via `gateway()` to route the
+    ///      deposit. The per-chain V5 source executors a leaf selects via its `executorGetter`
+    ///      (`CounterfactualSourceExecutorBase` subclasses). (The destination executor is not a getter — a route
+    ///      commits it directly as `dstExecutor` folded into `dstStepId`, so nothing reads it back on-chain.)
+    address gateway;
+    address spokePoolDepositExecutor;
+    address cctpDepositExecutor;
+    address oftDepositExecutor;
+    /// @dev Per-token USD prices (1e18-fixed) for the V5 counterfactual **beacon-rate** floor (source swap
+    ///      floor `KIND_BEACON_RATE` and destination swap-safety). Unpriced tokens (`stablePrice() == 0`) are
+    ///      treated as volatile — their rate floor is skipped. Maintained by beacon upgrade, like the rest of
+    ///      the config.
+    uint256 usdcStablePrice;
+    uint256 usdtStablePrice;
 }
 
 /**
@@ -90,6 +105,21 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable wethSpokePoolMaxExecutionFee;
 
+    // --- V5 counterfactual (Gateway-routed) getters ---
+
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable gateway;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable spokePoolDepositExecutor;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable cctpDepositExecutor;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable oftDepositExecutor;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdcStablePrice;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdtStablePrice;
+
     /// @param config The chain-specific configuration baked into this implementation (see
     ///        `CounterfactualChainConfig`). Each field becomes an immutable, named getter.
     constructor(CounterfactualChainConfig memory config) {
@@ -110,6 +140,21 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
         usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
         wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
+        gateway = config.gateway;
+        spokePoolDepositExecutor = config.spokePoolDepositExecutor;
+        cctpDepositExecutor = config.cctpDepositExecutor;
+        oftDepositExecutor = config.oftDepositExecutor;
+        usdcStablePrice = config.usdcStablePrice;
+        usdtStablePrice = config.usdtStablePrice;
         _disableInitializers();
+    }
+
+    /// @inheritdoc ICounterfactualBeacon
+    /// @dev Per-token USD price (1e18) for the V5 beacon-rate floor. Dispatches over the priced-token
+    ///      immutables; any other token is unpriced (`0`) and treated as volatile by the callers.
+    function stablePrice(address token) external view returns (uint256) {
+        if (token == usdc) return usdcStablePrice;
+        if (token == usdt) return usdtStablePrice;
+        return 0;
     }
 }
