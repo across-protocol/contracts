@@ -1550,6 +1550,11 @@
           "block_number": 89365218,
           "transaction_hash": "0x0f1dffe44baa484b51b7401bafaae9bc27efc3869b081a5f60f576dc041d1ce1"
         },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8",
+          "block_number": 90212350,
+          "transaction_hash": "0x4e291330d284b119a56f9648222c82a44c42e75259a1da868fe34958da841d4e"
+        },
         "SpokePool": {
           "address": "0xFE9D541c92E4e90437C7152A00244886dE37a658",
           "block_number": 89364263,

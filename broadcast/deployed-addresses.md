@@ -402,14 +402,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Avalanche (43114)
 
-| Contract Name      | Address                                                                                                               |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| AcrossEventEmitter | [0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11](https://snowscan.xyz/address/0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11) |
-| MulticallHandler   | [0x9610954AcDCA5FF7905f051A040ce33fe613c60e](https://snowscan.xyz/address/0x9610954AcDCA5FF7905f051A040ce33fe613c60e) |
-| Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios          | [0x196767568F848fF7607145A7C1f3CDE44bb4Ce98](https://snowscan.xyz/address/0x196767568F848fF7607145A7C1f3CDE44bb4Ce98) |
-| SpokePool          | [0xFE9D541c92E4e90437C7152A00244886dE37a658](https://snowscan.xyz/address/0xFE9D541c92E4e90437C7152A00244886dE37a658) |
-| SpokePoolPeriphery | [0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af](https://snowscan.xyz/address/0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af) |
+| Contract Name             | Address                                                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter        | [0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11](https://snowscan.xyz/address/0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11) |
+| MulticallHandler          | [0x9610954AcDCA5FF7905f051A040ce33fe613c60e](https://snowscan.xyz/address/0x9610954AcDCA5FF7905f051A040ce33fe613c60e) |
+| Safe                      | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios                 | [0x196767568F848fF7607145A7C1f3CDE44bb4Ce98](https://snowscan.xyz/address/0x196767568F848fF7607145A7C1f3CDE44bb4Ce98) |
+| SpokePool                 | [0xFE9D541c92E4e90437C7152A00244886dE37a658](https://snowscan.xyz/address/0xFE9D541c92E4e90437C7152A00244886dE37a658) |
+| SpokePoolPeriphery        | [0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af](https://snowscan.xyz/address/0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af) |
+| SponsoredCCTPSrcPeriphery | [0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8](https://snowscan.xyz/address/0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8) |
 
 ## Ink (57073)
 
