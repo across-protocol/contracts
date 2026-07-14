@@ -21,7 +21,8 @@ import {
 // upgrade out of band: `CounterfactualBeacon(proxy).upgradeToAndCall(newImpl, "")`.
 //
 // How to run:
-// 1. Edit script/counterfactual/config.toml with the signer for this chain
+// 1. Edit script/counterfactual/config.toml with the signer and per-token max-execution-fee caps for
+//    this chain (raw onchain amounts in the token's own decimals, e.g. 2000000 for 2 six-decimal USDC)
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script script/counterfactual/DeployCounterfactualBeaconImpl.s.sol:DeployCounterfactualBeaconImpl \
 //      --rpc-url $NODE_URL -vvvv

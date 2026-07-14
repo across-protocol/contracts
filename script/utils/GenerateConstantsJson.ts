@@ -10,6 +10,7 @@ import {
   USDC,
   USDCe,
   USDT,
+  WBTC,
   WETH,
   WGHO,
   WMATIC,
@@ -107,6 +108,7 @@ function generateConstantsJson() {
     USDC,
     USDCe,
     USDT,
+    WBTC,
     WGHO,
     WMATIC,
     OTHER_CONSTANTS: {

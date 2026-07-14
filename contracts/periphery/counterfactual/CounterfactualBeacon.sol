@@ -25,6 +25,7 @@ struct CounterfactualChainConfig {
     uint32 oftSrcEid;
     address usdc;
     address usdt;
+    address wbtc;
     /// @dev Per-(token, bridge) execution-fee caps, in input-token units. A leaf names which to enforce via
     ///      a `bytes4` selector (its `maxExecutionFeeGetter`). Illustrative set — add more as routes need them.
     ///      For SpokePool this is the fixed component of the fee cap (added to the leaf's `maxFeeBps` term).
@@ -36,6 +37,7 @@ struct CounterfactualChainConfig {
     uint256 usdcSpokePoolMaxExecutionFee;
     uint256 usdtSpokePoolMaxExecutionFee;
     uint256 wethSpokePoolMaxExecutionFee;
+    uint256 wbtcSpokePoolMaxExecutionFee;
 }
 
 /**
@@ -78,6 +80,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     address public immutable usdt;
     /// @inheritdoc ICounterfactualBeacon
+    address public immutable wbtc;
+    /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcCctpMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcCctpMaxFeeBps;
@@ -89,6 +93,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     uint256 public immutable usdtSpokePoolMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable wethSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable wbtcSpokePoolMaxExecutionFee;
 
     /// @param config The chain-specific configuration baked into this implementation (see
     ///        `CounterfactualChainConfig`). Each field becomes an immutable, named getter.
@@ -104,12 +110,14 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         oftSrcEid = config.oftSrcEid;
         usdc = config.usdc;
         usdt = config.usdt;
+        wbtc = config.wbtc;
         usdcCctpMaxExecutionFee = config.usdcCctpMaxExecutionFee;
         usdcCctpMaxFeeBps = config.usdcCctpMaxFeeBps;
         usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;
         usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
         usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
         wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
+        wbtcSpokePoolMaxExecutionFee = config.wbtcSpokePoolMaxExecutionFee;
         _disableInitializers();
     }
 }

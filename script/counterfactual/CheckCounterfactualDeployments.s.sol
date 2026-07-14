@@ -17,7 +17,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - Leaf impls (CounterfactualDeposit dispatcher, CCTP/OFT/VanillaCCTP, SpokePool) get bytecode-only
 //     presence checks.
 //   - Chain-specific config is auto-checked by comparing the beacon's getters against constants.json /
-//     deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, usdc, usdt),
+//     deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, usdc, usdt, wbtc),
 //     plus a manual review of the fee `signer`.
 //
 // Owner/directWithdrawer are cross-referenced against config.toml AND
@@ -243,6 +243,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // usdt vs constants.json (best-effort; 0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdt", beacon.usdt(), _getUsdt(chainId));
 
+        // wbtc vs constants.json (0 when not present)
+        _assertAddrEq("CounterfactualBeacon", "wbtc", beacon.wbtc(), _getWbtc(chainId));
+
         // Per-(token, bridge) execution-fee caps: hardcoded to type(uint256).max for now (see
         // CounterfactualConfig._buildChainConfig).
         _assertUintEq(
@@ -274,6 +277,13 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             "wethSpokePoolMaxExecutionFee",
             beacon.wethSpokePoolMaxExecutionFee(),
             type(uint256).max
+        );
+        // wbtc cap vs config.toml (same resolver the deploy script bakes from; 0 when wbtc unset)
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "wbtcSpokePoolMaxExecutionFee",
+            beacon.wbtcSpokePoolMaxExecutionFee(),
+            _maxExecutionFee("wbtcMaxExecutionFee", _getWbtc(chainId))
         );
 
         // Manual review: signer (no second source)
@@ -381,6 +391,12 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
 
     function _getUsdt(uint256 chainId) internal view returns (address) {
         string memory path = string.concat(".USDT.", vm.toString(chainId));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    function _getWbtc(uint256 chainId) internal view returns (address) {
+        string memory path = string.concat(".WBTC.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
     }

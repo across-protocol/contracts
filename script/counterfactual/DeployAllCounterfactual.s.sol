@@ -505,6 +505,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (_logStaleUint("oftSrcEid", beacon.oftSrcEid(), expected.oftSrcEid)) stale = true;
         if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
         if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;
+        if (_logStaleAddr("wbtc", beacon.wbtc(), expected.wbtc)) stale = true;
         if (
             _logStaleUint("usdcCctpMaxExecutionFee", beacon.usdcCctpMaxExecutionFee(), expected.usdcCctpMaxExecutionFee)
         ) stale = true;
@@ -529,6 +530,13 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 "wethSpokePoolMaxExecutionFee",
                 beacon.wethSpokePoolMaxExecutionFee(),
                 expected.wethSpokePoolMaxExecutionFee
+            )
+        ) stale = true;
+        if (
+            _logStaleUint(
+                "wbtcSpokePoolMaxExecutionFee",
+                beacon.wbtcSpokePoolMaxExecutionFee(),
+                expected.wbtcSpokePoolMaxExecutionFee
             )
         ) stale = true;
 

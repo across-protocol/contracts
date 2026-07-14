@@ -67,6 +67,9 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice USDT token address on this chain.
     function usdt() external view returns (address);
 
+    /// @notice WBTC token address on this chain.
+    function wbtc() external view returns (address);
+
     // --- Per-(token, bridge) execution-fee caps (input-token units). A leaf names which to enforce via its
     //     `maxExecutionFeeGetter` selector. Illustrative set; for SpokePool this is the fixed fee component. ---
 
@@ -88,4 +91,7 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Max (fixed) fee for the WETH/native SpokePool route.
     function wethSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max (fixed) fee for the WBTC SpokePool route.
+    function wbtcSpokePoolMaxExecutionFee() external view returns (uint256);
 }

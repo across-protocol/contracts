@@ -99,6 +99,29 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
+    /// @dev Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP), in bps of the burned
+    ///      amount. Read from the `[0]` globals section of config.toml — one value for all chains.
+    function _usdcCctpMaxFeeBps() internal returns (uint256) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(GLOBALS_CHAIN_ID, "usdcCctpMaxFeeBps");
+        require(v.ty.kind == TypeKind.Uint256, "config: usdcCctpMaxFeeBps missing from globals");
+        return v.toUint256();
+    }
+
+    /// @dev Resolves a max-execution-fee cap for `token` from this chain's config.toml value (`key` in
+    ///      the `[N.uint256]` section), taken verbatim as the full onchain amount in the token's own
+    ///      decimals — e.g. 2 USDC is 2000000 on 6-decimal chains but 2000000000000000000 on BSC (18).
+    ///      One config value serves every bridge type for the token. Returns 0 (route not configured)
+    ///      when the token is unset on this chain; reverts if the token is set but the config key is
+    ///      missing, so a beacon impl can't deploy with an unconfigured fee cap.
+    function _maxExecutionFee(string memory key, address token) internal returns (uint256) {
+        if (token == address(0)) return 0;
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(key);
+        require(v.ty.kind == TypeKind.Uint256, string.concat("config: ", key, " not configured for this chain"));
+        return v.toUint256();
+    }
+
     /// @dev Standard Aave/Compound-style native sentinel, returned by `beacon.nativeToken()` on chains whose
     ///      "native or equivalent" SpokePool route is paid in `msg.value` (input token is then
     ///      `beacon.wrappedNativeToken()`). Mirrors `CounterfactualDepositSpokePool.NATIVE_SENTINEL`.
@@ -156,6 +179,13 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
+    /// @dev Resolves WBTC from constants.json (`.WBTC.<chainId>`); address(0) if absent (route not configured).
+    function _resolveWbtc() internal view returns (address) {
+        string memory path = string.concat(".WBTC.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
     /// @notice Builds the per-chain `CounterfactualChainConfig` baked into the chain-specific
     ///         `CounterfactualBeacon` impl. Missing values resolve to 0 (route simply not configured).
     ///         `_loadCounterfactualConfig()` must run first — it does, via `_loadSigner` below.
@@ -171,16 +201,20 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();
-        // Per-(token, bridge) execution-fee caps from config.toml (operational; 0 if unset). A leaf names
-        // which cap to enforce via its `maxExecutionFeeGetter` selector.
-        cfg.usdcCctpMaxExecutionFee = type(uint256).max;
-        // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP);
-        // 0 if unset ⇒ standard transfers only on this chain.
-        cfg.usdcCctpMaxFeeBps = 10_000;
-        cfg.usdtOftMaxExecutionFee = type(uint256).max;
-        cfg.usdcSpokePoolMaxExecutionFee = type(uint256).max;
-        cfg.usdtSpokePoolMaxExecutionFee = type(uint256).max;
-        cfg.wethSpokePoolMaxExecutionFee = type(uint256).max;
+        cfg.wbtc = _resolveWbtc();
+        // Per-(token, bridge) execution-fee caps: a per-chain raw onchain amount in config.toml, in the
+        // token's own decimals. Bridge types share the token's value. A leaf names which cap to enforce
+        // via its `maxExecutionFeeGetter` selector.
+        uint256 usdcMaxExecutionFee = _maxExecutionFee("usdcMaxExecutionFee", cfg.usdc);
+        cfg.usdcCctpMaxExecutionFee = usdcMaxExecutionFee;
+        cfg.usdcSpokePoolMaxExecutionFee = usdcMaxExecutionFee;
+        uint256 usdtMaxExecutionFee = _maxExecutionFee("usdtMaxExecutionFee", cfg.usdt);
+        cfg.usdtOftMaxExecutionFee = usdtMaxExecutionFee;
+        cfg.usdtSpokePoolMaxExecutionFee = usdtMaxExecutionFee;
+        cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.wrappedNativeToken);
+        cfg.wbtcSpokePoolMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
+        // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP).
+        cfg.usdcCctpMaxFeeBps = _usdcCctpMaxFeeBps();
         // SpokePool is the foundational route. Baking `spokePool = 0` silently bricks every SpokePool leaf,
         // fixable only by a registry UUPS upgrade (the value is immutable on the impl). Refuse to deploy
         // without a SpokePool entry.
