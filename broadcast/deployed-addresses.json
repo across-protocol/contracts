@@ -1570,6 +1570,11 @@
           "block_number": 90212350,
           "transaction_hash": "0x4e291330d284b119a56f9648222c82a44c42e75259a1da868fe34958da841d4e"
         },
+        "TransferProxy": {
+          "address": "0x5dDA0da4f35826ec9426008155a912C756009252",
+          "block_number": 90301225,
+          "transaction_hash": "0xf321d0f93a2bdd719ee139705ae1e7b7225f221177e906129c2c7fbed054798b"
+        },
         "SpokePool": {
           "address": "0xFE9D541c92E4e90437C7152A00244886dE37a658",
           "block_number": 89364263,
