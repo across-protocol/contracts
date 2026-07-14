@@ -1430,10 +1430,25 @@
           "block_number": 17887279,
           "transaction_hash": "0x3de7142b7379571a946f37f404089c54812c6b0926faf71f056c85b61002941a"
         },
+        "PermissionedMulticallHandler": {
+          "address": "0xA46236268F63D8898897059aAEc0918aff8A4e48",
+          "block_number": 27115506,
+          "transaction_hash": "0x881dba7d97a1e1f1509b810c768aeb2e9e44547ab35953bf19242a6b99d1c670"
+        },
+        "DstOFTHandler": {
+          "address": "0xD4c8DdDC5EDEe56B0174f1b10E29047539A6928A",
+          "block_number": 27115508,
+          "transaction_hash": "0x8b584e406be0b4ff69fa969776ac255306450353be75b74b756c9f2f47ace8c1"
+        },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 19174119,
           "transaction_hash": "0x7b48d4e46a0934f5580682b0f92cd9d083a72810b3925b353bc6a09527c75282"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0xf81C7cbC1196FACb327BD5B7021f9C1c220D0328",
+          "block_number": 27115378,
+          "transaction_hash": "0x1a76146e22dfbdeb8d1f6092d633dcbb2193e8dd346760addee99e9aa0f67542"
         },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",

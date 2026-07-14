@@ -369,12 +369,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://plasmascan.to/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://plasmascan.to/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool | [0x25a40716980c5676902337234DfbB9feCFc38288](https://plasmascan.to/address/0x25a40716980c5676902337234DfbB9feCFc38288) |
+| DstOFTHandler                  | [0xD4c8DdDC5EDEe56B0174f1b10E29047539A6928A](https://plasmascan.to/address/0xD4c8DdDC5EDEe56B0174f1b10E29047539A6928A) |
 | MulticallHandler               | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://plasmascan.to/address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
+| PermissionedMulticallHandler   | [0xA46236268F63D8898897059aAEc0918aff8A4e48](https://plasmascan.to/address/0xA46236268F63D8898897059aAEc0918aff8A4e48) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://plasmascan.to/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                      | [0x6f1Cd5f317a7228269EaB2b496313862de712CCb](https://plasmascan.to/address/0x6f1Cd5f317a7228269EaB2b496313862de712CCb) |
 | SpokePool                      | [0x50039fAEfebef707cFD94D6d462fE6D10B39207a](https://plasmascan.to/address/0x50039fAEfebef707cFD94D6d462fE6D10B39207a) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://plasmascan.to/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://plasmascan.to/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredOFTSrcPeriphery       | [0xf81C7cbC1196FACb327BD5B7021f9C1c220D0328](https://plasmascan.to/address/0xf81C7cbC1196FACb327BD5B7021f9C1c220D0328) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://plasmascan.to/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## Mode (34443)
