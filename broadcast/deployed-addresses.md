@@ -77,14 +77,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositCCTP      | [0xA190B1DC265765be32Ecb4d25d37f5BCbbf684Bf](https://optimistic.etherscan.io/address/0xA190B1DC265765be32Ecb4d25d37f5BCbbf684Bf) |
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://optimistic.etherscan.io/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool | [0x47713F44A85fF0692B2d2A1C893D222c48221B23](https://optimistic.etherscan.io/address/0x47713F44A85fF0692B2d2A1C893D222c48221B23) |
+| DstOFTHandler                  | [0x640ac7e824F39523a0D022De0d4c81A8723655E8](https://optimistic.etherscan.io/address/0x640ac7e824F39523a0D022De0d4c81A8723655E8) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://optimistic.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| PermissionedMulticallHandler   | [0x641119c49Ac149DadaEC95D4fA8FFbe1eaB448fc](https://optimistic.etherscan.io/address/0x641119c49Ac149DadaEC95D4fA8FFbe1eaB448fc) |
+| PermissionedMulticallHandler   | [0x045668A5471B25bBd247403E992C5fdc51dEff13](https://optimistic.etherscan.io/address/0x045668A5471B25bBd247403E992C5fdc51dEff13) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://optimistic.etherscan.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool                      | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://optimistic.etherscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://optimistic.etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery      | [0x7caAe751f8eAfEC5646A730d86c6Ae2d47a31Ca6](https://optimistic.etherscan.io/address/0x7caAe751f8eAfEC5646A730d86c6Ae2d47a31Ca6) |
 | SponsoredCCTPSrcPeriphery      | [0x31812A9403dc4b9dA4AFf1ba5FEf84844D2b0CB2](https://optimistic.etherscan.io/address/0x31812A9403dc4b9dA4AFf1ba5FEf84844D2b0CB2) |
+| SponsoredOFTSrcPeriphery       | [0xcb865ec9AC3c1b289e45456736523C8C16e498f8](https://optimistic.etherscan.io/address/0xcb865ec9AC3c1b289e45456736523C8C16e498f8) |
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://optimistic.etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0x6f4A733c7889f038D77D4f540182Dda17423CcbF](https://optimistic.etherscan.io/address/0x6f4A733c7889f038D77D4f540182Dda17423CcbF) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://optimistic.etherscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |

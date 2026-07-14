@@ -7,6 +7,15 @@ oft_messenger = "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee"
 src_periphery = "0x13CfBB9D894e98f40f978B184EB7BB1fe6C2F564"
 dst_handler = "0xD59D844287A6F808865eA697653588c9Ee42Dc1d"
 
+[10]
+endpoint_url = "${NODE_URL_10}"
+
+[10.address]
+token = "0x01bFF41798a0BcF287b996046Ca68b395DbC1071"
+oft_messenger = "0xF03b4d9AC1D5d1E7c4cEf54C2A313b9fe051A0aD"
+src_periphery = "0xcb865ec9AC3c1b289e45456736523C8C16e498f8"
+dst_handler = "0x640ac7e824F39523a0D022De0d4c81A8723655E8"
+
 [42161]
 endpoint_url = "${NODE_URL_42161}"
 
