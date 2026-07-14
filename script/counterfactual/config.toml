@@ -39,7 +39,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 2000 # 0.00002 WBTC (8 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [56]
 endpoint_url = "${NODE_URL_56}"
@@ -50,7 +50,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000000000000000 # 2 USDC (18 decimals on BSC)
 usdtMaxExecutionFee = 2000000000000000000 # 2 USDT (18 decimals on BSC)
 wethMaxExecutionFee = 3571428571428600 # 0.0035714285714286 WBNB (18 decimals)
-wbtcMaxExecutionFee = 20000000000000 # 0.00002 BTCB (18 decimals on BSC)
+wbtcMaxExecutionFee = 31000000000000 # 0.000031 BTCB (18 decimals on BSC)
 
 [130]
 endpoint_url = "${NODE_URL_130}"
@@ -61,7 +61,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 2000 # 0.00002 WBTC (8 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [137]
 endpoint_url = "${NODE_URL_137}"
@@ -72,7 +72,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = "25000000000000000000" # 25 WPOL (18 decimals; quoted — exceeds TOML int64)
-wbtcMaxExecutionFee = 2000 # 0.00002 WBTC (8 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [143]
 endpoint_url = "${NODE_URL_143}"
@@ -83,7 +83,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = "100000000000000000000" # 100 WMON (18 decimals; quoted — exceeds TOML int64)
-wbtcMaxExecutionFee = 2000 # 0.00002 WBTC (8 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [232]
 endpoint_url = "${NODE_URL_232}"
@@ -106,7 +106,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals; unused until USDT is configured for this chain)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 2000 # 0.00002 WBTC (8 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [999]
 endpoint_url = "${NODE_URL_999}"
@@ -188,7 +188,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 2000 # 0.00002 WBTC (8 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [43114]
 endpoint_url = "${NODE_URL_43114}"
@@ -214,6 +214,11 @@ endpoint_url = "${NODE_URL_59144}"
 [59144.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[59144.uint]
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [81457]
 endpoint_url = "${NODE_URL_81457}"
