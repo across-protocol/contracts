@@ -405,13 +405,14 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                       | Address                                                                                                               |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | AcrossEventEmitter                  | [0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11](https://snowscan.xyz/address/0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11) |
-| DonationBox_CCTP_USDC               | [0x99EC530a761E68a377593888D9504002Bd191717](https://snowscan.xyz/address/0x99EC530a761E68a377593888D9504002Bd191717) |
+| DonationBox_CCTP_USDC               | [0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF](https://snowscan.xyz/address/0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF) |
 | MulticallHandler                    | [0x9610954AcDCA5FF7905f051A040ce33fe613c60e](https://snowscan.xyz/address/0x9610954AcDCA5FF7905f051A040ce33fe613c60e) |
+| PermissionedMulticallHandler        | [0x64A14B477d16F1E9D490B00218ada0c142C885dd](https://snowscan.xyz/address/0x64A14B477d16F1E9D490B00218ada0c142C885dd) |
 | Safe                                | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                           | [0x196767568F848fF7607145A7C1f3CDE44bb4Ce98](https://snowscan.xyz/address/0x196767568F848fF7607145A7C1f3CDE44bb4Ce98) |
 | SpokePool                           | [0xFE9D541c92E4e90437C7152A00244886dE37a658](https://snowscan.xyz/address/0xFE9D541c92E4e90437C7152A00244886dE37a658) |
 | SpokePoolPeriphery                  | [0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af](https://snowscan.xyz/address/0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af) |
-| SponsoredCCTPDstPeriphery_CCTP_USDC | [0xa9F2Ba6333B78375b967d39CFdB38feE28288F2c](https://snowscan.xyz/address/0xa9F2Ba6333B78375b967d39CFdB38feE28288F2c) |
+| SponsoredCCTPDstPeriphery_CCTP_USDC | [0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0](https://snowscan.xyz/address/0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0) |
 | SponsoredCCTPSrcPeriphery           | [0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8](https://snowscan.xyz/address/0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8) |
 
 ## Ink (57073)
