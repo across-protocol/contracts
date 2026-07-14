@@ -172,8 +172,12 @@ endpoint_url = "${NODE_URL_43114}"
 
 [43114.address]
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
 usdc = "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"
+baseToken = "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"
+multicallHandler = "0x9610954AcDCA5FF7905f051A040ce33fe613c60e"
 sponsoredCCTPSrcPeriphery = "0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8"
+sponsoredCCTPDstPeriphery = "0xa9F2Ba6333B78375b967d39CFdB38feE28288F2c"
 
 [43114.uint]
 cctpDomainId = 1

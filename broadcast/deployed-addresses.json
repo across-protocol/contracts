@@ -1550,6 +1550,16 @@
           "block_number": 89365218,
           "transaction_hash": "0x0f1dffe44baa484b51b7401bafaae9bc27efc3869b081a5f60f576dc041d1ce1"
         },
+        "DonationBox_CCTP_USDC": {
+          "address": "0x99EC530a761E68a377593888D9504002Bd191717",
+          "block_number": 90283035,
+          "transaction_hash": "0x303db7fd3b8bbc50435aeba854e56ca75a77b70f9fa17669e55d8036e276d7f0"
+        },
+        "SponsoredCCTPDstPeriphery_CCTP_USDC": {
+          "address": "0xa9F2Ba6333B78375b967d39CFdB38feE28288F2c",
+          "block_number": 90283035,
+          "transaction_hash": "0x549e608030a130aaca699bad9055ddbfcdab7c2293f681f19b6372c704ba464c"
+        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8",
           "block_number": 90212350,
