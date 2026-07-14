@@ -28,7 +28,7 @@ ownerAndDirectWithdrawer = "0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01"
 usdcMaxExecutionFee = 10000000 # 10 USDC (6 decimals)
 usdtMaxExecutionFee = 10000000 # 10 USDT (6 decimals)
 wethMaxExecutionFee = 6000000000000000 # 0.006 WETH (18 decimals)
-wbtcMaxExecutionFee = 10000 # 0.0001 WBTC (8 decimals)
+wbtcMaxExecutionFee = 16000 # 0.000155 WBTC (8 decimals)
 
 [10]
 endpoint_url = "${NODE_URL_10}"
@@ -173,6 +173,11 @@ endpoint_url = "${NODE_URL_9745}"
 [9745.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[9745.uint]
+usdcMaxExecutionFee = 0 # No USDC
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 3000000000000000000 # 3 WXPL (18 decimals)
+wbtcMaxExecutionFee = 0 # No WBTC
 
 [42161]
 endpoint_url = "${NODE_URL_42161}"
