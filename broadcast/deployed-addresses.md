@@ -414,6 +414,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery                  | [0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af](https://snowscan.xyz/address/0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af) |
 | SponsoredCCTPDstPeriphery_CCTP_USDC | [0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0](https://snowscan.xyz/address/0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0) |
 | SponsoredCCTPSrcPeriphery           | [0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8](https://snowscan.xyz/address/0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8) |
+| TransferProxy                       | [0x5dDA0da4f35826ec9426008155a912C756009252](https://snowscan.xyz/address/0x5dDA0da4f35826ec9426008155a912C756009252) |
 
 ## Ink (57073)
 
