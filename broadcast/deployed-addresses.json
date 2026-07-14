@@ -1535,6 +1535,11 @@
           "block_number": 89365289,
           "transaction_hash": "0x04122b91216c818b21a21c7ce9f484d5d87639ac66655e41bad3d980f5247e63"
         },
+        "PermissionedMulticallHandler": {
+          "address": "0x64A14B477d16F1E9D490B00218ada0c142C885dd",
+          "block_number": 90294361,
+          "transaction_hash": "0xc6019b2ccce8228750954299d21f829372d2757ae700feab22bbaee866c84548"
+        },
         "SP1Helios": {
           "address": "0x196767568F848fF7607145A7C1f3CDE44bb4Ce98",
           "block_number": 89364251,
@@ -1549,6 +1554,21 @@
           "address": "0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af",
           "block_number": 89365218,
           "transaction_hash": "0x0f1dffe44baa484b51b7401bafaae9bc27efc3869b081a5f60f576dc041d1ce1"
+        },
+        "DonationBox_CCTP_USDC": {
+          "address": "0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF",
+          "block_number": 90294593,
+          "transaction_hash": "0xf08df5632c69189fbca9352b74d7cfb9a69a5704af1ce6797d2c8189b2f243e7"
+        },
+        "SponsoredCCTPDstPeriphery_CCTP_USDC": {
+          "address": "0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0",
+          "block_number": 90294594,
+          "transaction_hash": "0x59427d3011e2e7bbb17b1697bfa85d303443c5192602cbff25780be1c9aefdab"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8",
+          "block_number": 90212350,
+          "transaction_hash": "0x4e291330d284b119a56f9648222c82a44c42e75259a1da868fe34958da841d4e"
         },
         "SpokePool": {
           "address": "0xFE9D541c92E4e90437C7152A00244886dE37a658",
