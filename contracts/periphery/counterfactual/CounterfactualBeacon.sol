@@ -26,6 +26,10 @@ struct CounterfactualChainConfig {
     address usdc;
     address usdt;
     address wbtc;
+    /// @dev Canonical WETH ERC-20 on this chain — an input token like `usdc`/`usdt`/`wbtc`, distinct from
+    ///      `wrappedNativeToken` (the wrapped GAS token, e.g. WBNB/WPOL; identical to WETH only on ETH-gas
+    ///      chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
+    address weth;
     /// @dev Per-(token, bridge) execution-fee caps, in input-token units. A leaf names which to enforce via
     ///      a `bytes4` selector (its `maxExecutionFeeGetter`). Illustrative set — add more as routes need them.
     ///      For SpokePool this is the fixed component of the fee cap (added to the leaf's `maxFeeBps` term).
@@ -82,6 +86,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     address public immutable wbtc;
     /// @inheritdoc ICounterfactualBeacon
+    address public immutable weth;
+    /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcCctpMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcCctpMaxFeeBps;
@@ -111,6 +117,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         usdc = config.usdc;
         usdt = config.usdt;
         wbtc = config.wbtc;
+        weth = config.weth;
         usdcCctpMaxExecutionFee = config.usdcCctpMaxExecutionFee;
         usdcCctpMaxFeeBps = config.usdcCctpMaxFeeBps;
         usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;

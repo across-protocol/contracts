@@ -246,6 +246,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // wbtc vs constants.json (0 when not present)
         _assertAddrEq("CounterfactualBeacon", "wbtc", beacon.wbtc(), _getWbtc(chainId));
 
+        // weth vs constants.json (canonical WETH ERC-20, not the wrapped gas token; 0 when not present)
+        _assertAddrEq("CounterfactualBeacon", "weth", beacon.weth(), _getWeth(chainId));
+
         // Per-(token, bridge) execution-fee caps: hardcoded to type(uint256).max for now (see
         // CounterfactualConfig._buildChainConfig).
         _assertUintEq(
@@ -397,6 +400,12 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
 
     function _getWbtc(uint256 chainId) internal view returns (address) {
         string memory path = string.concat(".WBTC.", vm.toString(chainId));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    function _getWeth(uint256 chainId) internal view returns (address) {
+        string memory path = string.concat(".WETH.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
     }

@@ -57,8 +57,8 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //     into the beacon impl by DeployCounterfactualBeaconImpl. `nativeToken` defaults to the native sentinel;
 //     override at `.NATIVE_TOKEN.<chainId>` for chains whose gas-token route is an ERC-20.
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from config.toml.
-//     This script transfers those roles after all ffi deployments, verifying directWithdrawer transferred
-//     before ownership.
+//     Beacon + AdminWithdrawManager role transfers to the config.toml `ownerAndDirectWithdrawer` multisig are
+//     NOT performed by this script — do them out of band after deployment.
 //
 // Always deployed:
 //   - Beacon stack (chain-specific impl + bootstrap + proxy + dispatcher) via DeployCounterfactualBeaconImpl
@@ -81,19 +81,17 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-//      --sig "run(string,bool,bool,string)" <rpcUrl> false true counterfactual \
+//      --sig "run(string,bool,string)" <rpcUrl> true counterfactual \
 //      --rpc-url <rpcUrl> --ffi -vvvv
-//    (args: rpcUrl, transferRoles, broadcast, profile)
+//    (args: rpcUrl, broadcast, profile)
 // 4. Verify the logged predicted addresses and forge commands look correct
 contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     string constant SCRIPT_DIR = "script/counterfactual/";
 
     /// @param rpcUrl RPC URL for the target chain.
-    /// @param transferRoles If true, transfer beacon + AdminWithdrawManager roles to the config.toml
-    ///        `ownerAndDirectWithdrawer` multisig (Ownable2Step — accepted out of band).
     /// @param broadcast If true, broadcast transactions on-chain; otherwise simulate.
     /// @param profile Foundry profile to use for sub-script invocations (e.g. "counterfactual").
-    function run(string calldata rpcUrl, bool transferRoles, bool broadcast, string calldata profile) external {
+    function run(string calldata rpcUrl, bool broadcast, string calldata profile) external {
         address signer = _loadSigner();
 
         // Which route leaves to deploy is DERIVED from on-chain capability, not passed in: deploy a route's
@@ -134,7 +132,6 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("  Sponsored CCTP:     ", deployCctp);
         console.log("  Sponsored OFT:      ", deployOft);
         console.log("  Vanilla CCTP:       ", deployVanillaCctp);
-        console.log("  Transfer roles:     ", transferRoles);
         console.log("--------------------------------------------");
         console.log("Predicted addresses:");
 
@@ -233,7 +230,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             // 2. Bootstrap + proxy + upgrade-to-impl + dispatcher + setImplementation. `DeployCounterfactualBeacon`
             //    has two `run` overloads (`run()` and `run(bool)`), so it MUST be invoked with an explicit `--sig`
             //    or forge aborts with "Multiple functions with the same name run". We want the no-transfer path
-            //    here (role transfer is handled by this orchestrator below).
+            //    here (role transfers are performed out of band, not by this orchestrator).
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
@@ -359,58 +356,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         // The deploys above happened in separate `forge script --broadcast` child processes (via ffi), so they
         // are invisible to THIS script's fork (pinned at the block we started on). Re-fork to latest so the
-        // role-transfer reads below (beacon.owner(), manager roles) and the verification summary see what the
-        // children actually deployed, not our stale snapshot.
-        // NOTE: role transfers below run in the parent's broadcast context, so they only execute on-chain if
-        // this orchestrator is itself invoked with `--broadcast`; otherwise do role transfers separately.
+        // verification summary sees what the children actually deployed, not our stale snapshot.
         if (broadcast) vm.createSelectFork(rpcUrl);
-
-        // --- Transfer beacon + AdminWithdrawManager roles ---
-        if (transferRoles) {
-            address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
-            require(ownerAndDirectWithdrawer != address(0), "config: ownerAndDirectWithdrawer is zero or missing");
-
-            console.log("--------------------------------------------");
-
-            // The beacon admin can retarget every counterfactual proxy and UUPS-upgrade the registry, so it
-            // must end up on the per-chain multisig, not the deployer EOA (Ownable2Step: new owner accepts
-            // out of band). Own broadcast scope, separate from the AdminWithdrawManager block below.
-            CounterfactualBeacon beacon = CounterfactualBeacon(predictedProxy);
-            if (beacon.owner() != ownerAndDirectWithdrawer && beacon.pendingOwner() != ownerAndDirectWithdrawer) {
-                console.log("Transferring beacon ownership to:", ownerAndDirectWithdrawer);
-                vm.startBroadcast(deployerPrivateKey);
-                beacon.transferOwnership(ownerAndDirectWithdrawer);
-                vm.stopBroadcast();
-            } else {
-                console.log("Beacon ownership: already transferred or pending acceptance");
-            }
-
-            AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
-            console.log("Transferring AdminWithdrawManager roles to:", ownerAndDirectWithdrawer);
-
-            vm.startBroadcast(deployerPrivateKey);
-
-            // Transfer directWithdrawer first, then verify before transferring ownership.
-            if (ownerAndDirectWithdrawer != manager.directWithdrawer()) {
-                manager.setDirectWithdrawer(ownerAndDirectWithdrawer);
-
-                if (manager.directWithdrawer() != ownerAndDirectWithdrawer) {
-                    console.log("ERROR: directWithdrawer transfer failed. Skipping ownership transfer.");
-                    vm.stopBroadcast();
-                } else {
-                    if (ownerAndDirectWithdrawer != manager.owner()) {
-                        manager.transferOwnership(ownerAndDirectWithdrawer);
-                    }
-                    vm.stopBroadcast();
-                }
-            } else {
-                // directWithdrawer already correct, just transfer ownership if needed.
-                if (ownerAndDirectWithdrawer != manager.owner()) {
-                    manager.transferOwnership(ownerAndDirectWithdrawer);
-                }
-                vm.stopBroadcast();
-            }
-        }
 
         // --- On-chain verification summary ---------------------------------------------------------------
         // Each sub-script is invoked via ffi with a trailing `|| true`, so a failed deploy does NOT stop the
@@ -506,6 +453,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
         if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;
         if (_logStaleAddr("wbtc", beacon.wbtc(), expected.wbtc)) stale = true;
+        if (_logStaleAddr("weth", beacon.weth(), expected.weth)) stale = true;
         if (
             _logStaleUint("usdcCctpMaxExecutionFee", beacon.usdcCctpMaxExecutionFee(), expected.usdcCctpMaxExecutionFee)
         ) stale = true;

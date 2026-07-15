@@ -191,7 +191,8 @@ a **`public immutable`**, exposed by a named getter:
 signer  spokePool  wrappedNativeToken
 cctpSrcPeriphery  cctpTokenMessenger  cctpSourceDomain
 oftSrcPeriphery  oftSrcEid
-usdc  usdt  wbtc  (one named getter per supported token)
+usdc  usdt  wbtc  weth  (one named getter per supported token; `weth` is the canonical WETH ERC-20,
+                         distinct from `wrappedNativeToken` — identical only on ETH-gas chains)
 ```
 
 A leaf implementation runs under delegatecall, so `address(this)` is the proxy; it resolves the beacon

@@ -186,6 +186,14 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
+    /// @dev Resolves canonical WETH from constants.json (`.WETH.<chainId>`); address(0) if absent. Distinct
+    ///      from `_resolveWrappedNativeToken` (the wrapped GAS token) — identical only on ETH-gas chains.
+    function _resolveWeth() internal view returns (address) {
+        string memory path = string.concat(".WETH.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
     /// @notice Builds the per-chain `CounterfactualChainConfig` baked into the chain-specific
     ///         `CounterfactualBeacon` impl. Missing values resolve to 0 (route simply not configured).
     ///         `_loadCounterfactualConfig()` must run first — it does, via `_loadSigner` below.
@@ -202,6 +210,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.usdc = _resolveUsdc();
         cfg.usdt = _resolveUsdt();
         cfg.wbtc = _resolveWbtc();
+        cfg.weth = _resolveWeth();
         // Per-(token, bridge) execution-fee caps: a per-chain raw onchain amount in config.toml, in the
         // token's own decimals. Bridge types share the token's value. A leaf names which cap to enforce
         // via its `maxExecutionFeeGetter` selector.
@@ -211,7 +220,10 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         uint256 usdtMaxExecutionFee = _maxExecutionFee("usdtMaxExecutionFee", cfg.usdt);
         cfg.usdtOftMaxExecutionFee = usdtMaxExecutionFee;
         cfg.usdtSpokePoolMaxExecutionFee = usdtMaxExecutionFee;
-        cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.wrappedNativeToken);
+        // Denominated in canonical WETH (18 decimals) and required only where WETH exists. On ETH-gas
+        // chains the same value caps the native msg.value route (wrapped native IS WETH there); non-ETH-gas
+        // chains do not get wrapped-native routes, so no cap is denominated in WBNB/WPOL/etc.
+        cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.weth);
         cfg.wbtcSpokePoolMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
         // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP).
         cfg.usdcCctpMaxFeeBps = _usdcCctpMaxFeeBps();

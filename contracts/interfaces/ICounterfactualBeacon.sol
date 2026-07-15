@@ -70,6 +70,11 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice WBTC token address on this chain.
     function wbtc() external view returns (address);
 
+    /// @notice Canonical WETH ERC-20 on this chain — an input token like `usdc`/`usdt`/`wbtc`, distinct
+    ///         from `wrappedNativeToken()` (the wrapped GAS token; identical to WETH only on ETH-gas
+    ///         chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
+    function weth() external view returns (address);
+
     // --- Per-(token, bridge) execution-fee caps (input-token units). A leaf names which to enforce via its
     //     `maxExecutionFeeGetter` selector. Illustrative set; for SpokePool this is the fixed fee component. ---
 
@@ -89,7 +94,9 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Max (fixed) fee for the USDT SpokePool route.
     function usdtSpokePoolMaxExecutionFee() external view returns (uint256);
 
-    /// @notice Max (fixed) fee for the WETH/native SpokePool route.
+    /// @notice Max (fixed) fee for the WETH SpokePool route, in WETH units. On ETH-gas chains this also
+    ///         caps the native (msg.value) route, since the wrapped gas token IS WETH there; non-ETH-gas
+    ///         chains do not get wrapped-native routes.
     function wethSpokePoolMaxExecutionFee() external view returns (uint256);
 
     /// @notice Max (fixed) fee for the WBTC SpokePool route.
