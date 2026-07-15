@@ -132,6 +132,7 @@ wethMaxExecutionFee = 0 # No WETH configured for this chain
 [1135]
 endpoint_url = "${NODE_URL_1135}"
 [1135.address]
+
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [1135.uint]
