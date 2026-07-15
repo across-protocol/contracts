@@ -113,13 +113,16 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     ///      decimals — e.g. 2 USDC is 2000000 on 6-decimal chains but 2000000000000000000 on BSC (18).
     ///      One config value serves every bridge type for the token. Returns 0 (route not configured)
     ///      when the token is unset on this chain; reverts if the token is set but the config key is
-    ///      missing, so a beacon impl can't deploy with an unconfigured fee cap.
+    ///      missing OR zero, so a beacon impl can't deploy with an unconfigured (or accidentally
+    ///      zero — nonzero fees all revert) cap for a live token.
     function _maxExecutionFee(string memory key, address token) internal returns (uint256) {
         if (token == address(0)) return 0;
         if (address(config) == address(0)) _loadCounterfactualConfig();
         Variable memory v = config.get(key);
         require(v.ty.kind == TypeKind.Uint256, string.concat("config: ", key, " not configured for this chain"));
-        return v.toUint256();
+        uint256 fee = v.toUint256();
+        require(fee != 0, string.concat("config: ", key, " is zero but its token is configured on this chain"));
+        return fee;
     }
 
     /// @dev Standard Aave/Compound-style native sentinel, returned by `beacon.nativeToken()` on chains whose
