@@ -121,26 +121,58 @@ yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]
 
 ## Counterfactual Deposit Scripts
 
-### CounterfactualDepositFactoryTron
+The counterfactual system is beacon-anchored: every clone is a `BeaconProxy` resolving the
+`CounterfactualBeacon` proxy, which supplies both the dispatcher implementation and all chain config
+(SpokePool, signer, tokens, fee caps — baked into the chain-specific beacon impl as immutables).
 
-Tron-compatible factory with corrected CREATE2 address prediction (0x41 prefix). No constructor args.
+Unlike EVM chains there is **no bootstrap step and no cross-chain address parity**: Tron's 0x41 CREATE2
+prefix (and TronWeb's plain-CREATE deploys) make chain-invariant addresses impossible, so the beacon
+proxy is deployed directly over the real impl and gets a Tron-specific address. Deploys are **not
+idempotent** — re-running a script deploys a fresh contract rather than completing an interrupted run.
+
+### Deployment order
+
+1. **CounterfactualBeacon impl** — resolves the chain config (mirroring
+   `CounterfactualConfig._buildChainConfig` from `script/counterfactual/config.toml`,
+   `generated/constants.json`, and `broadcast/deployed-addresses.json`, converting Tron Base58
+   entries to EVM hex) and bakes it into the impl's immutables. Use `--dry-run` to inspect the
+   resolved config without deploying. After a config change, deploy a new impl and have the beacon
+   owner `upgradeToAndCall(newImpl, "")` out of band.
+
+   ```bash
+   yarn tron-deploy-counterfactual-beacon-impl [--testnet] [--dry-run]
+   ```
+
+2. **Beacon proxy stack** — deploys an `ERC1967Proxy` over the impl (initialized with the deployer as
+   owner; transfer ownership out of band), deploys the `CounterfactualDeposit` dispatcher bound to
+   the proxy, and calls `setImplementation(dispatcher)`. Reads the impl address from step 1's
+   broadcast, or pass it explicitly.
+
+   ```bash
+   yarn tron-deploy-counterfactual-beacon [<beaconImpl>] [--testnet]
+   ```
+
+3. **CounterfactualDepositFactoryTron** — Tron-compatible factory (0x41 CREATE2 address prediction),
+   bound to the beacon proxy.
+
+   ```bash
+   yarn tron-deploy-counterfactual-factory <beacon> [--testnet]
+   ```
+
+4. **Route leaves** — merkle-leaf implementations the dispatcher delegatecalls. No constructor args
+   (all config comes from the beacon at runtime).
+
+   ```bash
+   yarn tron-deploy-counterfactual-deposit-spokepool-tron [--testnet]
+   ```
+
+### CounterfactualDeposit (dispatcher redeploy)
+
+Normally deployed by step 2. Use standalone only to redeploy the dispatcher against an existing
+beacon, then have the beacon owner call `setImplementation(<new dispatcher>)`.
 
 ```bash
-yarn tron-deploy-counterfactual-factory [--testnet]
-```
-
-### CounterfactualDeposit
-
-Clone implementation contract used by the factory. No constructor args. Must be deployed before creating clones.
-
-```bash
-yarn tron-deploy-counterfactual-deposit [--testnet]
-```
-
-### CounterfactualDepositSpokePoolTr
-
-```bash
-yarn tron-deploy-counterfactual-deposit-spokepool-tron <spokePool> <signer> <wrappedNativeToken> [--testnet]
+yarn tron-deploy-counterfactual-deposit <beacon> [--testnet]
 ```
 
 ### AdminWithdrawManager
@@ -157,11 +189,17 @@ yarn tron-deploy-withdraw-implementation-tron [--testnet]
 
 ### Deploy Clone
 
-Deploys a clone from the factory and verifies the predicted address matches the actual deployed address.
+Deploys a clone from the factory and verifies the predicted address matches the actual deployed
+address. The clone address is a function of `(salt, initialRoot)` only; `salt` defaults to zero
+(the canonical address per root).
 
 ```bash
-yarn tron-deploy-counterfactual-clone <factory> <implementation> <merkleRoot> <salt> [--testnet]
+yarn tron-deploy-counterfactual-clone <factory> <initialRoot> [salt] [--testnet]
 ```
+
+> **Note:** `tron-deploy-clone.ts` and `tron-execute-clone-deposit.ts` (single-leaf end-to-end test
+> scripts) predate the beacon architecture and need a rewrite against the dispatcher execute flow
+> before use — their headers carry a stale warning.
 
 ## Periphery Scripts
 
@@ -248,9 +286,11 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `universal/tron-deploy-sp1-auto-verifier.ts`                          | Deploys SP1AutoVerifier (no args)                                                   |
 | `universal/tron-deploy-sp1-helios.ts`                                 | Deploys SP1Helios with genesis binary                                               |
 | `universal/tron-deploy-universal-spokepool.ts`                        | Deploys Tron_SpokePool implementation + ERC1967Proxy                                |
-| `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (no args)                                  |
-| `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Deploys CounterfactualDeposit implementation (no args)                              |
-| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTr                                            |
+| `counterfactual/tron-deploy-counterfactual-beacon-impl.ts`            | Deploys CounterfactualBeacon impl (resolves + bakes the chain config)               |
+| `counterfactual/tron-deploy-counterfactual-beacon.ts`                 | Deploys the beacon proxy + dispatcher and wires setImplementation                   |
+| `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (bound to the beacon)                      |
+| `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Redeploys the CounterfactualDeposit dispatcher (bound to the beacon)                |
+| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTr leaf (no args; config from beacon)         |
 | `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                                        |
 | `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                                        |
 | `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction                           |

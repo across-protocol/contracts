@@ -31,7 +31,7 @@ ownerAndDirectWithdrawer = "0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01"
 usdcMaxExecutionFee = 10000000 # 10 USDC (6 decimals)
 usdtMaxExecutionFee = 10000000 # 10 USDT (6 decimals)
 wethMaxExecutionFee = 6000000000000000 # 0.006 WETH (18 decimals)
-wbtcMaxExecutionFee = 16000 # 0.000155 WBTC (8 decimals)
+wbtcMaxExecutionFee = 16000 # 0.00016 WBTC (8 decimals)
 
 [10]
 endpoint_url = "${NODE_URL_10}"
@@ -85,7 +85,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [143.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 0 # No WETH configured for this chain
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [232]
@@ -261,6 +261,10 @@ wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
 [728126428]
 endpoint_url = "${NODE_URL_728126428}"
+[728126428.address]
+# EIP-712 fee signer (secp256k1 recovery key — EVM hex format, same key as other chains). Read by
+# script/tron/counterfactual/tron-deploy-counterfactual-beacon-impl.ts (forge cannot broadcast to Tron).
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 [728126428.uint]
 usdcMaxExecutionFee = 30000000 # 30 USDC (6 decimals; unused until USDC is configured for Tron)
 usdtMaxExecutionFee = 30000000 # 30 USDT (6 decimals on Tron)
