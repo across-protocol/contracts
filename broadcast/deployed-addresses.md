@@ -429,6 +429,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                       | Address                                                                                                               |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | AcrossEventEmitter                  | [0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11](https://snowscan.xyz/address/0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11) |
+| AdminWithdrawManager                | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://snowscan.xyz/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon                | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://snowscan.xyz/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualDeposit               | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://snowscan.xyz/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositCCTP           | [0x26cc007E3d658719F8A44B6109cE6341EB0010cD](https://snowscan.xyz/address/0x26cc007E3d658719F8A44B6109cE6341EB0010cD) |
+| CounterfactualDepositFactory        | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://snowscan.xyz/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositSpokePool      | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://snowscan.xyz/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
+| CounterfactualDepositVanillaCCTP    | [0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7](https://snowscan.xyz/address/0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7) |
 | DonationBox_CCTP_USDC               | [0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF](https://snowscan.xyz/address/0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF) |
 | MulticallHandler                    | [0x9610954AcDCA5FF7905f051A040ce33fe613c60e](https://snowscan.xyz/address/0x9610954AcDCA5FF7905f051A040ce33fe613c60e) |
 | PermissionedMulticallHandler        | [0x64A14B477d16F1E9D490B00218ada0c142C885dd](https://snowscan.xyz/address/0x64A14B477d16F1E9D490B00218ada0c142C885dd) |
@@ -439,6 +446,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredCCTPDstPeriphery_CCTP_USDC | [0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0](https://snowscan.xyz/address/0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0) |
 | SponsoredCCTPSrcPeriphery           | [0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8](https://snowscan.xyz/address/0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8) |
 | TransferProxy                       | [0x5dDA0da4f35826ec9426008155a912C756009252](https://snowscan.xyz/address/0x5dDA0da4f35826ec9426008155a912C756009252) |
+| WithdrawImplementation              | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://snowscan.xyz/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Ink (57073)
 
