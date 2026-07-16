@@ -3,13 +3,23 @@ pragma solidity ^0.8.0;
 
 /**
  * @title CounterfactualNonces
- * @notice Shared single-use nonce tracking for leaf implementations whose fee signature is the sole
- *         authorization (no periphery to consume a nonce): SpokePool and Vanilla CCTP.
- * @dev Runs under the proxy's delegatecall, so the used-nonce mapping lives in **each proxy's storage**
- *      (nonces are per-clone, like the dispatcher's `activeRoot`), in an ERC-7201 namespaced slot that
- *      cannot collide with the dispatcher's namespace. The namespace is shared by every impl using this
- *      mixin, so a nonce is single-use across all such routes of one proxy — nonces are random 32 bytes
- *      chosen by the off-chain signer, so collisions are a non-issue.
+ * @notice Shared single-use nonce tracking for counterfactual signatures that nothing else consumes:
+ *         the SpokePool and Vanilla CCTP leaf implementations (no periphery) and `AdminWithdrawManager`
+ *         signed withdrawals.
+ * @dev The mapping lives in `address(this)`'s storage under an ERC-7201 namespaced slot. For leaf
+ *      implementations that is **each proxy's storage** (they run under the proxy's delegatecall, so
+ *      nonces are per-clone, like the dispatcher's `activeRoot`); for a singleton like
+ *      `AdminWithdrawManager` it is the contract's own storage. The namespace is shared by every
+ *      contract using this mixin, so within one storage context a nonce is single-use across all of
+ *      them — nonces are random 32 bytes chosen by the off-chain signer, so collisions are a non-issue.
+ *      The namespace cannot collide with the dispatcher's.
+ *
+ *      Deliberately exposes NO `usedNonces` getter: inherited by a leaf implementation it would enter
+ *      the impl's public ABI but read the impl's own, never-written storage (always false) — a
+ *      misleading ABI entry. Off-chain, check consumption via
+ *      `eth_getStorageAt(target, keccak256(abi.encode(nonce, NONCES_STORAGE_LOCATION)))` (target = the
+ *      proxy for leaf-impl nonces, the manager for withdraw nonces), or simulate and look for
+ *      `InvalidNonce`.
  *      **Every future implementation version MUST preserve this ERC-7201 storage layout.**
  * @custom:security-contact bugs@across.to
  */
@@ -23,7 +33,7 @@ abstract contract CounterfactualNonces {
     bytes32 private constant NONCES_STORAGE_LOCATION =
         0x6620ce368f04f685aa0153e5e3347c828611b4776c1dc36e5c44b4db1be22600;
 
-    /// @dev The signature's nonce was already consumed on this proxy (replay).
+    /// @dev The signature's nonce was already consumed in this storage context (replay).
     error InvalidNonce();
 
     /// @dev Consume `nonce` on this proxy; reverts `InvalidNonce` if already used. Call after signature

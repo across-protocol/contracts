@@ -303,7 +303,9 @@ leaf = keccak256(…(WithdrawImplementation, keccak256(withdrawParams)))
 ```
 
 The escape hatch (`AdminWithdrawManager` / `WithdrawImplementation`) to sweep stranded balances or
-deprecated routes via the same dispatch path. `signedWithdraw` forces payout to the committed user.
+deprecated routes via the same dispatch path. `signedWithdraw` forces payout to the committed user and
+binds a single-use `nonce` (consumed in the manager's storage), so a withdrawal signature can't be
+replayed against a re-funded clone.
 This is a plain transfer (no bridge), so rescue always works. Withdraw is **authorization-gated** (the
 leaf commits the permitted withdrawer) — **not permissionless** — so it can't be used to grief
 in-flight deposits by sweeping funds to the source-chain refund path before they're bridged (see Open
@@ -459,7 +461,13 @@ Mechanism (identical across the four impls):
   consume it **locally** via the shared `CounterfactualNonces` mixin: a `usedNonces` mapping in the
   **proxy's storage** (per-clone, like the dispatcher's `activeRoot`) under its own ERC-7201 namespace
   (`across.counterfactual.nonces.storage`), reverting `InvalidNonce` on reuse. Like the dispatcher slot,
-  this layout must be preserved by every future implementation version.
+  this layout must be preserved by every future implementation version. The mixin deliberately exposes
+  **no `usedNonces` getter** (inherited by a leaf impl it would read the impl's own, never-written
+  storage — a misleading always-false ABI entry) and the dispatcher is untouched. Off-chain, check
+  consumption via `eth_getStorageAt(target, keccak256(abi.encode(nonce, noncesStorageLocation)))` or by
+  simulating the call and looking for `InvalidNonce`. `AdminWithdrawManager.signedWithdrawToUser`
+  reuses the same mixin for its signed withdrawals, consuming nonces in the **manager's own storage**
+  (it is a plain singleton, no delegatecall — so its `target` is the manager itself).
 - The fee's **upper bound** is **per-chain, per-token**: the leaf carries a `bytes4 maxExecutionFeeGetter`
   selector and the impl resolves the cap from the beacon (`_resolveBeaconUint`). For CCTP/Vanilla CCTP/OFT
   that resolved value is the `maxExecutionFee`; for SpokePool it is the fixed component of the combined
