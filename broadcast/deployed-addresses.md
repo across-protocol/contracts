@@ -394,12 +394,18 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Mode (34443)
 
-| Contract Name      | Address                                                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.mode.network/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.mode.network/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://explorer.mode.network/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.mode.network/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name                  | Address                                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| AdminWithdrawManager           | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://explorer.mode.network/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.mode.network/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.mode.network/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explorer.mode.network/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://explorer.mode.network/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
+| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.mode.network/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                      | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.mode.network/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://explorer.mode.network/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.mode.network/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://explorer.mode.network/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Arbitrum One (42161)
 
