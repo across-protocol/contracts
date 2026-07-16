@@ -8,6 +8,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ITokenMessengerV2 } from "../../external/interfaces/CCTPInterfaces.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
+import { CounterfactualNonces } from "./CounterfactualNonces.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
@@ -37,6 +38,7 @@ struct VanillaCCTPRouteParams {
 struct VanillaCCTPSubmitterData {
     uint256 amount;
     address executionFeeRecipient;
+    bytes32 nonce;
     uint256 executionFee;
     /// @dev Circle fast-transfer `maxFee` passed to the TokenMessenger (0 ⇒ standard transfer), capped at
     ///      the beacon's `<cctpMaxFeeBpsGetter>` bps of the burned amount.
@@ -55,23 +57,26 @@ struct VanillaCCTPSubmitterData {
  *      the beacon, so the impl holds no chain-specific values and has one address per chain.
  *
  *      With no periphery quote signature, the local EIP-712 fee signature binds the full route
- *      (`routeParamsHash`), `amount`, `executionFee`, `maxFeeCctp`, `minFinalityThreshold` and
- *      `signatureDeadline`. Replay protection is the short `signatureDeadline` (no nonce). ERC-20 only.
+ *      (`routeParamsHash`), `nonce`, `amount`, `executionFee`, `maxFeeCctp`, `minFinalityThreshold` and
+ *      `signatureDeadline`. Replay protection is the signed single-use `nonce` consumed in the proxy's
+ *      storage (`CounterfactualNonces`), bounded further by the short `signatureDeadline`. ERC-20 only.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, EIP712 {
+contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, CounterfactualNonces, EIP712 {
     using SafeERC20 for IERC20;
 
     /**
      * @notice Emitted after a vanilla CCTP deposit is successfully executed.
      * @param amount Total input amount (including execution fee).
      * @param executionFeeRecipient Address that received the execution fee.
+     * @param nonce Single-use nonce consumed by this execution.
      * @param executionFee Execution fee paid to the executor (in input token).
      * @param depositAmount Amount burned via CCTP (`amount - executionFee`).
      */
     event VanillaCCTPDepositExecuted(
         uint256 amount,
         address indexed executionFeeRecipient,
+        bytes32 nonce,
         uint256 executionFee,
         uint256 depositAmount
     );
@@ -81,11 +86,11 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
     error MaxExecutionFee();
     error MaxCctpFee();
 
-    /// @notice EIP-712 typehash binding the fee signature to the route, amount, runtime fees (executor +
-    ///         Circle), finality threshold, and deadline.
+    /// @notice EIP-712 typehash binding the fee signature to the route, nonce, amount, runtime fees
+    ///         (executor + Circle), finality threshold, and deadline.
     bytes32 public constant EXECUTE_VANILLA_CCTP_TYPEHASH =
         keccak256(
-            "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
+            "ExecuteVanillaCCTP(bytes32 routeParamsHash,bytes32 nonce,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
         );
 
     constructor() EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {}
@@ -99,8 +104,9 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
         VanillaCCTPRouteParams memory routeParams = abi.decode(routeParamsEncoded, (VanillaCCTPRouteParams));
         VanillaCCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (VanillaCCTPSubmitterData));
 
-        // Sole authorization (no periphery sig): binds the exact leaf params, amount, and fee.
+        // Sole authorization (no periphery sig): binds the exact leaf params, nonce, amount, and fee.
         _verifySignature(keccak256(routeParamsEncoded), submitterData);
+        _useNonce(submitterData.nonce);
 
         // Each fee is capped independently against the beacon getter its leaf names.
         if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
@@ -146,6 +152,7 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
         emit VanillaCCTPDepositExecuted(
             submitterData.amount,
             submitterData.executionFeeRecipient,
+            submitterData.nonce,
             submitterData.executionFee,
             depositAmount
         );
@@ -157,6 +164,7 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, E
             abi.encode(
                 EXECUTE_VANILLA_CCTP_TYPEHASH,
                 routeParamsHash,
+                submitterData.nonce,
                 submitterData.amount,
                 submitterData.executionFee,
                 submitterData.maxFeeCctp,
