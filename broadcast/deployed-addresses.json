@@ -1210,10 +1210,15 @@
           "block_number": 30184883,
           "transaction_hash": "0x2e27035f81e55adc7f85b9ed5a59ce1942c140314413514a0884470860a97baa"
         },
+        "CounterfactualBeacon": {
+          "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
+          "block_number": 30184237,
+          "transaction_hash": "0x312e494bfe08aa51615aa90656acb4c035d20de65a3959ae15befad004dddde5"
+        },
         "CounterfactualDeposit": {
-          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
-          "block_number": 12127678,
-          "transaction_hash": "0x1d0532543cc02aa234b1d3371f66002ac3446aedcdd4eebe19c5f6208338fb31"
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 30184235,
+          "transaction_hash": "0x1e9de839589bd1de26794281eb43d15e68b8d54ba0507d4217bdc965ee2f0ca5"
         },
         "CounterfactualDepositFactory": {
           "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
