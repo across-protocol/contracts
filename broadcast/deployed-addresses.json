@@ -1314,6 +1314,31 @@
     "4663": {
       "chain_name": "Robinhood",
       "contracts": {
+        "AdminWithdrawManager": {
+          "address": "0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689",
+          "block_number": 11425636,
+          "transaction_hash": "0x67d1472356794c8dcebe127e9548fcf42ebac7e9bd4d323f32c54ae3dcd7e74f"
+        },
+        "CounterfactualBeacon": {
+          "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
+          "block_number": 11424181,
+          "transaction_hash": "0x87e80264da8537ded544fc9f89774f9138215c81bfcc43b782cc6f8a939bc395"
+        },
+        "CounterfactualDeposit": {
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 11424175,
+          "transaction_hash": "0xad5e17ebf285f4c731f9bca0c638c027acc2b48e9dd57d777ab7e1d8b2adf543"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
+          "block_number": 11424796,
+          "transaction_hash": "0xc20ed5cff2ffcf825bcd53cd06687161523be714572f9f468568f98bd3842d1d"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2",
+          "block_number": 11425354,
+          "transaction_hash": "0xfa4116683713749cd038952c9c5fa2192ca5d2c49fa7785e1e032234b998d96d"
+        },
         "SP1Helios": {
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
           "block_number": 156307,
@@ -1328,6 +1353,11 @@
           "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978",
           "block_number": 156309,
           "transaction_hash": "0xd2d4f305f0ff843b524df7b2d4130cf5e081e7e39db2ea89c483ec14fd7f9608"
+        },
+        "WithdrawImplementation": {
+          "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
+          "block_number": 11425075,
+          "transaction_hash": "0xe0a5ca9bc698d87436279cccfa10e32874201f5490feccfab13ef97d1f22b95a"
         }
       }
     },

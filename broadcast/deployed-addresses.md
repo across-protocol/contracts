@@ -335,11 +335,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Robinhood (4663)
 
-| Contract Name | Address                                                                                                                                |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://robinhoodchain.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://robinhoodchain.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
-| SpokePool     | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://robinhoodchain.blockscout.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
+| Contract Name                  | Address                                                                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://robinhoodchain.blockscout.com/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://robinhoodchain.blockscout.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://robinhoodchain.blockscout.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://robinhoodchain.blockscout.com/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://robinhoodchain.blockscout.com/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
+| Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://robinhoodchain.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios                      | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://robinhoodchain.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool                      | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://robinhoodchain.blockscout.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
+| WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://robinhoodchain.blockscout.com/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## ARC (5042)
 
