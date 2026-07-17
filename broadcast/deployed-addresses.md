@@ -352,11 +352,18 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## ARC (5042)
 
-| Contract Name | Address                                                                                                                  |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| Contract Name                    | Address                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| AdminWithdrawManager             | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://explorer.arc.io/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
+| CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.arc.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
+| CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.arc.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositFactory     | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explorer.arc.io/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositSpokePool   | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://explorer.arc.io/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
+| CounterfactualDepositVanillaCCTP | [0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7](https://explorer.arc.io/address/0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7) |
+| Safe                             | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios                        | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePool                        | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| WithdrawImplementation           | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://explorer.arc.io/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Base (8453)
 

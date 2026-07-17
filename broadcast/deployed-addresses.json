@@ -1379,6 +1379,35 @@
     "5042": {
       "chain_name": "ARC",
       "contracts": {
+        "AdminWithdrawManager": {
+          "address": "0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689",
+          "block_number": 10790271,
+          "transaction_hash": "0x7996c409807c536b35909dcd8afbf13e6343b4592cc9995d02377bc27ae4ea0c"
+        },
+        "CounterfactualBeacon": {
+          "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
+          "block_number": 10789571,
+          "transaction_hash": "0xc3621d88bfbf305cb2da282b4448b5923fbcda9a7fd290856ec829c36c0a4a89"
+        },
+        "CounterfactualDeposit": {
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 10789566,
+          "transaction_hash": "0x4363aabdfcef2247c734c86f1d714435199ca84f333c6605039bf4ce0995db9d"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
+          "transaction_hash": "0xa8238a645e4068cec71c2a8033bd6aa7e631e85d76565ab821f6bd3180b8ad99"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2",
+          "block_number": 10790020,
+          "transaction_hash": "0x40d05515d8cfc9ff10c1691b289c76c5687ac0edbfafb9f99c68fee6f2b5f1f7"
+        },
+        "CounterfactualDepositVanillaCCTP": {
+          "address": "0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7",
+          "block_number": 10790144,
+          "transaction_hash": "0x04672cc51d8daa7f132a94e1e0c938ce960f2b85714421b1b2b2bf80708a59ec"
+        },
         "SP1Helios": {
           "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
           "block_number": 4681034,
@@ -1393,6 +1422,11 @@
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
           "block_number": 4694834,
           "transaction_hash": "0x31aaba9cef65a567fb5d9cf60217391511e77b9a82c7c24da2e8a3b278e31134"
+        },
+        "WithdrawImplementation": {
+          "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
+          "block_number": 10789897,
+          "transaction_hash": "0x5f2f8dccb6c313f18c248621dc6e5f803b76bb76ea241ef8133fbec1b4e0d258"
         }
       }
     },
