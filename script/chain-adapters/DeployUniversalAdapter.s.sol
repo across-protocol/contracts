@@ -22,7 +22,12 @@ contract DeployUniversalAdapter is Script, Test, Constants {
     function run() external pure {
         revert("Not implemented, see script for run instructions");
     }
-    function run(string calldata destinationChainName) external {
+    /// @return destinationChainId The chain id this adapter routes to. Foundry records this in the broadcast
+    /// file's `returns` (keyed by this name, "destinationChainId"), which `ExtractDeployedFoundryAddresses.ts`
+    /// reads to name the adapter
+    /// `Universal_Adapter_<destinationChainId>` in deployed-addresses.json. Returning it explicitly avoids the
+    /// fragile fallback of inferring the destination from the CCTP domain / OFT EID constructor args.
+    function run(string calldata destinationChainName) external returns (uint256 destinationChainId) {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
@@ -35,7 +40,7 @@ contract DeployUniversalAdapter is Script, Test, Constants {
             "Universal_Adapter should only be deployed on Ethereum mainnet or Sepolia"
         );
 
-        uint256 destinationChainId = getChainId(destinationChainName);
+        destinationChainId = getChainId(destinationChainName);
         bool hasCctpDomain = hasCctpDomain(destinationChainId);
         address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
         uint32 cctpDomainId = hasCctpDomain ? uint32(getCircleDomainId(destinationChainId)) : 4294967295; // 2^32 - 1

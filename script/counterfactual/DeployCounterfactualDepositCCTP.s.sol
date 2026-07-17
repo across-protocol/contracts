@@ -5,34 +5,25 @@ import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 
-// How to run (zero-arg, reads from constants + deployed addresses):
+// Deploys the CounterfactualDepositCCTP leaf implementation. Chain-identical (no constructor args; periphery,
+// source domain, burn token and fee signer come from the CounterfactualBeacon at runtime), so it lands at the
+// SAME CREATE2 address on every chain.
+//
+// How to run (zero-arg):
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 2. forge script script/counterfactual/DeployCounterfactualDepositCCTP.s.sol:DeployCounterfactualDepositCCTP \
 //      --rpc-url $NODE_URL -vvvv
 // 3. Deploy: append --broadcast --verify to the command above
 contract DeployCounterfactualDepositCCTP is CounterfactualConfig {
-    /// @notice Zero-arg entry point: resolves all params from constants and deployed addresses.
+    /// @notice Zero-arg entry point. Guards on CCTP support so we only deploy where the route exists.
     function run() external {
         require(hasCctpDomain(block.chainid), "Chain does not support CCTP");
-        address srcPeriphery = _resolveCctpPeriphery();
-        require(srcPeriphery != address(0), "CCTP periphery not deployed on this chain");
-        this.run(srcPeriphery, getCircleDomainId(block.chainid));
-    }
 
-    function run(address srcPeriphery, uint32 sourceDomain) external {
-        string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
 
-        require(srcPeriphery != address(0), "SrcPeriphery cannot be zero address");
-
-        bytes memory initCode = abi.encodePacked(
-            type(CounterfactualDepositCCTP).creationCode,
-            abi.encode(srcPeriphery, sourceDomain)
-        );
+        bytes memory initCode = type(CounterfactualDepositCCTP).creationCode;
         console.log("Deploying CounterfactualDepositCCTP via CREATE2...");
         console.log("Chain ID:", block.chainid);
-        console.log("SrcPeriphery:", srcPeriphery);
-        console.log("Source domain:", uint256(sourceDomain));
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);

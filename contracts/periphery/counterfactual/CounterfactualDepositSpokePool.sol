@@ -6,23 +6,32 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
+import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
-import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
+import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
+import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
- * @notice Route parameters committed to in the merkle leaf.
+ * @notice Route parameters committed to in the merkle leaf (chain-agnostic: no source chain, no token).
+ * @dev `inputTokenGetter` is the selector of the beacon getter resolving the per-chain input token (e.g.
+ *      `beacon.usdc.selector`). Native isn't a special selector: the resolved value signals it — the
+ *      sentinel (`0xEeee…EEeE`) ⇒ native, any other address ⇒ ERC-20 — so e.g. a `beacon.nativeToken`
+ *      leaf is native where the beacon returns the sentinel and ERC-20 where it returns a token.
+ *      `destinationChainId`, `outputToken`, `recipient` are the (chain-invariant) destination identity.
  */
-struct SpokePoolDepositParams {
+struct SpokePoolRouteParams {
+    bytes4 inputTokenGetter;
     uint256 destinationChainId;
-    bytes32 inputToken;
     bytes32 outputToken;
     bytes32 recipient;
     bytes message;
+    bool checkStableExchangeRate;
     uint256 stableExchangeRate;
-    uint256 maxFeeFixed;
+    /// @dev Selector of the beacon getter for this route's per-chain fixed fee cap (e.g.
+    ///      `beacon.usdcSpokePoolMaxExecutionFee.selector`); added to the `maxFeeBps` term below.
+    bytes4 maxExecutionFeeGetter;
     uint256 maxFeeBps;
-    uint256 executionFee;
 }
 
 /**
@@ -37,28 +46,35 @@ struct SpokePoolSubmitterData {
     uint32 quoteTimestamp;
     uint32 fillDeadline;
     uint32 signatureDeadline;
+    uint256 executionFee;
     bytes signature;
 }
 
 /**
  * @title CounterfactualDepositSpokePool
- * @notice Implementation contract for counterfactual deposits via Across SpokePool.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. EIP-712 domain separator uses
- *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
- *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
+ * @notice Counterfactual deposit via Across SpokePool, agnostic to the input token.
+ * @dev Delegatecalled by the dispatcher. SpokePool, wrapped native token and fee signer come from the
+ *      beacon; the input token from the beacon getter the leaf's `inputTokenGetter` names. Native vs ERC-20
+ *      is the resolved value (`NATIVE_SENTINEL` ⇒ msg.value path, input is `beacon.wrappedNativeToken()`;
+ *      else ⇒ ERC-20). Holds no chain-specific values; one address per chain.
  *
- *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
- *      `address(this)` (the clone), which has no private key and does not implement EIP-1271, and therefore
- *      cannot sign `speedUpV3Deposit` messages.
+ *      No per-token variants or per-variant EIP-712 names: `inputTokenGetter` is in `params` →
+ *      `routeParamsHash`, which the fee signature binds, so a signature for one token can't validate for
+ *      another. Cross-chain replay is prevented by the domain `chainId`, cross-clone by `verifyingContract`.
+ *      No nonce needed (balance is consumed on execution; short deadlines bound the window). Depositor
+ *      speed-ups are unsupported: `depositor` is `address(this)` (the clone), which can't sign.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferERC20 {
-    // Restrict the `using` attachment to `forceApprove` only. All `safeTransfer` calls must go
-    // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
-    // variants can override transfer semantics in one place.
+contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP712, SafeTransferERC20 {
+    // `using` is restricted to `forceApprove`; `safeTransfer` goes through the `_safeTransfer` hook so
+    // chain-specific variants (Tron) can override transfer semantics in one place.
     using { SafeERC20.forceApprove } for IERC20;
 
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
+
+    /// @notice Sentinel returned by `inputTokenGetter` to signal a native route (the Aave/Compound-style
+    ///         native-asset placeholder).
+    address public constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     /**
      * @notice Emitted after a SpokePool deposit is successfully executed.
@@ -70,6 +86,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
      * @param quoteTimestamp Timestamp of the deposit quote.
      * @param fillDeadline Deadline by which the deposit must be filled.
      * @param signatureDeadline Deadline after which the authorizing signature expires.
+     * @param executionFee Execution fee paid to the executor (in input token).
      */
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
@@ -79,7 +96,8 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         address indexed executionFeeRecipient,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 signatureDeadline
+        uint32 signatureDeadline,
+        uint256 executionFee
     );
 
     error MaxFee();
@@ -90,114 +108,128 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     /// @notice EIP-712 typehash for execute deposit signature verification.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
-    /// @notice Across SpokePool contract
-    address public immutable spokePool;
-
-    /// @notice Signer that authorizes execution parameters
-    address public immutable signer;
-
-    /// @notice Wrapped native token address (e.g. WETH) passed to SpokePool for native deposits.
-    address public immutable wrappedNativeToken;
-
-    constructor(
-        address _spokePool,
-        address _signer,
-        address _wrappedNativeToken
-    ) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
-        spokePool = _spokePool;
-        signer = _signer;
-        wrappedNativeToken = _wrappedNativeToken;
-    }
+    constructor() EIP712("CounterfactualDepositSpokePool", "v2.0.0") {} // solhint-disable-line no-empty-blocks
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
-     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
-     *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
-     *      `NativeTransferFailed`.
+     * @dev `routeParamsEncoded`/`submitterDataEncoded` decode to `SpokePoolRouteParams`/`SpokePoolSubmitterData`
+     *      (the latter carries the beacon `signer`'s EIP-712 signature). The value resolved from
+     *      `inputTokenGetter` decides native (`NATIVE_SENTINEL`, msg.value) vs ERC-20. Reverts:
+     *      `SignatureExpired`, `InvalidSignature`, `MaxFee`, `NativeTransferFailed`, `RouteNotConfigured`.
      */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
-        SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
+    function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
+        SpokePoolRouteParams memory routeParams = abi.decode(routeParamsEncoded, (SpokePoolRouteParams));
+        SpokePoolSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (SpokePoolSubmitterData));
 
-        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
-        _verifySignature(sd);
+        if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
+        _verifySignature(keccak256(routeParamsEncoded), submitterData);
 
-        address inputToken = address(uint160(uint256(dp.inputToken)));
-        uint256 depositAmount = sd.inputAmount - dp.executionFee;
+        uint256 depositAmount = submitterData.inputAmount - submitterData.executionFee;
+        _checkFee(
+            routeParams,
+            submitterData.inputAmount,
+            submitterData.outputAmount,
+            depositAmount,
+            submitterData.executionFee,
+            _resolveBeaconUint(routeParams.maxExecutionFeeGetter)
+        );
 
-        _checkFee(dp, sd.inputAmount, sd.outputAmount, depositAmount);
+        ICounterfactualBeacon beacon = _beacon();
+        address spokePool = _requireConfigured(beacon.spokePool());
 
-        bool isNative = inputToken == NATIVE_ASSET;
-        if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
+        // The leaf names a beacon getter; its resolved value decides native (`NATIVE_SENTINEL`) vs ERC-20.
+        // Branching on the value, not the selector, lets one leaf serve both.
+        address resolved = _requireConfigured(_resolveBeaconAddress(routeParams.inputTokenGetter));
+        bool isNative = resolved == NATIVE_SENTINEL;
+        address inputToken; // ERC-20 to approve/sweep (unused for native)
+        bytes32 spokePoolInputToken;
+        if (isNative) {
+            spokePoolInputToken = bytes32(uint256(uint160(_requireConfigured(beacon.wrappedNativeToken()))));
+        } else {
+            inputToken = resolved;
+            IERC20(inputToken).forceApprove(spokePool, depositAmount);
+            spokePoolInputToken = bytes32(uint256(uint160(inputToken)));
+        }
 
-        bytes32 spokePoolInputToken = isNative ? bytes32(uint256(uint160(wrappedNativeToken))) : dp.inputToken;
         V3SpokePoolInterface(spokePool).deposit{ value: isNative ? depositAmount : 0 }(
             bytes32(uint256(uint160(address(this)))),
-            dp.recipient,
+            routeParams.recipient,
             spokePoolInputToken,
-            dp.outputToken,
+            routeParams.outputToken,
             depositAmount,
-            sd.outputAmount,
-            dp.destinationChainId,
-            sd.exclusiveRelayer,
-            sd.quoteTimestamp,
-            sd.fillDeadline,
-            sd.exclusivityDeadline,
-            dp.message
+            submitterData.outputAmount,
+            routeParams.destinationChainId,
+            submitterData.exclusiveRelayer,
+            submitterData.quoteTimestamp,
+            submitterData.fillDeadline,
+            submitterData.exclusivityDeadline,
+            routeParams.message
         );
 
         // Pay execution fee
-        if (dp.executionFee > 0) {
+        if (submitterData.executionFee > 0) {
             if (isNative) {
-                (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
+                (bool success, ) = submitterData.executionFeeRecipient.call{ value: submitterData.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                _safeTransfer(inputToken, sd.executionFeeRecipient, dp.executionFee);
+                _safeTransfer(inputToken, submitterData.executionFeeRecipient, submitterData.executionFee);
             }
         }
 
         emit SpokePoolDepositExecuted(
-            sd.inputAmount,
-            sd.outputAmount,
-            sd.exclusiveRelayer,
-            sd.exclusivityDeadline,
-            sd.executionFeeRecipient,
-            sd.quoteTimestamp,
-            sd.fillDeadline,
-            sd.signatureDeadline
+            submitterData.inputAmount,
+            submitterData.outputAmount,
+            submitterData.exclusiveRelayer,
+            submitterData.exclusivityDeadline,
+            submitterData.executionFeeRecipient,
+            submitterData.quoteTimestamp,
+            submitterData.fillDeadline,
+            submitterData.signatureDeadline,
+            submitterData.executionFee
         );
     }
 
     function _checkFee(
-        SpokePoolDepositParams memory dp,
+        SpokePoolRouteParams memory routeParams,
         uint256 inputAmount,
         uint256 outputAmount,
-        uint256 depositAmount
+        uint256 depositAmount,
+        uint256 executionFee,
+        uint256 maxFeeFixed
     ) private pure {
-        uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
-        uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + dp.executionFee;
-        uint256 maxFee = dp.maxFeeFixed + (dp.maxFeeBps * inputAmount) / BPS_SCALAR;
+        // With `checkStableExchangeRate` false (non-stable pairs), the rate-derived relayer fee isn't
+        // enforced (`outputAmount` is trusted via the signature); `executionFee` is still bounded by `maxFee`.
+        uint256 relayerFee;
+        if (routeParams.checkStableExchangeRate) {
+            uint256 outputInInputToken = (outputAmount * routeParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
+            relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
+        }
+        uint256 totalFee = relayerFee + executionFee;
+        // `maxFeeFixed` is the per-chain fixed cap resolved from the beacon; `maxFeeBps` stays in the leaf.
+        uint256 maxFee = maxFeeFixed + (routeParams.maxFeeBps * inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(SpokePoolSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 routeParamsHash, SpokePoolSubmitterData memory submitterData) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
-                sd.inputAmount,
-                sd.outputAmount,
-                sd.exclusiveRelayer,
-                sd.exclusivityDeadline,
-                sd.quoteTimestamp,
-                sd.fillDeadline,
-                sd.signatureDeadline
+                address(this),
+                routeParamsHash,
+                submitterData.inputAmount,
+                submitterData.outputAmount,
+                submitterData.exclusiveRelayer,
+                submitterData.exclusivityDeadline,
+                submitterData.quoteTimestamp,
+                submitterData.fillDeadline,
+                submitterData.signatureDeadline,
+                submitterData.executionFee
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.signature) != _beacon().signer())
+            revert InvalidSignature();
     }
 }

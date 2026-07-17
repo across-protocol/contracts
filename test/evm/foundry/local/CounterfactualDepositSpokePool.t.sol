@@ -1,27 +1,23 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
+import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Merkle } from "murky/Merkle.sol";
-import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import {
     CounterfactualDepositSpokePool,
-    SpokePoolDepositParams,
+    SpokePoolRouteParams,
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
-import {
-    WithdrawImplementation,
-    WithdrawParams
-} from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
+import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
+import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
+import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/**
- * @notice Mock SpokePool that records deposit parameters. Accepts native ETH when msg.value > 0.
- */
+/// @notice Mock SpokePool: records deposit args; pulls ERC20 via transferFrom, else requires matching msg.value.
 contract MockSpokePool {
     using SafeERC20 for IERC20;
 
@@ -29,1129 +25,502 @@ contract MockSpokePool {
     bytes32 public lastDepositor;
     bytes32 public lastRecipient;
     bytes32 public lastInputToken;
-    bytes32 public lastOutputToken;
     uint256 public lastInputAmount;
     uint256 public lastOutputAmount;
-    uint256 public lastDestinationChainId;
-    bytes32 public lastExclusiveRelayer;
-    uint32 public lastQuoteTimestamp;
-    uint32 public lastFillDeadline;
-    uint32 public lastExclusivityDeadline;
-    bytes public lastMessage;
     uint256 public lastMsgValue;
+    bytes public lastMessage;
 
     function deposit(
         bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
-        bytes32 outputToken,
+        bytes32,
         uint256 inputAmount,
         uint256 outputAmount,
-        uint256 destinationChainId,
-        bytes32 exclusiveRelayer,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint256,
+        bytes32,
+        uint32,
+        uint32,
+        uint32,
         bytes calldata message
     ) external payable {
         if (msg.value > 0) {
-            require(msg.value == inputAmount, "MockSpokePool: msg.value mismatch");
+            require(msg.value == inputAmount, "msg.value mismatch");
         } else {
-            address tokenAddr = address(uint160(uint256(inputToken)));
-            IERC20(tokenAddr).safeTransferFrom(msg.sender, address(this), inputAmount);
+            IERC20(address(uint160(uint256(inputToken)))).safeTransferFrom(msg.sender, address(this), inputAmount);
         }
-
         lastDepositor = depositor;
         lastRecipient = recipient;
         lastInputToken = inputToken;
-        lastOutputToken = outputToken;
         lastInputAmount = inputAmount;
         lastOutputAmount = outputAmount;
-        lastDestinationChainId = destinationChainId;
-        lastExclusiveRelayer = exclusiveRelayer;
-        lastQuoteTimestamp = quoteTimestamp;
-        lastFillDeadline = fillDeadline;
-        lastExclusivityDeadline = exclusivityDeadline;
-        lastMessage = message;
         lastMsgValue = msg.value;
+        lastMessage = message;
         callCount++;
     }
 }
 
-contract CounterfactualSpokePoolDepositTest is Test {
-    Merkle public merkle;
-    CounterfactualDepositFactory public factory;
-    CounterfactualDeposit public dispatcher;
-    CounterfactualDepositSpokePool public spokePoolImpl;
-    WithdrawImplementation public withdrawImpl;
-    MockSpokePool public spokePool;
-    MintableERC20 public inputToken;
-    address public weth;
+/**
+ * @notice Tests the token-agnostic SpokePool counterfactual implementation. The leaf carries the beacon
+ *         getter selector for its input token (`inputTokenGetter`); native vs ERC-20 is decided by the
+ *         resolved value (`NATIVE_SENTINEL` ⇒ native, wrapped via `beacon.wrappedNativeToken()`; else
+ *         ERC-20). SpokePool and fee signer come from the beacon. One implementation handles every token,
+ *         so the single EIP-712 domain plus the token selector in `routeParamsHash` binds a fee signature
+ *         to one token.
+ */
+contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
+    CounterfactualDepositSpokePool internal spokeImpl;
+    MockSpokePool internal spokePool;
+    MintableERC20 internal token; // resolved via beacon.usdc()
+    MintableERC20 internal altToken; // resolved via beacon.usdt()
+    address internal weth;
+    address internal recipient;
 
-    address public admin;
-    address public user;
-    address public relayer;
-    uint256 public signerPrivateKey;
-    address public signerAddr;
+    bytes4 constant USDC_GETTER = ICounterfactualBeacon.usdc.selector;
+    bytes4 constant USDT_GETTER = ICounterfactualBeacon.usdt.selector;
+    bytes4 constant NATIVE_GETTER = ICounterfactualBeacon.nativeToken.selector;
+    /// @dev Mirrors `CounterfactualDepositSpokePool.NATIVE_SENTINEL`; redeclared because Solidity can't
+    ///      dot-access a contract's public constant in a struct-field assignment.
+    address constant NATIVE_SENTINEL = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    SpokePoolDepositParams internal defaultParams;
-    SpokePoolDepositParams internal nativeParams;
+    string constant NAME = "CounterfactualDepositSpokePool";
 
-    // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
-    bytes32 constant EIP712_DOMAIN_TYPEHASH =
-        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
-    bytes32 constant VERSION_HASH = keccak256("v1.0.0");
-
-    address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     function setUp() public {
-        admin = makeAddr("admin");
-        user = makeAddr("user");
-        relayer = makeAddr("relayer");
-        signerPrivateKey = 0xA11CE;
-        signerAddr = vm.addr(signerPrivateKey);
-
-        inputToken = new MintableERC20("USDC", "USDC", 6);
-        weth = makeAddr("weth");
-
-        merkle = new Merkle();
+        _setUpCore();
         spokePool = new MockSpokePool();
-        factory = new CounterfactualDepositFactory();
-        dispatcher = new CounterfactualDeposit();
-        spokePoolImpl = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
-        withdrawImpl = new WithdrawImplementation();
+        weth = makeAddr("weth");
+        recipient = makeAddr("recipient");
+        token = new MintableERC20("USDC", "USDC", 6);
+        altToken = new MintableERC20("USDT", "USDT", 6);
 
-        inputToken.mint(user, 1000e6);
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.spokePool = address(spokePool);
+        cfg.wrappedNativeToken = weth;
+        cfg.nativeToken = NATIVE_SENTINEL;
+        cfg.usdc = address(token);
+        cfg.usdt = address(altToken);
+        cfg.usdcSpokePoolMaxExecutionFee = 1e6;
+        cfg.usdtSpokePoolMaxExecutionFee = 1e6;
+        cfg.wethSpokePoolMaxExecutionFee = 0.01 ether;
+        _deployBeacon(cfg);
 
-        defaultParams = SpokePoolDepositParams({
-            destinationChainId: 42161, // Arbitrum
-            inputToken: bytes32(uint256(uint160(address(inputToken)))),
-            outputToken: bytes32(uint256(uint160(address(inputToken)))), // Same token
-            recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-            message: "",
-            stableExchangeRate: 1e18, // 1:1
-            maxFeeFixed: 1e6, // 1 USDC fixed
-            maxFeeBps: 500, // 5% variable
-            executionFee: 1e6 // 1 USDC
-        });
-
-        nativeParams = SpokePoolDepositParams({
-            destinationChainId: 42161,
-            inputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
-            outputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
-            recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-            message: "",
-            stableExchangeRate: 1e18,
-            maxFeeFixed: 0.01 ether,
-            maxFeeBps: 500,
-            executionFee: 0.01 ether
-        });
+        spokeImpl = new CounterfactualDepositSpokePool();
+        token.mint(user, 1000e6);
+        altToken.mint(user, 1000e6);
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _routeParams(bytes4 inputTokenGetter) internal view returns (SpokePoolRouteParams memory) {
+        // The fixed fee cap getter pairs with the input token (USDC/USDT/native→WETH).
+        bytes4 maxFeeGetter = inputTokenGetter == USDC_GETTER
+            ? ICounterfactualBeacon.usdcSpokePoolMaxExecutionFee.selector
+            : inputTokenGetter == USDT_GETTER
+                ? ICounterfactualBeacon.usdtSpokePoolMaxExecutionFee.selector
+                : ICounterfactualBeacon.wethSpokePoolMaxExecutionFee.selector;
+        return
+            SpokePoolRouteParams({
+                inputTokenGetter: inputTokenGetter,
+                destinationChainId: 42161,
+                outputToken: bytes32(uint256(uint160(address(token)))),
+                recipient: bytes32(uint256(uint160(recipient))),
+                message: "",
+                checkStableExchangeRate: true,
+                stableExchangeRate: 1e18,
+                maxExecutionFeeGetter: maxFeeGetter,
+                maxFeeBps: 500
+            });
     }
 
-    function _buildTreeAndDeploy(
-        bytes memory depositParamsEncoded,
-        bytes32 salt
-    ) internal returns (address clone, bytes32[] memory depositProof) {
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
+    /// @dev Tree: [spokePool route, withdraw, pad, pad]. Deploy and return (proxy, routeProof).
+    function _deploy(bytes memory routeEncoded, bytes32 salt) internal returns (address proxy, bytes32[] memory proof) {
         bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
+        leaves[0] = _leaf(address(spokeImpl), routeEncoded);
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(WithdrawParams({ admin: admin, user: user })));
+        leaves[2] = keccak256("pad-a");
+        leaves[3] = keccak256("pad-b");
         bytes32 root = merkle.getRoot(leaves);
-        depositProof = merkle.getProof(leaves, 0);
-        clone = factory.deploy(address(dispatcher), root, salt);
+        proof = merkle.getProof(leaves, 0);
+        proxy = factory.deploy(salt, root);
     }
 
-    function _buildTreeAndPredict(
-        bytes memory depositParamsEncoded,
-        bytes32 salt
-    ) internal returns (address predicted, bytes32 root, bytes32[] memory depositProof) {
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
-        root = merkle.getRoot(leaves);
-        depositProof = merkle.getProof(leaves, 0);
-        predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
+    struct Exec {
+        uint256 inputAmount;
+        uint256 outputAmount;
+        uint256 executionFee;
+        bytes32 exclusiveRelayer;
+        uint32 exclusivityDeadline;
+        uint32 quoteTimestamp;
+        uint32 fillDeadline;
+        uint32 signatureDeadline;
     }
 
-    function _domainSeparator(address clone) internal view returns (bytes32) {
-        return keccak256(abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, clone));
+    function _defaultExec() internal view returns (Exec memory) {
+        return
+            Exec({
+                inputAmount: 100e6,
+                outputAmount: 98e6,
+                executionFee: 1e6,
+                exclusiveRelayer: bytes32(0),
+                exclusivityDeadline: 0,
+                quoteTimestamp: uint32(block.timestamp),
+                fillDeadline: uint32(block.timestamp) + 3600,
+                signatureDeadline: uint32(block.timestamp) + 3600
+            });
     }
 
-    function _signExecuteDeposit(
-        address clone,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        bytes32 exclusiveRelayer,
-        uint32 exclusivityDeadline,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 signatureDeadline
+    function _signAndEncode(
+        address proxy,
+        bytes memory routeEncoded,
+        Exec memory e,
+        uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
-                inputAmount,
-                outputAmount,
-                exclusiveRelayer,
-                exclusivityDeadline,
-                quoteTimestamp,
-                fillDeadline,
-                signatureDeadline
+                proxy,
+                keccak256(routeEncoded),
+                e.inputAmount,
+                e.outputAmount,
+                e.exclusiveRelayer,
+                e.exclusivityDeadline,
+                e.quoteTimestamp,
+                e.fillDeadline,
+                e.signatureDeadline,
+                e.executionFee
             )
         );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    function _encodeSubmitterData(
-        address clone,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        bytes32 exclusiveRelayer,
-        uint32 exclusivityDeadline,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 signatureDeadline
-    ) internal view returns (bytes memory) {
-        bytes memory sig = _signExecuteDeposit(
-            clone,
-            inputAmount,
-            outputAmount,
-            exclusiveRelayer,
-            exclusivityDeadline,
-            quoteTimestamp,
-            fillDeadline,
-            signatureDeadline
-        );
+        bytes memory sig = _sign(pk, _domainSeparator(NAME, proxy), structHash);
         return
             abi.encode(
                 SpokePoolSubmitterData({
-                    inputAmount: inputAmount,
-                    outputAmount: outputAmount,
-                    exclusiveRelayer: exclusiveRelayer,
-                    exclusivityDeadline: exclusivityDeadline,
+                    inputAmount: e.inputAmount,
+                    outputAmount: e.outputAmount,
+                    exclusiveRelayer: e.exclusiveRelayer,
+                    exclusivityDeadline: e.exclusivityDeadline,
                     executionFeeRecipient: relayer,
-                    quoteTimestamp: quoteTimestamp,
-                    fillDeadline: fillDeadline,
-                    signatureDeadline: signatureDeadline,
+                    quoteTimestamp: e.quoteTimestamp,
+                    fillDeadline: e.fillDeadline,
+                    signatureDeadline: e.signatureDeadline,
+                    executionFee: e.executionFee,
                     signature: sig
                 })
             );
     }
 
-    function testPredictDepositAddress() public {
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
+    function _execute(
+        address proxy,
+        bytes memory routeEncoded,
+        bytes memory submitter,
+        bytes32[] memory proof
+    ) internal {
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(spokeImpl), routeEncoded, submitter, proof);
+    }
 
+    // --- Happy paths ---
+
+    function testErc20Deposit() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
+
+        vm.prank(user);
+        token.transfer(proxy, e.inputAmount);
+
+        _execute(proxy, route, submitter, proof);
+
+        assertEq(spokePool.lastMsgValue(), 0);
+        assertEq(spokePool.lastInputAmount(), e.inputAmount - e.executionFee);
+        assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(address(token)))));
+        assertEq(spokePool.lastOutputAmount(), e.outputAmount);
+        assertEq(spokePool.lastDepositor(), bytes32(uint256(uint160(proxy))));
+        assertEq(spokePool.lastRecipient(), bytes32(uint256(uint160(recipient))));
+        assertEq(token.balanceOf(relayer), e.executionFee);
+        assertEq(token.balanceOf(proxy), 0);
+    }
+
+    /// @dev Any beacon-registered token works through the same implementation, selected by its getter.
+    function testArbitraryTokenViaGetter() public {
+        bytes memory route = abi.encode(_routeParams(USDT_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
+
+        vm.prank(user);
+        altToken.transfer(proxy, e.inputAmount);
+
+        _execute(proxy, route, submitter, proof);
+
+        assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(address(altToken)))));
+        assertEq(spokePool.lastInputAmount(), e.inputAmount - e.executionFee);
+        assertEq(altToken.balanceOf(relayer), e.executionFee);
+        assertEq(altToken.balanceOf(proxy), 0);
+    }
+
+    function testNativeDeposit() public {
+        bytes memory route = abi.encode(_routeParams(NATIVE_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+
+        Exec memory e = _defaultExec();
+        e.inputAmount = 1 ether;
+        e.outputAmount = 0.98 ether;
+        e.executionFee = 0.01 ether;
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
+
+        vm.deal(proxy, e.inputAmount);
+        _execute(proxy, route, submitter, proof);
+
+        assertEq(spokePool.lastMsgValue(), e.inputAmount - e.executionFee);
+        assertEq(spokePool.lastInputAmount(), e.inputAmount - e.executionFee);
+        assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(weth))));
+        assertEq(relayer.balance, e.executionFee);
+    }
+
+    /// @dev When `beacon.nativeToken()` resolves to an ERC-20 (not the sentinel), the same leaf naming
+    ///      `nativeToken.selector` must take the ERC-20 path (transferFrom, no msg.value) — behavior is
+    ///      decided by the resolved value, not the selector.
+    function testNativeGetterResolvingToErc20UsesErc20Path() public {
+        // Redeploy with `nativeToken` set to an ERC-20 instead of the sentinel.
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.spokePool = address(spokePool);
+        cfg.wrappedNativeToken = weth;
+        cfg.nativeToken = address(token); // ERC-20 stand-in for "native"
+        cfg.usdc = address(token);
+        cfg.usdt = address(altToken);
+        cfg.usdcSpokePoolMaxExecutionFee = 1e6;
+        cfg.usdtSpokePoolMaxExecutionFee = 1e6;
+        cfg.wethSpokePoolMaxExecutionFee = 0.01 ether;
+        _deployBeacon(cfg);
+        CounterfactualDepositSpokePool impl = new CounterfactualDepositSpokePool();
+
+        bytes memory route = abi.encode(_routeParams(NATIVE_GETTER));
         bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), paramsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
+        leaves[0] = _leaf(address(impl), route);
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(WithdrawParams({ admin: admin, user: user })));
+        leaves[2] = keccak256("pad-a");
+        leaves[3] = keccak256("pad-b");
         bytes32 root = merkle.getRoot(leaves);
-        bytes32 salt = keccak256("test-salt");
+        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        address proxy = factory.deploy(bytes32(0), root);
 
-        address predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
-        address deployed = factory.deploy(address(dispatcher), root, salt);
-
-        assertEq(predicted, deployed, "Predicted address should match deployed");
-    }
-
-    function testDeployAndExecute() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32 root, bytes32[] memory proof) = _buildTreeAndPredict(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
+        token.transfer(proxy, e.inputAmount);
 
-        vm.expectEmit(true, true, true, true);
-        emit CounterfactualDepositSpokePool.SpokePoolDepositExecuted(
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            relayer,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        bytes memory exec = abi.encodeCall(CounterfactualDeposit.execute, (address(impl), route, submitter, proof));
+        vm.prank(relayer);
+        (bool ok, ) = proxy.call(exec);
+        assertTrue(ok);
 
-        bytes memory executeCalldata = abi.encodeCall(
+        // ERC-20 path: SpokePool got the ERC-20 (not WETH), no msg.value, fee in ERC-20.
+        assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(address(token)))));
+        assertEq(spokePool.lastMsgValue(), 0);
+        assertEq(token.balanceOf(relayer), e.executionFee);
+        assertEq(token.balanceOf(proxy), 0);
+    }
+
+    function testDeployAndExecuteViaFactory() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        bytes32 salt = keccak256("via-factory");
+        bytes32[] memory leaves = new bytes32[](4);
+        leaves[0] = _leaf(address(spokeImpl), route);
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(WithdrawParams({ admin: admin, user: user })));
+        leaves[2] = keccak256("pad-a");
+        leaves[3] = keccak256("pad-b");
+        bytes32 root = merkle.getRoot(leaves);
+        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        address predicted = factory.predictAddress(salt, root);
+
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(predicted, route, e, signerPk);
+
+        vm.prank(user);
+        token.transfer(predicted, e.inputAmount);
+
+        bytes memory exec = abi.encodeCall(
             CounterfactualDeposit.execute,
-            (address(spokePoolImpl), paramsEncoded, submitterData, proof)
+            (address(spokeImpl), route, submitter, proof)
         );
-
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(dispatcher), root, salt, executeCalldata);
+        address deployed = factory.deployAndExecute(salt, root, exec);
 
-        assertEq(deployed, depositAddress, "Deployed address should match prediction");
-        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
-        assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
+        assertEq(deployed, predicted);
+        assertEq(spokePool.lastInputAmount(), e.inputAmount - e.executionFee);
     }
 
-    function testExecuteViaFactory() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+    function testZeroExecutionFee() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        e.executionFee = 0;
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
+        token.transfer(proxy, e.inputAmount);
+        _execute(proxy, route, submitter, proof);
 
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDeposit.execute,
-            (address(spokePoolImpl), paramsEncoded, submitterData, proof)
-        );
-
-        vm.prank(relayer);
-        factory.execute(depositAddress, executeCalldata);
-
-        assertEq(inputToken.balanceOf(depositAddress), 0);
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee);
-        assertEq(spokePool.lastInputAmount(), expectedDeposit);
+        assertEq(token.balanceOf(relayer), 0);
+        assertEq(spokePool.lastInputAmount(), e.inputAmount);
     }
 
-    function testDepositorIsCloneAddress() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+    // --- Fee gating ---
 
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+    function testExcessiveRelayerFeeReverts() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        e.outputAmount = 92e6; // relayerFee 7e6 + 1e6 execFee = 8e6 > maxFee 6e6
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(spokePool.lastDepositor(), bytes32(uint256(uint160(depositAddress))));
-        assertEq(spokePool.lastRecipient(), defaultParams.recipient);
+        token.transfer(proxy, e.inputAmount);
+        vm.expectRevert(CounterfactualDepositSpokePool.MaxFee.selector);
+        _execute(proxy, route, submitter, proof);
     }
 
-    function testFillDeadlinePassedThrough() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 7200;
+    function testCheckStableExchangeRateDisabledSkipsRelayerFee() public {
+        // Low output that would blow the max-fee under the rate check, but the flag is off.
+        SpokePoolRouteParams memory rp = _routeParams(USDC_GETTER);
+        rp.checkStableExchangeRate = false;
+        bytes memory route = abi.encode(rp);
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
 
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        Exec memory e = _defaultExec();
+        e.outputAmount = 50e6; // implies a 49e6 relayer fee under the rate check
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
+        token.transfer(proxy, e.inputAmount);
+        _execute(proxy, route, submitter, proof);
 
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(spokePool.lastFillDeadline(), fillDeadline);
-        assertEq(spokePool.lastExclusivityDeadline(), 0);
+        assertEq(spokePool.callCount(), 1);
+        assertEq(spokePool.lastInputAmount(), e.inputAmount - e.executionFee);
     }
 
-    function testFillDeadlineWithExclusivity() public {
-        bytes32 salt = keccak256("test-salt-excl");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-        bytes32 exclusiveRelayer = bytes32(uint256(uint160(relayer)));
-        uint32 exclusivityDeadline = 300;
+    function testCheckStableExchangeRateDisabledStillBoundsExecutionFee() public {
+        SpokePoolRouteParams memory rp = _routeParams(USDC_GETTER);
+        rp.checkStableExchangeRate = false;
+        bytes memory route = abi.encode(rp);
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
 
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            exclusiveRelayer,
-            exclusivityDeadline,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        Exec memory e = _defaultExec();
+        e.executionFee = 7e6; // > maxFee 6e6 even with relayerFee dropped
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(spokePool.lastExclusivityDeadline(), exclusivityDeadline);
-        assertEq(spokePool.lastExclusiveRelayer(), exclusiveRelayer);
+        token.transfer(proxy, e.inputAmount);
+        vm.expectRevert(CounterfactualDepositSpokePool.MaxFee.selector);
+        _execute(proxy, route, submitter, proof);
     }
+
+    // --- Signature / replay ---
 
     function testInvalidSignatureReverts() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-        uint32 signatureDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        // Sign with wrong key
-        uint256 wrongKey = 0xBEEF;
-        bytes32 structHash = keccak256(
-            abi.encode(
-                EXECUTE_DEPOSIT_TYPEHASH,
-                inputAmount,
-                outputAmount,
-                bytes32(0),
-                uint32(0),
-                uint32(block.timestamp),
-                fillDeadline,
-                signatureDeadline
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(depositAddress), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, digest);
-        bytes memory badSig = abi.encodePacked(r, s, v);
-
-        bytes memory submitterData = abi.encode(
-            SpokePoolSubmitterData({
-                inputAmount: inputAmount,
-                outputAmount: outputAmount,
-                exclusiveRelayer: bytes32(0),
-                exclusivityDeadline: 0,
-                executionFeeRecipient: relayer,
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: fillDeadline,
-                signatureDeadline: signatureDeadline,
-                signature: badSig
-            })
-        );
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, 0xBEEF); // wrong key
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
+        token.transfer(proxy, e.inputAmount);
         vm.expectRevert(CounterfactualDepositSpokePool.InvalidSignature.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+        _execute(proxy, route, submitter, proof);
     }
 
     function testExpiredSignatureReverts() public {
-        bytes32 salt = keccak256("test-salt-expired");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-        uint32 signatureDeadline = uint32(block.timestamp) + 100;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            signatureDeadline
-        );
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        e.signatureDeadline = uint32(block.timestamp) + 100;
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
+        token.transfer(proxy, e.inputAmount);
         vm.warp(block.timestamp + 101);
-
         vm.expectRevert(CounterfactualDepositSpokePool.SignatureExpired.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+        _execute(proxy, route, submitter, proof);
     }
 
-    function testExcessiveRelayerFeeReverts() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 92e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+    function testCrossProxyReplayReverts() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxyA, bytes32[] memory proofA) = _deploy(route, keccak256("a"));
+        (address proxyB, bytes32[] memory proofB) = _deploy(route, keccak256("b"));
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxyA, route, e, signerPk); // signed for proxyA
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.expectRevert(CounterfactualDepositSpokePool.MaxFee.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-    }
-
-    function testRelayerFeeAtMaxPasses() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 94e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
+        token.transfer(proxyA, e.inputAmount);
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
+        token.transfer(proxyB, e.inputAmount);
 
         vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(proxyA).execute(address(spokeImpl), route, submitter, proofA);
 
-        assertEq(spokePool.callCount(), 1);
-        assertEq(spokePool.lastOutputAmount(), outputAmount);
-    }
-
-    function testUserWithdraw() public {
-        bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
-        bytes32 root = merkle.getRoot(leaves);
-        bytes32 salt = keccak256("test-salt");
-        address depositAddress = factory.deploy(address(dispatcher), root, salt);
-        bytes32[] memory userProof = merkle.getProof(leaves, 1);
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 100e6);
-
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(address(inputToken), user, 100e6);
-
-        vm.prank(user);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(address(inputToken), user, 100e6),
-            userProof
-        );
-
-        assertEq(inputToken.balanceOf(user), 1000e6);
-    }
-
-    function testUserWithdrawUnauthorized() public {
-        bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
-        bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-        bytes32[] memory userProof = merkle.getProof(leaves, 1);
-
-        vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(address(inputToken), relayer, 100e6),
-            userProof
-        );
-    }
-
-    function testAdminWithdraw() public {
-        bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
-        bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-        bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
-
-        MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
-        wrongToken.mint(depositAddress, 100e18);
-
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(address(wrongToken), admin, 100e18);
-
-        vm.prank(admin);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(address(wrongToken), admin, 100e18),
-            withdrawProof
-        );
-
-        assertEq(wrongToken.balanceOf(admin), 100e18);
-    }
-
-    function testAdminWithdrawUnauthorized() public {
-        bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
-        bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-        bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
-
-        vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(address(inputToken), relayer, 100e6),
-            withdrawProof
-        );
-    }
-
-    function testInvalidProofReverts() public {
-        bytes32 salt = keccak256("test-salt");
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        // Use different params to make proof invalid
-        SpokePoolDepositParams memory wrongParams = defaultParams;
-        wrongParams.maxFeeBps = 9999;
-
-        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), abi.encode(wrongParams), "", proof);
-    }
-
-    function testCrossCloneReplayPrevention() public {
-        bytes32 salt1 = keccak256("salt-1");
-        bytes32 salt2 = keccak256("salt-2");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-
-        (address clone1, bytes32[] memory proof1) = _buildTreeAndDeploy(paramsEncoded, salt1);
-        (address clone2, bytes32[] memory proof2) = _buildTreeAndDeploy(paramsEncoded, salt2);
-
-        // Sign for clone1
-        bytes memory sig = _signExecuteDeposit(
-            clone1,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-        bytes memory submitterData = abi.encode(
-            SpokePoolSubmitterData({
-                inputAmount: inputAmount,
-                outputAmount: outputAmount,
-                exclusiveRelayer: bytes32(0),
-                exclusivityDeadline: 0,
-                executionFeeRecipient: relayer,
-                quoteTimestamp: uint32(block.timestamp),
-                fillDeadline: fillDeadline,
-                signatureDeadline: uint32(block.timestamp) + 3600,
-                signature: sig
-            })
-        );
-
-        // Fund both clones
-        vm.prank(user);
-        inputToken.transfer(clone1, inputAmount);
-        inputToken.mint(user, inputAmount);
-        vm.prank(user);
-        inputToken.transfer(clone2, inputAmount);
-
-        // Execute on clone1 should work
-        vm.prank(relayer);
-        ICounterfactualDeposit(clone1).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof1);
-
-        // Replay on clone2 should fail (different domain separator)
         vm.expectRevert(CounterfactualDepositSpokePool.InvalidSignature.selector);
         vm.prank(relayer);
-        ICounterfactualDeposit(clone2).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof2);
+        ICounterfactualDeposit(proxyB).execute(address(spokeImpl), route, submitter, proofB);
     }
 
-    function testExecuteWithZeroExecutionFee() public {
-        SpokePoolDepositParams memory params = defaultParams;
-        params.executionFee = 0;
-        bytes32 salt = keccak256("test-salt-zero-fee");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+    /// @dev A USDC-route signature doesn't validate a USDT route on the same proxy: the input token getter
+    ///      is part of `routeParamsHash`, so the routes have different signed digests.
+    function testCrossTokenSignatureReverts() public {
+        bytes memory usdcRoute = abi.encode(_routeParams(USDC_GETTER));
+        bytes memory usdtRoute = abi.encode(_routeParams(USDT_GETTER));
 
-        bytes memory paramsEncoded = abi.encode(params);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(inputToken.balanceOf(relayer), 0);
-        assertEq(spokePool.lastInputAmount(), inputAmount);
-    }
-
-    function testZeroRelayerFee() public {
-        bytes32 salt = keccak256("test-salt-zero-relay");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 99e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(spokePool.callCount(), 1);
-        assertEq(spokePool.lastOutputAmount(), outputAmount);
-    }
-
-    function testDepositWithMessage() public {
-        SpokePoolDepositParams memory params = defaultParams;
-        params.message = abi.encode(uint256(42), "hello");
-        bytes32 salt = keccak256("test-salt-msg");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(params);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(keccak256(spokePool.lastMessage()), keccak256(params.message));
-    }
-
-    // --- Native ETH tests ---
-
-    function testNativeDeployAndExecute() public {
-        bytes32 salt = keccak256("native-salt");
-        uint256 inputAmount = 1 ether;
-        uint256 outputAmount = 0.98 ether;
-        uint256 expectedDeposit = inputAmount - nativeParams.executionFee;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(nativeParams);
-        (address depositAddress, bytes32 root, bytes32[] memory proof) = _buildTreeAndPredict(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.deal(depositAddress, inputAmount);
-
-        vm.expectEmit(true, true, true, true);
-        emit CounterfactualDepositSpokePool.SpokePoolDepositExecuted(
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            relayer,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDeposit.execute,
-            (address(spokePoolImpl), paramsEncoded, submitterData, proof)
-        );
-
-        vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(dispatcher), root, salt, executeCalldata);
-
-        assertEq(deployed, depositAddress);
-        assertEq(depositAddress.balance, 0);
-        assertEq(relayer.balance, nativeParams.executionFee);
-        assertEq(spokePool.lastInputAmount(), expectedDeposit);
-        assertEq(spokePool.lastMsgValue(), expectedDeposit);
-        assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(weth))));
-    }
-
-    function testNativeExecuteFeeCheck() public {
-        bytes32 salt = keccak256("native-fee-check");
-        uint256 inputAmount = 1 ether;
-        uint256 outputAmount = 0.93 ether;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(nativeParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.deal(depositAddress, inputAmount);
-
-        vm.expectRevert(CounterfactualDepositSpokePool.MaxFee.selector);
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-    }
-
-    function testNativeZeroExecutionFee() public {
-        SpokePoolDepositParams memory params = nativeParams;
-        params.executionFee = 0;
-        bytes32 salt = keccak256("native-zero-fee");
-        uint256 inputAmount = 1 ether;
-        uint256 outputAmount = 0.98 ether;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(params);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.deal(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(relayer.balance, 0);
-        assertEq(spokePool.lastInputAmount(), inputAmount);
-        assertEq(spokePool.lastMsgValue(), inputAmount);
-    }
-
-    function testNativeUserWithdraw() public {
-        bytes memory nativeParamsEncoded = abi.encode(nativeParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
+        // Both routes in one tree for the same proxy.
         bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), nativeParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
+        leaves[0] = _leaf(address(spokeImpl), usdcRoute);
+        leaves[1] = _leaf(address(spokeImpl), usdtRoute);
+        leaves[2] = keccak256("pad-a");
+        leaves[3] = keccak256("pad-b");
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-user-withdraw"));
-        bytes32[] memory userProof = merkle.getProof(leaves, 1);
+        bytes32[] memory usdtProof = merkle.getProof(leaves, 1);
+        address proxy = factory.deploy(bytes32(0), root);
 
-        vm.deal(depositAddress, 1 ether);
-
-        uint256 userBalBefore = user.balance;
-
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(NATIVE_ASSET, user, 1 ether);
+        Exec memory e = _defaultExec();
+        // Sign for USDC, execute USDT.
+        bytes memory submitter = _signAndEncode(proxy, usdcRoute, e, signerPk);
 
         vm.prank(user);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(NATIVE_ASSET, user, 1 ether),
-            userProof
-        );
-
-        assertEq(user.balance - userBalBefore, 1 ether);
-        assertEq(depositAddress.balance, 0);
+        altToken.transfer(proxy, e.inputAmount);
+        vm.expectRevert(CounterfactualDepositSpokePool.InvalidSignature.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(spokeImpl), usdtRoute, submitter, usdtProof);
     }
 
-    function testNativeAdminWithdraw() public {
-        bytes memory nativeParamsEncoded = abi.encode(nativeParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
+    /// @dev A route whose input-token getter is unset on the beacon reverts cleanly.
+    function testRouteNotConfiguredReverts() public {
+        // Redeploy with USDC unset (spokePool still set).
+        CounterfactualChainConfig memory cfg = _baseConfig();
+        cfg.spokePool = address(spokePool);
+        cfg.wrappedNativeToken = weth;
+        _deployBeacon(cfg);
+        CounterfactualDepositSpokePool impl = new CounterfactualDepositSpokePool();
 
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
         bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), nativeParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
+        leaves[0] = _leaf(address(impl), route);
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(WithdrawParams({ admin: admin, user: user })));
+        leaves[2] = keccak256("pad-a");
+        leaves[3] = keccak256("pad-b");
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-admin-withdraw"));
-        bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
+        bytes32[] memory proof = merkle.getProof(leaves, 0);
+        address proxy = factory.deploy(bytes32(0), root);
 
-        vm.deal(depositAddress, 1 ether);
-
-        uint256 adminBalBefore = admin.balance;
-
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(NATIVE_ASSET, admin, 1 ether);
-
-        vm.prank(admin);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(NATIVE_ASSET, admin, 1 ether),
-            withdrawProof
-        );
-
-        assertEq(admin.balance - adminBalBefore, 1 ether);
-    }
-
-    function testNativeReceiveAfterDeployment() public {
-        bytes memory nativeParamsEncoded = abi.encode(nativeParams);
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), nativeParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-
-        bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-receive"));
-
-        vm.deal(user, 2 ether);
-        vm.prank(user);
-        (bool success, ) = depositAddress.call{ value: 1 ether }("");
-        assertTrue(success);
-        assertEq(depositAddress.balance, 1 ether);
-    }
-
-    function testDeployIfNeededAndExecute() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32 root, bytes32[] memory proof) = _buildTreeAndPredict(paramsEncoded, salt);
-
-        bytes memory submitterData1 = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
 
         vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        bytes memory executeCalldata1 = abi.encodeCall(
-            CounterfactualDeposit.execute,
-            (address(spokePoolImpl), paramsEncoded, submitterData1, proof)
-        );
-
+        token.transfer(proxy, e.inputAmount);
+        vm.expectRevert(CounterfactualImplementationBase.RouteNotConfigured.selector);
         vm.prank(relayer);
-        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata1);
-        assertEq(deployed, depositAddress);
-        assertEq(spokePool.lastInputAmount(), expectedDeposit);
-
-        // Second call with clone already deployed
-        inputToken.mint(user, inputAmount);
-        vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        bytes memory submitterData2 = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        bytes memory executeCalldata2 = abi.encodeCall(
-            CounterfactualDeposit.execute,
-            (address(spokePoolImpl), paramsEncoded, submitterData2, proof)
-        );
-
-        vm.prank(relayer);
-        address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata2);
-        assertEq(deployed2, depositAddress);
-        assertEq(spokePool.callCount(), 2);
-    }
-
-    function testErc20DepositUsesErc20Flow() public {
-        bytes32 salt = keccak256("erc20-flow");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            depositAddress,
-            inputAmount,
-            outputAmount,
-            bytes32(0),
-            0,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, inputAmount);
-
-        vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
-
-        assertEq(spokePool.lastMsgValue(), 0);
-        assertEq(spokePool.lastInputAmount(), expectedDeposit);
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee);
+        ICounterfactualDeposit(proxy).execute(address(impl), route, submitter, proof);
     }
 }

@@ -230,6 +230,26 @@
       "oftEid": 30398,
       "hypDomainId": 4326
     },
+    "4663": {
+      "name": "Robinhood",
+      "family": "ORBIT",
+      "nativeToken": "ETH",
+      "publicRPC": "https://rpc.testnet.chain.robinhood.com",
+      "blockExplorer": "https://robinhoodchain.blockscout.com",
+      "cctpDomain": -1,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
+    "5042": {
+      "name": "ARC",
+      "family": "NONE",
+      "nativeToken": "USDC",
+      "publicRPC": "https://rpc.arc.network",
+      "blockExplorer": "https://explorer.arc.io",
+      "cctpDomain": 26,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
     "5330": {
       "name": "Superseed",
       "family": "OP_STACK",
@@ -319,6 +339,16 @@
       "cctpDomain": 3,
       "oftEid": 30110,
       "hypDomainId": 42161
+    },
+    "43114": {
+      "name": "Avalanche",
+      "family": "NONE",
+      "nativeToken": "AVAX",
+      "publicRPC": "https://api.avax.network/ext/bc/C/rpc",
+      "blockExplorer": "https://snowscan.xyz",
+      "cctpDomain": 1,
+      "oftEid": 30106,
+      "hypDomainId": 43114
     },
     "57073": {
       "name": "Ink",
@@ -420,6 +450,16 @@
       "oftEid": -1,
       "hypDomainId": -1
     },
+    "5042002": {
+      "name": "ARC Testnet",
+      "family": "NONE",
+      "nativeToken": "USDC",
+      "publicRPC": "https://rpc.testnet.arc.network",
+      "blockExplorer": "https://testnet.arcscan.app",
+      "cctpDomain": 26,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
     "7777777": {
       "name": "Zora",
       "family": "OP_STACK",
@@ -494,6 +534,8 @@
   "CHAIN_IDs": {
     "ALEPH_ZERO": 41455,
     "ARBITRUM": 42161,
+    "ARC": 5042,
+    "AVALANCHE": 43114,
     "BASE": 8453,
     "BLAST": 81457,
     "BOB": 60808,
@@ -514,6 +556,7 @@
     "PLASMA": 9745,
     "POLYGON": 137,
     "REDSTONE": 690,
+    "ROBINHOOD": 4663,
     "SCROLL": 534352,
     "SONEIUM": 1868,
     "SUPERSEED": 5330,
@@ -525,6 +568,7 @@
     "ZORA": 7777777,
     "SOLANA": 34268394551451,
     "ARBITRUM_SEPOLIA": 421614,
+    "ARC_TESTNET": 5042002,
     "BASE_SEPOLIA": 84532,
     "BLAST_SEPOLIA": 168587773,
     "BOB_SEPOLIA": 808813,
@@ -545,8 +589,8 @@
     "SOLANA_DEVNET": 133268194659241
   },
   "TESTNET_CHAIN_IDs": [
-    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 10143, 11155420, 9746, 80002, 534351,
-    11155111, 1301, 300, 133268194659241
+    421614, 5042002, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 10143, 11155420, 9746, 80002,
+    534351, 11155111, 1301, 300, 133268194659241
   ],
   "WETH": {
     "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -566,6 +610,7 @@
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
     "4326": "0x4200000000000000000000000000000000000006",
+    "4663": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x9895D81bB462A195b4922ED7De0e3ACD007c32CB",
     "34443": "0x4200000000000000000000000000000000000006",
@@ -607,6 +652,7 @@
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
     "4326": "0x4200000000000000000000000000000000000006",
+    "4663": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
     "9746": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
@@ -615,6 +661,7 @@
     "37111": "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8",
     "41455": "0xb7Da55D7040ef9C887e20374D76A88F93A59119E",
     "42161": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "43114": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
     "57073": "0x4200000000000000000000000000000000000006",
     "59144": "0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f",
     "80002": "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
@@ -628,7 +675,7 @@
     "11155111": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
     "11155420": "0x4200000000000000000000000000000000000006",
     "168587773": "0x4200000000000000000000000000000000000023",
-    "728126428": "0x891cdb91d149f23B1a45D9c5Ca78a88d0cB44C18",
+    "728126428": "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR",
     "34268394551451": "So11111111111111111111111111111111111111112",
     "133268194659241": "So11111111111111111111111111111111111111112"
   },
@@ -710,6 +757,10 @@
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
+    "5042": {
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+    },
     "8453": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
@@ -734,6 +785,11 @@
       "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
+    "43114": {
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "57073": {
@@ -967,15 +1023,18 @@
     "998": "0x2B3370eE501B4a559b57D449569354196457D8Ab",
     "999": "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
     "1301": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    "5042": "0x3600000000000000000000000000000000000000",
     "8453": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "10143": "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
     "42161": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "43114": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
     "57073": "0x2D270e6886d130D724215A266106e6832161EAEd",
     "59144": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
     "80002": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
     "84532": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
     "421614": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     "534352": "0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4",
+    "5042002": "0x3600000000000000000000000000000000000000",
     "11155111": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     "11155420": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7",
     "34268394551451": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",

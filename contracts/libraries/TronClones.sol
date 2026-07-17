@@ -51,6 +51,19 @@ library TronClones {
     }
 
     /**
+     * @notice Generic Tron CREATE2 address prediction (0x41 prefix) for an arbitrary init-code hash.
+     * @dev Mirrors OZ `Create2.computeAddress` but uses Tron's 0x41 prefix. Use for non-clone init code
+     *      (e.g. an `ERC1967Proxy`) where the caller already has `keccak256(initCode)`.
+     * @param salt The CREATE2 salt.
+     * @param bytecodeHash The keccak256 hash of the init code.
+     * @param deployer The deploying contract address.
+     * @return The predicted address on Tron.
+     */
+    function computeAddress(bytes32 salt, bytes32 bytecodeHash, address deployer) internal pure returns (address) {
+        return _computeTronAddress(salt, bytecodeHash, deployer);
+    }
+
+    /**
      * @dev Tron CREATE2 address computation using 0x41 prefix.
      *      Memory layout mirrors OZ Create2.computeAddress but replaces 0xff with 0x41.
      * @param salt The CREATE2 salt.

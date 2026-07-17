@@ -56,6 +56,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                          | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | Universal_Adapter_143                  | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_4217                 | [0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c](https://etherscan.io/address/0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c) |
+| Universal_Adapter_43114                | [0x1af659333172DC502bD71Cf5b889521C97751838](https://etherscan.io/address/0x1af659333172DC502bD71Cf5b889521C97751838) |
+| Universal_Adapter_4663                 | [0xbc5E82035e2C8d4B335Ccb751D6BF47e44Dec678](https://etherscan.io/address/0xbc5E82035e2C8d4B335Ccb751D6BF47e44Dec678) |
+| Universal_Adapter_5042                 | [0xCA5f9960022078F3585a188e06F910eeC29c7eBD](https://etherscan.io/address/0xCA5f9960022078F3585a188e06F910eeC29c7eBD) |
 | Universal_Adapter_56                   | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
 | Universal_Adapter_9745                 | [0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363](https://etherscan.io/address/0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363) |
 | Universal_Adapter_999                  | [0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B](https://etherscan.io/address/0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B) |
@@ -311,6 +314,22 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SponsoredOFTSrcPeriphery       | [0x02D65fb01d3d88127dF19838902ba42c6239c0Fd](https://megaeth.blockscout.com/address/0x02D65fb01d3d88127dF19838902ba42c6239c0Fd) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://megaeth.blockscout.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
+## Robinhood (4663)
+
+| Contract Name | Address                                                                                                                                |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://robinhoodchain.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://robinhoodchain.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool     | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://robinhoodchain.blockscout.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
+
+## ARC (5042)
+
+| Contract Name | Address                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+
 ## Base (8453)
 
 | Contract Name                          | Address                                                                                                               |
@@ -380,6 +399,22 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://arbiscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://arbiscan.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+
+## Avalanche (43114)
+
+| Contract Name                       | Address                                                                                                               |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter                  | [0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11](https://snowscan.xyz/address/0x25b15Fc38d6A2C13FEDdD9cb51f184F7Cf0D4C11) |
+| DonationBox_CCTP_USDC               | [0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF](https://snowscan.xyz/address/0x56D0707d97D30d3D187b685adCad9B4fEF5C46fF) |
+| MulticallHandler                    | [0x9610954AcDCA5FF7905f051A040ce33fe613c60e](https://snowscan.xyz/address/0x9610954AcDCA5FF7905f051A040ce33fe613c60e) |
+| PermissionedMulticallHandler        | [0x64A14B477d16F1E9D490B00218ada0c142C885dd](https://snowscan.xyz/address/0x64A14B477d16F1E9D490B00218ada0c142C885dd) |
+| Safe                                | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios                           | [0x196767568F848fF7607145A7C1f3CDE44bb4Ce98](https://snowscan.xyz/address/0x196767568F848fF7607145A7C1f3CDE44bb4Ce98) |
+| SpokePool                           | [0xFE9D541c92E4e90437C7152A00244886dE37a658](https://snowscan.xyz/address/0xFE9D541c92E4e90437C7152A00244886dE37a658) |
+| SpokePoolPeriphery                  | [0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af](https://snowscan.xyz/address/0xe05E3798Ce2ae9afCb637fb53BF5a51253BBe2af) |
+| SponsoredCCTPDstPeriphery_CCTP_USDC | [0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0](https://snowscan.xyz/address/0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0) |
+| SponsoredCCTPSrcPeriphery           | [0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8](https://snowscan.xyz/address/0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8) |
+| TransferProxy                       | [0x5dDA0da4f35826ec9426008155a912C756009252](https://snowscan.xyz/address/0x5dDA0da4f35826ec9426008155a912C756009252) |
 
 ## Ink (57073)
 
@@ -465,6 +500,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                               |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter               | [TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu](https://tronscan.org/address/TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu) |
 | AdminWithdrawManager             | [TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC](https://tronscan.org/address/TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC) |
 | CounterfactualDeposit            | [TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy](https://tronscan.org/address/TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy) |
 | CounterfactualDepositFactoryTron | [TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob](https://tronscan.org/address/TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob) |
@@ -473,6 +509,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SP1Helios                        | [TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm](https://tronscan.org/address/TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm) |
 | SpokePool                        | [TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS](https://tronscan.org/address/TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS) |
 | SpokePoolPeriphery               | [TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ](https://tronscan.org/address/TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ) |
+| TronMulticallHandler             | [TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ](https://tronscan.org/address/TQF7owwqj9TvJioDoJpGnjir9hrNZCfMDZ) |
 | WithdrawImplementationTron       | [THPA5L2jxGE84FHMieds212WH3sRX5Hi9t](https://tronscan.org/address/THPA5L2jxGE84FHMieds212WH3sRX5Hi9t) |
 
 ## Solana (34268394551451)

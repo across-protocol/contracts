@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
-import { Merkle } from "murky/Merkle.sol";
-import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
-import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
+import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import {
     WithdrawImplementation,
     WithdrawParams
@@ -12,44 +9,26 @@ import {
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-contract WithdrawImplementationTest is Test {
-    Merkle public merkle;
-    CounterfactualDeposit public dispatcher;
-    CounterfactualDepositFactory public factory;
-    WithdrawImplementation public withdrawImpl;
+contract WithdrawImplementationTest is CounterfactualTestBase {
     MintableERC20 public token;
-
-    address public user;
-    address public admin;
-    address public relayer;
 
     address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     function setUp() public {
-        merkle = new Merkle();
-        dispatcher = new CounterfactualDeposit();
-        factory = new CounterfactualDepositFactory();
-        withdrawImpl = new WithdrawImplementation();
+        _setUpCore();
+        _deployBeacon(_baseConfig());
         token = new MintableERC20("USDC", "USDC", 6);
-
-        user = makeAddr("user");
-        admin = makeAddr("admin");
-        relayer = makeAddr("relayer");
-    }
-
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
     }
 
     function _deployCloneWithWithdrawLeaf(
         bytes memory withdrawParams
     ) internal returns (address clone, bytes32[] memory proof) {
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(withdrawImpl), withdrawParams);
+        leaves[0] = _leaf(address(withdrawImpl), withdrawParams);
         leaves[1] = keccak256("padding");
         bytes32 root = merkle.getRoot(leaves);
         proof = merkle.getProof(leaves, 0);
-        clone = factory.deploy(address(dispatcher), root, keccak256("salt"));
+        clone = factory.deploy(keccak256("salt"), root);
     }
 
     // --- ERC20 withdraw tests ---

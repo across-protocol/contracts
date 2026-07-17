@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
+import { CounterfactualTestBase } from "./CounterfactualTestBase.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Merkle } from "murky/Merkle.sol";
-import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import {
     WithdrawImplementation,
     WithdrawParams
@@ -14,66 +11,42 @@ import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfac
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-contract AdminWithdrawManagerTest is Test {
-    Merkle public merkle;
-    CounterfactualDepositFactory public factory;
-    CounterfactualDeposit public dispatcher;
-    WithdrawImplementation public withdrawImpl;
+contract AdminWithdrawManagerTest is CounterfactualTestBase {
     AdminWithdrawManager public manager;
     MintableERC20 public token;
 
-    address public owner;
+    address public managerOwner;
     address public directWithdrawer;
-    address public user;
-    uint256 public signerPrivateKey;
-    address public signerAddr;
-
     address public depositAddress;
 
     // Single withdraw leaf: admin = manager, user = user
     bytes internal withdrawParams;
     bytes32[] internal withdrawProof;
 
-    // EIP-712 constants for AdminWithdrawManager
     bytes32 constant SIGNED_WITHDRAW_TYPEHASH =
         keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
-    bytes32 constant EIP712_DOMAIN_TYPEHASH =
-        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 constant MANAGER_NAME_HASH = keccak256("AdminWithdrawManager");
     bytes32 constant MANAGER_VERSION_HASH = keccak256("v1.0.0");
 
     function setUp() public {
-        owner = makeAddr("owner");
+        _setUpCore();
+        _deployBeacon(_baseConfig());
+        managerOwner = makeAddr("managerOwner");
         directWithdrawer = makeAddr("directWithdrawer");
-        user = makeAddr("user");
-        signerPrivateKey = 0xA11CE;
-        signerAddr = vm.addr(signerPrivateKey);
 
-        merkle = new Merkle();
         token = new MintableERC20("USDC", "USDC", 6);
-        factory = new CounterfactualDepositFactory();
-        dispatcher = new CounterfactualDeposit();
-        withdrawImpl = new WithdrawImplementation();
-        manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
+        // Reuse the base off-chain `signer` as the manager's signer.
+        manager = new AdminWithdrawManager(managerOwner, directWithdrawer, signer);
 
-        // Build merkle tree with one withdraw leaf
         withdrawParams = abi.encode(WithdrawParams({ admin: address(manager), user: user }));
 
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(withdrawImpl), withdrawParams);
+        leaves[0] = _leaf(address(withdrawImpl), withdrawParams);
         leaves[1] = keccak256("padding");
-
         bytes32 root = merkle.getRoot(leaves);
         withdrawProof = merkle.getProof(leaves, 0);
 
-        depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-
-        // Fund the clone
+        depositAddress = factory.deploy(keccak256("test-salt"), root);
         token.mint(depositAddress, 100e6);
-    }
-
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
     }
 
     function _managerDomainSeparator() internal view returns (bytes32) {
@@ -81,7 +54,7 @@ contract AdminWithdrawManagerTest is Test {
             keccak256(
                 abi.encode(
                     EIP712_DOMAIN_TYPEHASH,
-                    MANAGER_NAME_HASH,
+                    keccak256("AdminWithdrawManager"),
                     MANAGER_VERSION_HASH,
                     block.chainid,
                     address(manager)
@@ -98,9 +71,7 @@ contract AdminWithdrawManagerTest is Test {
         bytes32 structHash = keccak256(
             abi.encode(SIGNED_WITHDRAW_TYPEHASH, _depositAddress, _token, _amount, _deadline)
         );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _managerDomainSeparator(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
-        return abi.encodePacked(r, s, v);
+        return _sign(signerPk, _managerDomainSeparator(), structHash);
     }
 
     // --- directWithdraw tests ---
@@ -164,13 +135,10 @@ contract AdminWithdrawManagerTest is Test {
         uint256 deadline = block.timestamp + 3600;
 
         // Sign with wrong key
-        uint256 wrongKey = 0xDEAD;
         bytes32 structHash = keccak256(
             abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, address(token), amount, deadline)
         );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _managerDomainSeparator(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, digest);
-        bytes memory badSig = abi.encodePacked(r, s, v);
+        bytes memory badSig = _sign(0xDEAD, _managerDomainSeparator(), structHash);
 
         vm.expectRevert(AdminWithdrawManager.InvalidSignature.selector);
         manager.signedWithdrawToUser(
@@ -213,7 +181,7 @@ contract AdminWithdrawManagerTest is Test {
         vm.expectEmit(true, false, false, false);
         emit AdminWithdrawManager.DirectWithdrawerUpdated(newWithdrawer);
 
-        vm.prank(owner);
+        vm.prank(managerOwner);
         manager.setDirectWithdrawer(newWithdrawer);
 
         assertEq(manager.directWithdrawer(), newWithdrawer);
@@ -225,7 +193,7 @@ contract AdminWithdrawManagerTest is Test {
         vm.expectEmit(true, false, false, false);
         emit AdminWithdrawManager.SignerUpdated(newSigner);
 
-        vm.prank(owner);
+        vm.prank(managerOwner);
         manager.setSigner(newSigner);
 
         assertEq(manager.signer(), newSigner);
@@ -241,7 +209,7 @@ contract AdminWithdrawManagerTest is Test {
         manager.setSigner(makeAddr("newSigner"));
     }
 
-    // --- User withdraw via dispatcher (not AdminWithdrawManager) ---
+    // --- User withdraw directly via the proxy (not AdminWithdrawManager) ---
 
     function testUserWithdrawDirect() public {
         vm.expectEmit(true, true, true, true);

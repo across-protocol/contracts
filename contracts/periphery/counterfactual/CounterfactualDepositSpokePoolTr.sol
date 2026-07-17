@@ -6,30 +6,19 @@ import { TronTransferLib } from "../../libraries/TronTransferLib.sol";
 
 /**
  * @title CounterfactualDepositSpokePoolTr
- * @notice Tron-specific variant of `CounterfactualDepositSpokePool` for chains where the
- *         input token may be Tron USDT (whose `transfer` returns false on success).
- * @dev Inherits everything from the mainline implementation and overrides the
- *      `_safeTransfer` hook to use a balance-delta success check that tolerates
- *      Tron USDT's non-standard return value. `forceApprove` is unaffected — `approve`
- *      returns true correctly on Tron USDT.
- *
- *      The EIP-712 domain name is inherited from the parent (`CounterfactualDepositSpokePool`).
- *      Cross-implementation signature replay is already prevented by the `verifyingContract`
- *      field of the EIP-712 domain: each clone's address is derived via CREATE2 from its
- *      implementation address, so a signature for a mainline clone does not verify against
- *      a Tron-variant clone.
+ * @notice Tron variant of `CounterfactualDepositSpokePool` for input tokens like Tron USDT (whose
+ *         `transfer` returns false on success).
+ * @dev Inherits the mainline impl (including input-token-agnostic resolution) and overrides only
+ *      `_safeTransfer` to use a balance-delta success check tolerating Tron USDT's non-standard return;
+ *      `forceApprove` is unaffected. The mainline EIP-712 name is inherited, which is safe: a fee signature
+ *      commits `chainId` and the full route (incl. token selector) via `routeParamsHash`, and only one
+ *      SpokePool impl is deployed per chain — so it can't cross chains or tokens, and the variant changes
+ *      only transfer semantics, not the signed outcome.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePoolTr is CounterfactualDepositSpokePool {
-    constructor(
-        address _spokePool,
-        address _signer,
-        address _wrappedNativeToken
-    ) CounterfactualDepositSpokePool(_spokePool, _signer, _wrappedNativeToken) {} // solhint-disable-line no-empty-blocks
-
-    /// @dev TRON OVERRIDE: was `IERC20(token).safeTransfer(to, amount)` in the parent.
-    ///      `TronTransferLib._safeTransferBalanceCheck` uses a balance-delta success check so it
-    ///      tolerates Tron USDT's non-standard `transfer` return value.
+    /// @dev TRON OVERRIDE of `_safeTransfer`: a balance-delta success check that tolerates Tron USDT's
+    ///      non-standard `transfer` return value.
     function _safeTransfer(address token, address to, uint256 amount) internal override {
         TronTransferLib._safeTransferBalanceCheck(token, to, amount);
     }

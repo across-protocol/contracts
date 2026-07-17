@@ -15,10 +15,6 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
     function run() external {
         console.log("Deploying SponsoredCCTPDstPeriphery...");
         console.log("Chain ID:", block.chainid);
-        require(
-            block.chainid == 999 || block.chainid == 1,
-            "Dst periphery must be deployed on HyperEVM (chain 999) or Ink (chain 57073)"
-        );
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
@@ -34,8 +30,8 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        DonationBox donationBox = DonationBox(config.get("donationBox").toAddress());
-        console.log("DonationBox:", address(donationBox));
+        DonationBox donationBox = new DonationBox();
+        console.log("DonationBox deployed to:", address(donationBox));
 
         SponsoredCCTPDstPeriphery sponsoredCCTPDstPeriphery = new SponsoredCCTPDstPeriphery(
             cctpMessageTransmitter,
