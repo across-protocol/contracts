@@ -93,7 +93,11 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
             "ExecuteVanillaCCTP(bytes32 routeParamsHash,bytes32 nonce,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
         );
 
-    constructor() EIP712("CounterfactualDepositVanillaCCTP", "v2.0.0") {}
+    /// @dev The domain name is intentionally shorter than the contract name: EIP-712 name/version strings
+    ///      must stay <= 31 bytes so OpenZeppelin packs them into immutables. At 32+ bytes they'd go to a
+    ///      ShortStrings storage fallback, which under the dispatcher's delegatecall would resolve against
+    ///      the clone's (uninitialized) storage in `_EIP712Name()`/`_EIP712Version()`.
+    constructor() EIP712("CounterfactualVanillaCCTP", "v2.0.0") {}
 
     /**
      * @inheritdoc ICounterfactualImplementation

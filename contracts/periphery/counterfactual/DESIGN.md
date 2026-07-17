@@ -446,7 +446,13 @@ the submitter: the fee is paid in the input token to an `executionFeeRecipient`,
 Mechanism (identical across the four impls):
 
 - Each impl is an **`EIP712`** contract (`name = "CounterfactualDeposit<Bridge>"` — the SpokePool
-  variants use distinct names, `…SpokePoolUsdc` / `…SpokePoolNative`; `version = "v2.0.0"`). The
+  variants use distinct names, `…SpokePoolUsdc` / `…SpokePoolNative`; `version = "v2.0.0"`). Exception:
+  Vanilla CCTP's domain name is the shortened `CounterfactualVanillaCCTP`, because **EIP-712 name/version
+  strings of delegatecalled impls must stay ≤ 31 bytes**: above that, OpenZeppelin's `ShortStrings` puts
+  the string in a storage fallback instead of an immutable, and `_EIP712Name()`/`_EIP712Version()` (which
+  feed `eip712Domain()`) would resolve against the clone's uninitialized storage under delegatecall.
+  (The domain **separator** always uses the immutable `_hashedName`, so verification is unaffected either
+  way — the constraint keeps the introspection getters truthful.) The
   **`signer`** is **not** an impl immutable — it is read from `beacon.signer()` at verification time, so
   rotating it is a beacon upgrade (no impl redeploy) and every impl on a chain shares one signer. Under
   delegatecall the EIP-712 domain's `verifyingContract` resolves to `address(this)` = the

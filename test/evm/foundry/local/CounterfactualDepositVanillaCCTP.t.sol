@@ -179,7 +179,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 signatureDeadline
             )
         );
-        bytes memory sig = _sign(pk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(pk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         return
             abi.encode(
                 VanillaCCTPSubmitterData({
@@ -454,7 +454,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 deadline
             )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
             VanillaCCTPSubmitterData({
                 amount: 200e6,
@@ -494,7 +494,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 deadline
             )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
             VanillaCCTPSubmitterData({
                 amount: 100e6,
@@ -536,7 +536,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 deadline
             )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
             VanillaCCTPSubmitterData({
                 amount: 100e6,
