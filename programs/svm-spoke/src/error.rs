@@ -35,6 +35,8 @@ pub enum CommonError {
     InvalidExclusiveRelayer,
     #[msg("Invalid output token!")]
     InvalidOutputToken,
+    #[msg("V5 deposits are only consumable via the V5 fill entrypoints!")]
+    V5FillOnly,
 }
 
 // SVM specific errors.

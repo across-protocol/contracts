@@ -1,5 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, web3 } from "@coral-xyz/anchor";
+import { ethers } from "ethers";
 import { getApproveCheckedInstruction } from "@solana-program/token";
 import {
   AccountRole,
@@ -324,6 +325,27 @@ describe("svm_spoke.fill", () => {
       assert.fail("Fill should have failed due to RelayFilled error");
     } catch (err: any) {
       assert.include(err.toString(), "RelayFilled", "Expected RelayFilled error");
+    }
+  });
+
+  it("Fails to fill a relay with a V5-tagged message", async () => {
+    // V5 deposits commit to a Gateway execution witness in the message and are only consumable via the
+    // witness-checked V5 fill entrypoints. Deriving the prefix here (rather than hardcoding the program's
+    // constant) makes this rejection double as the cross-VM byte-parity check: if the on-chain constant drifts
+    // from keccak256("AcrossV5MessagePrefix.V1"), the fill would succeed and this test fails.
+    const v5MagicPrefix = Buffer.from(
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes("AcrossV5MessagePrefix.V1")).slice(2),
+      "hex"
+    );
+    const dstStepId = Buffer.alloc(32, 7);
+    updateRelayData({ ...relayData, message: Buffer.concat([v5MagicPrefix, dstStepId]) });
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    try {
+      await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
+      assert.fail("Fill should have failed due to V5-tagged message");
+    } catch (err: any) {
+      assert.include(err.toString(), "V5FillOnly", "Expected V5FillOnly error");
     }
   });
 

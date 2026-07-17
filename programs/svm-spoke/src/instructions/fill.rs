@@ -11,7 +11,10 @@ use crate::{
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, transfer_from, FillSeedData},
+    utils::{
+        derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, is_v5_message, transfer_from,
+        FillSeedData,
+    },
 };
 
 #[event_cpi]
@@ -91,6 +94,12 @@ pub fn fill_relay<'info>(
 
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
+
+    // V5-tagged deposits commit to a Gateway execution witness in the message and are only consumable through the
+    // witness-checked V5 entrypoints; without this guard the witness binding would be bypassable.
+    if is_v5_message(&relay_data.message) {
+        return err!(CommonError::V5FillOnly);
+    }
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;

@@ -8,7 +8,7 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     state::{ExecuteSlowRelayLeafParams, FillStatus, FillStatusAccount, RequestSlowFillParams, RootBundle, State},
-    utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, is_v5_message, verify_merkle_proof},
 };
 
 #[event_cpi]
@@ -47,6 +47,12 @@ pub struct RequestSlowFill<'info> {
 pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<RelayData>) -> Result<()> {
     let RequestSlowFillParams { relay_data } =
         unwrap_request_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
+
+    // V5-tagged deposits are quarantined from all V3 settlement paths (see fill_relay). Rejecting the request here
+    // also keeps unexecutable V5 leaves out of slow-relay root bundles.
+    if is_v5_message(&relay_data.message) {
+        return err!(CommonError::V5FillOnly);
+    }
 
     let state = &ctx.accounts.state;
 
@@ -217,6 +223,12 @@ pub fn execute_slow_relay_leaf<'info>(
     let current_time = get_current_time(&ctx.accounts.state)?;
 
     let relay_data = slow_fill_leaf.relay_data;
+
+    // Defense in depth: request_slow_fill already rejects V5-tagged messages, but a leaf could only exist for one
+    // if that guard was bypassed — never pay it out through the V3 path.
+    if is_v5_message(&relay_data.message) {
+        return err!(CommonError::V5FillOnly);
+    }
 
     let slow_fill = SlowFill {
         relay_data: relay_data.clone(),        // Clone relay_data to avoid move
