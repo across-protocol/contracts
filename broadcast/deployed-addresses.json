@@ -1641,6 +1641,11 @@
           "block_number": 42027189,
           "transaction_hash": "0xa3b4773ae3b7160ad484e4eaeebd578b76b9c14bc2f7bf195f11520f6b17fc5b"
         },
+        "Safe": {
+          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
+          "block_number": 42068452,
+          "transaction_hash": "0x031ee3501fa126a33a184aef47cead3e4c7549ef012b6d02a757f013d2021fdf"
+        },
         "WithdrawImplementation": {
           "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
           "block_number": 42027174,
