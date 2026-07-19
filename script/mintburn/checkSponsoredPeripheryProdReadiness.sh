@@ -33,8 +33,8 @@ Checks the latest sponsored CCTP/OFT periphery contracts and reports only proble
   - dst periphery privileged roles must not include the dev wallet
   - OFT dst authorized source periphery mappings must match canonical latest src peripheries from broadcast/deployed-addresses.json
   - permissioned multicall must not keep the dev wallet as admin and must whitelist the dst contract
-  - donation box: for Ownable boxes, owner must equal the dst contract; for AccessControl boxes,
-    WITHDRAWER_ROLE must be granted to the dst contract and DEFAULT_ADMIN_ROLE must not be the dev wallet
+  - donation box (AccessControl): the dst contract must hold WITHDRAWER_ROLE and the dev wallet must
+    hold neither WITHDRAWER_ROLE nor DEFAULT_ADMIN_ROLE
 
 Options:
   --dev-wallet, --deployer   Address to flag if it still has privileged access
@@ -320,20 +320,15 @@ try_cast_view() {
 }
 
 json_contract_rows() {
-	local contract_prefix="$1"
-	jq -r --arg contract_prefix "$contract_prefix" '
+	local contract_name="$1"
+	jq -r --arg contract_name "$contract_name" '
         .chains
         | to_entries[]
-        | .key as $chain_id
-        | .value as $chain_data
-        | ($chain_data.contracts // {})
-        | to_entries[]
-        | select(.key | startswith($contract_prefix))
+        | select(.value.contracts[$contract_name])
         | [
-            $chain_id,
-            $chain_data.chain_name,
             .key,
-            .value.address
+            .value.chain_name,
+            .value.contracts[$contract_name].address
           ]
         | @tsv
     ' "$DEPLOYED_ADDRESSES_PATH"
@@ -545,7 +540,7 @@ check_signer_not_dev() {
 			"FAIL" \
 			"$chain_id $chain_name" "$contract_name" "$address" "signer" "dev wallet $signer"
 		case "$contract_name" in
-		SponsoredCCTPSrcPeriphery* | SponsoredOFTSrcPeriphery*)
+		SponsoredCCTPSrcPeriphery | SponsoredOFTSrcPeriphery)
 			propose_signer_update \
 				"$chain_id" \
 				"$chain_name" \
@@ -553,7 +548,7 @@ check_signer_not_dev() {
 				"$address" \
 				"requires the current owner"
 			;;
-		SponsoredCCTPDstPeriphery*)
+		SponsoredCCTPDstPeriphery)
 			propose_signer_update \
 				"$chain_id" \
 				"$chain_name" \
@@ -720,56 +715,34 @@ check_multicall_permissions() {
 	return 0
 }
 
-check_donation_box_ownable() {
+check_donation_box_access() {
 	local chain_id="$1"
 	local chain_name="$2"
-	local donation_box="$3"
+	local parent_contract_name="$3"
 	local parent_address="$4"
 	local rpc_url="$5"
 
-	local donation_owner
-	if ! try_cast_view donation_owner "$rpc_url" "$donation_box" "owner()(address)"; then
-		add_finding "ERROR" "$chain_id $chain_name" "DonationBox" "$donation_box" "owner()" "query failed"
+	local donation_box
+	if ! try_cast_view donation_box "$rpc_url" "$parent_address" "donationBox()(address)"; then
+		add_finding "ERROR" "$chain_id $chain_name" "$parent_contract_name" "$parent_address" "donationBox()" "query failed"
 		return
 	fi
-	donation_owner="$(normalize_addr "$donation_owner")"
+	donation_box="$(normalize_addr "$donation_box")"
 
-	if [[ "$donation_owner" != "$parent_address" ]]; then
-		add_finding \
-			"WARN" \
-			"$chain_id $chain_name" "DonationBox" "$donation_box" "owner" "got $donation_owner expected $parent_address"
-		propose_transfer_ownership \
-			60 \
-			"$chain_id" \
-			"$chain_name" \
-			"DonationBox" \
-			"$donation_box" \
-			"requires the current owner $donation_owner" \
-			"$parent_address"
+	# DonationBox is AccessControl: WITHDRAWER_ROLE gates withdrawals, DEFAULT_ADMIN_ROLE manages roles.
+	local withdrawer_role default_admin_role
+	if ! try_cast_view withdrawer_role "$rpc_url" "$donation_box" "WITHDRAWER_ROLE()(bytes32)"; then
+		add_finding "ERROR" "$chain_id $chain_name" "DonationBox" "$donation_box" "WITHDRAWER_ROLE()" "query failed"
 		return
 	fi
-
-	if [[ "$FULL_REPORT" -eq 1 ]]; then
-		add_detail "$chain_id $chain_name" "DonationBox" "$donation_box" "owner" "$donation_owner"
-	fi
-}
-
-check_donation_box_role_based() {
-	local chain_id="$1"
-	local chain_name="$2"
-	local donation_box="$3"
-	local parent_address="$4"
-	local rpc_url="$5"
-	local withdrawer_role="$6"
-
-	local default_admin_role
 	if ! try_cast_view default_admin_role "$rpc_url" "$donation_box" "DEFAULT_ADMIN_ROLE()(bytes32)"; then
 		add_finding "ERROR" "$chain_id $chain_name" "DonationBox" "$donation_box" "DEFAULT_ADMIN_ROLE()" "query failed"
 		return
 	fi
+	withdrawer_role="$(normalize_hex "$withdrawer_role")"
 	default_admin_role="$(normalize_hex "$default_admin_role")"
 
-	# Parent dst contract must hold WITHDRAWER_ROLE.
+	# Parent dst contract must hold WITHDRAWER_ROLE so it can sweep the donation box.
 	local parent_has_withdrawer
 	if ! try_cast_view parent_has_withdrawer "$rpc_url" "$donation_box" "hasRole(bytes32,address)(bool)" "$withdrawer_role" "$parent_address"; then
 		add_finding "ERROR" "$chain_id $chain_name" "DonationBox" "$donation_box" "hasRole(WITHDRAWER_ROLE,parent)" "query failed"
@@ -827,112 +800,82 @@ check_donation_box_role_based() {
 	elif [[ "$FULL_REPORT" -eq 1 ]]; then
 		add_detail "$chain_id $chain_name" "DonationBox" "$donation_box" "DEFAULT_ADMIN_ROLE" "dev wallet absent"
 	fi
-}
-
-check_donation_box_access() {
-	local chain_id="$1"
-	local chain_name="$2"
-	local parent_contract_name="$3"
-	local parent_address="$4"
-	local rpc_url="$5"
-
-	local donation_box
-	if ! try_cast_view donation_box "$rpc_url" "$parent_address" "donationBox()(address)"; then
-		add_finding "ERROR" "$chain_id $chain_name" "$parent_contract_name" "$parent_address" "donationBox()" "query failed"
-		return
-	fi
-	donation_box="$(normalize_addr "$donation_box")"
-
-	# Detect the DonationBox variant. AccessControl boxes expose WITHDRAWER_ROLE();
-	# the older Ownable variant does not and reverts on the probe.
-	local withdrawer_role
-	if try_cast_view withdrawer_role "$rpc_url" "$donation_box" "WITHDRAWER_ROLE()(bytes32)"; then
-		check_donation_box_role_based \
-			"$chain_id" "$chain_name" "$donation_box" "$parent_address" "$rpc_url" \
-			"$(normalize_hex "$withdrawer_role")"
-		return
-	fi
-	check_donation_box_ownable "$chain_id" "$chain_name" "$donation_box" "$parent_address" "$rpc_url"
+	return 0
 }
 
 check_cctp_src_contract() {
 	local chain_id="$1"
 	local chain_name="$2"
-	local contract_name="$3"
-	local address="$4"
-	local rpc_url="$5"
+	local address="$3"
+	local rpc_url="$4"
 
-	check_owner_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_signer_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
+	check_owner_not_dev "$chain_id" "$chain_name" "SponsoredCCTPSrcPeriphery" "$address" "$rpc_url"
+	check_signer_not_dev "$chain_id" "$chain_name" "SponsoredCCTPSrcPeriphery" "$address" "$rpc_url"
 }
 
 check_oft_src_contract() {
 	local chain_id="$1"
 	local chain_name="$2"
-	local contract_name="$3"
-	local address="$4"
-	local rpc_url="$5"
+	local address="$3"
+	local rpc_url="$4"
 
-	check_owner_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_signer_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
+	check_owner_not_dev "$chain_id" "$chain_name" "SponsoredOFTSrcPeriphery" "$address" "$rpc_url"
+	check_signer_not_dev "$chain_id" "$chain_name" "SponsoredOFTSrcPeriphery" "$address" "$rpc_url"
 }
 
 check_cctp_dst_contract() {
 	local chain_id="$1"
 	local chain_name="$2"
-	local contract_name="$3"
-	local address="$4"
-	local rpc_url="$5"
+	local address="$3"
+	local rpc_url="$4"
 
-	check_role_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url" "FUNDS_SWEEPER_ROLE" "FUNDS_SWEEPER_ROLE"
-	check_role_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url" "PERMISSIONED_BOT_ROLE" "PERMISSIONED_BOT_ROLE"
-	check_signer_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_multicall_permissions "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_donation_box_access "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_role_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url" "DEFAULT_ADMIN_ROLE" "DEFAULT_ADMIN_ROLE"
+	check_role_not_dev "$chain_id" "$chain_name" "SponsoredCCTPDstPeriphery" "$address" "$rpc_url" "FUNDS_SWEEPER_ROLE" "FUNDS_SWEEPER_ROLE"
+	check_role_not_dev "$chain_id" "$chain_name" "SponsoredCCTPDstPeriphery" "$address" "$rpc_url" "PERMISSIONED_BOT_ROLE" "PERMISSIONED_BOT_ROLE"
+	check_signer_not_dev "$chain_id" "$chain_name" "SponsoredCCTPDstPeriphery" "$address" "$rpc_url"
+	check_multicall_permissions "$chain_id" "$chain_name" "SponsoredCCTPDstPeriphery" "$address" "$rpc_url"
+	check_donation_box_access "$chain_id" "$chain_name" "SponsoredCCTPDstPeriphery" "$address" "$rpc_url"
+	check_role_not_dev "$chain_id" "$chain_name" "SponsoredCCTPDstPeriphery" "$address" "$rpc_url" "DEFAULT_ADMIN_ROLE" "DEFAULT_ADMIN_ROLE"
 }
 
 check_oft_dst_roles() {
 	local chain_id="$1"
 	local chain_name="$2"
-	local contract_name="$3"
-	local address="$4"
-	local rpc_url="$5"
+	local address="$3"
+	local rpc_url="$4"
 
-	check_role_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url" "FUNDS_SWEEPER_ROLE" "FUNDS_SWEEPER_ROLE"
-	check_role_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url" "PERMISSIONED_BOT_ROLE" "PERMISSIONED_BOT_ROLE"
-	check_multicall_permissions "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_donation_box_access "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url"
-	check_role_not_dev "$chain_id" "$chain_name" "$contract_name" "$address" "$rpc_url" "DEFAULT_ADMIN_ROLE" "DEFAULT_ADMIN_ROLE"
+	check_role_not_dev "$chain_id" "$chain_name" "DstOFTHandler" "$address" "$rpc_url" "FUNDS_SWEEPER_ROLE" "FUNDS_SWEEPER_ROLE"
+	check_role_not_dev "$chain_id" "$chain_name" "DstOFTHandler" "$address" "$rpc_url" "PERMISSIONED_BOT_ROLE" "PERMISSIONED_BOT_ROLE"
+	check_multicall_permissions "$chain_id" "$chain_name" "DstOFTHandler" "$address" "$rpc_url"
+	check_donation_box_access "$chain_id" "$chain_name" "DstOFTHandler" "$address" "$rpc_url"
+	check_role_not_dev "$chain_id" "$chain_name" "DstOFTHandler" "$address" "$rpc_url" "DEFAULT_ADMIN_ROLE" "DEFAULT_ADMIN_ROLE"
 }
 
 check_oft_authorized_peripheries_from_broadcast() {
 	local dst_chain_id="$1"
 	local dst_chain_name="$2"
-	local dst_contract_name="$3"
-	local dst_handler="$4"
-	local dst_rpc_url="$5"
+	local dst_handler="$3"
+	local dst_rpc_url="$4"
 
-	while IFS=$'\t' read -r src_chain_id src_chain_name src_contract_name src_periphery; do
+	while IFS=$'\t' read -r src_chain_id src_chain_name src_periphery; do
 		[[ -n "$src_chain_id" ]] || continue
 		[[ "$src_chain_id" != "$dst_chain_id" ]] || continue
 
 		local src_rpc_url
 		if ! src_rpc_url="$(rpc_url_for_chain "$src_chain_id")"; then
-			add_finding "ERROR" "$src_chain_id $src_chain_name" "$src_contract_name" "$src_periphery" "rpc" "requires NODE_URL_${src_chain_id}"
+			add_finding "ERROR" "$src_chain_id $src_chain_name" "SponsoredOFTSrcPeriphery" "$src_periphery" "rpc" "requires NODE_URL_${src_chain_id}"
 			continue
 		fi
 
 		local src_eid
 		if ! try_cast_view src_eid "$src_rpc_url" "$src_periphery" "SRC_EID()(uint32)"; then
-			add_finding "ERROR" "$src_chain_id $src_chain_name" "$src_contract_name" "$src_periphery" "SRC_EID()" "query failed"
+			add_finding "ERROR" "$src_chain_id $src_chain_name" "SponsoredOFTSrcPeriphery" "$src_periphery" "SRC_EID()" "query failed"
 			continue
 		fi
 		src_eid="$(normalize_uint "$src_eid")"
 
 		local actual_authorized
 		if ! try_cast_view actual_authorized "$dst_rpc_url" "$dst_handler" "authorizedSrcPeripheryContracts(uint64)(bytes32)" "$src_eid"; then
-			add_finding "ERROR" "$dst_chain_id $dst_chain_name" "$dst_contract_name" "$dst_handler" "authorizedSrc[$src_eid]" "query failed"
+			add_finding "ERROR" "$dst_chain_id $dst_chain_name" "DstOFTHandler" "$dst_handler" "authorizedSrc[$src_eid]" "query failed"
 			continue
 		fi
 
@@ -943,12 +886,12 @@ check_oft_authorized_peripheries_from_broadcast() {
 		if [[ "$actual_authorized" != "$expected_authorized" ]]; then
 			add_finding \
 				"WARN" \
-				"$dst_chain_id $dst_chain_name" "$dst_contract_name" "$dst_handler" "authorizedSrc[$src_eid]" "got $(bytes32_to_display "$actual_authorized") expected $(normalize_addr "$src_periphery")"
+				"$dst_chain_id $dst_chain_name" "DstOFTHandler" "$dst_handler" "authorizedSrc[$src_eid]" "got $(bytes32_to_display "$actual_authorized") expected $(normalize_addr "$src_periphery")"
 			add_remediation \
 				55 \
 				"$dst_chain_id" \
 				"$dst_chain_name" \
-				"$dst_contract_name" \
+				"DstOFTHandler" \
 				"$dst_handler" \
 				"requires a current DEFAULT_ADMIN_ROLE holder" \
 				"$(build_cast_send "$dst_handler" "setAuthorizedPeriphery(uint32,bytes32)" "$dst_chain_id" "$src_eid" "$expected_authorized")"
@@ -956,7 +899,7 @@ check_oft_authorized_peripheries_from_broadcast() {
 		fi
 
 		if [[ "$FULL_REPORT" -eq 1 ]]; then
-			add_detail "$dst_chain_id $dst_chain_name" "$dst_contract_name" "$dst_handler" "authorizedSrc[$src_eid]" "$(normalize_addr "$src_periphery")"
+			add_detail "$dst_chain_id $dst_chain_name" "DstOFTHandler" "$dst_handler" "authorizedSrc[$src_eid]" "$(normalize_addr "$src_periphery")"
 		fi
 	done < <(json_contract_rows "SponsoredOFTSrcPeriphery")
 	return 0
@@ -1034,41 +977,41 @@ if [[ -f "$MULTISIGS_FILE_PATH" ]]; then
 fi
 echo
 
-while IFS=$'\t' read -r chain_id chain_name contract_name address; do
+while IFS=$'\t' read -r chain_id chain_name address; do
 	[[ -n "$chain_id" ]] || continue
 	if ! rpc_url="$(rpc_url_for_chain "$chain_id")"; then
-		add_finding "ERROR" "$chain_id $chain_name" "$contract_name" "$address" "rpc" "requires NODE_URL_${chain_id}"
+		add_finding "ERROR" "$chain_id $chain_name" "SponsoredCCTPSrcPeriphery" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
-	check_cctp_src_contract "$chain_id" "$chain_name" "$contract_name" "$(normalize_addr "$address")" "$rpc_url"
+	check_cctp_src_contract "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "SponsoredCCTPSrcPeriphery")
 
-while IFS=$'\t' read -r chain_id chain_name contract_name address; do
+while IFS=$'\t' read -r chain_id chain_name address; do
 	[[ -n "$chain_id" ]] || continue
 	if ! rpc_url="$(rpc_url_for_chain "$chain_id")"; then
-		add_finding "ERROR" "$chain_id $chain_name" "$contract_name" "$address" "rpc" "requires NODE_URL_${chain_id}"
+		add_finding "ERROR" "$chain_id $chain_name" "SponsoredOFTSrcPeriphery" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
-	check_oft_src_contract "$chain_id" "$chain_name" "$contract_name" "$(normalize_addr "$address")" "$rpc_url"
+	check_oft_src_contract "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "SponsoredOFTSrcPeriphery")
 
-while IFS=$'\t' read -r chain_id chain_name contract_name address; do
+while IFS=$'\t' read -r chain_id chain_name address; do
 	[[ -n "$chain_id" ]] || continue
 	if ! rpc_url="$(rpc_url_for_chain "$chain_id")"; then
-		add_finding "ERROR" "$chain_id $chain_name" "$contract_name" "$address" "rpc" "requires NODE_URL_${chain_id}"
+		add_finding "ERROR" "$chain_id $chain_name" "SponsoredCCTPDstPeriphery" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
-	check_cctp_dst_contract "$chain_id" "$chain_name" "$contract_name" "$(normalize_addr "$address")" "$rpc_url"
+	check_cctp_dst_contract "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "SponsoredCCTPDstPeriphery")
 
-while IFS=$'\t' read -r chain_id chain_name contract_name address; do
+while IFS=$'\t' read -r chain_id chain_name address; do
 	[[ -n "$chain_id" ]] || continue
 	if ! rpc_url="$(rpc_url_for_chain "$chain_id")"; then
-		add_finding "ERROR" "$chain_id $chain_name" "$contract_name" "$address" "rpc" "requires NODE_URL_${chain_id}"
+		add_finding "ERROR" "$chain_id $chain_name" "DstOFTHandler" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
-	check_oft_dst_roles "$chain_id" "$chain_name" "$contract_name" "$(normalize_addr "$address")" "$rpc_url"
-	check_oft_authorized_peripheries_from_broadcast "$chain_id" "$chain_name" "$contract_name" "$(normalize_addr "$address")" "$rpc_url"
+	check_oft_dst_roles "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
+	check_oft_authorized_peripheries_from_broadcast "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "DstOFTHandler")
 
 if [[ "${#FINDINGS[@]}" -eq 0 ]]; then
