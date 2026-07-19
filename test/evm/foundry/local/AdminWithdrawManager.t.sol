@@ -8,6 +8,7 @@ import {
     WithdrawParams
 } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
+import { CounterfactualNonces } from "../../../../contracts/periphery/counterfactual/CounterfactualNonces.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
@@ -24,8 +25,9 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
     bytes32[] internal withdrawProof;
 
     bytes32 constant SIGNED_WITHDRAW_TYPEHASH =
-        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
+        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,bytes32 nonce,uint256 deadline)");
     bytes32 constant MANAGER_VERSION_HASH = keccak256("v1.0.0");
+    bytes32 constant DEFAULT_NONCE = keccak256("nonce-1");
 
     function setUp() public {
         _setUpCore();
@@ -66,10 +68,11 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
         address _depositAddress,
         address _token,
         uint256 _amount,
+        bytes32 _nonce,
         uint256 _deadline
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
-            abi.encode(SIGNED_WITHDRAW_TYPEHASH, _depositAddress, _token, _amount, _deadline)
+            abi.encode(SIGNED_WITHDRAW_TYPEHASH, _depositAddress, _token, _amount, _nonce, _deadline)
         );
         return _sign(signerPk, _managerDomainSeparator(), structHash);
     }
@@ -111,7 +114,7 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
     function testSignedWithdrawToUser() public {
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 3600;
-        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, deadline);
+        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, DEFAULT_NONCE, deadline);
 
         vm.expectEmit(true, true, true, true);
         emit WithdrawImplementation.Withdraw(address(token), user, amount);
@@ -123,6 +126,7 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
             address(token),
             amount,
             withdrawProof,
+            DEFAULT_NONCE,
             deadline,
             sig
         );
@@ -136,7 +140,7 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
 
         // Sign with wrong key
         bytes32 structHash = keccak256(
-            abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, address(token), amount, deadline)
+            abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, address(token), amount, DEFAULT_NONCE, deadline)
         );
         bytes memory badSig = _sign(0xDEAD, _managerDomainSeparator(), structHash);
 
@@ -148,6 +152,7 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
             address(token),
             amount,
             withdrawProof,
+            DEFAULT_NONCE,
             deadline,
             badSig
         );
@@ -156,7 +161,7 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
     function testSignedWithdrawToUserExpired() public {
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 100;
-        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, deadline);
+        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, DEFAULT_NONCE, deadline);
 
         vm.warp(block.timestamp + 101);
 
@@ -168,6 +173,97 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
             address(token),
             amount,
             withdrawProof,
+            DEFAULT_NONCE,
+            deadline,
+            sig
+        );
+    }
+
+    /// @dev The nonce is consumed in the manager's storage on execution, so re-funding the clone and
+    ///      replaying the same signed withdrawal within the deadline must revert.
+    function testSignedWithdrawToUserNonceReplayReverts() public {
+        uint256 amount = 50e6;
+        uint256 deadline = block.timestamp + 3600;
+        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, DEFAULT_NONCE, deadline);
+
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            DEFAULT_NONCE,
+            deadline,
+            sig
+        );
+
+        // Re-fund the clone and replay the identical (still unexpired) signature.
+        token.mint(depositAddress, amount);
+        vm.expectRevert(CounterfactualNonces.InvalidNonce.selector);
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            DEFAULT_NONCE,
+            deadline,
+            sig
+        );
+    }
+
+    /// @dev A fresh nonce (freshly signed) withdraws fine from a re-funded clone: only replays are blocked.
+    function testSignedWithdrawToUserFreshNonceAllowsRepeat() public {
+        uint256 amount = 50e6;
+        uint256 deadline = block.timestamp + 3600;
+
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            DEFAULT_NONCE,
+            deadline,
+            _signWithdraw(depositAddress, address(token), amount, DEFAULT_NONCE, deadline)
+        );
+
+        token.mint(depositAddress, amount);
+        bytes32 nonce2 = keccak256("nonce-2");
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            nonce2,
+            deadline,
+            _signWithdraw(depositAddress, address(token), amount, nonce2, deadline)
+        );
+
+        assertEq(token.balanceOf(user), 2 * amount);
+    }
+
+    /// @dev The nonce is signature-bound: submitting an unused nonce with a signature over a different
+    ///      nonce must revert.
+    function testSignedWithdrawToUserWrongNonceSignatureReverts() public {
+        uint256 amount = 50e6;
+        uint256 deadline = block.timestamp + 3600;
+        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, DEFAULT_NONCE, deadline);
+
+        vm.expectRevert(AdminWithdrawManager.InvalidSignature.selector);
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            keccak256("other-nonce"),
             deadline,
             sig
         );

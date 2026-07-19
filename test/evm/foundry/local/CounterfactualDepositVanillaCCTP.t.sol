@@ -10,6 +10,7 @@ import {
     VanillaCCTPSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositVanillaCCTP.sol";
 import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
+import { CounterfactualNonces } from "../../../../contracts/periphery/counterfactual/CounterfactualNonces.sol";
 import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
@@ -85,8 +86,9 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
     uint32 constant HYPEREVM_DOMAIN = 19;
     bytes32 constant EXECUTE_VANILLA_CCTP_TYPEHASH =
         keccak256(
-            "ExecuteVanillaCCTP(bytes32 routeParamsHash,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
+            "ExecuteVanillaCCTP(bytes32 routeParamsHash,bytes32 nonce,uint256 amount,uint256 executionFee,uint256 maxFeeCctp,uint32 minFinalityThreshold,uint32 signatureDeadline)"
         );
+    bytes32 constant DEFAULT_NONCE = keccak256("nonce-1");
 
     function setUp() public {
         _setUpCore();
@@ -151,7 +153,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         uint32 signatureDeadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        return _submitter(proxy, route, amount, executionFee, 1e5, 1000, signatureDeadline, pk);
+        return _submitter(proxy, route, amount, executionFee, 1e5, 1000, signatureDeadline, DEFAULT_NONCE, pk);
     }
 
     function _submitter(
@@ -162,12 +164,14 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         uint256 maxFeeCctp,
         uint32 minFinalityThreshold,
         uint32 signatureDeadline,
+        bytes32 nonce,
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_VANILLA_CCTP_TYPEHASH,
                 keccak256(route),
+                nonce,
                 amount,
                 executionFee,
                 maxFeeCctp,
@@ -175,12 +179,13 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 signatureDeadline
             )
         );
-        bytes memory sig = _sign(pk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(pk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         return
             abi.encode(
                 VanillaCCTPSubmitterData({
                     amount: amount,
                     executionFeeRecipient: relayer,
+                    nonce: nonce,
                     executionFee: executionFee,
                     maxFeeCctp: maxFeeCctp,
                     minFinalityThreshold: minFinalityThreshold,
@@ -267,6 +272,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
             0,
             2000,
             uint32(block.timestamp) + 3600,
+            DEFAULT_NONCE,
             signerPk
         );
 
@@ -303,12 +309,12 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         vm.prank(user);
         token.transfer(proxy, 100e6);
 
-        bytes memory submitter = _submitter(proxy, route, 100e6, 1e6, cap + 1, 1000, deadline, signerPk);
+        bytes memory submitter = _submitter(proxy, route, 100e6, 1e6, cap + 1, 1000, deadline, DEFAULT_NONCE, signerPk);
         vm.prank(relayer);
         vm.expectRevert(CounterfactualDepositVanillaCCTP.MaxCctpFee.selector);
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
 
-        submitter = _submitter(proxy, route, 100e6, 1e6, cap, 1000, deadline, signerPk);
+        submitter = _submitter(proxy, route, 100e6, 1e6, cap, 1000, deadline, keccak256("nonce-2"), signerPk);
         vm.prank(relayer);
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
         assertEq(messenger.lastMaxFee(), cap);
@@ -360,6 +366,55 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
     }
 
+    /// @dev The nonce is consumed in the proxy's storage on execution, so re-funding the proxy and
+    ///      replaying the same signed submitter data within the signature window must revert.
+    function testNonceReplayReverts() public {
+        bytes memory route = abi.encode(_routeParams());
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        bytes memory submitter = _submitter(proxy, route, 100e6, 1e6, uint32(block.timestamp) + 3600, signerPk);
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
+
+        // Re-fund and replay the identical (still unexpired) submitter data.
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.prank(relayer);
+        vm.expectRevert(CounterfactualNonces.InvalidNonce.selector);
+        ICounterfactualDeposit(proxy).execute(address(vanillaImpl), route, submitter, proof);
+    }
+
+    /// @dev A fresh nonce (freshly signed) executes fine on a re-funded proxy: only replays are blocked.
+    function testFreshNonceAllowsRepeatExecution() public {
+        bytes memory route = abi.encode(_routeParams());
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        uint32 deadline = uint32(block.timestamp) + 3600;
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(
+            address(vanillaImpl),
+            route,
+            _submitter(proxy, route, 100e6, 1e6, 1e5, 1000, deadline, DEFAULT_NONCE, signerPk),
+            proof
+        );
+
+        vm.prank(user);
+        token.transfer(proxy, 100e6);
+        vm.prank(relayer);
+        ICounterfactualDeposit(proxy).execute(
+            address(vanillaImpl),
+            route,
+            _submitter(proxy, route, 100e6, 1e6, 1e5, 1000, deadline, keccak256("nonce-2"), signerPk),
+            proof
+        );
+
+        assertEq(messenger.callCount(), 2);
+    }
+
     /// @dev The signature binds one proxy via the EIP-712 `verifyingContract`, so it can't be replayed
     ///      against another counterfactual sharing the route.
     function testCrossProxyReplayReverts() public {
@@ -388,13 +443,23 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         uint32 deadline = uint32(block.timestamp) + 3600;
         // Sign 100e6, submit 200e6.
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), 100e6, 1e6, 1e5, uint32(1000), deadline)
+            abi.encode(
+                EXECUTE_VANILLA_CCTP_TYPEHASH,
+                keccak256(route),
+                DEFAULT_NONCE,
+                100e6,
+                1e6,
+                1e5,
+                uint32(1000),
+                deadline
+            )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
             VanillaCCTPSubmitterData({
                 amount: 200e6,
                 executionFeeRecipient: relayer,
+                nonce: DEFAULT_NONCE,
                 executionFee: 1e6,
                 maxFeeCctp: 1e5,
                 minFinalityThreshold: 1000,
@@ -418,13 +483,23 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
         uint32 deadline = uint32(block.timestamp) + 3600;
         // Sign (maxFeeCctp 1e5, threshold 1000), submit (5e4, 2000).
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_VANILLA_CCTP_TYPEHASH, keccak256(route), 100e6, 1e6, 1e5, uint32(1000), deadline)
+            abi.encode(
+                EXECUTE_VANILLA_CCTP_TYPEHASH,
+                keccak256(route),
+                DEFAULT_NONCE,
+                100e6,
+                1e6,
+                1e5,
+                uint32(1000),
+                deadline
+            )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
             VanillaCCTPSubmitterData({
                 amount: 100e6,
                 executionFeeRecipient: relayer,
+                nonce: DEFAULT_NONCE,
                 executionFee: 1e6,
                 maxFeeCctp: 5e4,
                 minFinalityThreshold: 2000,
@@ -453,6 +528,7 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
             abi.encode(
                 EXECUTE_VANILLA_CCTP_TYPEHASH,
                 keccak256(abi.encode(other)),
+                DEFAULT_NONCE,
                 100e6,
                 1e6,
                 1e5,
@@ -460,11 +536,12 @@ contract CounterfactualDepositVanillaCCTPTest is CounterfactualTestBase {
                 deadline
             )
         );
-        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualDepositVanillaCCTP", proxy), structHash);
+        bytes memory sig = _sign(signerPk, _domainSeparator("CounterfactualVanillaCCTP", proxy), structHash);
         bytes memory submitter = abi.encode(
             VanillaCCTPSubmitterData({
                 amount: 100e6,
                 executionFeeRecipient: relayer,
+                nonce: DEFAULT_NONCE,
                 executionFee: 1e6,
                 maxFeeCctp: 1e5,
                 minFinalityThreshold: 1000,
