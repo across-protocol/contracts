@@ -21,8 +21,11 @@ usdcCctpMaxFeeBps = 100
 # routes, so no cap is ever denominated in WBNB/WPOL/etc. Chains without required values CANNOT deploy
 # a beacon impl — the deploy script reverts for any token the chain has configured whose fee cap is
 # missing or zero (zero caps are only valid as markers on keys whose token is absent from the chain).
+# Chains with no native USDC fall back to bridged USDC.e (`.USDCe.<chainId>` in constants.json; see
+# CounterfactualConfig._resolveUsdc) — their `usdcMaxExecutionFee` is denominated in USDC.e and their
+# per-chain comment marks the variant. USDC.e serves SpokePool routes only (no CCTP burn for bridged USDC).
 
-[1]
+[1] # Mainnet
 endpoint_url = "${NODE_URL_1}"
 [1.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -33,7 +36,7 @@ usdtMaxExecutionFee = 10000000 # 10 USDT (6 decimals)
 wethMaxExecutionFee = 6000000000000000 # 0.006 WETH (18 decimals)
 wbtcMaxExecutionFee = 16000 # 0.00016 WBTC (8 decimals)
 
-[10]
+[10] # Optimism
 endpoint_url = "${NODE_URL_10}"
 [10.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -44,7 +47,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[56]
+[56] # BNB Smart Chain
 endpoint_url = "${NODE_URL_56}"
 [56.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -55,7 +58,7 @@ usdtMaxExecutionFee = 2000000000000000000 # 2 USDT (18 decimals on BSC)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals; Binance-peg ETH)
 wbtcMaxExecutionFee = 31000000000000 # 0.000031 BTCB (18 decimals on BSC)
 
-[130]
+[130] # Unichain
 endpoint_url = "${NODE_URL_130}"
 [130.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -66,7 +69,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[137]
+[137] # Polygon
 endpoint_url = "${NODE_URL_137}"
 [137.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -77,7 +80,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[143]
+[143] # Monad
 endpoint_url = "${NODE_URL_143}"
 [143.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -88,7 +91,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[232]
+[232] # Lens
 endpoint_url = "${NODE_URL_232}"
 [232.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -97,18 +100,18 @@ ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[324]
+[324] # zkSync
 endpoint_url = "${NODE_URL_324}"
 [324.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
 [324.uint]
-usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals; unused until USDC is configured for this chain)
+usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on zkSync)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[480]
+[480] # World Chain
 endpoint_url = "${NODE_URL_480}"
 [480.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -119,7 +122,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals; unused until USDT is configu
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[999]
+[999] # HyperEVM
 endpoint_url = "${NODE_URL_999}"
 [999.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -129,33 +132,38 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 0 # No WETH configured for this chain
 
-[1135]
+[1135] # Lisk
 endpoint_url = "${NODE_URL_1135}"
 [1135.address]
 
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [1135.uint]
+usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Lisk)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[1868]
+[1868] # Soneium
 endpoint_url = "${NODE_URL_1868}"
 [1868.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [1868.uint]
+usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Soneium)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[4217]
+[4217] # Tempo
 endpoint_url = "${NODE_URL_4217}"
 [4217.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4217.uint]
+usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Tempo)
+usdtMaxExecutionFee = 2000000 # 2 USDT0 (6 decimals; TIP-20 system token — see src/consts.ts)
 
-[4326]
+[4326] # MegaETH
 endpoint_url = "${NODE_URL_4326}"
 [4326.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -164,7 +172,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[4663]
+[4663] # Robinhood
 endpoint_url = "${NODE_URL_4663}"
 [4663.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -172,7 +180,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [4663.uint]
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[5042]
+[5042] # ARC
 endpoint_url = "${NODE_URL_5042}"
 [5042.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -180,7 +188,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [5042.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals; also ARC's gas token — no wrapped-native route)
 
-[8453]
+[8453] # Base
 endpoint_url = "${NODE_URL_8453}"
 [8453.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -190,7 +198,7 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[9745]
+[9745] # Plasma
 endpoint_url = "${NODE_URL_9745}"
 [9745.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -201,7 +209,19 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 0 # No WBTC
 
-[42161]
+[34443] # Mode
+# Public RPC literal, not a NODE_URL_34443 env ref — see the [288] note.
+endpoint_url = "https://mainnet.mode.network"
+[34443.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[34443.uint]
+usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Mode)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
+
+[42161] # Arbitrum One
 endpoint_url = "${NODE_URL_42161}"
 [42161.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -212,7 +232,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[43114]
+[43114] # Avalanche
 endpoint_url = "${NODE_URL_43114}"
 [43114.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -222,7 +242,7 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 0 # No WETH configured for this chain
 
-[57073]
+[57073] # Ink
 endpoint_url = "${NODE_URL_57073}"
 [57073.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -232,7 +252,7 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[59144]
+[59144] # Linea
 endpoint_url = "${NODE_URL_59144}"
 [59144.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -243,7 +263,7 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[81457]
+[81457] # Blast
 endpoint_url = "${NODE_URL_81457}"
 [81457.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -252,7 +272,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[7777777]
+[7777777] # Zora
 endpoint_url = "${NODE_URL_7777777}"
 [7777777.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
@@ -260,7 +280,7 @@ ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
 [7777777.uint]
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[728126428]
+[728126428] # TRON
 endpoint_url = "${NODE_URL_728126428}"
 [728126428.address]
 # EIP-712 fee signer (secp256k1 recovery key — EVM hex format, same key as other chains). Read by
