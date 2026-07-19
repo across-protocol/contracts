@@ -333,11 +333,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## ARC (5042)
 
-| Contract Name | Address                                                                                                                  |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| Contract Name             | Address                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Safe                      | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SP1Helios                 | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePool                 | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SponsoredCCTPSrcPeriphery | [0x55743451B0921B555B4AeAf878c2f3E37aA41755](https://explorer.arc.io/address/0x55743451B0921B555B4AeAf878c2f3E37aA41755) |
 
 ## Base (8453)
 

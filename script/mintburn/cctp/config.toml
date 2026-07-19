@@ -171,6 +171,20 @@ bridgeSafetyBufferCore = 100000000000000000
 [999.bool]
 canBeUsedForAccountActivation = true
 
+[5042]
+endpoint_url = "${NODE_URL_5042}"
+
+[5042.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x3600000000000000000000000000000000000000"
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+sponsoredCCTPSrcPeriphery = "0x55743451B0921B555B4AeAf878c2f3E37aA41755"
+sponsoredCCTPDstPeriphery = "0x7c96d6235CfaaCcAc5d80fCe74E6032B25dd1F03"
+multicallHandler = "0xEF8b46765ae805537053C59f826C3aD61924Db45"
+
+[5042.uint]
+cctpDomainId = 26
+
 [998]
 endpoint_url = "${NODE_URL_998}"
 
