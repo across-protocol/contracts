@@ -41,12 +41,15 @@ contract Arbitrum_RescueAdapter is AdapterInterface {
 
     ArbitrumL1InboxLike public immutable l1Inbox;
 
+    error InvalidL2Recipient();
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
      * @param _l2Recipient L2 address that receives the rescued ETH and all fee refunds.
      */
     constructor(ArbitrumL1InboxLike _l1ArbitrumInbox, address _l2Recipient) {
+        if (_l2Recipient == address(0)) revert InvalidL2Recipient();
         l1Inbox = _l1ArbitrumInbox;
         l2Recipient = _l2Recipient;
     }

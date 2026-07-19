@@ -55,6 +55,16 @@ contract Arbitrum_RescueAdapterTest is HubPoolTestBase {
         fixture.hubPool.setCrossChainContracts(ARBITRUM_CHAIN_ID, address(adapter), mockSpoke);
     }
 
+    // ============ Constructor Tests ============
+
+    /**
+     * @notice Test that the constructor rejects a zero L2 recipient, which would burn the rescued ETH.
+     */
+    function test_constructor_RevertsOnZeroRecipient() public {
+        vm.expectRevert(Arbitrum_RescueAdapter.InvalidL2Recipient.selector);
+        new Arbitrum_RescueAdapter(ArbitrumL1InboxLike(address(inbox)), address(0));
+    }
+
     // ============ relayMessage Tests ============
 
     /**
