@@ -336,6 +336,11 @@
           "block_number": 152723487,
           "transaction_hash": "0xd72b09032fcd84b7ecc19f6027c6e92efb11abd417b68f95aff952a4e8a709c0"
         },
+        "CounterfactualDepositOFT": {
+          "address": "0xCD984C0694af76f4ae7DeAeb54C0674D997f5B6e",
+          "block_number": 154455867,
+          "transaction_hash": "0x020da67cb1d1ac8ff25d85d91637b34b85db8d48074b298b68b5fd2eeeed9189"
+        },
         "CounterfactualDepositSpokePool": {
           "address": "0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2",
           "block_number": 152723509,
