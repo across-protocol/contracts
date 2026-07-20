@@ -8,7 +8,7 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     state::{ExecuteSlowRelayLeafParams, FillStatus, FillStatusAccount, RequestSlowFillParams, RootBundle, State},
-    utils::{get_current_time, hash_non_empty_message, invoke_handler, verify_merkle_proof},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, is_v5_message, verify_merkle_proof},
 };
 
 #[event_cpi]
@@ -47,6 +47,11 @@ pub struct RequestSlowFill<'info> {
 pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<RelayData>) -> Result<()> {
     let RequestSlowFillParams { relay_data } =
         unwrap_request_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
+
+    // slow fills are not supported in V5
+    if is_v5_message(&relay_data.message) {
+        return err!(CommonError::V5FillOnly);
+    }
 
     let state = &ctx.accounts.state;
 
@@ -217,6 +222,11 @@ pub fn execute_slow_relay_leaf<'info>(
     let current_time = get_current_time(&ctx.accounts.state)?;
 
     let relay_data = slow_fill_leaf.relay_data;
+
+    // slow fills are not supported in V5
+    if is_v5_message(&relay_data.message) {
+        return err!(CommonError::V5FillOnly);
+    }
 
     let slow_fill = SlowFill {
         relay_data: relay_data.clone(),        // Clone relay_data to avoid move
