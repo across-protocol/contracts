@@ -101,7 +101,7 @@ pub fn hash_non_empty_message(message: &Vec<u8>) -> [u8; 32] {
 }
 
 // Returns true if the message is V5-tagged (starts with V5_MAGIC_PREFIX), meaning the deposit is consumable only
-// through the V5 fill entrypoints and must be quarantined from all V3 settlement paths.
+// through the V5 fill entrypoints.
 pub fn is_v5_message(message: &[u8]) -> bool {
     message.len() >= 32 && message[..32] == crate::constants::V5_MAGIC_PREFIX
 }

@@ -95,8 +95,7 @@ pub fn fill_relay<'info>(
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
-    // V5-tagged deposits commit to a Gateway execution witness in the message and are only consumable through the
-    // witness-checked V5 entrypoints; without this guard the witness binding would be bypassable.
+    // V5 tagged deposits must be filled through new V5 entrypoints
     if is_v5_message(&relay_data.message) {
         return err!(CommonError::V5FillOnly);
     }

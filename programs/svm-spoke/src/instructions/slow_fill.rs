@@ -48,8 +48,7 @@ pub fn request_slow_fill(ctx: Context<RequestSlowFill>, relay_data: Option<Relay
     let RequestSlowFillParams { relay_data } =
         unwrap_request_slow_fill_params(relay_data, &ctx.accounts.instruction_params);
 
-    // V5-tagged deposits are quarantined from all V3 settlement paths (see fill_relay). Rejecting the request here
-    // also keeps unexecutable V5 leaves out of slow-relay root bundles.
+    // slow fills are not supported in V5
     if is_v5_message(&relay_data.message) {
         return err!(CommonError::V5FillOnly);
     }
@@ -224,8 +223,7 @@ pub fn execute_slow_relay_leaf<'info>(
 
     let relay_data = slow_fill_leaf.relay_data;
 
-    // Defense in depth: request_slow_fill already rejects V5-tagged messages, but a leaf could only exist for one
-    // if that guard was bypassed — never pay it out through the V3 path.
+    // slow fills are not supported in V5
     if is_v5_message(&relay_data.message) {
         return err!(CommonError::V5FillOnly);
     }
