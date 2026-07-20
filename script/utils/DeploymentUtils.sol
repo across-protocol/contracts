@@ -264,9 +264,16 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         bool isZkStackChain = keccak256(abi.encodePacked(getChainFamily(chainId))) ==
             keccak256(abi.encodePacked("ZK_STACK"));
 
-        string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
-
         if (isZkStackChain) {
+            // ZK-stack chains with the EVM bytecode interpreter enabled (protocol v27+) execute standard
+            // EVM bytecode, so solc-built artifacts deploy fine under any profile — and EVM CREATE2
+            // semantics hold, which the counterfactual system's address parity depends on. The canonical
+            // CREATE2 deployer is the capability probe: it can only exist via its presigned EVM deployment
+            // tx, so code at that address (read from the forked chain state) proves the interpreter is
+            // live. Without it, EVM bytecode cannot run — require the zksync (zksolc) profile.
+            if (StdConstants.CREATE2_FACTORY.code.length > 0) return;
+
+            string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
             vm.assertEq(
                 foundryProfile,
                 string("zksync"),

@@ -24,8 +24,10 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         address ownerAndDirectWithdrawer;
     }
 
+    /// @dev Idempotent: the StdConfig helper is fork-persistent, so a second load would only re-parse the
+    ///      TOML for nothing (the check scripts call this once per chain across ~24 forks).
     function _loadCounterfactualConfig() internal {
-        _loadConfig(CONFIG_PATH, false);
+        if (address(config) == address(0)) _loadConfig(CONFIG_PATH, false);
     }
 
     // --- Global CREATE2 salt + deterministic-address helpers for the singleton infra contracts ------------
@@ -164,12 +166,25 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
-    /// @dev Resolves USDC for this chain from constants.json (`.USDC.<chainId>`); address(0) if absent.
+    /// @dev Resolves native (Circle-issued or chain-canonical) USDC from constants.json
+    ///      (`.USDC.<chainId>`); address(0) if absent. Bridged USDC.e is a SEPARATE token with its own
+    ///      slot — see `_resolveUsdce`.
     function _resolveUsdc() internal view returns (address) {
         if (vm.keyExists(file, string.concat(".USDC.", vm.toString(block.chainid)))) {
             return getUSDCAddress(block.chainid);
         }
         return address(0);
+    }
+
+    /// @dev Resolves bridged USDC.e from constants.json (`.USDCe.<chainId>`), but only where it is a
+    ///      token DISTINCT from native USDC (on mainnet the `.USDCe` entry aliases native USDC — that is
+    ///      not a second token). address(0) when absent or aliased. USDC.e serves SpokePool routes only:
+    ///      bridged USDC has no CCTP burn path.
+    function _resolveUsdce(address usdc) internal view returns (address) {
+        string memory path = string.concat(".USDCe.", vm.toString(block.chainid));
+        if (!vm.keyExists(file, path)) return address(0);
+        address usdce = vm.parseJsonAddress(file, path);
+        return usdce == usdc ? address(0) : usdce;
     }
 
     /// @dev Resolves USDT from constants.json (`.USDT.<chainId>`); address(0) if absent. Mainly needed for
@@ -211,6 +226,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcPeriphery = _resolveOftPeriphery();
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
+        cfg.usdce = _resolveUsdce(cfg.usdc);
         cfg.usdt = _resolveUsdt();
         cfg.wbtc = _resolveWbtc();
         cfg.weth = _resolveWeth();
@@ -226,6 +242,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         // Denominated in canonical WETH (18 decimals) and required only where WETH exists. On ETH-gas
         // chains the same value caps the native msg.value route (wrapped native IS WETH there); non-ETH-gas
         // chains do not get wrapped-native routes, so no cap is denominated in WBNB/WPOL/etc.
+        cfg.usdceSpokePoolMaxExecutionFee = _maxExecutionFee("usdceMaxExecutionFee", cfg.usdce);
         cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.weth);
         cfg.wbtcSpokePoolMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
         // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP).
@@ -249,6 +266,47 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         require(
             cfg.nativeToken != NATIVE_SENTINEL || cfg.wrappedNativeToken != address(0),
             "config: nativeToken=sentinel requires wrappedNativeToken"
+        );
+        // Cross-check the chain's DECLARED support surface ([N.bool] in config.toml) against what the
+        // data sources actually resolve. Pure assertions in both directions: declaring a token/bridge
+        // supported that the data can't back — or unsupported when the data says it's live — reverts, so
+        // config.toml is always an accurate, reviewable statement of each chain's counterfactual surface.
+        _validateDeclaredSupport(cfg);
+    }
+
+    /// @dev Requires every `[<chainId>.bool]` support flag in config.toml to match resolved reality.
+    ///      Tokens assert on the resolved address; bridges assert on the route's full capability:
+    ///      SpokePool (deployed SpokePool), sponsored CCTP (Circle domain + SponsoredCCTPSrcPeriphery),
+    ///      vanilla CCTP (Circle CCTP v2 TokenMessenger), OFT (LayerZero EID + SponsoredOFTSrcPeriphery).
+    ///      Missing flags revert too — every chain must declare all nine explicitly.
+    function _validateDeclaredSupport(CounterfactualChainConfig memory cfg) internal {
+        _checkDeclaredFlag("usdc", cfg.usdc != address(0));
+        _checkDeclaredFlag("usdce", cfg.usdce != address(0));
+        _checkDeclaredFlag("usdt", cfg.usdt != address(0));
+        _checkDeclaredFlag("wbtc", cfg.wbtc != address(0));
+        _checkDeclaredFlag("weth", cfg.weth != address(0));
+        _checkDeclaredFlag("spokePool", cfg.spokePool != address(0));
+        _checkDeclaredFlag("sponsoredCctp", hasCctpDomain(block.chainid) && cfg.cctpSrcPeriphery != address(0));
+        _checkDeclaredFlag("vanillaCctp", cfg.cctpTokenMessenger != address(0));
+        _checkDeclaredFlag("oft", hasOftEid(block.chainid) && cfg.oftSrcPeriphery != address(0));
+    }
+
+    function _checkDeclaredFlag(string memory key, bool actual) private {
+        Variable memory v = config.get(key);
+        require(
+            v.ty.kind == TypeKind.Bool,
+            string.concat("config: [", vm.toString(block.chainid), ".bool] ", key, " flag missing")
+        );
+        require(
+            v.toBool() == actual,
+            string.concat(
+                "config: ",
+                key,
+                " declared ",
+                v.toBool() ? "true" : "false",
+                " but constants/broadcasts resolve it as ",
+                actual ? "supported" : "unsupported"
+            )
         );
     }
 }

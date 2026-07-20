@@ -21,15 +21,35 @@ usdcCctpMaxFeeBps = 100
 # routes, so no cap is ever denominated in WBNB/WPOL/etc. Chains without required values CANNOT deploy
 # a beacon impl — the deploy script reverts for any token the chain has configured whose fee cap is
 # missing or zero (zero caps are only valid as markers on keys whose token is absent from the chain).
-# Chains with no native USDC fall back to bridged USDC.e (`.USDCe.<chainId>` in constants.json; see
-# CounterfactualConfig._resolveUsdc) — their `usdcMaxExecutionFee` is denominated in USDC.e and their
-# per-chain comment marks the variant. USDC.e serves SpokePool routes only (no CCTP burn for bridged USDC).
+#
+# Native USDC and bridged USDC.e are SEPARATE tokens with separate beacon getters: `usdc` resolves
+# `.USDC.<chainId>` only, `usdce` resolves `.USDCe.<chainId>` where it is distinct from native USDC
+# (mainnet's `.USDCe` entry aliases native USDC and resolves to zero). A supported USDC.e needs its own
+# `usdceMaxExecutionFee` cap. USDC.e serves SpokePool routes only — bridged USDC has no CCTP burn path.
+#
+# A chain's `[N.bool]` section DECLARES its counterfactual support surface: five tokens (usdc, usdce,
+# usdt, wbtc, weth) and four bridges (spokePool, sponsoredCctp, vanillaCctp, oft). These are pure
+# assertions, not switches: the beacon impl deploy cross-checks every flag against what constants.json
+# and broadcast/deployed-addresses.json actually resolve, and reverts on any mismatch in either
+# direction (declared-but-missing AND present-but-undeclared) or on a missing flag. Changing a chain's
+# real capability (deploying a periphery, adding a token upstream) therefore requires a deliberate
+# matching flag change here before beacon impls can deploy again.
 
 [1] # Mainnet
 endpoint_url = "${NODE_URL_1}"
 [1.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01"
+[1.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [1.uint]
 usdcMaxExecutionFee = 10000000 # 10 USDC (6 decimals)
 usdtMaxExecutionFee = 10000000 # 10 USDT (6 decimals)
@@ -41,8 +61,19 @@ endpoint_url = "${NODE_URL_10}"
 [10.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[10.bool]
+usdc = true
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [10.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from native USDC)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -52,6 +83,16 @@ endpoint_url = "${NODE_URL_56}"
 [56.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[56.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [56.uint]
 usdcMaxExecutionFee = 2000000000000000000 # 2 USDC (18 decimals on BSC)
 usdtMaxExecutionFee = 2000000000000000000 # 2 USDT (18 decimals on BSC)
@@ -63,6 +104,16 @@ endpoint_url = "${NODE_URL_130}"
 [130.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[130.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [130.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -74,8 +125,19 @@ endpoint_url = "${NODE_URL_137}"
 [137.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[137.bool]
+usdc = true
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [137.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from native USDC)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -85,6 +147,16 @@ endpoint_url = "${NODE_URL_143}"
 [143.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[143.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [143.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -96,6 +168,16 @@ endpoint_url = "${NODE_URL_232}"
 [232.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
+[232.bool]
+usdc = true
+usdce = false
+usdt = false
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [232.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
@@ -105,8 +187,18 @@ endpoint_url = "${NODE_URL_324}"
 [324.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
+[324.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [324.uint]
-usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on zkSync)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on zkSync)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -116,6 +208,16 @@ endpoint_url = "${NODE_URL_480}"
 [480.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[480.bool]
+usdc = true
+usdce = false
+usdt = false
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
 [480.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals; unused until USDT is configured for this chain)
@@ -127,6 +229,16 @@ endpoint_url = "${NODE_URL_999}"
 [999.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[999.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [999.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -135,11 +247,20 @@ wethMaxExecutionFee = 0 # No WETH configured for this chain
 [1135] # Lisk
 endpoint_url = "${NODE_URL_1135}"
 [1135.address]
-
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[1135.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [1135.uint]
-usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Lisk)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Lisk)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -149,8 +270,18 @@ endpoint_url = "${NODE_URL_1868}"
 [1868.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[1868.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [1868.uint]
-usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Soneium)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Soneium)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
@@ -159,8 +290,18 @@ endpoint_url = "${NODE_URL_4217}"
 [4217.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4217.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [4217.uint]
-usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Tempo)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Tempo)
 usdtMaxExecutionFee = 2000000 # 2 USDT0 (6 decimals; TIP-20 system token — see src/consts.ts)
 
 [4326] # MegaETH
@@ -168,6 +309,16 @@ endpoint_url = "${NODE_URL_4326}"
 [4326.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4326.bool]
+usdc = false
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = true
 [4326.uint]
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
@@ -177,6 +328,16 @@ endpoint_url = "${NODE_URL_4663}"
 [4663.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4663.bool]
+usdc = false
+usdce = false
+usdt = false
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [4663.uint]
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
@@ -185,6 +346,16 @@ endpoint_url = "${NODE_URL_5042}"
 [5042.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[5042.bool]
+usdc = true
+usdce = false
+usdt = false
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
 [5042.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals; also ARC's gas token — no wrapped-native route)
 
@@ -193,6 +364,16 @@ endpoint_url = "${NODE_URL_8453}"
 [8453.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[8453.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
 [8453.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -203,6 +384,16 @@ endpoint_url = "${NODE_URL_9745}"
 [9745.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[9745.bool]
+usdc = false
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = true
 [9745.uint]
 usdcMaxExecutionFee = 0 # No USDC
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -210,13 +401,24 @@ wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 0 # No WBTC
 
 [34443] # Mode
-# Public RPC literal, not a NODE_URL_34443 env ref — see the [288] note.
+# Public RPC literal, not a NODE_URL_34443 env ref: env interpolation runs on the whole file (even
+# comments), so any unset var breaks scripts for ALL chains. Swap once NODE_URL_34443 is standard.
 endpoint_url = "https://mainnet.mode.network"
 [34443.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[34443.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [34443.uint]
-usdcMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Mode)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Mode)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -226,8 +428,19 @@ endpoint_url = "${NODE_URL_42161}"
 [42161.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[42161.bool]
+usdc = true
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [42161.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from native USDC)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -237,6 +450,16 @@ endpoint_url = "${NODE_URL_43114}"
 [43114.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[43114.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
 [43114.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -247,6 +470,16 @@ endpoint_url = "${NODE_URL_57073}"
 [57073.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[57073.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
 [57073.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -257,6 +490,16 @@ endpoint_url = "${NODE_URL_59144}"
 [59144.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[59144.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
 [59144.uint]
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
@@ -268,6 +511,16 @@ endpoint_url = "${NODE_URL_81457}"
 [81457.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[81457.bool]
+usdc = false
+usdce = false
+usdt = false
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [81457.uint]
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
@@ -277,6 +530,16 @@ endpoint_url = "${NODE_URL_7777777}"
 [7777777.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[7777777.bool]
+usdc = false
+usdce = false
+usdt = false
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [7777777.uint]
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
@@ -286,6 +549,16 @@ endpoint_url = "${NODE_URL_728126428}"
 # EIP-712 fee signer (secp256k1 recovery key — EVM hex format, same key as other chains). Read by
 # script/tron/counterfactual/tron-deploy-counterfactual-beacon-impl.ts (forge cannot broadcast to Tron).
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+[728126428.bool]
+usdc = false
+usdce = false
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
 [728126428.uint]
 usdcMaxExecutionFee = 30000000 # 30 USDC (6 decimals; unused until USDC is configured for Tron)
 usdtMaxExecutionFee = 30000000 # 30 USDT (6 decimals on Tron)

@@ -123,12 +123,17 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
   const oftSrcPeriphery = deployedAddress("SponsoredOFTSrcPeriphery");
   const oftEid = dig(constants, ["PUBLIC_NETWORKS", chainId, "oftEid"]);
   const oftSrcEid = oftEid != null && oftEid !== -1 ? oftEid : 0;
+  // Native USDC and bridged USDC.e are separate tokens — mirrors CounterfactualConfig._resolveUsdc /
+  // _resolveUsdce. USDC.e only counts where distinct from native USDC (mainnet's entry aliases it).
   const usdc = resolveAddress(constants, ["USDC", chainId], "usdc");
+  const usdceRaw = resolveAddress(constants, ["USDCe", chainId], "usdce");
+  const usdce = usdceRaw === usdc ? ZERO_ADDRESS : usdceRaw;
   const usdt = resolveAddress(constants, ["USDT", chainId], "usdt");
   const wbtc = resolveAddress(constants, ["WBTC", chainId], "wbtc");
   const weth = resolveAddress(constants, ["WETH", chainId], "weth");
 
   const usdcMaxExecutionFee = maxExecutionFee(section, "usdcMaxExecutionFee", usdc);
+  const usdceSpokePoolMaxExecutionFee = maxExecutionFee(section, "usdceMaxExecutionFee", usdce);
   const usdtMaxExecutionFee = maxExecutionFee(section, "usdtMaxExecutionFee", usdt);
   const wethSpokePoolMaxExecutionFee = maxExecutionFee(section, "wethMaxExecutionFee", weth);
   const wbtcSpokePoolMaxExecutionFee = maxExecutionFee(section, "wbtcMaxExecutionFee", wbtc);
@@ -142,6 +147,30 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
   if (usdt === ZERO_ADDRESS) fail(`config: USDT must be configured for Tron (add .USDT.${chainId} to constants.json)`);
   if (nativeToken === NATIVE_SENTINEL && wrappedNativeToken === ZERO_ADDRESS)
     fail("config: nativeToken=sentinel requires wrappedNativeToken");
+
+  // Declared-support assertions — mirrors CounterfactualConfig._validateDeclaredSupport. Every
+  // [<chainId>.bool] flag must match resolved reality, in both directions; missing flags fail too.
+  const hasCctp = cctpDomain != null && cctpDomain !== -1;
+  const hasOft = oftEid != null && oftEid !== -1;
+  const actuals: Record<string, boolean> = {
+    usdc: usdc !== ZERO_ADDRESS,
+    usdce: usdce !== ZERO_ADDRESS,
+    usdt: usdt !== ZERO_ADDRESS,
+    wbtc: wbtc !== ZERO_ADDRESS,
+    weth: weth !== ZERO_ADDRESS,
+    spokePool: spokePool !== ZERO_ADDRESS,
+    sponsoredCctp: hasCctp && cctpSrcPeriphery !== ZERO_ADDRESS,
+    vanillaCctp: cctpTokenMessenger !== ZERO_ADDRESS,
+    oft: hasOft && oftSrcPeriphery !== ZERO_ADDRESS,
+  };
+  for (const [key, actual] of Object.entries(actuals)) {
+    const declared = section.bool?.[key];
+    if (typeof declared !== "boolean") fail(`config: [${chainId}.bool] ${key} flag missing`);
+    if (declared !== actual)
+      fail(
+        `config: ${key} declared ${declared} but constants/broadcasts resolve it as ${actual ? "supported" : "unsupported"}`
+      );
+  }
 
   // CounterfactualChainConfig, in struct field order. Every field is static, so encoding them flat
   // yields byte-identical calldata to abi.encode-ing the single struct tuple.
@@ -157,6 +186,7 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
       "address", // oftSrcPeriphery
       "uint32", //  oftSrcEid
       "address", // usdc
+      "address", // usdce
       "address", // usdt
       "address", // wbtc
       "address", // weth
@@ -164,6 +194,7 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
       "uint256", // usdcCctpMaxFeeBps
       "uint256", // usdtOftMaxExecutionFee
       "uint256", // usdcSpokePoolMaxExecutionFee
+      "uint256", // usdceSpokePoolMaxExecutionFee
       "uint256", // usdtSpokePoolMaxExecutionFee
       "uint256", // wethSpokePoolMaxExecutionFee
       "uint256", // wbtcSpokePoolMaxExecutionFee
@@ -179,6 +210,7 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
       oftSrcPeriphery,
       oftSrcEid,
       usdc,
+      usdce,
       usdt,
       wbtc,
       weth,
@@ -186,6 +218,7 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
       usdcCctpMaxFeeBps,
       usdtMaxExecutionFee,
       usdcMaxExecutionFee,
+      usdceSpokePoolMaxExecutionFee,
       usdtMaxExecutionFee,
       wethSpokePoolMaxExecutionFee,
       wbtcSpokePoolMaxExecutionFee,

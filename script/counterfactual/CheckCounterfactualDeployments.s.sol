@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Script } from "forge-std/Script.sol";
-import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
+import { CheckUtils } from "./CheckUtils.sol";
 import { CounterfactualBeacon } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
@@ -23,31 +22,25 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // Owner/directWithdrawer are cross-referenced against config.toml AND
 // script/mintburn/prod-readiness-multisigs.json for an independent second opinion.
 //
-// Output prefixes for easy grep:
-//   [PASS]   - Auto-check passed
-//   [FAIL]   - Auto-check failed (investigate!)
-//   [REVIEW] - Manual review needed (always printed, never silently passed)
-//   [INFO]   - Informational
+// Freshly deployed (not-yet-live) beacon implementations are verified separately by
+// CheckCounterfactualBeaconImpls.s.sol.
+//
+// Output prefixes for easy grep: [PASS] / [FAIL] / [REVIEW] / [INFO] (see CheckUtils).
 //
 // How to run:
 //   source .env
 //   FOUNDRY_PROFILE=counterfactual forge script \
 //     script/counterfactual/CheckCounterfactualDeployments.s.sol:CheckCounterfactualDeployments \
 //     --rpc-url $NODE_URL_1 --ffi -vvvv
-contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
+contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
     string constant MULTISIGS_PATH = "script/mintburn/prod-readiness-multisigs.json";
 
     string multisigsJson;
-    string deployedAddressesJson;
-
-    uint256 totalPass;
-    uint256 totalFail;
-    uint256 totalReview;
 
     function run() external {
         _loadConfig(CONFIG_PATH, false);
         multisigsJson = vm.readFile(MULTISIGS_PATH);
-        deployedAddressesJson = vm.readFile("broadcast/deployed-addresses.json");
+        _loadDeployedAddresses();
 
         uint256[] memory chains = config.getChainIds();
         for (uint256 i = 0; i < chains.length; i++) {
@@ -62,11 +55,7 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             }
         }
 
-        console.log("============================================");
-        console.log("SUMMARY: %s passed, %s failed, %s manual review", totalPass, totalFail, totalReview);
-        console.log("============================================");
-
-        require(totalFail == 0, "Some auto-checks FAILED");
+        _printSummary();
     }
 
     // --- Per-chain entry ---
@@ -240,6 +229,9 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // usdc vs constants.json (0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdc", beacon.usdc(), _getUsdc(chainId));
 
+        // usdce vs constants.json (0 when absent or aliasing native usdc; reverts on pre-usdce impls)
+        _assertAddrEq("CounterfactualBeacon", "usdce", beacon.usdce(), _getUsdce(chainId));
+
         // usdt vs constants.json (best-effort; 0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdt", beacon.usdt(), _getUsdt(chainId));
 
@@ -339,30 +331,6 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         _review("AdminWithdrawManager", "signer", awm.signer(), configSigner, "config.toml");
     }
 
-    // --- Cached deployed-addresses.json lookups ---
-
-    function _getDeployed(string memory contractName, uint256 chainId) internal view returns (address) {
-        string memory path = string.concat(
-            '.chains["',
-            vm.toString(chainId),
-            '"].contracts["',
-            contractName,
-            '"].address'
-        );
-        if (vm.keyExists(deployedAddressesJson, path)) {
-            return vm.parseJsonAddress(deployedAddressesJson, path);
-        }
-        return address(0);
-    }
-
-    function _getChainName(uint256 chainId) internal view returns (string memory) {
-        string memory path = string.concat('.chains["', vm.toString(chainId), '"].chain_name');
-        if (vm.keyExists(deployedAddressesJson, path)) {
-            return vm.parseJsonString(deployedAddressesJson, path);
-        }
-        return string.concat("Chain ", vm.toString(chainId));
-    }
-
     // --- Cached CCTP/OFT periphery lookups ---
 
     function _getCctpPeriphery(uint256 chainId) internal view returns (address) {
@@ -390,6 +358,14 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         string memory path = string.concat(".USDC.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
+    }
+
+    /// @dev Bridged USDC.e, only where distinct from native USDC (mirrors CounterfactualConfig._resolveUsdce).
+    function _getUsdce(uint256 chainId) internal view returns (address) {
+        string memory path = string.concat(".USDCe.", vm.toString(chainId));
+        if (!vm.keyExists(file, path)) return address(0);
+        address usdce = vm.parseJsonAddress(file, path);
+        return usdce == _getUsdc(chainId) ? address(0) : usdce;
     }
 
     function _getUsdt(uint256 chainId) internal view returns (address) {
@@ -431,43 +407,7 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         return vm.parseJsonAddress(multisigsJson, ".fallbackEOA");
     }
 
-    // --- Logging helpers ---
-
-    function _pass(string memory contract_, string memory field, string memory value) internal {
-        console.log("[PASS]   %s.%s = %s", contract_, field, value);
-        totalPass++;
-    }
-
-    function _fail(string memory contract_, string memory field, string memory detail) internal {
-        console.log("[FAIL]   %s.%s: %s", contract_, field, detail);
-        totalFail++;
-    }
-
-    function _info(string memory contract_, string memory detail) internal pure {
-        console.log("[INFO]   %s: %s", contract_, detail);
-    }
-
-    function _assertAddrEq(string memory contract_, string memory field, address actual, address expected) internal {
-        if (actual == expected) {
-            _pass(contract_, field, vm.toString(actual));
-        } else {
-            console.log("[FAIL]   %s.%s", contract_, field);
-            console.log("           actual:   %s", actual);
-            console.log("           expected: %s", expected);
-            totalFail++;
-        }
-    }
-
-    function _assertUintEq(string memory contract_, string memory field, uint256 actual, uint256 expected) internal {
-        if (actual == expected) {
-            _pass(contract_, field, vm.toString(actual));
-        } else {
-            console.log("[FAIL]   %s.%s", contract_, field);
-            console.log("           actual:   %s", actual);
-            console.log("           expected: %s", expected);
-            totalFail++;
-        }
-    }
+    // --- Logging helpers (shared ones live in CheckUtils) ---
 
     function _review(
         string memory contract_,

@@ -23,7 +23,12 @@ struct CounterfactualChainConfig {
     ///      another OFT token is a beacon upgrade adding another getter.
     address oftSrcPeriphery;
     uint32 oftSrcEid;
+    /// @dev Native (Circle-issued or chain-canonical) USDC. Distinct from `usdce` below.
     address usdc;
+    /// @dev Bridged USDC.e where it exists as a token distinct from `usdc` — its own input token with its
+    ///      own getter/cap, NOT a fallback filling the `usdc` slot. SpokePool routes only (no CCTP burn
+    ///      path for bridged USDC).
+    address usdce;
     address usdt;
     address wbtc;
     /// @dev Canonical WETH ERC-20 on this chain — an input token like `usdc`/`usdt`/`wbtc`, distinct from
@@ -39,6 +44,7 @@ struct CounterfactualChainConfig {
     uint256 usdcCctpMaxFeeBps;
     uint256 usdtOftMaxExecutionFee;
     uint256 usdcSpokePoolMaxExecutionFee;
+    uint256 usdceSpokePoolMaxExecutionFee;
     uint256 usdtSpokePoolMaxExecutionFee;
     uint256 wethSpokePoolMaxExecutionFee;
     uint256 wbtcSpokePoolMaxExecutionFee;
@@ -82,6 +88,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     address public immutable usdc;
     /// @inheritdoc ICounterfactualBeacon
+    address public immutable usdce;
+    /// @inheritdoc ICounterfactualBeacon
     address public immutable usdt;
     /// @inheritdoc ICounterfactualBeacon
     address public immutable wbtc;
@@ -95,6 +103,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     uint256 public immutable usdtOftMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdceSpokePoolMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdtSpokePoolMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
@@ -115,6 +125,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         oftSrcPeriphery = config.oftSrcPeriphery;
         oftSrcEid = config.oftSrcEid;
         usdc = config.usdc;
+        usdce = config.usdce;
         usdt = config.usdt;
         wbtc = config.wbtc;
         weth = config.weth;
@@ -122,6 +133,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         usdcCctpMaxFeeBps = config.usdcCctpMaxFeeBps;
         usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;
         usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
+        usdceSpokePoolMaxExecutionFee = config.usdceSpokePoolMaxExecutionFee;
         usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
         wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
         wbtcSpokePoolMaxExecutionFee = config.wbtcSpokePoolMaxExecutionFee;

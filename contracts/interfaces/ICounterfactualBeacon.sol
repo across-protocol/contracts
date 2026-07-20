@@ -61,8 +61,13 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice LayerZero OFT source endpoint id for this chain.
     function oftSrcEid() external view returns (uint32);
 
-    /// @notice USDC token address on this chain.
+    /// @notice Native (Circle-issued or chain-canonical) USDC token address on this chain.
     function usdc() external view returns (address);
+
+    /// @notice Bridged USDC.e token address, where it exists as a token distinct from `usdc()` — a
+    ///         separate input token with its own cap, serving SpokePool routes only (bridged USDC has
+    ///         no CCTP burn path). Zero where USDC.e is absent or identical to native USDC.
+    function usdce() external view returns (address);
 
     /// @notice USDT token address on this chain.
     function usdt() external view returns (address);
@@ -90,6 +95,9 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Max (fixed) fee for the USDC SpokePool route.
     function usdcSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max (fixed) fee for the USDC.e SpokePool route, in USDC.e units.
+    function usdceSpokePoolMaxExecutionFee() external view returns (uint256);
 
     /// @notice Max (fixed) fee for the USDT SpokePool route.
     function usdtSpokePoolMaxExecutionFee() external view returns (uint256);
