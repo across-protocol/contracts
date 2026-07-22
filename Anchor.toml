@@ -50,6 +50,7 @@ remoteHubPoolSetDepositRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/sv
 proposeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/proposeRebalanceToHubPool.ts"
 executeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/executeRebalanceToHubPool.ts"
 bridgeLiabilityToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/bridgeLiabilityToHubPool.ts"
+verifySolanaResidualRecovery = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/recoveries/2026-07-solana-residual/verify.ts"
 remoteHubPoolPauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolPauseDeposits.ts"
 generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/buildHelpers/generateExternalTypes.ts"
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"

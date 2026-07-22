@@ -1,0 +1,43 @@
+{
+  "description": "Recovery of the untracked USDC residual on the Solana SpokePool left by the 2026-07-17 incident. Single relayer refund leaf, no refunds; 236.090934 USDC stays in the vault backing the 5 outstanding ClaimAccounts. See README.md for the first-principles derivation.",
+  "leaf": {
+    "amountToReturn": "13832309134",
+    "chainId": "34268394551451",
+    "refundAmounts": [],
+    "leafId": 0,
+    "mintPublicKey": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "refundAddresses": []
+  },
+  "relayerRefundRoot": "0x193c697f126d8a64389e82777d4e5581acf8ea65344cba492459bd3744ef9cfd",
+  "poolRebalanceRoot": "0x40825ad81e3fa435712b46bb07a662825789eea437fdfe3e0d57275ad35c6802",
+  "hashDetail": {
+    "borshSerializedLeafHex": "8e497838030000009bf87bbb2a1f00000000000000000000c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6100000000",
+    "note": "SVM leaf hash = keccak256(64 zero bytes || borsh(amountToReturn u64, chainId u64, refundAmounts Vec<u64>, leafId u32, mintPublicKey [32], refundAddresses Vec<[32]>)). Single leaf => merkle root = leaf hash. Pool rebalance root is the keccak256 of the abi-encoded empty leaf (chainId 34268394551451, groupIndex 0)."
+  },
+  "liveStateSnapshot": {
+    "slot": 434540333,
+    "date": "2026-07-22",
+    "vault": "HYhZwefNFmEm9sXYKkNM4QPMgGQnS9VjC6kgxwrGk3Ru",
+    "statePda": "3tzNXZAnJaCVikmENJSnJFAzkAnediKTxH3ot9Hiwnkz",
+    "vaultBalance": "14068400068",
+    "transferLiabilityPendingToHubPool": "0",
+    "claimAccounts": [
+      { "pubkey": "4zFCwWodDaZsPbQXxJaHGZD77AyAd35RSUHJNy2xp2qm", "amount": "4999911" },
+      { "pubkey": "6hPw9AbayPNEoUKSBpQejm1B6rcebeU8yQvJpgCbHNox", "amount": "106000" },
+      { "pubkey": "CxXytuuRLLGhcWjxXk4BgKBHwe1MndUdvpfbbXbfpF6u", "amount": "999949" },
+      { "pubkey": "ECG3QHzvzcu31igvn4dnvV3HvjTuSMDYRFL84dHgdVLk", "amount": "228998542" },
+      { "pubkey": "Fyp1EjoCTMCVe9KnPFJG69j1i31GeqqCeL8H5x3uPLT5", "amount": "986532" }
+    ],
+    "claimAccountsTotal": "236090934"
+  },
+  "provenance": {
+    "finalSettledPoolLeafMainnetTx": "0xafe4fd8a6ce6f3b51b3c954f93750c689b7b0cbd6c45b88a123f9925fa6e515a",
+    "finalReturnSolanaTx": "2fE3ZDCJsYUPsjeZ7Emt2tHTHxAvKXLQFz42xHQLirHTtDV6JAwHsRo945n5bJrUYz4y8tFrvt3TH2EHDf5ZDgRv",
+    "abandonedBundleHubExecutions": [
+      "0x86e682e5a7014e3a1de4cd021705b7bf539d49dca530636304651b6d755fb963",
+      "0xd56b0540cf27441f40b6f17f07d180a2fe8bd85a28b3ce4bcc2b08e5e7c5fb49"
+    ],
+    "firstCorrectedBundleHubExecution": "0xdf8d8c2cc888f23fd811252a50c5d9dde6b306bd12ce38d9b71d71964ca3563f",
+    "correctedBundleSolanaRefundExecution": "2kPBJ5xdwU5C5ARX2whGX1UvbQ97qGDUhzhAYgjrU5492dxZ7SFvDgwoWEdxmSe7v5yVpgK4hUVDUk83nWuW84LZ"
+  }
+}
