@@ -4,8 +4,10 @@
  * Recomputes the relayer refund root and pool rebalance root for the recovery leaf in
  * `leaf.json` using this repo's own hashing code, and re-derives the payable amount from live
  * chain state: SpokePool vault balance minus the sum of outstanding ClaimAccount liabilities
- * minus any USDC already queued to the hub pool (pending TransferLiability) must equal the
- * leaf's total refunds plus amountToReturn. Also requires deposits and fills to still be
+ * for the leaf's mint (mint membership proven by re-deriving each claim PDA from the refund
+ * addresses recorded in leaf.json; fails on any claim account outside that set) minus any USDC
+ * already queued to the hub pool (pending TransferLiability) must equal the leaf's total
+ * refunds plus amountToReturn. Also requires deposits and fills to still be
  * paused — the derivation is only sound while no user flow can move the vault. Prints the
  * refund addresses' USDC ATAs (the remaining accounts required to execute the leaf). Fails
  * (exit 1) on any mismatch. See README.md in this directory.
@@ -91,12 +93,28 @@ async function main(): Promise<void> {
   // TransferLiability layout: 8-byte discriminator, then pending_to_hub_pool: u64.
   const pendingToHubPool = liabilityInfo === null ? BigInt(0) : liabilityInfo.data.readBigUInt64LE(8);
 
-  // 4. Live state: vault balance net of ClaimAccount liabilities and queued hub-pool liability.
+  // 4. Live state: vault balance net of this mint's ClaimAccount liabilities and queued
+  //    hub-pool liability. ClaimAccount data stores only (amount, initializer); the mint
+  //    appears solely in the PDA seeds ["claim_account", mint, refund_address]. Mint membership
+  //    is therefore proven by re-deriving each PDA from the refund addresses recorded in
+  //    leaf.json. An unknown ClaimAccount is either a new deferral for this mint (must be
+  //    netted out) or another mint's claim (not backed by this vault) — indistinguishable
+  //    on-chain, so verification fails rather than guessing.
+  const knownClaimPdas = new Set<string>(
+    expected.liveStateSnapshot.claimAccounts.map(({ refundAddress }: { refundAddress: string }) =>
+      PublicKey.findProgramAddressSync(
+        [Buffer.from("claim_account"), mint.toBuffer(), new PublicKey(refundAddress).toBuffer()],
+        SVM_SPOKE_PROGRAM
+      )[0].toBase58()
+    )
+  );
   const vaultBalance = BigInt((await connection.getTokenAccountBalance(VAULT, "finalized")).value.amount);
   const claimAccounts = await connection.getProgramAccounts(SVM_SPOKE_PROGRAM, {
     filters: [{ dataSize: 48 }, { memcmp: { offset: 0, bytes: utils.bytes.bs58.encode(CLAIM_ACCOUNT_DISCRIMINATOR) } }],
   });
-  const claimTotal = claimAccounts.reduce((sum, { account }) => sum + account.data.readBigUInt64LE(8), BigInt(0));
+  const unknownClaims = claimAccounts.filter(({ pubkey }) => !knownClaimPdas.has(pubkey.toBase58()));
+  const usdcClaims = claimAccounts.filter(({ pubkey }) => knownClaimPdas.has(pubkey.toBase58()));
+  const claimTotal = usdcClaims.reduce((sum, { account }) => sum + account.data.readBigUInt64LE(8), BigInt(0));
   const payable = vaultBalance - claimTotal - pendingToHubPool;
   const leafTotal =
     expected.leaf.refundAmounts.reduce((sum: bigint, a: string) => sum + BigInt(a), BigInt(0)) +
@@ -116,7 +134,8 @@ async function main(): Promise<void> {
     { Check: "fills paused (live)", Value: pausedFills },
     { Check: "pending TransferLiability (live)", Value: pendingToHubPool.toString() },
     { Check: "vault balance (live)", Value: vaultBalance.toString() },
-    { Check: `claim accounts total (live, ${claimAccounts.length} accounts)`, Value: claimTotal.toString() },
+    { Check: `claim accounts total (live, ${usdcClaims.length} USDC accounts)`, Value: claimTotal.toString() },
+    { Check: "unknown claim accounts (must be 0)", Value: unknownClaims.length },
     { Check: "payable = vault - claims - pending liability", Value: payable.toString() },
     { Check: "leaf total (refunds + amountToReturn)", Value: leafTotal.toString() },
     { Check: "roots match", Value: rootsMatch },
@@ -128,6 +147,13 @@ async function main(): Promise<void> {
     console.log(`  ${owner.toBase58()} -> ${getAssociatedTokenAddressSync(mint, owner, true).toBase58()}`);
   }
 
+  if (unknownClaims.length > 0) {
+    console.error("❌ ClaimAccounts exist outside the set recorded in leaf.json (new deferral for this");
+    console.error("   mint, or another mint's claim — the mint cannot be read from account data):");
+    unknownClaims.forEach(({ pubkey }) => console.error(`   ${pubkey.toBase58()}`));
+    console.error("   Re-derive the amounts before proposing this leaf.");
+    process.exit(1);
+  }
   if (!rootsMatch || !amountMatches || !pausesActive) {
     console.error("❌ Verification failed. Do not propose this leaf without re-deriving the amounts.");
     process.exit(1);

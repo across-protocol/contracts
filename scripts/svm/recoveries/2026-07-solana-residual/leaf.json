@@ -6,10 +6,7 @@
     "refundAmounts": ["13097475478", "734833656"],
     "leafId": 0,
     "mintPublicKey": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    "refundAddresses": [
-      "E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC",
-      "CBG4RpoLqM1KJk9q3d3MeCwE9RgqeAWbwntUREPB1jUF"
-    ]
+    "refundAddresses": ["E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC", "CBG4RpoLqM1KJk9q3d3MeCwE9RgqeAWbwntUREPB1jUF"]
   },
   "relayerRefundRoot": "0xef1fab94e29947c550d5c95f0b59abe56f771c254286ccd1144c44e9ca6cfd95",
   "poolRebalanceRoot": "0x40825ad81e3fa435712b46bb07a662825789eea437fdfe3e0d57275ad35c6802",
@@ -34,13 +31,39 @@
     "vaultBalance": "14068400068",
     "transferLiabilityPendingToHubPool": "0",
     "claimAccounts": [
-      { "pubkey": "4zFCwWodDaZsPbQXxJaHGZD77AyAd35RSUHJNy2xp2qm", "amount": "4999911" },
-      { "pubkey": "6hPw9AbayPNEoUKSBpQejm1B6rcebeU8yQvJpgCbHNox", "amount": "106000" },
-      { "pubkey": "CxXytuuRLLGhcWjxXk4BgKBHwe1MndUdvpfbbXbfpF6u", "amount": "999949" },
-      { "pubkey": "ECG3QHzvzcu31igvn4dnvV3HvjTuSMDYRFL84dHgdVLk", "amount": "228998542" },
-      { "pubkey": "Fyp1EjoCTMCVe9KnPFJG69j1i31GeqqCeL8H5x3uPLT5", "amount": "986532" }
+      {
+        "pubkey": "4zFCwWodDaZsPbQXxJaHGZD77AyAd35RSUHJNy2xp2qm",
+        "amount": "4999911",
+        "refundAddress": "9SwnR5jwjPjwWrvt3bG4fNZXxJFwYNMurXBr8KvYPW4P",
+        "initTx": "3XQvxD2rZFXuSuCzGZ5q61FNMLcRoxZHbLUXhPJ5FnNhjFfb4nnNQdZCDkLZHaDzyNYXTnD5dtg3Rh5HJPCGYpyP"
+      },
+      {
+        "pubkey": "6hPw9AbayPNEoUKSBpQejm1B6rcebeU8yQvJpgCbHNox",
+        "amount": "106000",
+        "refundAddress": "B9mvTvYZuoEjLtxtNun2r2jmcmYCCJp2uwt1o8tpFfm7",
+        "initTx": "47tbkAziYHqSDQWVvtcj5Vzfou1JthQBfm2reN5er2jVnbt4ei2hFjPTqdxT2Yo9SDPCtbPCVxKgBQeraFmq9hMZ"
+      },
+      {
+        "pubkey": "CxXytuuRLLGhcWjxXk4BgKBHwe1MndUdvpfbbXbfpF6u",
+        "amount": "999949",
+        "refundAddress": "Bxbz1p25WXTXkkERU96aiecqvDeL5nhr3vC4p8HMDSVt",
+        "initTx": "66GYtTifF6MK2zvDC1ZH77JRPcfncTGq7k6atqLnwy4GM2Zvzh63PpvvgtuZSf7SsY2GHz2X2gp7PiTHBFDmwEEP"
+      },
+      {
+        "pubkey": "ECG3QHzvzcu31igvn4dnvV3HvjTuSMDYRFL84dHgdVLk",
+        "amount": "228998542",
+        "refundAddress": "E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC",
+        "initTx": "5pRaFPhiz1MiT8WYQjV58sDyzb5Xk6QARTxibLvU9d22Q1wxrs3n2hKicTmVkHfH1ZrAU754wDHmx6pRWUQqEKpt"
+      },
+      {
+        "pubkey": "Fyp1EjoCTMCVe9KnPFJG69j1i31GeqqCeL8H5x3uPLT5",
+        "amount": "986532",
+        "refundAddress": "4zLRv7q3D6PPoZUuM1yhfZCnDAbPY5aREXnkdcBEUiDe",
+        "initTx": "3uQcanggN17LkT8D6drxr5QyzTgVqpdUWcz54BMSTiZJYKhFJcfZi8kzDUMXRo4pGJS3B46aiieZcNUKrZyW2Lq2"
+      }
     ],
-    "claimAccountsTotal": "236090934"
+    "claimAccountsTotal": "236090934",
+    "claimAccountsNote": "Each pubkey is the PDA [\"claim_account\", USDC mint, refundAddress] (refundAddress recovered from the claim's initialize_claim_account tx, initTx). ClaimAccount data stores no mint, so the verify script proves each account's mint by re-deriving the PDA from these refund addresses and fails on any claim account outside this set."
   },
   "provenance": {
     "finalSettledPoolLeafMainnetTx": "0xafe4fd8a6ce6f3b51b3c954f93750c689b7b0cbd6c45b88a123f9925fa6e515a",

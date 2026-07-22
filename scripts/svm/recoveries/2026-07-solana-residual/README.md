@@ -74,11 +74,17 @@ and re-derives the amounts from live chain state.
   to the dataworker and will never be swept by it.
 - The only on-chain claims are the 5 `ClaimAccount`s totalling **236.090934** (= Σ deferred
   `ExecutedRelayerRefundRoot` amounts 511.777577 − Σ `ClaimedRelayerRefund` 275.686643), left
-  untouched. Available = 14,068.400068 − 236.090934 = **13,832.309134** = Σ `refundAmounts`,
-  and this is invariant to claims being exercised before execution. The verify script enforces
-  the preconditions live: it fails unless deposits and fills are still paused, and it nets out
-  any `TransferLiability.pending_to_hub_pool` already queued to the hub pool (vault USDC backing
-  a previously executed but not-yet-bridged return is not residual).
+  untouched. All 5 are USDC-mint claims: each PDA re-derives from the seeds
+  `("claim_account", USDC, refundAddress)` with the refund addresses recorded in `leaf.json`
+  (recovered from each claim's `initialize_claim_account` tx, also listed there).
+  Available = 14,068.400068 −
+  236.090934 = **13,832.309134** = Σ `refundAmounts`, and this is invariant to claims being
+  exercised before execution. The verify script enforces the preconditions live: it fails
+  unless deposits and fills are still paused, nets out any
+  `TransferLiability.pending_to_hub_pool` already queued to the hub pool (vault USDC backing a
+  previously executed but not-yet-bridged return is not residual), counts only claim accounts
+  whose PDA re-derives from the USDC mint, and fails if any claim account outside that set
+  exists (a new deferral or another mint's claim — either way the amounts must be re-derived).
 - Origin of the residual: the abandoned bundles ingested 63,811.518504 of real deposits
   (ids 113014–113025) into books that were written off wholesale — only their 50,000 carried
   balance survived into the corrected chain. Identity on the first corrected bundle (hub tx
@@ -102,7 +108,8 @@ MNEMONIC=$MNEMONIC HUB_POOL_ADDRESS=$HUB_POOL_ADDRESS NODE_URL_1=$NODE_URL_1 \
 anchor run proposeSolanaResidualRecovery
 
 # 2. After the liveness window: execute the (empty) Solana pool leaf on the HubPool —
-#    executeRootBundle(chainId 34268394551451, [], [], [], groupIndex 0, leafId 0, [], proof []) —
+#    executeRootBundle(chainId 34268394551451, groupIndex 0, bundleLpFees [],
+#    netSendAmounts [], runningBalances [], leafId 0, l1Tokens [], proof []) —
 #    which relays both roots to the spoke via CCTP (the executeRebalanceToHubPool.ts flow).
 
 # 3. Execute the refund leaf on Solana. It is fully funded, so the standard finalizer can
@@ -116,5 +123,6 @@ anchor run proposeSolanaResidualRecovery
 will be auto-disputed by any disputer that reconstructs bundles from chain events, and only one
 pending proposal can exist at a time.
 
-Post-execution check: vault balance = 236.090934 = Σ live `ClaimAccount` amounts;
-E4bX USDC ATA +13,097.475478; CBG4 USDC ATA +734.833656.
+Post-execution check: vault balance = Σ live `ClaimAccount` amounts (this equals 236.090934
+only if none of the 5 claims were exercised in the interim — claiming is not pause-gated and
+reduces both sides equally); E4bX USDC ATA +13,097.475478; CBG4 USDC ATA +734.833656.
