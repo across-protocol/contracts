@@ -112,11 +112,16 @@ anchor run proposeSolanaResidualRecovery
 #    netSendAmounts [], runningBalances [], leafId 0, l1Tokens [], proof []) —
 #    which relays both roots to the spoke via CCTP (the executeRebalanceToHubPool.ts flow).
 
-# 3. Execute the refund leaf on Solana. It is fully funded, so the standard finalizer can
-#    execute it once relayed; manual fallback follows the executeRebalanceToHubPool.ts pattern
-#    (with --provider.cluster mainnet --provider.wallet $SOLANA_PKEY_PATH), passing the two
-#    refund addresses' USDC ATAs as remaining accounts (printed by verify).
-#    No bridge step: amountToReturn = 0.
+# 3. Re-verify, then execute the refund leaf on Solana. The program's execution path checks
+#    only raw vault balance >= refund total (bundle.rs), not the ClaimAccount/liability backing,
+#    and the liveness window leaves time for the vault to move (e.g. an old relayed refund leaf
+#    executing) — so re-run the live verifier immediately before submitting, and abort if it
+#    fails (a relayed root has no execution deadline; nothing forces the leaf through):
+anchor run verifySolanaResidualRecovery
+#    The leaf is fully funded, so the standard finalizer can execute it once relayed; manual
+#    fallback follows the executeRebalanceToHubPool.ts pattern (with --provider.cluster mainnet
+#    --provider.wallet $SOLANA_PKEY_PATH), passing the two refund addresses' USDC ATAs as
+#    remaining accounts (printed by verify). No bridge step: amountToReturn = 0.
 ```
 
 **Coordinate with dataworker/disputer operators before proposing** — an out-of-band root bundle
