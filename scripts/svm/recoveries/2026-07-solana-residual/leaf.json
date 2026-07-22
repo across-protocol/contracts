@@ -83,18 +83,63 @@
       ]
     ],
     "firstCorrectedBundleHubExecution": "0xdf8d8c2cc888f23fd811252a50c5d9dde6b306bd12ce38d9b71d71964ca3563f",
-    "correctedBundleSolanaRefundExecution": "2kPBJ5xdwU5C5ARX2whGX1UvbQ97qGDUhzhAYgjrU5492dxZ7SFvDgwoWEdxmSe7v5yVpgK4hUVDUk83nWuW84LZ"
+    "correctedBundleSolanaRefundExecution": "2kPBJ5xdwU5C5ARX2whGX1UvbQ97qGDUhzhAYgjrU5492dxZ7SFvDgwoWEdxmSe7v5yVpgK4hUVDUk83nWuW84LZ",
+    "abandonedBundleProposals": [
+      {
+        "rootBundleId": 12662,
+        "proposalTx": "0x46f5926a5cb691cdf604fda01a16eff05158318c09e8830aef8d23c2ed2210bb"
+      },
+      {
+        "rootBundleId": 12663,
+        "proposalTx": "0xd9361db63d710a96de1af115037af6432ed3cb6a745c0956ba55b77758b806f5"
+      }
+    ],
+    "lastExecutedBundleBeforeIncidentProposal": {
+      "rootBundleId": 12661,
+      "proposalTx": "0x66194cca70d76b327d0f6e8841c0feac7680c47d0b8925faff7251fa1693c77a"
+    },
+    "correctedBundleProposals": [
+      {
+        "rootBundleId": 12664,
+        "proposalTx": "0x538577d28d7bf33c94732e54368b139f9c01509e6a82066de0c831082c6ed3f6"
+      },
+      {
+        "rootBundleId": 12665,
+        "proposalTx": "0x3be28ef3be728ecdc9cf20a9361c028ff0c932c2072607d573fd8ab07fbdb2bb"
+      }
+    ],
+    "note": "Bundle evaluation block ranges (incl. the Solana slot ranges above) are read from each ProposedRootBundle event's bundleEvaluationBlockNumbers in the proposal txs; roots relayed to the spoke are matched by relayerRefundRoot."
   },
   "alternativeVariantTwoRecipients": {
     "note": "Only if the CBG4 off-protocol compensation is ever unwound: refundAmounts [\"13097475478\", \"734833656\"], refundAddresses [E4bX, CBG4].",
     "relayerRefundRoot": "0xef1fab94e29947c550d5c95f0b59abe56f771c254286ccd1144c44e9ca6cfd95"
   },
   "cbg4Compensation": {
-    "summary": "735.50 USDC sent from Ethereum on 2026-07-17 13:17 UTC via Mayan, delivering 735.159139 USDC to CBG4's Solana USDC account (stranded entitlement 734.833656 rounded up, less bridge fees), 37 minutes before the corrective leaf executed.",
-    "sender": "0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe",
-    "senderIdentity": "Across Council multisig signer (listed in this repo's script/safe-multisig/config.json and in the Across governance docs as a Risk Labs representative signer)",
-    "sourceTx": "0xed75fc80ac1793e308449f51609162f3f90b73fca09b88d070e004bb3ecfb76e",
-    "solanaDeliveryTx": "2VNwQpsQGnEGLtq6FdXQWs8Qs3zopxK5niQjytXWCr85ZASLm6oyavh6eTSQ5GG3uYd3Gt9BE8dbpXF3gvJ4hxeU",
-    "deliveredAmount": "735159139"
+    "summary": "CBG4's stranded entitlement (734.833656) was compensated off-protocol on 2026-07-17: 735.50 USDC bridged Ethereum -> Solana via Mayan Swift, delivered 735.159139 USDC to CBG4's USDC ATA 37 minutes before the corrective leaf executed. Both legs verified on-chain below.",
+    "origin": {
+      "chain": "Ethereum",
+      "tx": "0xed75fc80ac1793e308449f51609162f3f90b73fca09b88d070e004bb3ecfb76e",
+      "block": 25552651,
+      "timestampUtc": "2026-07-17T13:17:11Z",
+      "from": "0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe",
+      "usdcTransferred": "735500000",
+      "note": "Receipt (status success) shows 735.50 USDC moving 0x8372... -> Mayan forwarder 0x89c6340B... -> LiFi Diamond 0x1231DEB6... -> Mayan Swift 0x337685fd... in this tx's USDC Transfer logs."
+    },
+    "destination": {
+      "chain": "Solana",
+      "tx": "2VNwQpsQGnEGLtq6FdXQWs8Qs3zopxK5niQjytXWCr85ZASLm6oyavh6eTSQ5GG3uYd3Gt9BE8dbpXF3gvJ4hxeU",
+      "slot": 433488475,
+      "timestampUtc": "2026-07-17T13:17:40Z",
+      "recipientTokenAccount": "7sySr1xbgnyXSykAELE7gir5RxSUwVagfSL6bni9ZCaG",
+      "recipientTokenAccountNote": "CBG4RpoLqM1KJk9q3d3MeCwE9RgqeAWbwntUREPB1jUF's USDC associated token account",
+      "deliveredAmount": "735159139",
+      "mayanOrderHash": "Av8QA74PbQM6Dsm2DURq8x7dxxKNxY7ZqqpN96cQKJgK",
+      "note": "Mayan Swift RegisterOrder + Fulfill (program mayan34VedncxdK2XobtvWFDXQASUTBXhUVzt2kKgny); token balance delta +735.159139 USDC on the recipient token account."
+    },
+    "senderIdentity": {
+      "claim": "The origin sender is an Across Council multisig signer (Risk Labs representative).",
+      "onChainReference": "Council Safe 0xB524735356985D2f267FA010D681f061DfF03715 getOwners() (eth_call, 2026-07-22) includes 0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe.",
+      "repoReference": "script/safe-multisig/config.json lists the address as a Safe owner; the Across governance docs list it among the Council Safe's signers."
+    }
   }
 }

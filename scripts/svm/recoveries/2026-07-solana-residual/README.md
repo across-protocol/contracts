@@ -39,11 +39,14 @@ and re-derives the amounts from live chain state.
    the output to the recipient). Every fill elected `repaymentChainId = 34268394551451`.
    Entitlements: `E4bX…3kxC` **64,153.191307** (12 fills), `CBG4…1jUF` **734.833656** (5 fills).
 2. **Recognised by the protocol.** Every one of these fills falls inside the evaluation ranges
-   of the two bundles with spoke `rootBundleId`s 12662/12663 (Solana slot ranges
-   `[433416232, 433424785]`; each chain's ranges are in the corresponding `ProposedRootBundle`
-   events). Both bundles passed the optimistic challenge window and were **executed on the
-   HubPool** (txs `0x86e682e5…`, `0xd56b0540…`, 2026-07-17 06:14/06:47 UTC) — the protocol
-   accepted the repayment obligations. The validity of these 17 repayments is independent of the
+   of the two bundles with spoke `rootBundleId`s 12662/12663 — Solana slot ranges
+   `[433416232, 433424785]`, read from each `ProposedRootBundle` event's
+   `bundleEvaluationBlockNumbers` (proposal txs
+   `0x46f5926a5cb691cdf604fda01a16eff05158318c09e8830aef8d23c2ed2210bb` and
+   `0xd9361db63d710a96de1af115037af6432ed3cb6a745c0956ba55b77758b806f5`). Both bundles passed
+   the optimistic challenge window and were **executed on the HubPool** (txs `0x86e682e5…`,
+   `0xd56b0540…`, 2026-07-17 06:14/06:47 UTC) — the protocol accepted the repayment
+   obligations. The validity of these 17 repayments is independent of the
    forged content that poisoned the same bundles: an honest proposer would have included them
    identically.
 3. **Could not be repaid.** The two bundles' Solana refund leaves were never executed, and could
@@ -62,14 +65,21 @@ and re-derives the amounts from live chain state.
 5. **The cap, and CBG4's prior compensation.** The stranded entitlement totals 64,888.024963
    (E4bX 64,153.191307 + CBG4 734.833656), but the vault holds only 13,832.309134 above the
    ClaimAccount backing — the balance of the abandoned-window value was already swept to the
-   HubPool on 2026-07-22. CBG4 was **already compensated off-protocol**: on 2026-07-17 13:17 UTC
-   — 37 minutes before the corrective leaf executed — its Solana USDC account received
-   **735.159139 USDC** via a Mayan order of **735.50 USDC sent from Ethereum** (its stranded
-   entitlement rounded up, less bridge fees) by `0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe`,
-   an Across Council multisig signer (listed in this repo's `script/safe-multisig/config.json`
-   and the Across governance docs). Source tx
-   `0xed75fc80ac1793e308449f51609162f3f90b73fca09b88d070e004bb3ecfb76e`, Solana delivery
-   `2VNwQpsQGnEGLtq6FdXQWs8Qs3zopxK5niQjytXWCr85ZASLm6oyavh6eTSQ5GG3uYd3Gt9BE8dbpXF3gvJ4hxeU`.
+   HubPool on 2026-07-22. CBG4 was **already compensated off-protocol**, verified on both legs:
+   - **Origin (Ethereum):** tx
+     `0xed75fc80ac1793e308449f51609162f3f90b73fca09b88d070e004bb3ecfb76e`, block 25552651,
+     2026-07-17 13:17:11 UTC, `from 0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe`; its receipt's
+     USDC `Transfer` logs move exactly **735.50 USDC** (the 734.833656 entitlement rounded up)
+     into Mayan's forwarder/Swift contracts.
+   - **Destination (Solana):** tx
+     `2VNwQpsQGnEGLtq6FdXQWs8Qs3zopxK5niQjytXWCr85ZASLm6oyavh6eTSQ5GG3uYd3Gt9BE8dbpXF3gvJ4hxeU`,
+     slot 433488475, 2026-07-17 13:17:40 UTC — a Mayan Swift `Fulfill` (order
+     `Av8QA74PbQM6Dsm2DURq8x7dxxKNxY7ZqqpN96cQKJgK`) crediting **735.159139 USDC** to
+     `7sySr1xbgnyXSykAELE7gir5RxSUwVagfSL6bni9ZCaG`, CBG4's USDC associated token account —
+     37 minutes before the corrective leaf executed.
+   - **Sender identity:** the Council Safe `0xB524735356985D2f267FA010D681f061DfF03715` reports
+     the origin sender among its owners via `getOwners()` (checked 2026-07-22), and the address
+     is listed in this repo's `script/safe-multisig/config.json` — i.e. a Risk Labs-side wallet.
    This leaf therefore pays the full available **13,832.309134 to E4bX** (of its 64,153.191307);
    its uncovered 50,320.882173 remains a claim against the HubPool, settled off-chain.
 
