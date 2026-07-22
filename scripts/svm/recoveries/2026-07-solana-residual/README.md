@@ -6,14 +6,14 @@ vault to the HubPool, left behind by the 2026-07-17 incident. The leaf contains 
 
 ## The leaf
 
-| Field             | Value                                                              |
-| ----------------- | ------------------------------------------------------------------ |
-| `amountToReturn`  | `13832309134` (13,832.309134 USDC)                                 |
-| `chainId`         | `34268394551451`                                                   |
-| `mintPublicKey`   | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (USDC)              |
-| `refundAmounts`   | `[]`                                                               |
-| `refundAddresses` | `[]`                                                               |
-| `leafId`          | `0`                                                                |
+| Field             | Value                                                 |
+| ----------------- | ----------------------------------------------------- |
+| `amountToReturn`  | `13832309134` (13,832.309134 USDC)                    |
+| `chainId`         | `34268394551451`                                      |
+| `mintPublicKey`   | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (USDC) |
+| `refundAmounts`   | `[]`                                                  |
+| `refundAddresses` | `[]`                                                  |
+| `leafId`          | `0`                                                   |
 
 - `relayerRefundRoot` (single leaf ⇒ root = leaf hash): `0x193c697f126d8a64389e82777d4e5581acf8ea65344cba492459bd3744ef9cfd`
 - `poolRebalanceRoot` (single empty leaf, `groupIndex 0`): `0x40825ad81e3fa435712b46bb07a662825789eea437fdfe3e0d57275ad35c6802`
@@ -43,6 +43,10 @@ and re-derives the amount from live chain state.
 4. **Recoverable = 14,068.400068 − 236.090934 = 13,832.309134.** This value is invariant to
    claims being exercised before execution: a claim reduces the vault and the claim total by the
    same amount. With deposits/fills paused, no other flow can touch the vault except this leaf.
+   The verify script enforces both preconditions live: it fails unless deposits and fills are
+   still paused, and it nets out any `TransferLiability.pending_to_hub_pool` already queued to
+   the hub pool (vault USDC backing a previously executed but not-yet-bridged return is not
+   residual).
 
 ## Where the residual came from (context)
 
@@ -76,19 +80,31 @@ as an accounting matter.
 
 ## Execution (existing tooling, mainnet)
 
+The Solana-side scripts (steps 2 and 3) read the Anchor provider, which defaults to `localnet`
+in this repo's `Anchor.toml` — the `--provider.cluster mainnet` flag (or a mainnet RPC URL) and
+`--provider.wallet` are required. `proposeRebalanceToHubPool` is Ethereum-side only and defaults
+to mainnet. See each script's header for the full env var list (`MNEMONIC`, `HUB_POOL_ADDRESS`,
+`NODE_URL_1`).
+
 ```bash
-# 0. Verify the leaf, roots, and live amount:
+# 0. Verify the leaf, roots, live pause state, and live amount:
 anchor run verifySolanaResidualRecovery
 
-# 1. Propose on the HubPool (poster bonds; see script header for env vars):
+# 1. Propose on the HubPool (poster bonds):
+MNEMONIC=$MNEMONIC HUB_POOL_ADDRESS=$HUB_POOL_ADDRESS NODE_URL_1=$NODE_URL_1 \
 anchor run proposeRebalanceToHubPool -- --netSendAmount 13832309134
 
 # 2. After the liveness window, execute (relays roots to the spoke via CCTP,
 #    executes this refund leaf, queues the transfer liability):
-anchor run executeRebalanceToHubPool -- --netSendAmount 13832309134
+MNEMONIC=$MNEMONIC HUB_POOL_ADDRESS=$HUB_POOL_ADDRESS NODE_URL_1=$NODE_URL_1 \
+anchor run executeRebalanceToHubPool \
+  --provider.cluster mainnet --provider.wallet $SOLANA_PKEY_PATH \
+  -- --netSendAmount 13832309134
 
 # 3. Burn the queued liability to the HubPool via CCTP:
-anchor run bridgeLiabilityToHubPool
+MNEMONIC=$MNEMONIC HUB_POOL_ADDRESS=$HUB_POOL_ADDRESS NODE_URL_1=$NODE_URL_1 \
+anchor run bridgeLiabilityToHubPool \
+  --provider.cluster mainnet --provider.wallet $SOLANA_PKEY_PATH
 ```
 
 **Coordinate with dataworker/disputer operators before proposing**: an out-of-band root bundle
