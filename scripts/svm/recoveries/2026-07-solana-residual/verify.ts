@@ -2,12 +2,13 @@
  * Script: Verify the 2026-07 Solana Residual Recovery Leaf
  *
  * Recomputes the relayer refund root and pool rebalance root for the recovery leaf in
- * `leaf.json` using this repo's own hashing code, and re-derives the recoverable amount from
- * live chain state: SpokePool vault balance minus the sum of outstanding ClaimAccount
- * liabilities minus any USDC already queued to the hub pool (pending TransferLiability).
- * Also requires deposits and fills to still be paused — the derivation is only sound while
- * no user flow can move the vault. Fails (exit 1) on any mismatch. See README.md in this
- * directory.
+ * `leaf.json` using this repo's own hashing code, and re-derives the payable amount from live
+ * chain state: SpokePool vault balance minus the sum of outstanding ClaimAccount liabilities
+ * minus any USDC already queued to the hub pool (pending TransferLiability) must equal the
+ * leaf's total refunds plus amountToReturn. Also requires deposits and fills to still be
+ * paused — the derivation is only sound while no user flow can move the vault. Prints the
+ * refund addresses' USDC ATAs (the remaining accounts required to execute the leaf). Fails
+ * (exit 1) on any mismatch. See README.md in this directory.
  *
  * Optional Environment Variables:
  * - SOLANA_RPC_URL: Solana mainnet RPC (defaults to the public endpoint).
@@ -17,6 +18,7 @@
  */
 
 import { BN, utils } from "@coral-xyz/anchor";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import { readFileSync } from "fs";
@@ -32,6 +34,8 @@ const CLAIM_ACCOUNT_DISCRIMINATOR = Buffer.from([113, 109, 47, 96, 242, 219, 61,
 
 async function main(): Promise<void> {
   const expected = JSON.parse(readFileSync(path.join(__dirname, "leaf.json"), "utf8"));
+  const mint = new PublicKey(expected.leaf.mintPublicKey);
+  const refundAddresses = expected.leaf.refundAddresses.map((a: string) => new PublicKey(a));
 
   // 1. Recompute the relayer refund root from the leaf definition (single leaf tree).
   const leaf: RelayerRefundLeafSolana = {
@@ -39,9 +43,9 @@ async function main(): Promise<void> {
     leafId: new BN(expected.leaf.leafId),
     chainId: new BN(expected.leaf.chainId),
     amountToReturn: new BN(expected.leaf.amountToReturn),
-    mintPublicKey: new PublicKey(expected.leaf.mintPublicKey),
-    refundAddresses: [],
-    refundAmounts: [],
+    mintPublicKey: mint,
+    refundAddresses,
+    refundAmounts: expected.leaf.refundAmounts.map((a: string) => new BN(a)),
   };
   const relayerRefundRoot = new MerkleTree<RelayerRefundLeafType>([leaf], relayerRefundHashFn).getHexRoot();
 
@@ -80,7 +84,7 @@ async function main(): Promise<void> {
   const pausedFills = stateInfo.data[9] === 1;
 
   const [transferLiabilityPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("transfer_liability"), new PublicKey(expected.leaf.mintPublicKey).toBuffer()],
+    [Buffer.from("transfer_liability"), mint.toBuffer()],
     SVM_SPOKE_PROGRAM
   );
   const liabilityInfo = await connection.getAccountInfo(transferLiabilityPda, "finalized");
@@ -93,11 +97,14 @@ async function main(): Promise<void> {
     filters: [{ dataSize: 48 }, { memcmp: { offset: 0, bytes: utils.bytes.bs58.encode(CLAIM_ACCOUNT_DISCRIMINATOR) } }],
   });
   const claimTotal = claimAccounts.reduce((sum, { account }) => sum + account.data.readBigUInt64LE(8), BigInt(0));
-  const recoverable = vaultBalance - claimTotal - pendingToHubPool;
+  const payable = vaultBalance - claimTotal - pendingToHubPool;
+  const leafTotal =
+    expected.leaf.refundAmounts.reduce((sum: bigint, a: string) => sum + BigInt(a), BigInt(0)) +
+    BigInt(expected.leaf.amountToReturn);
 
   const rootsMatch =
     relayerRefundRoot === expected.relayerRefundRoot && poolRebalanceRoot === expected.poolRebalanceRoot;
-  const amountMatches = recoverable === BigInt(expected.leaf.amountToReturn);
+  const amountMatches = payable === leafTotal;
   const pausesActive = pausedDeposits && pausedFills;
 
   console.table([
@@ -107,25 +114,25 @@ async function main(): Promise<void> {
     { Check: "poolRebalanceRoot (expected)", Value: expected.poolRebalanceRoot },
     { Check: "deposits paused (live)", Value: pausedDeposits },
     { Check: "fills paused (live)", Value: pausedFills },
+    { Check: "pending TransferLiability (live)", Value: pendingToHubPool.toString() },
     { Check: "vault balance (live)", Value: vaultBalance.toString() },
     { Check: `claim accounts total (live, ${claimAccounts.length} accounts)`, Value: claimTotal.toString() },
-    { Check: "pending transfer liability (live)", Value: pendingToHubPool.toString() },
-    { Check: "recoverable = vault - claims - pending liability", Value: recoverable.toString() },
-    { Check: "leaf amountToReturn", Value: expected.leaf.amountToReturn },
+    { Check: "payable = vault - claims - pending liability", Value: payable.toString() },
+    { Check: "leaf total (refunds + amountToReturn)", Value: leafTotal.toString() },
     { Check: "roots match", Value: rootsMatch },
     { Check: "amount matches live state", Value: amountMatches },
   ]);
 
-  if (!pausesActive) {
-    console.error("❌ Deposits and/or fills are unpaused. The vault is no longer frozen, so the residual");
-    console.error("   derivation is stale. Re-pause (or re-derive the amount) before proposing this leaf.");
+  console.log("Remaining accounts for executeRelayerRefundLeaf (refund USDC ATAs, in leaf order):");
+  for (const owner of refundAddresses) {
+    console.log(`  ${owner.toBase58()} -> ${getAssociatedTokenAddressSync(mint, owner, true).toBase58()}`);
+  }
+
+  if (!rootsMatch || !amountMatches || !pausesActive) {
+    console.error("❌ Verification failed. Do not propose this leaf without re-deriving the amounts.");
     process.exit(1);
   }
-  if (!rootsMatch || !amountMatches) {
-    console.error("❌ Verification failed. Do not propose this leaf without re-deriving the amount.");
-    process.exit(1);
-  }
-  console.log("✅ Pauses active; leaf, roots, and live recoverable amount all verified.");
+  console.log("✅ Leaf, roots, live pause state, and live payable amount all verified.");
 }
 
 main().catch((err) => {
