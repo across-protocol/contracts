@@ -1,27 +1,27 @@
 {
-  "description": "Direct relayer repayment of the refunds stranded by the 2026-07-17 incident's two abandoned root bundles on the Solana SpokePool. Single relayer refund leaf, amountToReturn 0; 236.090934 USDC stays in the vault backing the 5 outstanding ClaimAccounts. See README.md for the first-principles derivation and stranded_fills.csv for the per-fill evidence.",
+  "description": "Direct relayer repayment of the refunds stranded by the 2026-07-17 incident's two abandoned root bundles on the Solana SpokePool. Single relayer refund leaf, amountToReturn 0; 236.090934 USDC stays in the vault backing the 5 outstanding ClaimAccounts. The full available amount goes to E4bX: CBG4's stranded 734.833656 was already compensated off-protocol on 2026-07-17 (see cbg4Compensation). See README.md for the first-principles derivation and stranded_fills.csv for the per-fill evidence.",
   "leaf": {
     "amountToReturn": "0",
     "chainId": "34268394551451",
-    "refundAmounts": ["13097475478", "734833656"],
+    "refundAmounts": [
+      "13832309134"
+    ],
     "leafId": 0,
     "mintPublicKey": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    "refundAddresses": ["E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC", "CBG4RpoLqM1KJk9q3d3MeCwE9RgqeAWbwntUREPB1jUF"]
+    "refundAddresses": [
+      "E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC"
+    ]
   },
-  "relayerRefundRoot": "0xef1fab94e29947c550d5c95f0b59abe56f771c254286ccd1144c44e9ca6cfd95",
+  "relayerRefundRoot": "0x022285d1b98169fa68340f2415eddd6b23e045b9b72fe62ac188116c31be31a1",
   "poolRebalanceRoot": "0x40825ad81e3fa435712b46bb07a662825789eea437fdfe3e0d57275ad35c6802",
-  "alternativeVariantIfCbg4AlreadyCompensated": {
-    "note": "If CBG4 has already been made whole off-chain, pay the full available amount to E4bX instead: refundAmounts [\"13832309134\"], refundAddresses [E4bX only].",
-    "relayerRefundRoot": "0x022285d1b98169fa68340f2415eddd6b23e045b9b72fe62ac188116c31be31a1"
-  },
   "hashDetail": {
-    "borshSerializedLeafHex": "00000000000000009bf87bbb2a1f000002000000969dab0c03000000f8abcc2b0000000000000000c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6102000000c213b3d7a7ca5b6ef6da6d56e995d24e2174136d88f16194735703b1031cf5cda61164440a720bee95f3579404c415b7fbcda4379eead6fd229df27b3bf706b4",
+    "borshSerializedLeafHex": "00000000000000009bf87bbb2a1f0000010000008e4978380300000000000000c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6101000000c213b3d7a7ca5b6ef6da6d56e995d24e2174136d88f16194735703b1031cf5cd",
     "note": "SVM leaf hash = keccak256(64 zero bytes || borsh(amountToReturn u64, chainId u64, refundAmounts Vec<u64>, leafId u32, mintPublicKey [32], refundAddresses Vec<[32]>)). Single leaf => merkle root = leaf hash. Pool rebalance root is the keccak256 of the abi-encoded empty leaf (chainId 34268394551451, groupIndex 0)."
   },
   "strandedEntitlements": {
     "E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC": "64153191307",
     "CBG4RpoLqM1KJk9q3d3MeCwE9RgqeAWbwntUREPB1jUF": "734833656",
-    "note": "Per-fill breakdown in stranded_fills.csv. Available vault balance caps E4bX's on-chain repayment at 13,097.475478; its remaining 51,055.715829 is a claim against the HubPool, settled off-chain."
+    "note": "Per-fill breakdown in stranded_fills.csv. CBG4's 734.833656 was already compensated off-protocol (see cbg4Compensation), so the leaf pays the full available 13,832.309134 to E4bX; its remaining 50,320.882173 is a claim against the HubPool, settled off-chain."
   },
   "liveStateSnapshot": {
     "slot": 434540333,
@@ -73,10 +73,28 @@
       "0xd56b0540cf27441f40b6f17f07d180a2fe8bd85a28b3ce4bcc2b08e5e7c5fb49"
     ],
     "abandonedBundleSolanaSlotRanges": [
-      [433416232, 433420338],
-      [433420339, 433424785]
+      [
+        433416232,
+        433420338
+      ],
+      [
+        433420339,
+        433424785
+      ]
     ],
     "firstCorrectedBundleHubExecution": "0xdf8d8c2cc888f23fd811252a50c5d9dde6b306bd12ce38d9b71d71964ca3563f",
     "correctedBundleSolanaRefundExecution": "2kPBJ5xdwU5C5ARX2whGX1UvbQ97qGDUhzhAYgjrU5492dxZ7SFvDgwoWEdxmSe7v5yVpgK4hUVDUk83nWuW84LZ"
+  },
+  "alternativeVariantTwoRecipients": {
+    "note": "Only if the CBG4 off-protocol compensation is ever unwound: refundAmounts [\"13097475478\", \"734833656\"], refundAddresses [E4bX, CBG4].",
+    "relayerRefundRoot": "0xef1fab94e29947c550d5c95f0b59abe56f771c254286ccd1144c44e9ca6cfd95"
+  },
+  "cbg4Compensation": {
+    "summary": "735.50 USDC sent from Ethereum on 2026-07-17 13:17 UTC via Mayan, delivering 735.159139 USDC to CBG4's Solana USDC account (stranded entitlement 734.833656 rounded up, less bridge fees), 37 minutes before the corrective leaf executed.",
+    "sender": "0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe",
+    "senderIdentity": "Across Council multisig signer (listed in this repo's script/safe-multisig/config.json and in the Across governance docs as a Risk Labs representative signer)",
+    "sourceTx": "0xed75fc80ac1793e308449f51609162f3f90b73fca09b88d070e004bb3ecfb76e",
+    "solanaDeliveryTx": "2VNwQpsQGnEGLtq6FdXQWs8Qs3zopxK5niQjytXWCr85ZASLm6oyavh6eTSQ5GG3uYd3Gt9BE8dbpXF3gvJ4hxeU",
+    "deliveredAmount": "735159139"
   }
 }

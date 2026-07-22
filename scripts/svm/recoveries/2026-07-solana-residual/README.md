@@ -1,7 +1,9 @@
 # Recovery: direct relayer repayment of refunds stranded on 2026-07-17 (13,832.309134 USDC)
 
-A single relayer refund leaf on the Solana SpokePool paying the two relayers whose repayments
-were stranded when the 2026-07-17 incident's two poisoned root bundles were abandoned. The leaf
+A single relayer refund leaf on the Solana SpokePool paying the relayer repayments stranded
+when the 2026-07-17 incident's two poisoned root bundles were abandoned. One of the two
+affected relayers (CBG4) was already compensated off-protocol on the incident afternoon —
+evidence below — so the leaf pays the full available amount to the other (E4bX). The leaf
 has **no `amountToReturn`** — nothing moves to the HubPool — and leaves **236.090934 USDC** in
 the vault backing the 5 outstanding `ClaimAccount`s.
 
@@ -12,14 +14,15 @@ the vault backing the 5 outstanding `ClaimAccount`s.
 | `amountToReturn`  | `0`                                                                                            |
 | `chainId`         | `34268394551451`                                                                               |
 | `mintPublicKey`   | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (USDC)                                          |
-| `refundAddresses` | `E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC`, `CBG4RpoLqM1KJk9q3d3MeCwE9RgqeAWbwntUREPB1jUF` |
-| `refundAmounts`   | `13097475478` (13,097.475478), `734833656` (734.833656)                                        |
+| `refundAddresses` | `E4bX4nCwe2GcKqt9NpofnXVrCeRp37PAMaiZtV9x3kxC`                                                 |
+| `refundAmounts`   | `13832309134` (13,832.309134)                                                                  |
 | `leafId`          | `0`                                                                                            |
 
-- `relayerRefundRoot` (single leaf ⇒ root = leaf hash): `0xef1fab94e29947c550d5c95f0b59abe56f771c254286ccd1144c44e9ca6cfd95`
+- `relayerRefundRoot` (single leaf ⇒ root = leaf hash): `0x022285d1b98169fa68340f2415eddd6b23e045b9b72fe62ac188116c31be31a1`
 - `poolRebalanceRoot` (single empty leaf, `groupIndex 0`): `0x40825ad81e3fa435712b46bb07a662825789eea437fdfe3e0d57275ad35c6802`
-- Alternative variant if CBG4 has already been compensated off-chain — full available amount to
-  E4bX only (`refundAmounts ["13832309134"]`): root `0x022285d1b98169fa68340f2415eddd6b23e045b9b72fe62ac188116c31be31a1`.
+- Alternative two-recipient variant, only if the CBG4 off-protocol compensation below is ever
+  unwound (`refundAmounts ["13097475478", "734833656"]`, addresses `[E4bX, CBG4]`): root
+  `0xef1fab94e29947c550d5c95f0b59abe56f771c254286ccd1144c44e9ca6cfd95`.
 
 Exact hash preimage and a live-state snapshot are in [`leaf.json`](./leaf.json).
 `anchor run verifySolanaResidualRecovery` recomputes the roots with this repo's own hashing code
@@ -56,12 +59,19 @@ and re-derives the amounts from live chain state.
    expired-deposit refunds (385.686428) and 1.999923 for a fill in their own ranges. LP fees on
    all affected routes are zero (every leaf payment equals a raw sum of fill input amounts), so
    repayment = fill input amount.
-5. **The cap.** The stranded entitlement totals 64,888.024963, but the vault holds only
-   13,832.309134 above the ClaimAccount backing — the balance of the abandoned-window value
-   (including a 50,000 carried balance materially funded by the same stranded deposits) was
-   already swept to the HubPool on 2026-07-22. This leaf therefore pays **CBG4 in full** and
-   **E4bX the remainder** (13,097.475478 of its 64,153.191307); E4bX's uncovered 51,055.715829
-   remains a claim against the HubPool, settled off-chain.
+5. **The cap, and CBG4's prior compensation.** The stranded entitlement totals 64,888.024963
+   (E4bX 64,153.191307 + CBG4 734.833656), but the vault holds only 13,832.309134 above the
+   ClaimAccount backing — the balance of the abandoned-window value was already swept to the
+   HubPool on 2026-07-22. CBG4 was **already compensated off-protocol**: on 2026-07-17 13:17 UTC
+   — 37 minutes before the corrective leaf executed — its Solana USDC account received
+   **735.159139 USDC** via a Mayan order of **735.50 USDC sent from Ethereum** (its stranded
+   entitlement rounded up, less bridge fees) by `0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe`,
+   an Across Council multisig signer (listed in this repo's `script/safe-multisig/config.json`
+   and the Across governance docs). Source tx
+   `0xed75fc80ac1793e308449f51609162f3f90b73fca09b88d070e004bb3ecfb76e`, Solana delivery
+   `2VNwQpsQGnEGLtq6FdXQWs8Qs3zopxK5niQjytXWCr85ZASLm6oyavh6eTSQ5GG3uYd3Gt9BE8dbpXF3gvJ4hxeU`.
+   This leaf therefore pays the full available **13,832.309134 to E4bX** (of its 64,153.191307);
+   its uncovered 50,320.882173 remains a claim against the HubPool, settled off-chain.
 
 ## Why the vault balance is free to pay this
 
@@ -120,8 +130,8 @@ anchor run proposeSolanaResidualRecovery
 anchor run verifySolanaResidualRecovery
 #    The leaf is fully funded, so the standard finalizer can execute it once relayed; manual
 #    fallback follows the executeRebalanceToHubPool.ts pattern (with --provider.cluster mainnet
-#    --provider.wallet $SOLANA_PKEY_PATH), passing the two refund addresses' USDC ATAs as
-#    remaining accounts (printed by verify). No bridge step: amountToReturn = 0.
+#    --provider.wallet $SOLANA_PKEY_PATH), passing the refund address's USDC ATA as a
+#    remaining account (printed by verify). No bridge step: amountToReturn = 0.
 ```
 
 **Coordinate with dataworker/disputer operators before proposing** — an out-of-band root bundle
@@ -130,4 +140,4 @@ pending proposal can exist at a time.
 
 Post-execution check: vault balance = Σ live `ClaimAccount` amounts (this equals 236.090934
 only if none of the 5 claims were exercised in the interim — claiming is not pause-gated and
-reduces both sides equally); E4bX USDC ATA +13,097.475478; CBG4 USDC ATA +734.833656.
+reduces both sides equally); E4bX USDC ATA +13,832.309134.
