@@ -383,15 +383,6 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Converts an asset bridge address to a core index id
-     * @param assetBridgeAddress The asset bridge address to convert
-     * @return erc20CoreIndex The core token index id
-     */
-    function toTokenId(address assetBridgeAddress) internal pure returns (uint64) {
-        return SafeCast.toUint64(uint160(assetBridgeAddress) - BASE_ASSET_BRIDGE_ADDRESS_UINT256);
-    }
-
-    /**
      * @notice Returns an amount to send on HyperEVM to receive AT LEAST the minimumCoreReceiveAmount on HyperCore
      * @param minimumCoreReceiveAmount The minimum amount desired to receive on HyperCore
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
