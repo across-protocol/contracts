@@ -199,19 +199,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Lens (232)
 
-| Contract Name                  | Address                                                                                                                    |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager           | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://explorer.lens.xyz/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
-| CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.lens.xyz/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
-| CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.lens.xyz/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
-| CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explorer.lens.xyz/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
-| CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://explorer.lens.xyz/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
-| MulticallHandler               | [0x1Ed0D59019a52870337b51DEe8190486a8663037](https://explorer.lens.xyz/address/0x1Ed0D59019a52870337b51DEe8190486a8663037) |
-| Safe                           | [0x396eC04b105587E9DC1a13D27F28D99262f74910](https://explorer.lens.xyz/address/0x396eC04b105587E9DC1a13D27F28D99262f74910) |
-| SpokePool                      | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
-| SpokePoolPeriphery             | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.lens.xyz/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
-| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.lens.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://explorer.lens.xyz/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
+| Contract Name      | Address                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0x1Ed0D59019a52870337b51DEe8190486a8663037](https://explorer.lens.xyz/address/0x1Ed0D59019a52870337b51DEe8190486a8663037) |
+| Safe               | [0x396eC04b105587E9DC1a13D27F28D99262f74910](https://explorer.lens.xyz/address/0x396eC04b105587E9DC1a13D27F28D99262f74910) |
+| SpokePool          | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
+| SpokePoolPeriphery | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.lens.xyz/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
+| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.lens.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 
 ## Boba (288)
 
@@ -288,19 +282,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Lisk (1135)
 
-| Contract Name                  | Address                                                                                                                      |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager           | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://blockscout.lisk.com/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
-| CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://blockscout.lisk.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
-| CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://blockscout.lisk.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
-| CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://blockscout.lisk.com/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
-| CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://blockscout.lisk.com/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
-| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://blockscout.lisk.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SpokePool                      | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
-| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://blockscout.lisk.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://blockscout.lisk.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://blockscout.lisk.com/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
+| Contract Name      | Address                                                                                                                      |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://blockscout.lisk.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SpokePool          | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
+| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://blockscout.lisk.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://blockscout.lisk.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 
 ## Soneium (1868)
 
@@ -552,19 +540,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Blast (81457)
 
-| Contract Name                  | Address                                                                                                               |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| AdminWithdrawManager           | [0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689](https://blastscan.io/address/0xa8cD6EDDa01d394434Dc0cb1A7958a0223374689) |
-| CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://blastscan.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
-| CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://blastscan.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
-| CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://blastscan.io/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
-| CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://blastscan.io/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
-| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blastscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://blastscan.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
-| SpokePool                      | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
-| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://blastscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://blastscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://blastscan.io/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
+| Contract Name      | Address                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blastscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://blastscan.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| SpokePool          | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
+| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://blastscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://blastscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 
 ## Scroll (534352)
 

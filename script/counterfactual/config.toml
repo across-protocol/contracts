@@ -169,26 +169,6 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[232] # Lens
-endpoint_url = "${NODE_URL_232}"
-[232.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
-[232.bool]
-usdc = true
-usdce = false
-usdt = false
-wbtc = false
-weth = true
-spokePool = true
-sponsoredCctp = false
-vanillaCctp = false
-oft = false
-[232.uint]
-usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
-wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-
 [324] # zkSync
 endpoint_url = "${NODE_URL_324}"
 [324.address]
@@ -253,28 +233,6 @@ usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 0 # No WETH configured for this chain
-
-[1135] # Lisk
-endpoint_url = "${NODE_URL_1135}"
-[1135.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
-[1135.bool]
-usdc = false
-usdce = true
-usdt = true
-wbtc = true
-weth = true
-spokePool = true
-sponsoredCctp = false
-vanillaCctp = false
-oft = false
-[1135.uint]
-usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Lisk)
-usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
 [1868] # Soneium
 endpoint_url = "${NODE_URL_1868}"
@@ -526,26 +484,6 @@ oft = false
 usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
-
-[81457] # Blast
-endpoint_url = "${NODE_URL_81457}"
-[81457.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
-[81457.bool]
-usdc = false
-usdce = false
-usdt = false
-wbtc = true
-weth = true
-spokePool = true
-sponsoredCctp = false
-vanillaCctp = false
-oft = false
-[81457.uint]
-usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
