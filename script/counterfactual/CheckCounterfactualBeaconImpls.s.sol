@@ -86,13 +86,7 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
     ChainConfigResolver resolver;
 
     function run() external {
-        _loadCounterfactualConfig();
-        _loadDeployedAddresses();
-
-        // One resolver for the whole run, persistent across forks: constructing it re-reads the multi-MB
-        // constants.json, which does not fit in the CREATE frame on low-block-gas-limit chains.
-        resolver = new ChainConfigResolver();
-        vm.makePersistent(address(resolver));
+        _setUp();
 
         uint256[] memory chains = config.getChainIds();
         for (uint256 i = 0; i < chains.length; i++) {
@@ -106,37 +100,80 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                 );
                 continue;
             }
-            try vm.createFork(config.getRpcUrl(chainId)) returns (uint256 forkId) {
-                vm.selectFork(forkId);
-                _checkChain(chainId);
-            } catch {
-                _fail(string.concat("Chain ", vm.toString(chainId)), "fork", "RPC unreachable or incompatible");
-            }
+            _forkAndCheck(chainId, address(0));
         }
 
         _printSummary();
     }
 
+    /// @notice Checks SPECIFIC impl addresses (e.g. the targets of queued multisig upgrade txs) instead
+    ///         of each chain's latest broadcast — everything else is the same battery of checks. A full
+    ///         PASS means upgrading the proxy to that impl is exactly as safe as upgrading to the latest.
+    ///
+    ///   FOUNDRY_PROFILE=counterfactual forge script \
+    ///     script/counterfactual/CheckCounterfactualBeaconImpls.s.sol:CheckCounterfactualBeaconImpls \
+    ///     --sig "run(uint256[],address[])" "[1,10]" "[0x...,0x...]" \
+    ///     --rpc-url $NODE_URL_1 --ffi --gas-limit 100000000000 -vvvv
+    function run(uint256[] calldata chainIds, address[] calldata impls) external {
+        require(chainIds.length == impls.length && chainIds.length != 0, "chainIds/impls length mismatch");
+        _setUp();
+        for (uint256 i = 0; i < chainIds.length; i++) {
+            require(impls[i] != address(0), "impl is zero");
+            _forkAndCheck(chainIds[i], impls[i]);
+        }
+        _printSummary();
+    }
+
+    function _setUp() internal {
+        _loadCounterfactualConfig();
+        _loadDeployedAddresses();
+
+        // One resolver for the whole run, persistent across forks: constructing it re-reads the multi-MB
+        // constants.json, which does not fit in the CREATE frame on low-block-gas-limit chains.
+        // deployCode (not `new`) keeps the resolver's creation code out of this contract's bytecode —
+        // inlining it overflows solc's assembler tag space ("Tag too large for reserved space").
+        resolver = ChainConfigResolver(deployCode("CheckCounterfactualBeaconImpls.s.sol:ChainConfigResolver"));
+        vm.makePersistent(address(resolver));
+    }
+
+    /// @param impl The impl to verify, or address(0) to resolve this chain's latest broadcast.
+    function _forkAndCheck(uint256 chainId, address impl) internal {
+        try vm.createFork(config.getRpcUrl(chainId)) returns (uint256 forkId) {
+            vm.selectFork(forkId);
+            _checkChain(chainId, impl);
+        } catch {
+            _fail(string.concat("Chain ", vm.toString(chainId)), "fork", "RPC unreachable or incompatible");
+        }
+    }
+
     // --- Per-chain entry ---
 
-    function _checkChain(uint256 chainId) internal {
+    function _checkChain(uint256 chainId, address impl) internal {
         console.log("");
         console.log("## %s (Chain %s)", _getChainName(chainId), chainId);
 
-        address impl = getLatestBroadcastDeployment(IMPL_SCRIPT, "CounterfactualBeacon");
+        address latest = getLatestBroadcastDeployment(IMPL_SCRIPT, "CounterfactualBeacon");
         if (impl == address(0)) {
-            _fail("BeaconImpl", "broadcast", "no DeployCounterfactualBeaconImpl broadcast for this chain");
-            return;
+            impl = latest;
+            if (impl == address(0)) {
+                _fail("BeaconImpl", "broadcast", "no DeployCounterfactualBeaconImpl broadcast for this chain");
+                return;
+            }
         }
         if (impl.code.length == 0) {
-            _fail(
-                "BeaconImpl",
-                "bytecode",
-                string.concat("latest broadcast impl has no code on-chain: ", vm.toString(impl))
-            );
+            _fail("BeaconImpl", "bytecode", string.concat("impl has no code on-chain: ", vm.toString(impl)));
             return;
         }
-        _info("BeaconImpl", string.concat("checking latest broadcast impl ", vm.toString(impl)));
+        _info("BeaconImpl", string.concat("checking impl ", vm.toString(impl)));
+        if (impl != latest) {
+            // An older impl is fine as long as every check below passes against CURRENT expected config;
+            // note it so nobody assumes run-latest.json describes what is being verified (only the
+            // fresh-proxy path in DeployCounterfactualBeacon consumes run-latest).
+            _reviewNote(
+                "BeaconImpl",
+                string.concat("not this chain's latest broadcast impl (latest: ", vm.toString(latest), ")")
+            );
+        }
 
         // Probe before any direct (high-level) getter call: if the impl's code cannot execute under the
         // local EVM (e.g. deployed as era-VM bytecode), direct calls would revert the whole run.
@@ -147,7 +184,6 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
             return;
         }
 
-        ICounterfactualBeacon beacon = ICounterfactualBeacon(impl);
         _checkImplSafety(impl);
 
         // Re-resolve this chain's expected config with the deploy script's own resolver and diff every
@@ -156,16 +192,48 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
         // Resolved in a separate harness contract so the requires can be try/caught (a `this.` self-call
         // would trip forge's address(this)-in-script detection).
         try resolver.build() returns (CounterfactualChainConfig memory expected) {
-            _compareConfig(beacon, expected);
+            _compareConfig(impl, expected);
         } catch Error(string memory reason) {
             _fail("BeaconImpl", "expectedConfig", reason);
         } catch {
             _fail("BeaconImpl", "expectedConfig", "config resolution reverted (revert strings stripped?)");
         }
 
-        _checkTokens(chainId, beacon);
-        _checkPeripheries(chainId, beacon);
+        // Token/periphery checks run on the impl's ACTUAL values (low-level reads; getters missing on an
+        // older impl read as 0 = route absent), so they hold for an impl of any vintage.
+        CounterfactualChainConfig memory onchain = _readImplConfig(impl);
+        _checkTokens(chainId, onchain);
+        _checkPeripheries(chainId, onchain);
         _checkUpgradeStatus(chainId, impl);
+    }
+
+    /// @dev The impl's config via guarded reads; a missing/unreadable getter reads as 0 (fee caps are
+    ///      omitted — the token/periphery checks don't use them).
+    function _readImplConfig(address impl) internal view returns (CounterfactualChainConfig memory c) {
+        c.signer = _readAddr(impl, ICounterfactualBeacon.signer.selector);
+        c.spokePool = _readAddr(impl, ICounterfactualBeacon.spokePool.selector);
+        c.wrappedNativeToken = _readAddr(impl, ICounterfactualBeacon.wrappedNativeToken.selector);
+        c.nativeToken = _readAddr(impl, ICounterfactualBeacon.nativeToken.selector);
+        c.cctpSrcPeriphery = _readAddr(impl, ICounterfactualBeacon.cctpSrcPeriphery.selector);
+        c.cctpTokenMessenger = _readAddr(impl, ICounterfactualBeacon.cctpTokenMessenger.selector);
+        c.cctpSourceDomain = uint32(_readUint(impl, ICounterfactualBeacon.cctpSourceDomain.selector));
+        c.oftSrcPeriphery = _readAddr(impl, ICounterfactualBeacon.oftSrcPeriphery.selector);
+        c.oftSrcEid = uint32(_readUint(impl, ICounterfactualBeacon.oftSrcEid.selector));
+        c.usdc = _readAddr(impl, ICounterfactualBeacon.usdc.selector);
+        c.usdce = _readAddr(impl, ICounterfactualBeacon.usdce.selector);
+        c.usdt = _readAddr(impl, ICounterfactualBeacon.usdt.selector);
+        c.wbtc = _readAddr(impl, ICounterfactualBeacon.wbtc.selector);
+        c.weth = _readAddr(impl, ICounterfactualBeacon.weth.selector);
+    }
+
+    function _readAddr(address impl, bytes4 sel) internal view returns (address) {
+        (bool ok, bytes32 w) = _tryReadWord(impl, abi.encodeWithSelector(sel));
+        return ok ? _toAddr(w) : address(0);
+    }
+
+    function _readUint(address impl, bytes4 sel) internal view returns (uint256) {
+        (bool ok, bytes32 w) = _tryReadWord(impl, abi.encodeWithSelector(sel));
+        return ok ? uint256(w) : 0;
     }
 
     // --- Impl safety (a bare impl must be a UUPS target and reject direct initialization) ---
@@ -191,75 +259,75 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
 
     // --- Getter-by-getter compare vs the deploy-time resolver ---
 
-    function _compareConfig(ICounterfactualBeacon b, CounterfactualChainConfig memory e) internal {
-        _assertAddrEq("BeaconImpl", "signer", b.signer(), e.signer);
-        _assertAddrEq("BeaconImpl", "spokePool", b.spokePool(), e.spokePool);
-        _assertAddrEq("BeaconImpl", "wrappedNativeToken", b.wrappedNativeToken(), e.wrappedNativeToken);
-        _assertAddrEq("BeaconImpl", "nativeToken", b.nativeToken(), e.nativeToken);
-        _assertAddrEq("BeaconImpl", "cctpSrcPeriphery", b.cctpSrcPeriphery(), e.cctpSrcPeriphery);
-        _assertAddrEq("BeaconImpl", "cctpTokenMessenger", b.cctpTokenMessenger(), e.cctpTokenMessenger);
-        _assertUintEq("BeaconImpl", "cctpSourceDomain", b.cctpSourceDomain(), e.cctpSourceDomain);
-        _assertAddrEq("BeaconImpl", "oftSrcPeriphery", b.oftSrcPeriphery(), e.oftSrcPeriphery);
-        _assertUintEq("BeaconImpl", "oftSrcEid", b.oftSrcEid(), e.oftSrcEid);
-        _assertAddrEq("BeaconImpl", "usdc", b.usdc(), e.usdc);
-        _assertAddrEq("BeaconImpl", "usdce", b.usdce(), e.usdce);
-        _assertAddrEq("BeaconImpl", "usdt", b.usdt(), e.usdt);
-        _assertAddrEq("BeaconImpl", "wbtc", b.wbtc(), e.wbtc);
-        _assertAddrEq("BeaconImpl", "weth", b.weth(), e.weth);
-        _assertUintEq("BeaconImpl", "usdcCctpMaxExecutionFee", b.usdcCctpMaxExecutionFee(), e.usdcCctpMaxExecutionFee);
-        _assertUintEq("BeaconImpl", "usdcCctpMaxFeeBps", b.usdcCctpMaxFeeBps(), e.usdcCctpMaxFeeBps);
-        _assertUintEq("BeaconImpl", "usdtOftMaxExecutionFee", b.usdtOftMaxExecutionFee(), e.usdtOftMaxExecutionFee);
-        _assertUintEq(
-            "BeaconImpl",
-            "usdcSpokePoolMaxExecutionFee",
-            b.usdcSpokePoolMaxExecutionFee(),
-            e.usdcSpokePoolMaxExecutionFee
-        );
-        _assertUintEq(
-            "BeaconImpl",
-            "usdceSpokePoolMaxExecutionFee",
-            b.usdceSpokePoolMaxExecutionFee(),
-            e.usdceSpokePoolMaxExecutionFee
-        );
-        _assertUintEq(
-            "BeaconImpl",
-            "usdtSpokePoolMaxExecutionFee",
-            b.usdtSpokePoolMaxExecutionFee(),
-            e.usdtSpokePoolMaxExecutionFee
-        );
-        _assertUintEq(
-            "BeaconImpl",
-            "wethSpokePoolMaxExecutionFee",
-            b.wethSpokePoolMaxExecutionFee(),
-            e.wethSpokePoolMaxExecutionFee
-        );
-        _assertUintEq(
-            "BeaconImpl",
-            "wbtcSpokePoolMaxExecutionFee",
-            b.wbtcSpokePoolMaxExecutionFee(),
-            e.wbtcSpokePoolMaxExecutionFee
-        );
+    /// @dev Low-level reads so an impl of any vintage can be checked — an impl predating a getter (e.g.
+    ///      pre-usdce) reports "[FAIL] getter missing" instead of hard-reverting the run.
+    function _compareConfig(address impl, CounterfactualChainConfig memory e) internal {
+        (bytes4[22] memory sels, string[22] memory names) = _configGetters();
+        bytes32[22] memory expected = _expectedWords(e);
+        for (uint256 i = 0; i < sels.length; i++) {
+            (bool ok, bytes32 actual) = _tryReadWord(impl, abi.encodeWithSelector(sels[i]));
+            if (!ok) {
+                _fail("BeaconImpl", names[i], "getter missing/unreadable on this impl");
+            } else if (actual != expected[i]) {
+                console.log("[FAIL]   BeaconImpl.%s", names[i]);
+                console.log("           actual:   %s", vm.toString(actual));
+                console.log("           expected: %s", vm.toString(expected[i]));
+                totalFail++;
+            } else {
+                _pass("BeaconImpl", names[i], vm.toString(actual));
+            }
+        }
+    }
+
+    /// @dev The expected struct as raw words, in `_configGetters` order.
+    function _expectedWords(CounterfactualChainConfig memory e) internal pure returns (bytes32[22] memory w) {
+        w[0] = _addrWord(e.signer);
+        w[1] = _addrWord(e.spokePool);
+        w[2] = _addrWord(e.wrappedNativeToken);
+        w[3] = _addrWord(e.nativeToken);
+        w[4] = _addrWord(e.cctpSrcPeriphery);
+        w[5] = _addrWord(e.cctpTokenMessenger);
+        w[6] = bytes32(uint256(e.cctpSourceDomain));
+        w[7] = _addrWord(e.oftSrcPeriphery);
+        w[8] = bytes32(uint256(e.oftSrcEid));
+        w[9] = _addrWord(e.usdc);
+        w[10] = _addrWord(e.usdce);
+        w[11] = _addrWord(e.usdt);
+        w[12] = _addrWord(e.wbtc);
+        w[13] = _addrWord(e.weth);
+        w[14] = bytes32(e.usdcCctpMaxExecutionFee);
+        w[15] = bytes32(e.usdcCctpMaxFeeBps);
+        w[16] = bytes32(e.usdtOftMaxExecutionFee);
+        w[17] = bytes32(e.usdcSpokePoolMaxExecutionFee);
+        w[18] = bytes32(e.usdceSpokePoolMaxExecutionFee);
+        w[19] = bytes32(e.usdtSpokePoolMaxExecutionFee);
+        w[20] = bytes32(e.wethSpokePoolMaxExecutionFee);
+        w[21] = bytes32(e.wbtcSpokePoolMaxExecutionFee);
+    }
+
+    function _addrWord(address a) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(a)));
     }
 
     // --- On-chain token identity: symbol() of every configured token vs an expected-symbol allowlist ---
 
-    function _checkTokens(uint256 chainId, ICounterfactualBeacon b) internal {
-        _checkTokenSymbol(chainId, "usdc", b.usdc(), [string("USDC"), "", "", ""]);
-        _checkTokenSymbol(chainId, "usdce", b.usdce(), [string("USDC.e"), "USDC", "USDbC", ""]);
-        _checkTokenSymbol(chainId, "usdt", b.usdt(), USDT_SYMBOLS());
-        _checkTokenSymbol(chainId, "wbtc", b.wbtc(), [string("WBTC"), "BTCB", "", ""]);
-        _checkTokenSymbol(chainId, "weth", b.weth(), [string("WETH"), "ETH", "", ""]);
+    function _checkTokens(uint256 chainId, CounterfactualChainConfig memory c) internal {
+        _checkTokenSymbol(chainId, "usdc", c.usdc, [string("USDC"), "", "", ""]);
+        _checkTokenSymbol(chainId, "usdce", c.usdce, [string("USDC.e"), "USDC", "USDbC", ""]);
+        _checkTokenSymbol(chainId, "usdt", c.usdt, USDT_SYMBOLS());
+        _checkTokenSymbol(chainId, "wbtc", c.wbtc, [string("WBTC"), "BTCB", "", ""]);
+        _checkTokenSymbol(chainId, "weth", c.weth, [string("WETH"), "ETH", "", ""]);
 
         // Wrapped native varies per chain (WETH/WBNB/WPOL/WHYPE/...) — always surfaced for manual eyeball.
         _reviewTokenSymbol(
             chainId,
             "wrappedNativeToken",
-            b.wrappedNativeToken(),
+            c.wrappedNativeToken,
             "confirm it wraps this chain's gas token"
         );
 
         // An ERC-20 `nativeToken` override (non-sentinel, e.g. USDC-as-gas on ARC) — surfaced likewise.
-        address nat = b.nativeToken();
+        address nat = c.nativeToken;
         if (nat != NATIVE_SENTINEL) {
             _reviewTokenSymbol(chainId, "nativeToken", nat, "confirm it is this chain's gas-equivalent ERC-20");
         }
@@ -310,12 +378,12 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
 
     // --- Periphery fingerprints, cross-checked against the impl's own values ---
 
-    function _checkPeripheries(uint256 chainId, ICounterfactualBeacon b) internal {
+    function _checkPeripheries(uint256 chainId, CounterfactualChainConfig memory c) internal {
         address configSigner = config.get("signer").toAddress();
         bool ok;
         bytes32 w;
 
-        address sp = b.spokePool();
+        address sp = c.spokePool;
         if (sp != address(0)) {
             (ok, w) = _fingerprint(
                 chainId,
@@ -331,7 +399,7 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
             // The native (msg.value) route wraps into the beacon's wrappedNativeToken and deposits it into
             // the SpokePool, whose msg.value path requires inputToken == its own wrappedNativeToken — a
             // mismatch bricks the route.
-            if (b.wrappedNativeToken() != address(0)) {
+            if (c.wrappedNativeToken != address(0)) {
                 (ok, w) = _fingerprint(
                     chainId,
                     "SpokePool",
@@ -339,11 +407,11 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                     sp,
                     abi.encodeCall(ISpokePoolFingerprint.wrappedNativeToken, ())
                 );
-                if (ok) _assertAddrEq("SpokePool", "wrappedNativeToken", _toAddr(w), b.wrappedNativeToken());
+                if (ok) _assertAddrEq("SpokePool", "wrappedNativeToken", _toAddr(w), c.wrappedNativeToken);
             }
         }
 
-        address cctpP = b.cctpSrcPeriphery();
+        address cctpP = c.cctpSrcPeriphery;
         if (cctpP != address(0)) {
             (ok, w) = _fingerprint(
                 chainId,
@@ -352,8 +420,8 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                 cctpP,
                 abi.encodeCall(ICctpSrcPeripheryFingerprint.sourceDomain, ())
             );
-            if (ok) _assertUintEq("SponsoredCCTPSrcPeriphery", "sourceDomain", uint256(w), b.cctpSourceDomain());
-            if (b.cctpTokenMessenger() != address(0)) {
+            if (ok) _assertUintEq("SponsoredCCTPSrcPeriphery", "sourceDomain", uint256(w), c.cctpSourceDomain);
+            if (c.cctpTokenMessenger != address(0)) {
                 (ok, w) = _fingerprint(
                     chainId,
                     "SponsoredCCTPSrcPeriphery",
@@ -362,17 +430,12 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                     abi.encodeCall(ICctpSrcPeripheryFingerprint.cctpTokenMessenger, ())
                 );
                 if (ok)
-                    _assertAddrEq(
-                        "SponsoredCCTPSrcPeriphery",
-                        "cctpTokenMessenger",
-                        _toAddr(w),
-                        b.cctpTokenMessenger()
-                    );
+                    _assertAddrEq("SponsoredCCTPSrcPeriphery", "cctpTokenMessenger", _toAddr(w), c.cctpTokenMessenger);
             }
             _reviewPeripherySigner("SponsoredCCTPSrcPeriphery", cctpP, configSigner);
         }
 
-        address oftP = b.oftSrcPeriphery();
+        address oftP = c.oftSrcPeriphery;
         if (oftP != address(0)) {
             (ok, w) = _fingerprint(
                 chainId,
@@ -381,7 +444,7 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                 oftP,
                 abi.encodeCall(IOftSrcPeripheryFingerprint.SRC_EID, ())
             );
-            if (ok) _assertUintEq("SponsoredOFTSrcPeriphery", "SRC_EID", uint256(w), b.oftSrcEid());
+            if (ok) _assertUintEq("SponsoredOFTSrcPeriphery", "SRC_EID", uint256(w), c.oftSrcEid);
             // Single-token OFT periphery (USDT0 today). The OFT leaf takes its input token from the
             // periphery's own TOKEN(), which may legitimately differ from beacon.usdt (e.g. Optimism:
             // USDT0 is a separate contract from legacy USDT) — so symbol-check TOKEN() and surface the
@@ -393,12 +456,12 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                 oftP,
                 abi.encodeCall(IOftSrcPeripheryFingerprint.TOKEN, ())
             );
-            if (ok) _checkOftToken(chainId, _toAddr(w), b.usdt());
+            if (ok) _checkOftToken(chainId, _toAddr(w), c.usdt);
             _reviewPeripherySigner("SponsoredOFTSrcPeriphery", oftP, configSigner);
         }
 
         // Vanilla CCTP: the Circle TokenMessenger's minter must exist and recognize usdc as burnable.
-        address messenger = b.cctpTokenMessenger();
+        address messenger = c.cctpTokenMessenger;
         if (messenger != address(0)) {
             (ok, w) = _fingerprint(
                 chainId,
@@ -411,13 +474,13 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                 address minter = _toAddr(w);
                 if (minter == address(0)) {
                     _fail("cctpTokenMessenger", "localMinter", "zero address");
-                } else if (b.usdc() != address(0)) {
+                } else if (c.usdc != address(0)) {
                     (ok, w) = _fingerprint(
                         chainId,
                         "cctpTokenMessenger",
                         "usdcBurnLimit",
                         minter,
-                        abi.encodeCall(ITokenMinter.burnLimitsPerMessage, (b.usdc()))
+                        abi.encodeCall(ITokenMinter.burnLimitsPerMessage, (c.usdc))
                     );
                     if (ok) {
                         if (uint256(w) > 0) _pass("cctpTokenMessenger", "usdcBurnLimit", vm.toString(uint256(w)));

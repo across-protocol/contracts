@@ -379,9 +379,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactory     | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explorer.arc.io/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
 | CounterfactualDepositSpokePool   | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://explorer.arc.io/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
 | CounterfactualDepositVanillaCCTP | [0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7](https://explorer.arc.io/address/0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7) |
+| DonationBox                      | [0xA011B82880D0235f845c9d1EA5610b965e0CD759](https://explorer.arc.io/address/0xA011B82880D0235f845c9d1EA5610b965e0CD759) |
+| PermissionedMulticallHandler     | [0x62530b7D3DcbCb0699480094E29Cec181eC3ea6a](https://explorer.arc.io/address/0x62530b7D3DcbCb0699480094E29Cec181eC3ea6a) |
 | Safe                             | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                        | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePool                        | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SponsoredCCTPDstPeriphery        | [0xe59E84570052D3A7aA84Fdc0dA78389206fba9fD](https://explorer.arc.io/address/0xe59E84570052D3A7aA84Fdc0dA78389206fba9fD) |
 | SponsoredCCTPSrcPeriphery        | [0x55743451B0921B555B4AeAf878c2f3E37aA41755](https://explorer.arc.io/address/0x55743451B0921B555B4AeAf878c2f3E37aA41755) |
 | WithdrawImplementation           | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://explorer.arc.io/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 

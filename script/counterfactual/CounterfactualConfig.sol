@@ -102,11 +102,12 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     }
 
     /// @dev Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP), in bps of the burned
-    ///      amount. Read from the `[0]` globals section of config.toml — one value for all chains.
+    ///      amount. Per-chain value from config.toml (`[N.uint]`), required on every chain; zero is a
+    ///      valid value (0 ⇒ standard transfers only), unlike the `_maxExecutionFee` caps.
     function _usdcCctpMaxFeeBps() internal returns (uint256) {
         if (address(config) == address(0)) _loadCounterfactualConfig();
-        Variable memory v = config.get(GLOBALS_CHAIN_ID, "usdcCctpMaxFeeBps");
-        require(v.ty.kind == TypeKind.Uint256, "config: usdcCctpMaxFeeBps missing from globals");
+        Variable memory v = config.get("usdcCctpMaxFeeBps");
+        require(v.ty.kind == TypeKind.Uint256, "config: usdcCctpMaxFeeBps not configured for this chain");
         return v.toUint256();
     }
 

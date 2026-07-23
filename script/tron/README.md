@@ -166,6 +166,17 @@ idempotent** — re-running a script deploys a fresh contract rather than comple
    yarn tron-deploy-counterfactual-deposit-spokepool-tron [--testnet]
    ```
 
+### CounterfactualBeacon proxy upgrade
+
+Points the live beacon proxy at a new impl (UUPS `upgradeToAndCall(newImpl, "")`) after a
+config-change redeploy of step 1. The signing key must be the beacon owner. Preflights the owner
+and the target's `proxiableUUID()`, and post-checks a getter through the proxy. Reads the impl
+address from the latest impl broadcast, or pass it explicitly.
+
+```bash
+yarn tron-upgrade-counterfactual-beacon [<newImpl>] [--testnet]
+```
+
 ### CounterfactualDeposit (dispatcher redeploy)
 
 Normally deployed by step 2. Use standalone only to redeploy the dispatcher against an existing

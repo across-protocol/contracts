@@ -1513,6 +1513,21 @@
           "block_number": 4828640,
           "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
         },
+        "PermissionedMulticallHandler": {
+          "address": "0x62530b7D3DcbCb0699480094E29Cec181eC3ea6a",
+          "block_number": 11694313,
+          "transaction_hash": "0x883e1448db05c627e2113ceac282432964c1fe5e658606aa42ea75aefeb06ed1"
+        },
+        "DonationBox": {
+          "address": "0xA011B82880D0235f845c9d1EA5610b965e0CD759",
+          "block_number": 11694313,
+          "transaction_hash": "0x7e70d328aeaa223543bd8993fa2f6c7a50f337e7c3e133059dfa8bb6acd5838f"
+        },
+        "SponsoredCCTPDstPeriphery": {
+          "address": "0xe59E84570052D3A7aA84Fdc0dA78389206fba9fD",
+          "block_number": 11694313,
+          "transaction_hash": "0x5c4acb553a870705c24dca61badb031cd7f289c66363a00e46bb8ce9b5cdd5ee"
+        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0x55743451B0921B555B4AeAf878c2f3E37aA41755",
           "block_number": 11177826,

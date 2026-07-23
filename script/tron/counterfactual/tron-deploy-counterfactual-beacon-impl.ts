@@ -6,7 +6,7 @@
  * This is the Tron counterpart of script/counterfactual/DeployCounterfactualBeaconImpl.s.sol —
  * Foundry cannot broadcast to Tron, so the config resolution performed by
  * CounterfactualConfig._buildChainConfig() is mirrored here in TypeScript, from the same sources:
- *   - script/counterfactual/config.toml          (signer, per-token max-execution-fee caps, global bps cap)
+ *   - script/counterfactual/config.toml          (signer, per-token max-execution-fee caps, CCTP bps cap)
  *   - generated/constants.json                   (tokens, wrapped native, CCTP domain / OFT EID, messenger)
  *   - broadcast/deployed-addresses.json          (SpokePool, sponsored bridge peripheries)
  * Tron entries in those files are Base58Check (T...); they are converted to EVM hex here. Keep the
@@ -137,9 +137,10 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
   const usdtMaxExecutionFee = maxExecutionFee(section, "usdtMaxExecutionFee", usdt);
   const wethSpokePoolMaxExecutionFee = maxExecutionFee(section, "wethMaxExecutionFee", weth);
   const wbtcSpokePoolMaxExecutionFee = maxExecutionFee(section, "wbtcMaxExecutionFee", wbtc);
-  // Bps cap on the submitter-chosen Circle fast-transfer fee — one global value ([0] section).
+  // Bps cap on the submitter-chosen Circle fast-transfer fee — per-chain ([N.uint] section); zero is
+  // valid (0 ⇒ standard transfers only), unlike the maxExecutionFee caps.
   const usdcCctpMaxFeeBps =
-    tomlUint(config["0"], "usdcCctpMaxFeeBps") ?? fail("config.toml: usdcCctpMaxFeeBps missing from globals");
+    tomlUint(section, "usdcCctpMaxFeeBps") ?? fail("config.toml: usdcCctpMaxFeeBps not configured for this chain");
 
   // Same deploy guards as CounterfactualConfig._buildChainConfig.
   if (spokePool === ZERO_ADDRESS)
