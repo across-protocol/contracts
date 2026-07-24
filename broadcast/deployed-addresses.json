@@ -37,8 +37,9 @@
           "block_number": 14704381
         },
         "SpokePool": {
-          "address": "0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5",
-          "block_number": 17117454
+          "address": "0x756a541f9285704C47eb38eF789f732D5233A6C9",
+          "block_number": 25526273,
+          "transaction_hash": "0xcb6052d70cc84ee8acf164beaff21cdb93f9a92e4b155184e9924d7b5ca68ce6"
         },
         "HubPool": {
           "address": "0xc186fA914353c44b2E33eBE05f21846F1048bEda",
@@ -273,8 +274,9 @@
       "chain_name": "Optimism",
       "contracts": {
         "SpokePool": {
-          "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281",
-          "block_number": 93903076
+          "address": "0x9c95CCe660977CAE5F07e90fAbeF1e0f49095B76",
+          "block_number": 154189040,
+          "transaction_hash": "0x400fac36d96929d8c3280757221c9781e035facbf76f61c4ae09e9e0ecb08aff"
         },
         "1inch_SwapAndBridge": {
           "address": "0x3E7448657409278C9d6E192b92F2b69B234FCc42",
@@ -841,8 +843,9 @@
       "chain_name": "HyperEVM",
       "contracts": {
         "SpokePool": {
-          "address": "0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04",
-          "block_number": 13937805
+          "address": "0x6b34590f1d92A7a776aCa5d46C94dC9BB25914C2",
+          "block_number": 40383335,
+          "transaction_hash": "0x6af0e4d8aa1a66fede00eb5bc9121460e56108e9fef85ebd8e70916141ec0e29"
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -1260,8 +1263,9 @@
       "chain_name": "Base",
       "contracts": {
         "SpokePool": {
-          "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64",
-          "block_number": 2164878
+          "address": "0xEb37a68e78BE064881A0472CE17A4e92994639Df",
+          "block_number": 48593695,
+          "transaction_hash": "0xffb927fa4223464d50ec2c10d1682a934b0ad8f52267b58c13aadfafbce8b12b"
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -1441,8 +1445,9 @@
       "chain_name": "Arbitrum One",
       "contracts": {
         "SpokePool": {
-          "address": "0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A",
-          "block_number": 83868041
+          "address": "0x063A2488c9925FD7Fa057c678a96f5E634dA2483",
+          "block_number": 483542088,
+          "transaction_hash": "0x12e9824406a55c095e23359e54aa16e21c25015379abfbae14584d6255938151"
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
