@@ -16,6 +16,7 @@ import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "../libraries/PeripherySigningLib.sol";
 import { SpokePoolPeripheryInterface } from "../interfaces/SpokePoolPeripheryInterface.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
+import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 
 /**
  * @title SwapProxy
@@ -27,8 +28,10 @@ import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
  * caller.
  * @custom:security-contact bugs@across.to
  */
-contract SwapProxy is ReentrancyGuard {
-    using SafeERC20 for IERC20;
+contract SwapProxy is ReentrancyGuard, SafeTransferERC20 {
+    // `using` is restricted to `forceApprove`; `safeTransfer` goes through the `_safeTransfer` hook so
+    // chain-specific variants (Tron) can override transfer semantics in one place.
+    using { SafeERC20.forceApprove } for IERC20;
     using Address for address;
 
     // Canonical Permit2 contract address
@@ -89,7 +92,7 @@ contract SwapProxy is ReentrancyGuard {
         if (transferType == SpokePoolPeripheryInterface.TransferType.Approval) {
             IERC20(inputToken).forceApprove(exchange, inputAmount);
         } else if (transferType == SpokePoolPeripheryInterface.TransferType.Transfer) {
-            IERC20(inputToken).safeTransfer(exchange, inputAmount);
+            _safeTransfer(inputToken, exchange, inputAmount);
         } else if (transferType == SpokePoolPeripheryInterface.TransferType.Permit2Approval) {
             IERC20(inputToken).forceApprove(address(permit2), inputAmount);
             expectingPermit2Callback = true;
@@ -120,7 +123,7 @@ contract SwapProxy is ReentrancyGuard {
         uint256 outputBalance = IERC20(outputToken).balanceOf(address(this));
 
         // Transfer all output tokens back to the periphery
-        IERC20(outputToken).safeTransfer(msg.sender, outputBalance);
+        _safeTransfer(outputToken, msg.sender, outputBalance);
 
         // Return the net amount received from the swap
         return outputBalance;
@@ -143,8 +146,10 @@ contract SwapProxy is ReentrancyGuard {
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712 {
-    using SafeERC20 for IERC20;
+contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712, SafeTransferERC20 {
+    // `using` is restricted to `forceApprove`/`safeTransferFrom`; `safeTransfer` goes through the
+    // `_safeTransfer` hook so chain-specific variants (Tron) can override transfer semantics in one place.
+    using { SafeERC20.forceApprove, SafeERC20.safeTransferFrom } for IERC20;
     using Address for address;
     using AddressToBytes32 for address;
 
@@ -195,7 +200,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         permit2 = _permit2;
 
         // Deploy the swap proxy with reference to the permit2 address
-        swapProxy = new SwapProxy(address(_permit2));
+        swapProxy = _deploySwapProxy(address(_permit2));
+    }
+
+    /// @dev Deploys the SwapProxy used to isolate swap execution. Virtual so chain-specific variants
+    ///      (Tron) can substitute a SwapProxy variant with different transfer semantics.
+    function _deploySwapProxy(address _permit2) internal virtual returns (SwapProxy) {
+        return new SwapProxy(_permit2);
     }
 
     /**
@@ -755,7 +766,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 _swapTokenAmount = swapAndDepositData.swapTokenAmount;
 
         // Transfer tokens to the swap proxy for executing the swap
-        _swapToken.safeTransfer(address(swapProxy), _swapTokenAmount);
+        _safeTransfer(address(_swapToken), address(swapProxy), _swapTokenAmount);
 
         // Execute the swap via the swap proxy using the appropriate transfer type
         // This function will swap _swapToken for _acrossInputToken and return the amount of _acrossInputToken received
@@ -820,7 +831,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         if (amount > 0) {
             // Use msg.sender as recipient if recipient is zero address, otherwise use the specified recipient
             address feeRecipient = recipient == address(0) ? msg.sender : recipient;
-            IERC20(feeToken).safeTransfer(feeRecipient, amount);
+            _safeTransfer(feeToken, feeRecipient, amount);
         }
     }
 
