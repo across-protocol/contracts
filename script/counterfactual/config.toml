@@ -234,27 +234,6 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 0 # No WETH configured for this chain
 
-[1868] # Soneium
-endpoint_url = "${NODE_URL_1868}"
-[1868.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
-[1868.bool]
-usdc = false
-usdce = true
-usdt = true
-wbtc = false
-weth = true
-spokePool = true
-sponsoredCctp = false
-vanillaCctp = false
-oft = false
-[1868.uint]
-usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Soneium)
-usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-
 [4217] # Tempo
 endpoint_url = "${NODE_URL_4217}"
 [4217.address]
@@ -376,30 +355,6 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 0 # No WBTC
 
-[34443] # Mode
-# Public RPC literal, not a NODE_URL_34443 env ref: env interpolation runs on the whole file (even
-# comments), so any unset var breaks scripts for ALL chains. Swap once NODE_URL_34443 is standard.
-endpoint_url = "https://mainnet.mode.network"
-[34443.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
-[34443.bool]
-usdc = false
-usdce = true
-usdt = true
-wbtc = true
-weth = true
-spokePool = true
-sponsoredCctp = false
-vanillaCctp = false
-oft = false
-[34443.uint]
-usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Mode)
-usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
-
 [42161] # Arbitrum One
 endpoint_url = "${NODE_URL_42161}"
 [42161.address]
@@ -486,25 +441,6 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
-
-[7777777] # Zora
-endpoint_url = "${NODE_URL_7777777}"
-[7777777.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
-[7777777.bool]
-usdc = false
-usdce = false
-usdt = false
-wbtc = false
-weth = true
-spokePool = true
-sponsoredCctp = false
-vanillaCctp = false
-oft = false
-[7777777.uint]
-usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
 [728126428] # TRON
 endpoint_url = "${NODE_URL_728126428}"
