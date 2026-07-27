@@ -58,6 +58,9 @@ contract ChainConfigResolver is CounterfactualConfig {
 //   - Every config getter vs a fresh `_buildChainConfig()` — the exact resolver the deploy script baked
 //     from (constants.json + deployed-addresses.json + config.toml, including the `[N.bool]` declared
 //     support flags). A mismatch means the sources moved since the impl was deployed: redeploy the impl.
+//     Exception: `usdcCctpMaxFeeBps` is skipped on chains without a USDC CCTP burn path (no USDC, or no
+//     CCTP messenger/periphery) — the cap only gates USDC CCTP burns, so a stale value is inert there
+//     and alone shouldn't fail an otherwise-current impl.
 //   - Tokens: on-chain `symbol()` of every configured token vs an expected-symbol allowlist; wrapped
 //     native / ERC-20 gas tokens are surfaced for manual review (symbols vary per chain).
 //   - Peripheries: an on-chain fingerprint view per referenced contract, cross-checked against the
@@ -265,6 +268,15 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
         (bytes4[22] memory sels, string[22] memory names) = _configGetters();
         bytes32[22] memory expected = _expectedWords(e);
         for (uint256 i = 0; i < sels.length; i++) {
+            // usdcCctpMaxFeeBps only gates USDC CCTP burns; without a USDC CCTP burn path (no USDC, or
+            // no messenger/periphery — e.g. BSC has USDC but no CCTP) the baked value is inert, so a
+            // stale cap alone shouldn't fail an otherwise-current impl.
+            bool noCctpBurnPath = e.usdc == address(0) ||
+                (e.cctpSrcPeriphery == address(0) && e.cctpTokenMessenger == address(0));
+            if (sels[i] == ICounterfactualBeacon.usdcCctpMaxFeeBps.selector && noCctpBurnPath) {
+                _info("BeaconImpl", string.concat(names[i], " skipped (no USDC CCTP burn path; value is inert)"));
+                continue;
+            }
             (bool ok, bytes32 actual) = _tryReadWord(impl, abi.encodeWithSelector(sels[i]));
             if (!ok) {
                 _fail("BeaconImpl", names[i], "getter missing/unreadable on this impl");

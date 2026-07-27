@@ -80,7 +80,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://optimistic.etherscan.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
 | CounterfactualDepositCCTP        | [0x26cc007E3d658719F8A44B6109cE6341EB0010cD](https://optimistic.etherscan.io/address/0x26cc007E3d658719F8A44B6109cE6341EB0010cD) |
 | CounterfactualDepositFactory     | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://optimistic.etherscan.io/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
-| CounterfactualDepositOFT         | [0xCD984C0694af76f4ae7DeAeb54C0674D997f5B6e](https://optimistic.etherscan.io/address/0xCD984C0694af76f4ae7DeAeb54C0674D997f5B6e) |
+| CounterfactualDepositOFT         | [0x9966fD5432ba1D085D23D4cda8fd6188d796D722](https://optimistic.etherscan.io/address/0x9966fD5432ba1D085D23D4cda8fd6188d796D722) |
 | CounterfactualDepositSpokePool   | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://optimistic.etherscan.io/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
 | CounterfactualDepositVanillaCCTP | [0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7](https://optimistic.etherscan.io/address/0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7) |
 | DonationBox                      | [0xC1d6B848553602BED3524B05B7EB68c20899d861](https://optimistic.etherscan.io/address/0xC1d6B848553602BED3524B05B7EB68c20899d861) |
