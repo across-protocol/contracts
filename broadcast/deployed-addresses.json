@@ -208,14 +208,14 @@
           "transaction_hash": "0xb46c184af2359773c6714d0bcfa4969690f0b703fa134ad313e291bd15961289"
         },
         "PermissionedMulticallHandler": {
-          "address": "0xE3cC4f145d3535336A78FdEB3e77309731e12E8b",
-          "block_number": 25231328,
-          "transaction_hash": "0x009dc456b677fcecf008107e57bebb76ca9b5dba3404bf37f725d1d08801b0df"
+          "address": "0x3c385CbB4be53350Acf53a7c3FF86e40F6eb0F5E",
+          "block_number": 25634031,
+          "transaction_hash": "0xaa53535811a30d1abcfc57f2fd3978ec34494a6b0ab55cf86b1182e3a4fc6fda"
         },
         "DstOFTHandler": {
-          "address": "0xD59D844287A6F808865eA697653588c9Ee42Dc1d",
-          "block_number": 25231329,
-          "transaction_hash": "0x387fd87026a68def73450bc6aa51d0befa8f551832a3ac8faeea870f4e7220c5"
+          "address": "0x6E578747924e420E25444dc1c16109a8116A6F54",
+          "block_number": 25634032,
+          "transaction_hash": "0x2ad8558ecde8bdb602bd0fd2b181442b8382cee1d10101e00f0de2ee5b240807"
         },
         "OP_Adapter_57073": {
           "address": "0x545E43B6eC2f9a44CAa531298699Ff05958670B5",
@@ -322,14 +322,14 @@
           "transaction_hash": "0x2afec8f5db3cebfdbf2da22673ea7f277deb91b9e9c2f403ee2260ef6dac17c9"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x045668A5471B25bBd247403E992C5fdc51dEff13",
-          "block_number": 154227343,
-          "transaction_hash": "0x2b770fa327994b6dd329343e2aa46e08182bf25ac957e381c631ac168e280032"
+          "address": "0xeB608b400e43adE201d2f370c26DA9258BeaE4e1",
+          "block_number": 154838413,
+          "transaction_hash": "0xc9f55889e290a5dfac3b17e9f0aa3c11584e5ffa3455fc3e5246d67e21f9355e"
         },
         "DstOFTHandler": {
-          "address": "0x640ac7e824F39523a0D022De0d4c81A8723655E8",
-          "block_number": 154227345,
-          "transaction_hash": "0xa376862bd78030d421e02ec889a1cdb2f5faf6605ef601880f4e4ae3c848a439"
+          "address": "0x47c1F4Da173F3113A04F7C33e28b5459cFd2B691",
+          "block_number": 154838414,
+          "transaction_hash": "0x032f248009a826effb09db91bce4b7d3ba127b875bdceec9c71593eca8ee2800"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -470,14 +470,14 @@
           "transaction_hash": "0x61efce46d1a42f37fd7e1bf27a909be972f036c629816f52147ed9826542442d"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x37C12e9a310AD255601Bc86feD0663243D6f47A8",
-          "block_number": 50304530,
-          "transaction_hash": "0x790efe1d94be10f4d2caad97b4f50cac28bef4b85792816d159a0a3409b74e7f"
+          "address": "0xEc88d3C08E2939562Ff8188B4e30A52236C3FF09",
+          "block_number": 54527967,
+          "transaction_hash": "0x022cfbaa66964b389885e1eb9b432f378d149352bd530c683f96d84a4c334764"
         },
         "DstOFTHandler": {
-          "address": "0xa12f224019482C6Dfa6A7699118A4Be2405bD513",
-          "block_number": 50302079,
-          "transaction_hash": "0x100a2b472ccd79b275840ebf6d75ac82dab9edf00c6c98de15f83dedf9fe33e3"
+          "address": "0x33d25049B38cE24D5E515FDCb090055C61a120C6",
+          "block_number": 54527970,
+          "transaction_hash": "0x7c8ebdd535d09bed114bb4d3844bebd4a18817a77d13bc6fae6e19ecb9b0d0f0"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -581,14 +581,14 @@
           "transaction_hash": "0xdcc74125b85cb1a7e34e6bfe318cc565b7f5423e1fe1b187dcd331fd80565a83"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x43e1c2a2720BaA4a090aCeC63dBe757BeE81C2FA",
-          "block_number": 87819354,
-          "transaction_hash": "0x1b0abaa6c2341efdd2c682bb913615cf34d2b46f09bd4982303fd29084cb8976"
+          "address": "0xd16aC07404b6AA055986115dE9097fB65f5455C6",
+          "block_number": 91047634,
+          "transaction_hash": "0x52e5897198665d0de741409687798169249b169227e1b277c4f4d2a39d874c4d"
         },
         "DstOFTHandler": {
-          "address": "0xC7e181D8aC22E25183c12e3693d26FBf62Da903A",
-          "block_number": 87819356,
-          "transaction_hash": "0x1fbd9c798bb0da5d52a152a539b1eaf1dc011e038660bc25fe295947cbe9a2ba"
+          "address": "0x9746dC061C075eF1AA392FA6C80D2d9BDf016246",
+          "block_number": 91047637,
+          "transaction_hash": "0xc202a63632b3f99f566ba8aa854fffe98e5ae27b5dc49d843cf799847584d16b"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -673,14 +673,14 @@
           "transaction_hash": "0x40c560c46d8a4fdbd5947512cc9b6c5f322abac96231bf635b2f4c1768621f52"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x7245E9A6fd2E7494eDD74A61e947fA26d202400C",
-          "block_number": 78704214,
-          "transaction_hash": "0x7ddf97c70a95b4e38e7bce9e47142215138578dfd3cad3598d8770489477a483"
+          "address": "0x56e58Ff5bd2A73eA80bBe365fc26048507f6DdF7",
+          "block_number": 91173554,
+          "transaction_hash": "0x4ce8dfe49ac6905b25f03f94fe7fc5b410bf92bcb2943e40866f409474d5bd87"
         },
         "DstOFTHandler": {
-          "address": "0xD43463Fadd73373bE260b67F5825274F4403dAF0",
-          "block_number": 78704220,
-          "transaction_hash": "0x859536339a7ac4c2d51cd4b31333e8fd705d3024b7b5ad8e104de8fbfae124c5"
+          "address": "0x25073BC6Db4C905F85bb527C592FA9CFE6793271",
+          "block_number": 91173563,
+          "transaction_hash": "0xe7e50160eb367ab2681263a90dc70313978461946d1b42a0e06128a6979cdf74"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -957,14 +957,13 @@
           "transaction_hash": "0xd78f71ca11de6d28fe02006adf91b55f05efe0ffb1e0b2f51cb450cdf5ade5c0"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x1E5224900B7508D10e28C4627DC4285E50535B1b",
-          "block_number": 36793590,
-          "transaction_hash": "0xf02918aee3ffbf0e230d29190d7a1006fcd82268182281db01c5da7be42c43a5"
+          "address": "0xe76ad9927B255Ee54c66609c07cb28E833a5837f",
+          "block_number": 35615373,
+          "transaction_hash": "0x7a5756becbd9c58e687002d39c82f0898f2b388cce08f9788494175bf6c2eb7a"
         },
         "DstOFTHandler": {
-          "address": "0x1fE11B217cD3E268D45e402fF7a74D789d6038e5",
-          "block_number": 36793651,
-          "transaction_hash": "0x7b50949787f60356400d124915ccfc4fd479ca9cda45c89f49d21379ad8c75e1"
+          "address": "0x1a19B6A1e60054E93468Cb09b9034B9070b6F73b",
+          "transaction_hash": null
         },
         "HyperliquidDepositHandler": {
           "address": "0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5",
@@ -1180,6 +1179,11 @@
           "block_number": 14586764,
           "transaction_hash": "0x6cb25ff098f110b30b71e5df6c1edf74a1f672f65414fb18308dd0c54a8daabf"
         },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0xC154FD5654Ea7fF153D20FF9B8A874dD953A986F",
+          "block_number": 32174960,
+          "transaction_hash": "0xae02708ea4cef1a0d58ceb7de837a28727e7756eeb9ac6ddad410cee80681ccc"
+        },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
           "block_number": 12128162,
@@ -1235,14 +1239,14 @@
           "transaction_hash": "0x24e5a21ee467e4b39435f8bfc5591237aab4ac8dac096777502411837511de70"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x8bBd8dA892f793A271af4D74C7B8895019f4ea77",
-          "block_number": 17651466,
-          "transaction_hash": "0xf118cce0176cbc5bdf7c1690e8e520c0f55ddb914567be1d63c14a755d3f02f3"
+          "address": "0x5f9ED349058dd35191f52B2DF2041FA0C31CB3Ec",
+          "block_number": 22482465,
+          "transaction_hash": "0x16d8296fadf83206fbce986fc2d2de2796e20fc815d531932f13aa3ef0c16685"
         },
         "DstOFTHandler": {
-          "address": "0xDAC391869D4b1a0B658626A6F4bc90484667B617",
-          "block_number": 17651467,
-          "transaction_hash": "0x7acdd84944b9f50f238703bb78bf3016c2952e42b1a717f43538f00c88add3f5"
+          "address": "0x62B83feC47090C4079FF4741829c6A6b871627C0",
+          "block_number": 22482467,
+          "transaction_hash": "0x5dbd275de73b1f26a3436e5e118b7fd3cc3596b6db98ffa83663017d73e7dbeb"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -1431,14 +1435,14 @@
           "transaction_hash": "0x3de7142b7379571a946f37f404089c54812c6b0926faf71f056c85b61002941a"
         },
         "PermissionedMulticallHandler": {
-          "address": "0xA46236268F63D8898897059aAEc0918aff8A4e48",
-          "block_number": 27115506,
-          "transaction_hash": "0x881dba7d97a1e1f1509b810c768aeb2e9e44547ab35953bf19242a6b99d1c670"
+          "address": "0x04007A7f040F464b14b807E59B63CdC8973d7a51",
+          "block_number": 28339228,
+          "transaction_hash": "0x05e1d9c18226ec28993eb4589a15e036e4b8d2556dda738f9563bcbfd5c5af78"
         },
         "DstOFTHandler": {
-          "address": "0xD4c8DdDC5EDEe56B0174f1b10E29047539A6928A",
-          "block_number": 27115508,
-          "transaction_hash": "0x8b584e406be0b4ff69fa969776ac255306450353be75b74b756c9f2f47ace8c1"
+          "address": "0x4aD51060c8D2921a9b22ff7608a0942Cd606258a",
+          "block_number": 28339230,
+          "transaction_hash": "0x085feb586a77ab95de04b312ff643286b4e8ad4677ed3ac9413df138884bc680"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -1551,14 +1555,14 @@
           "transaction_hash": "0xd229b1a48cf5a207b9c1b670299d311d83fd98d6b768e6c4a67bbeef36097dc4"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x9E61a37F5Ce1b9ed47a278efFd512BF6553a766a",
-          "block_number": 469352325,
-          "transaction_hash": "0x5344061bb734fbb4d7dde09a4058f88c0e7a7d521d11782b32c608933974f1fe"
+          "address": "0xD05e641DCd8c6358B885739b5664AE65A8EB3C63",
+          "block_number": 488738651,
+          "transaction_hash": "0xa952bfff45f4f44143d86ea13b9dae5b83fb490db530d3348158a5e521fd0c70"
         },
         "DstOFTHandler": {
-          "address": "0x61e07fD5512c29bC344Af7453e779352Db2E5216",
-          "block_number": 469352332,
-          "transaction_hash": "0x3feb60320664c6073e0880722b7cf4f18dc5a9ee0c87b8cc4f8b0f4a161bc248"
+          "address": "0xc64C30C54986282A27Ff9FD56Ac7b51b430Dc911",
+          "block_number": 488738656,
+          "transaction_hash": "0xcbb1f453dee2dd13234758ea6321e9a7e4d37d8392ac019a072b8d42d841b9e0"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
@@ -1663,14 +1667,14 @@
           "transaction_hash": "0x4e6ab9a1f45ae5c19dde939a00c5dede6032cb3d823a3ae61317eaf1212dafa5"
         },
         "PermissionedMulticallHandler": {
-          "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7",
-          "block_number": 46950338,
-          "transaction_hash": "0xe9a98aa80eabdcb860a87a59048808ba6a4a3e047ec99a2b993576692c7bb3b4"
+          "address": "0xe3254a3aFce425fC7114B231b39C97ABa6a919D7",
+          "block_number": 51781561,
+          "transaction_hash": "0xbc3b2c1887e2cc0b420b1901e82f24cc395037f34de64bc7c35d39b35e33d38b"
         },
         "DstOFTHandler": {
-          "address": "0xD0c27170C13577f47796412356303834e10C056f",
-          "block_number": 46950340,
-          "transaction_hash": "0x2b4812e349e6c478a205fd219857fd2e671bd9b00a9e6126a2f448b845fd9f81"
+          "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965",
+          "block_number": 51781564,
+          "transaction_hash": "0xb50ac8697955ae389a2e6afb977462711f38366a1222f79b857294d7dc01b614"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
