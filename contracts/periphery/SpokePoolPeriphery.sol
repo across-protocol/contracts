@@ -144,8 +144,8 @@ contract SwapProxy is ReentrancyGuard, SafeTransferERC20 {
 /**
  * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
- * @dev note: Failed token transfers here and in SwapProxy revert with the OZ v5 error `SafeERC20FailedOperation`,
- * not the OZ v4 string (see `SafeTransferERC20`).
+ * @dev note: Token transfers here and in SwapProxy that fail the return-value check revert with the
+ * OZ v5 error `SafeERC20FailedOperation`, not the OZ v4 string (see `SafeTransferERC20`).
  * @custom:security-contact bugs@across.to
  */
 contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712, SafeTransferERC20 {
