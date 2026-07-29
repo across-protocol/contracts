@@ -19,8 +19,9 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //     deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, usdc, usdt, wbtc),
 //     plus a manual review of the fee `signer`.
 //
-// Owner/directWithdrawer are cross-referenced against config.toml AND
-// script/mintburn/prod-readiness-multisigs.json for an independent second opinion.
+// Owner/directWithdrawer are cross-referenced against config.toml's `ownerAndDirectWithdrawer` AND the
+// chain's actually-deployed governance Safe (the `Safe` entry in deployed-addresses.json, generated from
+// broadcast/DeploySafe.s.sol) for an independent second opinion.
 //
 // Before the per-chain forks, a registry-only cross-chain PARITY pass asserts every chain-identical
 // contract (beacon proxy, dispatcher, factory, leaves, AdminWithdrawManager, WithdrawImplementation)
@@ -39,13 +40,8 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //     script/counterfactual/CheckCounterfactualDeployments.s.sol:CheckCounterfactualDeployments \
 //     --rpc-url $NODE_URL_1 --ffi -vvvv
 contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
-    string constant MULTISIGS_PATH = "script/mintburn/prod-readiness-multisigs.json";
-
-    string multisigsJson;
-
     function run() external {
         _loadConfig(CONFIG_PATH, false);
-        multisigsJson = vm.readFile(MULTISIGS_PATH);
         _loadDeployedAddresses();
 
         _checkCrossChainParity();
@@ -371,13 +367,14 @@ contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
         address configOwner = config.get("ownerAndDirectWithdrawer").toAddress();
         address multisig = _getMultisig(chainId);
         _reviewWithMultisig("CounterfactualBeacon", "owner", ownableBeacon.owner(), configOwner, multisig);
-        _reviewWithMultisig(
-            "CounterfactualBeacon",
-            "pendingOwner",
-            ownableBeacon.pendingOwner(),
-            configOwner,
-            multisig
-        );
+        // pendingOwner: zero is the healthy steady state (no transfer in flight); only a nonzero value
+        // needs eyes — it means an Ownable2Step handoff is initiated but unaccepted.
+        address pendingOwner = ownableBeacon.pendingOwner();
+        if (pendingOwner == address(0)) {
+            _pass("CounterfactualBeacon", "pendingOwner", "none (no transfer in flight)");
+        } else {
+            _reviewWithMultisig("CounterfactualBeacon", "pendingOwner", pendingOwner, configOwner, multisig);
+        }
     }
 
     // --- AdminWithdrawManager ---
@@ -477,12 +474,11 @@ contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
 
     // --- Multisig lookup ---
 
+    /// @dev This chain's governance Safe as actually deployed — the `Safe` entry in
+    ///      deployed-addresses.json, generated from broadcast/DeploySafe.s.sol/<chainId>. address(0)
+    ///      when no Safe has been deployed on the chain (reported as such, never silently substituted).
     function _getMultisig(uint256 chainId) internal view returns (address) {
-        string memory path = string.concat(".", vm.toString(chainId));
-        if (vm.keyExists(multisigsJson, path)) {
-            return vm.parseJsonAddress(multisigsJson, path);
-        }
-        return vm.parseJsonAddress(multisigsJson, ".fallbackEOA");
+        return _getDeployed("Safe", chainId);
     }
 
     // --- Logging helpers (shared ones live in CheckUtils) ---
@@ -517,11 +513,13 @@ contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
             )
         );
         console.log(
-            string.concat(
-                "           multisigs.json: ",
-                vm.toString(multisig),
-                actual == multisig ? unicode" ✓" : " MISMATCH"
-            )
+            multisig == address(0)
+                ? string("           deployed Safe: none on this chain (broadcast/DeploySafe.s.sol)")
+                : string.concat(
+                    "           deployed Safe: ",
+                    vm.toString(multisig),
+                    actual == multisig ? unicode" ✓" : " MISMATCH"
+                )
         );
         totalReview++;
     }
