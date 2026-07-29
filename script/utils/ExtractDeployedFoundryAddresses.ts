@@ -5,7 +5,9 @@
  * smart contract addresses that are in the broadcast folder.
  *
  * It specifically looks at the run-latest.json file for each smart contract and inside
- * that JSON looks at the `contractAddress` field.
+ * that JSON looks at the `contractAddress` field. Multi-chain broadcasts (broadcast/multi/
+ * <Script>.s.sol-latest/run.json) are also scanned; each per-chain deployment element inside
+ * them is processed exactly like a single-chain run-latest.json.
  */
 
 import * as fs from "fs";
@@ -27,6 +29,9 @@ interface BroadcastFile {
   filePath: string;
   isDeploymentsJson?: boolean;
   deploymentsData?: any;
+  // For multi-chain broadcasts: the per-chain deployment element from broadcast/multi/*/run.json,
+  // shaped identically to a single-chain run-latest.json.
+  multiRunData?: any;
 }
 
 interface Contract {
@@ -154,6 +159,46 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
   return broadcastFiles;
 }
 
+/**
+ * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/run.json). Forge writes
+ * these instead of per-chain run-latest.json files when a script broadcasts to several chains in one
+ * run. Each element of the sequence's `deployments` array has the same shape as a single-chain
+ * run-latest.json, so each becomes a virtual broadcast file for its chain.
+ */
+function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
+  const multiDir = path.join(broadcastDir, "multi");
+  if (!fs.existsSync(multiDir)) return [];
+
+  const broadcastFiles: BroadcastFile[] = [];
+  const trackedFiles = getTrackedFiles(broadcastDir);
+
+  try {
+    for (const seqDir of fs.readdirSync(multiDir)) {
+      // Only the -latest sequence counts (timestamped siblings and dry-run are historical/simulated).
+      const match = seqDir.match(/^(.+?\.s\.sol).*-latest$/);
+      const runJsonPath = path.join(multiDir, seqDir, "run.json");
+
+      // Only include files that exist AND are tracked by git (committed or staged)
+      if (!match || !fs.existsSync(runJsonPath) || !trackedFiles.has(path.resolve(runJsonPath))) continue;
+
+      const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+      for (const deployment of data.deployments ?? []) {
+        if (typeof deployment.chain !== "number") continue;
+        broadcastFiles.push({
+          scriptName: match[1],
+          chainId: deployment.chain,
+          filePath: runJsonPath,
+          multiRunData: deployment,
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading multi broadcast directory: ${error}`);
+  }
+
+  return broadcastFiles;
+}
+
 function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
   const deploymentsFiles: BroadcastFile[] = [];
 
@@ -208,9 +253,9 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
     return contracts;
   } else {
-    // Handle broadcast file format
+    // Handle broadcast file format (a per-chain multi-broadcast element has the same shape)
     try {
-      const data = JSON.parse(fs.readFileSync(broadcastFile.filePath, "utf8"));
+      const data = broadcastFile.multiRunData ?? JSON.parse(fs.readFileSync(broadcastFile.filePath, "utf8"));
       const contracts: Contract[] = [];
       const transactions = data.transactions || [];
       const receipts = data.receipts || [];
@@ -452,7 +497,12 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
             scripts: {},
           };
         }
-        allContracts[chainId].scripts[scriptName] = contracts;
+        // Concatenate so a per-chain run-latest.json and a multi-broadcast entry for the same script
+        // both contribute; deduplicateContracts keeps the latest deployment per contract name.
+        allContracts[chainId].scripts[scriptName] = [
+          ...(allContracts[chainId].scripts[scriptName] ?? []),
+          ...contracts,
+        ];
       }
     }
   }
@@ -579,18 +629,22 @@ function main(): void {
   // Read legacy-addresses.json
   const deploymentsFiles = readDeploymentsFile(deploymentsDir);
 
-  // Find all broadcast files
+  // Find all broadcast files (per-chain run-latest.json and multi-chain sequences)
   const broadcastFiles = findBroadcastFiles(broadcastDir);
+  const multiBroadcastFiles = findMultiBroadcastFiles(broadcastDir);
 
-  // Combine both sources (order is important, legacy-addresses.json should be first)
-  const allFiles = [...deploymentsFiles, ...broadcastFiles];
+  // Combine all sources (order is important, legacy-addresses.json should be first)
+  const allFiles = [...deploymentsFiles, ...broadcastFiles, ...multiBroadcastFiles];
 
   if (allFiles.length === 0) {
     console.error("No run-latest.json files found in broadcast directory and no legacy-addresses.json found");
     process.exit(1);
   }
 
-  console.log(`Found ${broadcastFiles.length} broadcast files and ${deploymentsFiles.length} deployment entries:`);
+  console.log(
+    `Found ${broadcastFiles.length} broadcast files, ${multiBroadcastFiles.length} multi-chain deployment entries, ` +
+      `and ${deploymentsFiles.length} deployment entries:`
+  );
 
   // Generate output files inside broadcast directory
   const outputFile = path.join(broadcastDir, "deployed-addresses.json");
