@@ -1409,8 +1409,14 @@
           "block_number": 10789566,
           "transaction_hash": "0x4363aabdfcef2247c734c86f1d714435199ca84f333c6605039bf4ce0995db9d"
         },
+        "CounterfactualDepositCCTP": {
+          "address": "0x26cc007E3d658719F8A44B6109cE6341EB0010cD",
+          "block_number": 12858524,
+          "transaction_hash": "0x283cab3c9e29c9e1c82e3c4247b2939b428d6a7454d2830828f026d83fcda9bc"
+        },
         "CounterfactualDepositFactory": {
           "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
+          "block_number": 10721037,
           "transaction_hash": "0xa8238a645e4068cec71c2a8033bd6aa7e631e85d76565ab821f6bd3180b8ad99"
         },
         "CounterfactualDepositSpokePool": {

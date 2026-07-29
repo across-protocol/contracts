@@ -360,6 +360,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://explorer.arc.io/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.arc.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.arc.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
+| CounterfactualDepositCCTP        | [0x26cc007E3d658719F8A44B6109cE6341EB0010cD](https://explorer.arc.io/address/0x26cc007E3d658719F8A44B6109cE6341EB0010cD) |
 | CounterfactualDepositFactory     | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explorer.arc.io/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
 | CounterfactualDepositSpokePool   | [0xcD73a05979a1Ff8Ca444558BDA60E54161117EE2](https://explorer.arc.io/address/0xcD73a05979a1Ff8Ca444558BDA60E54161117EE2) |
 | CounterfactualDepositVanillaCCTP | [0x7c91B9D7A20135C597D2c394C9Aaf7667f39272E](https://explorer.arc.io/address/0x7c91B9D7A20135C597D2c394C9Aaf7667f39272E) |
