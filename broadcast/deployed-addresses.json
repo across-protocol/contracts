@@ -1670,11 +1670,6 @@
           "address": "0x10D8b8DaA26d307489803e10477De69C0492B610",
           "block_number": 36289597,
           "transaction_hash": "0x5893cf7b8675711dd75036253383e92aaf62d76f185cd6cf16e37b1a851ce8ee"
-        },
-        "Safe": {
-          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
-          "block_number": 42068452,
-          "transaction_hash": "0x031ee3501fa126a33a184aef47cead3e4c7549ef012b6d02a757f013d2021fdf"
         }
       }
     },
