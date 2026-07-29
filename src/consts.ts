@@ -12,12 +12,20 @@ export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const USDT = {
   ...TOKEN_SYMBOLS_MAP.USDT.addresses,
   [CHAIN_IDs.BSC]: (TOKEN_SYMBOLS_MAP["USDT-BNB"].addresses as Record<string, string>)[CHAIN_IDs.BSC],
+  // USDT0 on Tempo (6 decimals; TIP-20 system token) — missing upstream in @across-protocol/constants;
+  // remove once added there. USDT0 addresses conventionally live in the USDT map (cf. HyperEVM/MegaETH).
+  [CHAIN_IDs.TEMPO]: "0x20C00000000000000000000014f22CA97301EB73",
 };
 export const WBTC = {
   ...TOKEN_SYMBOLS_MAP.WBTC.addresses,
   [CHAIN_IDs.BSC]: (TOKEN_SYMBOLS_MAP["WBTC-BNB"].addresses as Record<string, string>)[CHAIN_IDs.BSC],
 };
-export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
+export const WETH = {
+  ...TOKEN_SYMBOLS_MAP.WETH.addresses,
+  // WETH on Monad — missing upstream in @across-protocol/constants; remove once added there. Baked into
+  // the deployed Monad CounterfactualBeacon impl (see commit 976daf43), so it must survive regeneration.
+  [CHAIN_IDs.MONAD]: "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242",
+};
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
 export const WGHO = TOKEN_SYMBOLS_MAP.WGHO.addresses;
