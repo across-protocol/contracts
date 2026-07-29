@@ -665,9 +665,9 @@
           "block_number": 3458452
         },
         "SpokePoolPeriphery": {
-          "address": "0x5a148a9260c1f670429361c34d40b477280F01a9",
-          "block_number": 5629679,
-          "transaction_hash": "0xfdd9d3a1c5ea0f924b33b458e02d1a43820630c07acc7a873f5748f15f94222f"
+          "address": "0x7C99cED6d8011AF8A52488884F7BA2c61b0FA57D",
+          "block_number": 6120096,
+          "transaction_hash": "0xf13367dbf027d769d9dd9290de2cac7fd6d921455c44f26226555ac81071e0c6"
         },
         "AdminWithdrawManager": {
           "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",

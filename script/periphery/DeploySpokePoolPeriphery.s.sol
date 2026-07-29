@@ -73,7 +73,7 @@ abstract contract MultichainPeripheryDeployer is DeploymentUtils {
         if (!vm.keyExists(file, string.concat(".PUBLIC_NETWORKS.", chainIdStr, ".family")))
             return "unknown chain family";
         bytes32 family = keccak256(bytes(getChainFamily(chainId)));
-        if (family == keccak256("ZK_STACK")) return "ZK-stack chain (deploy with the zksync profile)";
+        // if (family == keccak256("ZK_STACK")) return "ZK-stack chain (deploy with the zksync profile)";
         if (family == keccak256("SVM") || family == keccak256("TVM")) return "non-EVM chain";
         if (isTestnet(chainId)) return "testnet";
         if (!hasAddress(chainId, "SpokePool")) return "no SpokePool deployed";

@@ -179,7 +179,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler               | [0x1Ed0D59019a52870337b51DEe8190486a8663037](https://explorer.lens.xyz/address/0x1Ed0D59019a52870337b51DEe8190486a8663037) |
 | Safe                           | [0x396eC04b105587E9DC1a13D27F28D99262f74910](https://explorer.lens.xyz/address/0x396eC04b105587E9DC1a13D27F28D99262f74910) |
 | SpokePool                      | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
-| SpokePoolPeriphery             | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.lens.xyz/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
+| SpokePoolPeriphery             | [0x7C99cED6d8011AF8A52488884F7BA2c61b0FA57D](https://explorer.lens.xyz/address/0x7C99cED6d8011AF8A52488884F7BA2c61b0FA57D) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.lens.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://explorer.lens.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
