@@ -248,7 +248,7 @@ weth = false
 spokePool = true
 sponsoredCctp = false
 vanillaCctp = false
-oft = false
+oft = true
 [4217.uint]
 usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
 usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Tempo)

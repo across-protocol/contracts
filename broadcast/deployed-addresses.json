@@ -1224,6 +1224,11 @@
           "block_number": 30184538,
           "transaction_hash": "0xefc12982a8a86b0a11a981f0e19116d878f2ae25dba15a73f80739a66d6adaf1"
         },
+        "CounterfactualDepositOFT": {
+          "address": "0x9966fD5432ba1D085D23D4cda8fd6188d796D722",
+          "block_number": 32198200,
+          "transaction_hash": "0x1a198f472f122c4d876d9291ec64fbe59e8e253728e8379690fe77128bb3fbd6"
+        },
         "CounterfactualDepositSpokePool": {
           "address": "0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2",
           "block_number": 30184766,

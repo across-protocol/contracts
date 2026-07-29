@@ -308,6 +308,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explore.mainnet.tempo.xyz/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explore.mainnet.tempo.xyz/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
 | CounterfactualDepositFactory   | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explore.mainnet.tempo.xyz/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
+| CounterfactualDepositOFT       | [0x9966fD5432ba1D085D23D4cda8fd6188d796D722](https://explore.mainnet.tempo.xyz/address/0x9966fD5432ba1D085D23D4cda8fd6188d796D722) |
 | CounterfactualDepositSpokePool | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://explore.mainnet.tempo.xyz/address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
 | MulticallHandler               | [0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90](https://explore.mainnet.tempo.xyz/address/0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explore.mainnet.tempo.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
