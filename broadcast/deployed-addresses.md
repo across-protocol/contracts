@@ -244,10 +244,10 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositCCTP      | [0xA45F9f1c963500a91ea87df6c30C2fc8548b944b](https://hyperevmscan.io//address/0xA45F9f1c963500a91ea87df6c30C2fc8548b944b) |
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://hyperevmscan.io//address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool | [0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99](https://hyperevmscan.io//address/0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99) |
-| DstOFTHandler                  | [0x1a19B6A1e60054E93468Cb09b9034B9070b6F73b](https://hyperevmscan.io//address/0x1a19B6A1e60054E93468Cb09b9034B9070b6F73b) |
+| DstOFTHandler                  | [0x1fE11B217cD3E268D45e402fF7a74D789d6038e5](https://hyperevmscan.io//address/0x1fE11B217cD3E268D45e402fF7a74D789d6038e5) |
 | HyperliquidDepositHandler      | [0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5](https://hyperevmscan.io//address/0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5) |
 | MulticallHandler               | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
-| PermissionedMulticallHandler   | [0xe76ad9927B255Ee54c66609c07cb28E833a5837f](https://hyperevmscan.io//address/0xe76ad9927B255Ee54c66609c07cb28E833a5837f) |
+| PermissionedMulticallHandler   | [0x1E5224900B7508D10e28C4627DC4285E50535B1b](https://hyperevmscan.io//address/0x1E5224900B7508D10e28C4627DC4285E50535B1b) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://hyperevmscan.io//address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                      | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | SpokePool                      | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |

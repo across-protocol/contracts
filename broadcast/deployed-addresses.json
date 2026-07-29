@@ -957,13 +957,14 @@
           "transaction_hash": "0xd78f71ca11de6d28fe02006adf91b55f05efe0ffb1e0b2f51cb450cdf5ade5c0"
         },
         "PermissionedMulticallHandler": {
-          "address": "0xe76ad9927B255Ee54c66609c07cb28E833a5837f",
-          "block_number": 35615373,
-          "transaction_hash": "0x7a5756becbd9c58e687002d39c82f0898f2b388cce08f9788494175bf6c2eb7a"
+          "address": "0x1E5224900B7508D10e28C4627DC4285E50535B1b",
+          "block_number": 36793590,
+          "transaction_hash": "0xf02918aee3ffbf0e230d29190d7a1006fcd82268182281db01c5da7be42c43a5"
         },
         "DstOFTHandler": {
-          "address": "0x1a19B6A1e60054E93468Cb09b9034B9070b6F73b",
-          "transaction_hash": null
+          "address": "0x1fE11B217cD3E268D45e402fF7a74D789d6038e5",
+          "block_number": 36793651,
+          "transaction_hash": "0x7b50949787f60356400d124915ccfc4fd479ca9cda45c89f49d21379ad8c75e1"
         },
         "HyperliquidDepositHandler": {
           "address": "0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5",
