@@ -263,12 +263,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositOFT         | [0x9966fD5432ba1D085D23D4cda8fd6188d796D722](https://hyperevmscan.io//address/0x9966fD5432ba1D085D23D4cda8fd6188d796D722) |
 | CounterfactualDepositSpokePool   | [0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2](https://hyperevmscan.io//address/0xCE0d97053dd6047a4cae8A9D957C595d734cd8F2) |
 | CounterfactualDepositVanillaCCTP | [0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7](https://hyperevmscan.io//address/0x3af06B2801C7a23978c5e0DA1Df83C8050Fd6aB7) |
-| DonationBox                      | [0xc010F9F6773a715a88381Ac9bF3D3Ac7f3ae7E46](https://hyperevmscan.io//address/0xc010F9F6773a715a88381Ac9bF3D3Ac7f3ae7E46) |
+| DonationBox                      | [0x39a038a29c86A869f1181575fe2449B6984C86A7](https://hyperevmscan.io//address/0x39a038a29c86A869f1181575fe2449B6984C86A7) |
 | DonationBox_CCTP_USDC_EVM        | [0x64a0A69d16518E4544fAb83C624e01339DC36945](https://hyperevmscan.io//address/0x64a0A69d16518E4544fAb83C624e01339DC36945) |
-| DstOFTHandler                    | [0x1a19B6A1e60054E93468Cb09b9034B9070b6F73b](https://hyperevmscan.io//address/0x1a19B6A1e60054E93468Cb09b9034B9070b6F73b) |
+| DstOFTHandler                    | [0x1fE11B217cD3E268D45e402fF7a74D789d6038e5](https://hyperevmscan.io//address/0x1fE11B217cD3E268D45e402fF7a74D789d6038e5) |
 | HyperliquidDepositHandler        | [0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5](https://hyperevmscan.io//address/0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5) |
 | MulticallHandler                 | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
-| PermissionedMulticallHandler     | [0xe76ad9927B255Ee54c66609c07cb28E833a5837f](https://hyperevmscan.io//address/0xe76ad9927B255Ee54c66609c07cb28E833a5837f) |
+| PermissionedMulticallHandler     | [0x1E5224900B7508D10e28C4627DC4285E50535B1b](https://hyperevmscan.io//address/0x1E5224900B7508D10e28C4627DC4285E50535B1b) |
 | Safe                             | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://hyperevmscan.io//address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                        | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | SpokePool                        | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
