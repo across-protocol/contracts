@@ -21,7 +21,10 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 // use CREATE2 with a fixed salt, so addresses match on every chain and re-runs skip already-deployed chains.
 //
 // Multi-chain broadcasts are logged under broadcast/multi/<Script>.s.sol-latest/run.json; `git add` that
-// file and run `yarn extract-addresses` to record the new deployments in deployed-addresses.json.
+// file and run `yarn extract-addresses` to record the new deployments in deployed-addresses.json. The
+// extractor also materializes each chain's deployment into broadcast/<Script>.s.sol/<chainId>/run-latest.json;
+// commit those too — forge overwrites the multi -latest folder wholesale on reruns that broadcast to two or
+// more chains, so the per-chain files are the durable record.
 abstract contract MultichainPeripheryDeployer is DeploymentUtils {
     /// @dev Deploys to the currently selected fork; called with an active broadcast.
     function _deploy(address permit2) internal virtual;

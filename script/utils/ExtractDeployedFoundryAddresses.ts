@@ -164,6 +164,10 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
  * these instead of per-chain run-latest.json files when a script broadcasts to several chains in one
  * run. Each element of the sequence's `deployments` array has the same shape as a single-chain
  * run-latest.json, so each becomes a virtual broadcast file for its chain.
+ *
+ * NB: forge replaces the whole -latest folder on every rerun that broadcasts to two or more chains,
+ * so chains skipped by an idempotent rerun vanish from it. materializeMultiBroadcasts() persists each
+ * element into the durable per-chain layout to protect against that.
  */
 function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
   const multiDir = path.join(broadcastDir, "multi");
@@ -197,6 +201,50 @@ function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
   }
 
   return broadcastFiles;
+}
+
+/**
+ * Materialize each multi-chain deployment element into forge's canonical per-chain layout
+ * (broadcast/<script>/<chainId>/run-latest.json — identical schema). The multi -latest folder is
+ * volatile (see findMultiBroadcastFiles), so the per-chain layout is the durable record: a rerun can
+ * never erase a chain it didn't touch. Existing per-chain files are only replaced when the multi
+ * element is newer (forge timestamps both in milliseconds).
+ */
+function materializeMultiBroadcasts(broadcastDir: string, multiFiles: BroadcastFile[]): void {
+  // Keep only the newest element per (script, chain) in case several sequences overlap.
+  const newest = new Map<string, BroadcastFile>();
+  for (const file of multiFiles) {
+    const key = `${file.scriptName}/${file.chainId}`;
+    const prev = newest.get(key);
+    if (!prev || (file.multiRunData.timestamp ?? 0) > (prev.multiRunData.timestamp ?? 0)) {
+      newest.set(key, file);
+    }
+  }
+
+  const written: string[] = [];
+  for (const file of newest.values()) {
+    const chainDir = path.join(broadcastDir, file.scriptName, String(file.chainId));
+    const target = path.join(chainDir, "run-latest.json");
+    if (fs.existsSync(target)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(target, "utf8"));
+        if ((existing.timestamp ?? 0) >= (file.multiRunData.timestamp ?? 0)) continue;
+      } catch {
+        // Unreadable existing file: replace it.
+      }
+    }
+    fs.mkdirSync(chainDir, { recursive: true });
+    fs.writeFileSync(target, JSON.stringify(file.multiRunData, null, 2) + "\n");
+    written.push(path.relative(broadcastDir, target));
+  }
+
+  if (written.length > 0) {
+    console.log(`Materialized ${written.length} per-chain run-latest.json file(s) from multi-chain sequences.`);
+    console.log("Commit them so these deployments survive later multi-chain reruns:");
+    for (const file of written) {
+      console.log(`  - broadcast/${file}`);
+    }
+  }
 }
 
 function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
@@ -629,9 +677,11 @@ function main(): void {
   // Read legacy-addresses.json
   const deploymentsFiles = readDeploymentsFile(deploymentsDir);
 
-  // Find all broadcast files (per-chain run-latest.json and multi-chain sequences)
+  // Find all broadcast files (per-chain run-latest.json and multi-chain sequences), and persist
+  // multi-chain deployments into the durable per-chain layout.
   const broadcastFiles = findBroadcastFiles(broadcastDir);
   const multiBroadcastFiles = findMultiBroadcastFiles(broadcastDir);
+  materializeMultiBroadcasts(broadcastDir, multiBroadcastFiles);
 
   // Combine all sources (order is important, legacy-addresses.json should be first)
   const allFiles = [...deploymentsFiles, ...broadcastFiles, ...multiBroadcastFiles];
