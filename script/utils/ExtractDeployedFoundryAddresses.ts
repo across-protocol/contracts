@@ -5,7 +5,9 @@
  * smart contract addresses that are in the broadcast folder.
  *
  * It specifically looks at the run-latest.json file for each smart contract and inside
- * that JSON looks at the `contractAddress` field.
+ * that JSON looks at the `contractAddress` field. Multi-chain broadcasts (broadcast/multi/
+ * <Script>.s.sol-latest/run.json) are also scanned; each per-chain deployment element inside
+ * them is processed exactly like a single-chain run-latest.json.
  */
 
 import * as fs from "fs";
@@ -27,6 +29,9 @@ interface BroadcastFile {
   filePath: string;
   isDeploymentsJson?: boolean;
   deploymentsData?: any;
+  // For multi-chain broadcasts: the per-chain deployment element from broadcast/multi/*/run.json,
+  // shaped identically to a single-chain run-latest.json.
+  multiRunData?: any;
 }
 
 interface Contract {
@@ -154,6 +159,94 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
   return broadcastFiles;
 }
 
+/**
+ * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/run.json). Forge writes
+ * these instead of per-chain run-latest.json files when a script broadcasts to several chains in one
+ * run. Each element of the sequence's `deployments` array has the same shape as a single-chain
+ * run-latest.json, so each becomes a virtual broadcast file for its chain.
+ *
+ * NB: forge replaces the whole -latest folder on every rerun that broadcasts to two or more chains,
+ * so chains skipped by an idempotent rerun vanish from it. materializeMultiBroadcasts() persists each
+ * element into the durable per-chain layout to protect against that.
+ */
+function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
+  const multiDir = path.join(broadcastDir, "multi");
+  if (!fs.existsSync(multiDir)) return [];
+
+  const broadcastFiles: BroadcastFile[] = [];
+  const trackedFiles = getTrackedFiles(broadcastDir);
+
+  try {
+    for (const seqDir of fs.readdirSync(multiDir)) {
+      // Only the -latest sequence counts (timestamped siblings and dry-run are historical/simulated).
+      const match = seqDir.match(/^(.+?\.s\.sol).*-latest$/);
+      const runJsonPath = path.join(multiDir, seqDir, "run.json");
+
+      // Only include files that exist AND are tracked by git (committed or staged)
+      if (!match || !fs.existsSync(runJsonPath) || !trackedFiles.has(path.resolve(runJsonPath))) continue;
+
+      const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+      for (const deployment of data.deployments ?? []) {
+        if (typeof deployment.chain !== "number") continue;
+        broadcastFiles.push({
+          scriptName: match[1],
+          chainId: deployment.chain,
+          filePath: runJsonPath,
+          multiRunData: deployment,
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading multi broadcast directory: ${error}`);
+  }
+
+  return broadcastFiles;
+}
+
+/**
+ * Materialize each multi-chain deployment element into forge's canonical per-chain layout
+ * (broadcast/<script>/<chainId>/run-latest.json — identical schema). The multi -latest folder is
+ * volatile (see findMultiBroadcastFiles), so the per-chain layout is the durable record: a rerun can
+ * never erase a chain it didn't touch. Existing per-chain files are only replaced when the multi
+ * element is newer (forge timestamps both in milliseconds).
+ */
+function materializeMultiBroadcasts(broadcastDir: string, multiFiles: BroadcastFile[]): void {
+  // Keep only the newest element per (script, chain) in case several sequences overlap.
+  const newest = new Map<string, BroadcastFile>();
+  for (const file of multiFiles) {
+    const key = `${file.scriptName}/${file.chainId}`;
+    const prev = newest.get(key);
+    if (!prev || (file.multiRunData.timestamp ?? 0) > (prev.multiRunData.timestamp ?? 0)) {
+      newest.set(key, file);
+    }
+  }
+
+  const written: string[] = [];
+  for (const file of newest.values()) {
+    const chainDir = path.join(broadcastDir, file.scriptName, String(file.chainId));
+    const target = path.join(chainDir, "run-latest.json");
+    if (fs.existsSync(target)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(target, "utf8"));
+        if ((existing.timestamp ?? 0) >= (file.multiRunData.timestamp ?? 0)) continue;
+      } catch {
+        // Unreadable existing file: replace it.
+      }
+    }
+    fs.mkdirSync(chainDir, { recursive: true });
+    fs.writeFileSync(target, JSON.stringify(file.multiRunData, null, 2) + "\n");
+    written.push(path.relative(broadcastDir, target));
+  }
+
+  if (written.length > 0) {
+    console.log(`Materialized ${written.length} per-chain run-latest.json file(s) from multi-chain sequences.`);
+    console.log("Commit them so these deployments survive later multi-chain reruns:");
+    for (const file of written) {
+      console.log(`  - broadcast/${file}`);
+    }
+  }
+}
+
 function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
   const deploymentsFiles: BroadcastFile[] = [];
 
@@ -208,9 +301,9 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
     return contracts;
   } else {
-    // Handle broadcast file format
+    // Handle broadcast file format (a per-chain multi-broadcast element has the same shape)
     try {
-      const data = JSON.parse(fs.readFileSync(broadcastFile.filePath, "utf8"));
+      const data = broadcastFile.multiRunData ?? JSON.parse(fs.readFileSync(broadcastFile.filePath, "utf8"));
       const contracts: Contract[] = [];
       const transactions = data.transactions || [];
       const receipts = data.receipts || [];
@@ -452,7 +545,12 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
             scripts: {},
           };
         }
-        allContracts[chainId].scripts[scriptName] = contracts;
+        // Concatenate so a per-chain run-latest.json and a multi-broadcast entry for the same script
+        // both contribute; deduplicateContracts keeps the latest deployment per contract name.
+        allContracts[chainId].scripts[scriptName] = [
+          ...(allContracts[chainId].scripts[scriptName] ?? []),
+          ...contracts,
+        ];
       }
     }
   }
@@ -579,18 +677,24 @@ function main(): void {
   // Read legacy-addresses.json
   const deploymentsFiles = readDeploymentsFile(deploymentsDir);
 
-  // Find all broadcast files
+  // Find all broadcast files (per-chain run-latest.json and multi-chain sequences), and persist
+  // multi-chain deployments into the durable per-chain layout.
   const broadcastFiles = findBroadcastFiles(broadcastDir);
+  const multiBroadcastFiles = findMultiBroadcastFiles(broadcastDir);
+  materializeMultiBroadcasts(broadcastDir, multiBroadcastFiles);
 
-  // Combine both sources (order is important, legacy-addresses.json should be first)
-  const allFiles = [...deploymentsFiles, ...broadcastFiles];
+  // Combine all sources (order is important, legacy-addresses.json should be first)
+  const allFiles = [...deploymentsFiles, ...broadcastFiles, ...multiBroadcastFiles];
 
   if (allFiles.length === 0) {
     console.error("No run-latest.json files found in broadcast directory and no legacy-addresses.json found");
     process.exit(1);
   }
 
-  console.log(`Found ${broadcastFiles.length} broadcast files and ${deploymentsFiles.length} deployment entries:`);
+  console.log(
+    `Found ${broadcastFiles.length} broadcast files, ${multiBroadcastFiles.length} multi-chain deployment entries, ` +
+      `and ${deploymentsFiles.length} deployment entries:`
+  );
 
   // Generate output files inside broadcast directory
   const outputFile = path.join(broadcastDir, "deployed-addresses.json");

@@ -100,8 +100,7 @@ contract DeployedAddresses is Test {
      */
     function getContractNames(uint256 chainId) public view returns (string[] memory) {
         string memory jsonData = vm.readFile(JSON_PATH);
-        string memory path = string.concat('.chains["', vm.toString(chainId), '"].contracts | keys');
-        return jsonData.readStringArray(path);
+        return vm.parseJsonKeys(jsonData, string.concat('.chains["', vm.toString(chainId), '"].contracts'));
     }
 
     /**
@@ -110,7 +109,7 @@ contract DeployedAddresses is Test {
      */
     function getChainIds() public view returns (uint256[] memory) {
         string memory jsonData = vm.readFile(JSON_PATH);
-        string[] memory chainIdStrings = jsonData.readStringArray(".chains | keys");
+        string[] memory chainIdStrings = vm.parseJsonKeys(jsonData, ".chains");
         uint256[] memory chainIds = new uint256[](chainIdStrings.length);
         for (uint256 i = 0; i < chainIdStrings.length; i++) {
             chainIds[i] = vm.parseUint(chainIdStrings[i]);
