@@ -178,7 +178,7 @@ yarn tron-deploy-tron-multicall-handler [--testnet]
 Deploys `Tron_SpokePoolPeriphery`, the Tron-specific `SpokePoolPeriphery` variant that overrides `_safeTransfer` with a balance-delta transfer check, required for Tron USDT because its `transfer` returns `false` even on success. The constructor internally deploys a `Tron_SwapProxy`, which is accessible via `spokePoolPeriphery.swapProxy()` — a separate `SwapProxy` deployment is not required when deploying the periphery.
 
 ```bash
-yarn tron-deploy-spoke-pool-periphery <permit2> [--testnet]
+yarn tron-deploy-spoke-pool-periphery <permit2> <multicall3> [--testnet]
 ```
 
 ### Tron_SwapProxy

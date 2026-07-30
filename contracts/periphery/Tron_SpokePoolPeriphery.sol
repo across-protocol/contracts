@@ -35,7 +35,8 @@ contract Tron_SwapProxy is SwapProxy {
  * @custom:security-contact bugs@across.to
  */
 contract Tron_SpokePoolPeriphery is SpokePoolPeriphery {
-    constructor(IPermit2 _permit2) SpokePoolPeriphery(_permit2) {} // solhint-disable-line no-empty-blocks
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IPermit2 _permit2, address _multicall3) SpokePoolPeriphery(_permit2, _multicall3) {}
 
     /// @dev Deploys the Tron variant of the swap proxy so its exchange/output transfers also tolerate
     ///      Tron USDT's non-standard `transfer` return value.

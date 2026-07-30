@@ -17,6 +17,7 @@ import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 import { MockTronUSDT } from "../../../../contracts/test/MockTronUSDT.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
+import { Multicall3 } from "../../../../contracts/external/Multicall3.sol";
 
 /// @dev Minimal exchange: the SwapProxy pre-funds it with the input token (TransferType.Transfer),
 ///      so the swap only pays out the output token. The `transfer` return value is deliberately
@@ -37,6 +38,7 @@ contract Tron_SpokePoolPeripheryTest is Test {
     WETH9 weth;
     MockTronUSDT usdt;
     MintableERC20 vanilla;
+    Multicall3 multicall3;
 
     address owner = makeAddr("owner");
     address depositor = makeAddr("depositor");
@@ -51,7 +53,8 @@ contract Tron_SpokePoolPeripheryTest is Test {
         vanilla = new MintableERC20("Vanilla", "VAN", 6);
         permit2 = IPermit2(new MockPermit2());
         dex = new MockTronDex();
-        periphery = new Tron_SpokePoolPeriphery(permit2);
+        multicall3 = new Multicall3();
+        periphery = new Tron_SpokePoolPeriphery(permit2, address(multicall3));
 
         Ethereum_SpokePool impl = new Ethereum_SpokePool(address(weth), FILL_DEADLINE_BUFFER, FILL_DEADLINE_BUFFER);
         spokePool = Ethereum_SpokePool(
@@ -105,7 +108,7 @@ contract Tron_SpokePoolPeripheryTest is Test {
     /// @dev Baseline showing why the variant exists: the mainline periphery's default `_safeTransfer`
     ///      treats Tron USDT's false return as failure.
     function test_BasePeriphery_RevertsOnTronUSDT() public {
-        SpokePoolPeriphery basePeriphery = new SpokePoolPeriphery(permit2);
+        SpokePoolPeriphery basePeriphery = new SpokePoolPeriphery(permit2, address(multicall3));
         usdt.mint(depositor, SWAP_AMOUNT);
         vanilla.mint(address(dex), DEPOSIT_AMOUNT);
         SpokePoolPeripheryInterface.SwapAndDepositData memory data = _swapData(
