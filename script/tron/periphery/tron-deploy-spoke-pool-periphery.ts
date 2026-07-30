@@ -34,10 +34,7 @@ async function main(): Promise<void> {
   console.log(`Permit2: ${permit2}`);
   console.log(`Multicall3: ${multicall3}`);
 
-  const encodedArgs = encodeArgs(
-    ["address", "address"],
-    [tronToEvmAddress(permit2), tronToEvmAddress(multicall3)]
-  );
+  const encodedArgs = encodeArgs(["address", "address"], [tronToEvmAddress(permit2), tronToEvmAddress(multicall3)]);
 
   const artifactPath = path.resolve(__dirname, "../../../out-tron/SpokePoolPeriphery.sol/SpokePoolPeriphery.json");
 
