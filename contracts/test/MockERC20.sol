@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
+import { IERC20Auth, IERC20AuthBytes } from "../external/interfaces/IERC20Auth.sol";
 import { ERC20Permit } from "@openzeppelin/contracts-v4/token/ERC20/extensions/ERC20Permit.sol";
 import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
@@ -46,7 +46,7 @@ contract MintableERC20 is ERC20 {
  * @title MockERC20
  * @notice Implements mocked ERC20 contract with various features.
  */
-contract MockERC20 is IERC20Auth, ERC20Permit {
+contract MockERC20 is IERC20Auth, IERC20AuthBytes, ERC20Permit {
     bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH =
         keccak256(
             "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
@@ -69,9 +69,42 @@ contract MockERC20 is IERC20Auth, ERC20Permit {
         bytes32 r,
         bytes32 s
     ) external {
+        _verifyAndTransferWithAuthorization(
+            from,
+            to,
+            value,
+            validAfter,
+            validBefore,
+            nonce,
+            bytes.concat(r, s, bytes1(v))
+        );
+    }
+
+    // Extended EIP-3009 overload that accepts an unstructured signature (EOA or EIP-1271).
+    // Selector differs from the v/r/s form, so both can coexist on the same contract.
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) external {
+        _verifyAndTransferWithAuthorization(from, to, value, validAfter, validBefore, nonce, signature);
+    }
+
+    function _verifyAndTransferWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) internal {
         require(validAfter <= block.timestamp && validBefore >= block.timestamp, "Invalid time bounds");
         require(msg.sender == to, "Receiver not caller");
-        bytes memory signature = bytes.concat(r, s, bytes1(v));
 
         bytes32 structHash = keccak256(
             abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)
