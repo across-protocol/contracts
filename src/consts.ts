@@ -348,7 +348,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.ROBINHOOD]: {
-    helios: "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.MODE_SEPOLIA]: {
