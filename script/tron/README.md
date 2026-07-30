@@ -227,7 +227,7 @@ yarn tron-deploy-tron-multicall-handler [--testnet]
 Deploys `SpokePoolPeriphery`. The constructor internally deploys a `SwapProxy`, which is accessible via `spokePoolPeriphery.swapProxy()` — a separate `SwapProxy` deployment is not required when deploying the periphery.
 
 ```bash
-yarn tron-deploy-spoke-pool-periphery <permit2> [--testnet]
+yarn tron-deploy-spoke-pool-periphery <permit2> <multicall3> [--testnet]
 ```
 
 ### SwapProxy

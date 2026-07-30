@@ -36,6 +36,7 @@ optimizer_runs = 300
 lint_on_build = false
 
 [rpc_endpoints]
+avalanche = "${NODE_URL_43114}"
 arbitrum = "${NODE_URL_42161}"
 base = "${NODE_URL_8453}"
 blast = "${NODE_URL_81457}"
@@ -58,6 +59,7 @@ world = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"
+robinhood = "${NODE_URL_4663}"
 zora = "${NODE_URL_7777777}"
 
 # testnet
