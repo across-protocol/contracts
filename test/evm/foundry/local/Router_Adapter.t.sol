@@ -9,7 +9,8 @@ import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1Stand
 import { FinderInterface } from "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 
 import { Router_Adapter } from "../../../../contracts/chain-adapters/Router_Adapter.sol";
-import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
+import { OP_Adapter } from "../../../../contracts/chain-adapters/OP_Adapter.sol";
+import { IOpUSDCBridgeAdapter } from "../../../../contracts/external/interfaces/IOpUSDCBridgeAdapter.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
@@ -50,7 +51,7 @@ contract Token_ERC20 is ERC20 {
 
 contract RouterAdapterTest is Test {
     Router_Adapter routerAdapter;
-    Optimism_Adapter optimismAdapter;
+    OP_Adapter opAdapter;
 
     Token_ERC20 l1Token;
     Token_ERC20 l2Token;
@@ -100,14 +101,16 @@ contract RouterAdapterTest is Test {
 
         adapterStore = new AdapterStore();
 
-        optimismAdapter = new Optimism_Adapter(
+        opAdapter = new OP_Adapter(
             WETH9Interface(address(l1Weth)),
+            IERC20(address(0)),
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
-            IERC20(address(0)),
-            ITokenMessenger(address(0))
+            IOpUSDCBridgeAdapter(address(0)),
+            ITokenMessenger(address(0)),
+            0
         );
-        routerAdapter = new Mock_Router_Adapter(address(optimismAdapter), l2Target, L2_CHAIN_ID, L3_CHAIN_ID, hubPool);
+        routerAdapter = new Mock_Router_Adapter(address(opAdapter), l2Target, L2_CHAIN_ID, L3_CHAIN_ID, hubPool);
     }
 
     // Messages should be indiscriminately sent to the l2Forwarder.
