@@ -818,9 +818,6 @@
       "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
-    "81457": {
-      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-    },
     "84532": {
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
       "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
@@ -887,8 +884,6 @@
       "scrollERC20GatewayRouter": "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
       "scrollMessengerRelay": "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
       "scrollGasPriceOracle": "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
-      "blastYieldManager": "0xa230285d5683C74935aD14c446e137c8c8828438",
-      "blastDaiRetriever": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
       "donationBox": "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
       "adapterStore": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
       "hubPoolStore": "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
@@ -922,13 +917,11 @@
   "OP_STACK_ADDRESS_MAP": {
     "1": {
       "10": {
-        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
         "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1",
         "L1StandardBridge": "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1"
       },
       "130": {
-        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
         "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
         "L1StandardBridge": "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA"
@@ -955,11 +948,9 @@
       "4326": {
         "L1CrossDomainMessenger": "0x6C7198250087B29A8040eC63903Bc130f4831Cc9",
         "L1StandardBridge": "0x0CA3A2FBC3D770b578223FBB6b062fa875a2eE75",
-        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
-        "L1BlastBridge": "0x0000000000000000000000000000000000000000"
+        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000"
       },
       "8453": {
-        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
         "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
         "L1StandardBridge": "0x3154Cf16ccdb4C6d922629664174b904d80F2C35"
@@ -972,11 +963,6 @@
         "L1CrossDomainMessenger": "0x69d3cf86b2bf1a9e99875b7e2d9b6a84426c171f",
         "L1StandardBridge": "0x88ff1e5b602916615391f55854588efcbb7663f0",
         "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000"
-      },
-      "81457": {
-        "L1BlastBridge": "0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115",
-        "L1CrossDomainMessenger": "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
-        "L1StandardBridge": "0x697402166Fbf2F22E970df8a6486Ef171dbfc524"
       },
       "7777777": {
         "L1CrossDomainMessenger": "0xdC40a14d9abd6F410226f1E6de71aE03441ca506",
@@ -1003,11 +989,6 @@
       "11155420": {
         "L1CrossDomainMessenger": "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
         "L1StandardBridge": "0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1"
-      },
-      "168587773": {
-        "L1BlastBridge": "0xc644cc19d2A9388b71dd1dEde07cFFC73237Dca8",
-        "L1CrossDomainMessenger": "0x9338F298F29D3918D5D1Feb209aeB9915CC96333",
-        "L1StandardBridge": "0xDeDa8D3CCf044fE2A16217846B6e1f1cfD8e122f"
       }
     }
   },
