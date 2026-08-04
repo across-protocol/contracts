@@ -109,4 +109,97 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Max (fixed) fee for the WBTC SpokePool route.
     function wbtcSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    // --- V5 config -----------------------------------------------------------------------------------------
+    //
+    // Values the Across V5 counterfactual vertical resolves off this beacon, mirroring the getter set of the
+    // V5 repo's `MockBeacon`. The getter NAME is the wire format: a V5 `CounterfactualRoute` / `Template`
+    // commits `bytes4` selectors (`inputTokenGetter`, `executorGetter`, `bridgeEndpointGetter`,
+    // `swapOutputTokenGetter`, `maxExecutionFeeGetter`, `cctpMaxFeeBpsGetter`) that V5's `BeaconLib` resolves
+    // by staticcall — so renaming any of these orphans every route committed against it. Zero means the
+    // route is not configured and fails closed (`RouteNotConfigured`) for address getters; for the fee caps
+    // and stable prices zero is a VALID configured value (see each group below).
+
+    /// @notice The Across V5 `Gateway` on this chain, resolved by the V5 prefunder to build the live path.
+    function gateway() external view returns (address);
+
+    /// @notice The USDT0 `IOFT` on this chain — the `send` target of V5's `CounterfactualOFTBridgeExecutor`,
+    ///         committed as its route's `bridgeEndpointGetter`. Distinct from `oftSrcPeriphery()` (the V4
+    ///         sponsored-OFT periphery). OFT endpoints are per-token, so another OFT asset means another
+    ///         getter.
+    function usdtOft() external view returns (address);
+
+    // --- V5 executors. Committed as a route leaf's `executorGetter`; V5's prefunder requires the caller to
+    //     be both `gateway.currentExecutor()` and the address resolved here, so repointing migrates a route.
+
+    /// @notice V5 `CounterfactualSpokePoolBridgeExecutor`.
+    function spokePoolDepositExecutor() external view returns (address);
+
+    /// @notice V5 `CounterfactualCCTPBridgeExecutor`.
+    function cctpDepositExecutor() external view returns (address);
+
+    /// @notice V5 `CounterfactualOFTBridgeExecutor`.
+    function oftDepositExecutor() external view returns (address);
+
+    /// @notice V5 `CounterfactualSameChainExecutor`.
+    function sameChainExecutor() external view returns (address);
+
+    /// @notice V5 `CounterfactualDestinationExecutor`. Never resolved on-chain — a route commits it directly
+    ///         as `dstExecutor` folded into `dstStepId` — but published here so tooling reads one source of
+    ///         truth. Note that executor is itself constructor-bound to this beacon, so the two must agree.
+    function destinationExecutor() external view returns (address);
+
+    // --- Remaining per-(token, bridge) V5 execution-fee caps, in funded-token units. Zero is a valid value:
+    //     a fee-free route. (The USDC CCTP, USDT OFT and SpokePool caps are declared above, shared with V4.)
+
+    /// @notice Max execution fee for the USDT CCTP route.
+    function usdtCctpMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the WETH CCTP route.
+    function wethCctpMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC.e CCTP route.
+    function usdceCctpMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC OFT route.
+    function usdcOftMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the WETH OFT route.
+    function wethOftMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC.e OFT route.
+    function usdceOftMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC same-chain route.
+    function usdcSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDT same-chain route.
+    function usdtSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the WETH same-chain route.
+    function wethSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC.e same-chain route.
+    function usdceSameChainMaxExecutionFee() external view returns (uint256);
+
+    // --- Per-token USD stable prices, 1e18-fixed and decimal-agnostic: V5's `FloorLib.stableFloor` divides
+    //     one by the other and folds on-chain decimals, so one price pair serves every chain. Zero marks the
+    //     token unpriced (volatile) and SKIPS the stable floor for any pair touching it — the normal setting
+    //     for WETH, whose output is then protected only by the authority-signed plan.
+
+    /// @notice USD price of USDC, 1e18-fixed. Zero ⇒ unpriced (stable floor skipped).
+    function usdcStablePrice() external view returns (uint256);
+
+    /// @notice USD price of USDT, 1e18-fixed. Zero ⇒ unpriced (stable floor skipped).
+    function usdtStablePrice() external view returns (uint256);
+
+    /// @notice USD price of WETH, 1e18-fixed. Normally zero (unpriced/volatile).
+    function wethStablePrice() external view returns (uint256);
+
+    /// @notice USD price of USDC.e, 1e18-fixed. Zero ⇒ unpriced (stable floor skipped).
+    function usdceStablePrice() external view returns (uint256);
+
+    /// @notice The price V5's `FloorLib` reads, dispatched over this beacon's configured token addresses.
+    ///         Any other token — or a configured one whose `*StablePrice` is zero — is unpriced.
+    function stablePrice(address token) external view returns (uint256);
 }

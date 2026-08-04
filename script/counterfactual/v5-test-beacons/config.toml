@@ -1,0 +1,185 @@
+# V5 TEST BEACON CONFIG — Base + Arbitrum only.
+#
+# Deploys a SEPARATE counterfactual beacon stack (its own bootstrap, proxy, dispatcher and factory) under its
+# own CREATE2 salt, so the production beacons on these chains are never touched. Its purpose is to publish the
+# getters the Across V5 counterfactual vertical resolves — `gateway`, the five executors, `usdtOft`, the
+# per-(token, bridge) `*MaxExecutionFee` caps and the per-token `*StablePrice` — against a real
+# `CounterfactualBeacon` rather than the V5 repo's mutable `MockBeacon`.
+#
+# EVERY key below is named after the beacon getter it feeds. That is not cosmetic: a V5
+# `CounterfactualRoute` / `Template` commits `bytes4` getter selectors that V5's `BeaconLib` resolves by
+# staticcall, so the getter name is the wire format. Rename a key without renaming the getter and it is
+# silently orphaned.
+#
+# Two kinds of key live here:
+#   - OVERRIDES of values the shared resolvers already produce from constants.json +
+#     broadcast/deployed-addresses.json (`spokePool`, `usdc`, `usdt`, `usdce`, `weth`, `wbtc`,
+#     `wrappedNativeToken`, `nativeToken`, `cctpSrcPeriphery`, `cctpTokenMessenger`, `oftSrcPeriphery`,
+#     `cctpSourceDomain`, `oftSrcEid`). Present here ⇒ this value wins; absent ⇒ the resolver's value is used.
+#     `spokePool` is the reason overrides exist: V5 routes must hit the V5-enabled SpokePool proxies, which are
+#     NOT the canonical ones in deployed-addresses.json.
+#   - V5-ONLY values with no resolver at all (`gateway`, the five executors, `usdtOft`) plus every
+#     `*MaxExecutionFee` / `*StablePrice` / `usdcCctpMaxFeeBps`. These come from here or nowhere.
+#
+# An ABSENT key means zero, and zero means different things by type — deliberately:
+#   - address getter -> `address(0)` -> the route fails closed with `RouteNotConfigured`
+#   - `*MaxExecutionFee` -> `0` -> a VALID fee-free route: any non-zero quoted fee reverts `ExecutionFeeAboveCap`
+#   - `*StablePrice` -> `0` -> the token is unpriced (volatile), so V5's stable swap floor is SKIPPED for every
+#     pair touching it; the output is then protected only by the authority-signed plan. WETH is set this way
+#     on purpose.
+# Unlike the production config.toml this file has NO `[N.bool]` declared-support section and no
+# non-zero-cap assertions: the V5 surface is still moving, so values are permissive and logged, not enforced.
+#
+# The fee caps and stable prices are the V5 repo's starting values (script/counterfactual/beacon.toml there),
+# not tuned economics. A cap that is too low bricks fee-bearing routes; one that is too high lets a
+# compromised quote signer take that much off the top of every deposit.
+
+# Synthetic "globals" section (chain id 0 is not a real chain; StdConfig requires top-level keys to resolve to
+# a chain id, so global values live here). Read via CounterfactualConfig._deploySalt().
+[0]
+endpoint_url = "http://localhost"
+[0.bytes32]
+# CREATE2 salt for this test stack: bootstrap, beacon proxy, dispatcher and factory. Deliberately NOT the
+# production salt in ../config.toml — that is what keeps these beacons a separate deployment at separate
+# addresses. Bump it for a completely fresh set of test beacons (a new proxy address, so any V5 route or
+# destination executor bound to the old proxy must be re-pointed). A non-zero `salt` argument passed to either
+# deploy script overrides this for one-offs.
+deploySalt = "0x0000000000000000000000000000000000000000000000000000000000000501"
+
+# ── Base ──────────────────────────────────────────────────────────────────────────────────────────────
+[8453]
+endpoint_url = "${NODE_URL_8453}"
+
+[8453.address]
+# API quote signer / requirements-plan authority. Zero is fatal on every V5 flow (`AuthorityRequired`).
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+# Target of the optional `transferOwnership` step (Ownable2Step — accepted out of band).
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+
+# The Across V5-enabled SpokePool, from across-protocol/contracts#1489 ("chore: Spoke V5 Deployment"), which
+# deployed NEW V5 proxies rather than upgrading the canonical ones. MUST be overridden here: the resolver
+# returns the canonical Base SpokePool, which is not V5 and would accept a deposit without producing a V5 fill.
+spokePool = "0xEb37a68e78BE064881A0472CE17A4e92994639Df"
+
+# Tokens. Committed as `inputTokenGetter` (the funded token) and as `swapOutputTokenGetter` (a non-zero value
+# is what makes a route a swap route). Same values the resolvers produce; pinned here so the beacon's token
+# set is reviewable in one place alongside the caps and prices that reference it.
+usdc = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+usdt = "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"
+weth = "0x4200000000000000000000000000000000000006"
+# USDbC — Base's bridged USDC.
+usdce = "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+
+# No `usdtOft`: USDT0 is not deployed on Base (no entry for 8453 in script/mintburn/oft/usdt0.toml). The
+# `usdt` above is regular Tether USDT — a plain ERC-20 with no LayerZero `send` — so it cannot serve an OFT
+# route. Leaving the getter unset makes any OFT route revert `RouteNotConfigured` instead of calling into a
+# non-OFT token.
+# usdtOft = ""
+
+# ── V5 stack. No resolver exists for these — fill them from the V5 repo's script/deployments.toml records.
+# The `Gateway` is already deployed on this chain. The five executors are not (as of this writing): deploy
+# them from the V5 repo against the PREDICTED beacon proxy address that PredictV5TestBeacon.s.sol prints,
+# then paste the addresses here and deploy the impl. That ordering is forced by
+# `CounterfactualDestinationExecutor`, which is constructor-bound to the beacon while the beacon bakes it as
+# an immutable — the proxy address is predictable from the salt, so the cycle resolves in that direction only.
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+# spokePoolDepositExecutor = ""   # CounterfactualSpokePoolBridgeExecutor
+# cctpDepositExecutor = ""        # CounterfactualCCTPBridgeExecutor
+# oftDepositExecutor = ""         # CounterfactualOFTBridgeExecutor
+# sameChainExecutor = ""          # CounterfactualSameChainExecutor
+# destinationExecutor = ""        # CounterfactualDestinationExecutor (must be bound to THIS beacon proxy)
+
+[8453.uint]
+# Execution-fee caps in funded-token units (USDC/USDT/USDC.e 6 decimals, WETH 18).
+usdcSpokePoolMaxExecutionFee = 5000000
+usdtSpokePoolMaxExecutionFee = 5000000
+wethSpokePoolMaxExecutionFee = 2000000000000000
+usdceSpokePoolMaxExecutionFee = 5000000
+usdcCctpMaxExecutionFee = 5000000
+usdtCctpMaxExecutionFee = 5000000
+wethCctpMaxExecutionFee = 2000000000000000
+usdceCctpMaxExecutionFee = 5000000
+usdcOftMaxExecutionFee = 5000000
+usdtOftMaxExecutionFee = 5000000
+wethOftMaxExecutionFee = 2000000000000000
+usdceOftMaxExecutionFee = 5000000
+usdcSameChainMaxExecutionFee = 5000000
+usdtSameChainMaxExecutionFee = 5000000
+wethSameChainMaxExecutionFee = 2000000000000000
+usdceSameChainMaxExecutionFee = 5000000
+# No WBTC route on Base (the resolver finds no `.WBTC.8453`), so its cap is left unset.
+# wbtcSpokePoolMaxExecutionFee = 0
+
+# Cap on the relayer-chosen Circle fast-transfer fee, in bps of the burned amount. 10000 bps is 100%, i.e. the
+# cap equals the whole burn amount, so `CctpMaxFeeAboveCap` can never fire and the API's quote signature
+# becomes the only bound on `maxFeeCctp`. Intentional in the V5 test config; lower it to reinstate on-chain
+# defense-in-depth. 0 would restrict CCTP to standard (slow) transfers.
+usdcCctpMaxFeeBps = 10000
+
+# Per-token USD price, 1e18-fixed and decimal-agnostic (V5's `FloorLib` folds on-chain decimals into the same
+# division, so one set of prices serves every chain). 0 = unpriced/volatile -> stable floor skipped.
+usdcStablePrice = 1000000000000000000
+usdtStablePrice = 1000000000000000000
+usdceStablePrice = 1000000000000000000
+# WETH is deliberately unpriced: a stable floor is meaningless for it, and any ETH-legged swap is protected by
+# the authority-signed swap-quality plan instead.
+wethStablePrice = 0
+
+# ── Arbitrum One ──────────────────────────────────────────────────────────────────────────────────────
+[42161]
+endpoint_url = "${NODE_URL_42161}"
+
+[42161.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+
+# The V5 SpokePool proxy from across-protocol/contracts#1489 — not the canonical Arbitrum SpokePool
+# (0xe35e9842…), which is not V5. See the note on the Base section.
+spokePool = "0x063A2488c9925FD7Fa057c678a96f5E634dA2483"
+
+usdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+usdt = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+weth = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+usdce = "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+
+# The USDT0 `IOFT` — the `send` target of V5's OFT bridge executor, i.e. `oft_messenger` for 42161 in
+# script/mintburn/oft/usdt0.toml. NOT the LayerZero endpoint, and NOT `oftSrcPeriphery` (V4's sponsored-OFT
+# periphery). Pairs with the `usdt` above, which is USDT0's token on this chain.
+usdtOft = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
+
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+# spokePoolDepositExecutor = ""
+# cctpDepositExecutor = ""
+# oftDepositExecutor = ""
+# sameChainExecutor = ""
+# destinationExecutor = ""
+
+[42161.uint]
+usdcSpokePoolMaxExecutionFee = 5000000
+usdtSpokePoolMaxExecutionFee = 5000000
+wethSpokePoolMaxExecutionFee = 2000000000000000
+usdceSpokePoolMaxExecutionFee = 5000000
+usdcCctpMaxExecutionFee = 5000000
+usdtCctpMaxExecutionFee = 5000000
+wethCctpMaxExecutionFee = 2000000000000000
+usdceCctpMaxExecutionFee = 5000000
+usdcOftMaxExecutionFee = 5000000
+usdtOftMaxExecutionFee = 5000000
+wethOftMaxExecutionFee = 2000000000000000
+usdceOftMaxExecutionFee = 5000000
+usdcSameChainMaxExecutionFee = 5000000
+usdtSameChainMaxExecutionFee = 5000000
+wethSameChainMaxExecutionFee = 2000000000000000
+usdceSameChainMaxExecutionFee = 5000000
+# WBTC exists on Arbitrum, so the V4 SpokePool leaf can route it; V5 has no WBTC route today.
+wbtcSpokePoolMaxExecutionFee = 3100
+
+# 100% — see the note on the Base section above.
+usdcCctpMaxFeeBps = 10000
+
+usdcStablePrice = 1000000000000000000
+usdtStablePrice = 1000000000000000000
+usdceStablePrice = 1000000000000000000
+wethStablePrice = 0

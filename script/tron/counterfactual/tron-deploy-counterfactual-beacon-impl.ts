@@ -199,6 +199,32 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
       "uint256", // usdtSpokePoolMaxExecutionFee
       "uint256", // wethSpokePoolMaxExecutionFee
       "uint256", // wbtcSpokePoolMaxExecutionFee
+      // The struct's V5 tail. Tron has no Across V5 counterfactual deployment, so every one of these is
+      // zero — but they must still be encoded: the constructor decodes a fixed-size tuple, so a short
+      // payload fails the deploy. They are listed individually (not collapsed) to keep this array a
+      // field-for-field mirror of `CounterfactualChainConfig`, which is the only thing that keeps the flat
+      // encoding correct. Zero is fail-closed for the addresses and "fee-free"/"unpriced" for the numbers.
+      "address", // gateway
+      "address", // usdtOft
+      "address", // spokePoolDepositExecutor
+      "address", // cctpDepositExecutor
+      "address", // oftDepositExecutor
+      "address", // sameChainExecutor
+      "address", // destinationExecutor
+      "uint256", // usdtCctpMaxExecutionFee
+      "uint256", // wethCctpMaxExecutionFee
+      "uint256", // usdceCctpMaxExecutionFee
+      "uint256", // usdcOftMaxExecutionFee
+      "uint256", // wethOftMaxExecutionFee
+      "uint256", // usdceOftMaxExecutionFee
+      "uint256", // usdcSameChainMaxExecutionFee
+      "uint256", // usdtSameChainMaxExecutionFee
+      "uint256", // wethSameChainMaxExecutionFee
+      "uint256", // usdceSameChainMaxExecutionFee
+      "uint256", // usdcStablePrice
+      "uint256", // usdtStablePrice
+      "uint256", // wethStablePrice
+      "uint256", // usdceStablePrice
     ],
     values: [
       signer,
@@ -223,6 +249,28 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
       usdtMaxExecutionFee,
       wethSpokePoolMaxExecutionFee,
       wbtcSpokePoolMaxExecutionFee,
+      // V5 tail — see the comment on the matching types above.
+      ZERO_ADDRESS, // gateway
+      ZERO_ADDRESS, // usdtOft
+      ZERO_ADDRESS, // spokePoolDepositExecutor
+      ZERO_ADDRESS, // cctpDepositExecutor
+      ZERO_ADDRESS, // oftDepositExecutor
+      ZERO_ADDRESS, // sameChainExecutor
+      ZERO_ADDRESS, // destinationExecutor
+      0, // usdtCctpMaxExecutionFee
+      0, // wethCctpMaxExecutionFee
+      0, // usdceCctpMaxExecutionFee
+      0, // usdcOftMaxExecutionFee
+      0, // wethOftMaxExecutionFee
+      0, // usdceOftMaxExecutionFee
+      0, // usdcSameChainMaxExecutionFee
+      0, // usdtSameChainMaxExecutionFee
+      0, // wethSameChainMaxExecutionFee
+      0, // usdceSameChainMaxExecutionFee
+      0, // usdcStablePrice
+      0, // usdtStablePrice
+      0, // wethStablePrice
+      0, // usdceStablePrice
     ],
   };
 }

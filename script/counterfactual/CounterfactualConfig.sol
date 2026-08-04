@@ -24,10 +24,16 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         address ownerAndDirectWithdrawer;
     }
 
+    /// @dev The config.toml these scripts read. `virtual` so a sibling deployment (e.g.
+    ///      `v5-test-beacons/`) can point the same resolvers at its own file without duplicating them.
+    function _configPath() internal pure virtual returns (string memory) {
+        return CONFIG_PATH;
+    }
+
     /// @dev Idempotent: the StdConfig helper is fork-persistent, so a second load would only re-parse the
     ///      TOML for nothing (the check scripts call this once per chain across ~24 forks).
     function _loadCounterfactualConfig() internal {
-        if (address(config) == address(0)) _loadConfig(CONFIG_PATH, false);
+        if (address(config) == address(0)) _loadConfig(_configPath(), false);
     }
 
     // --- Global CREATE2 salt + deterministic-address helpers for the singleton infra contracts ------------
@@ -38,7 +44,8 @@ abstract contract CounterfactualConfig is DeploymentUtils {
 
     /// @notice Global CREATE2 salt shared by all counterfactual infra deployments. Read from the `[0]`
     ///         globals section of config.toml (`[0.bytes32] deploySalt`); defaults to `bytes32(0)` if unset.
-    function _deploySalt() internal returns (bytes32) {
+    /// @dev `virtual` so a sibling deployment can layer a per-run override on top of its own config value.
+    function _deploySalt() internal virtual returns (bytes32) {
         if (address(config) == address(0)) _loadCounterfactualConfig();
         Variable memory v = config.get(GLOBALS_CHAIN_ID, "deploySalt");
         return v.ty.kind == TypeKind.Bytes32 ? v.toBytes32() : bytes32(0);
@@ -216,6 +223,12 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     /// @notice Builds the per-chain `CounterfactualChainConfig` baked into the chain-specific
     ///         `CounterfactualBeacon` impl. Missing values resolve to 0 (route simply not configured).
     ///         `_loadCounterfactualConfig()` must run first — it does, via `_loadSigner` below.
+    /// @dev Covers the V4 fields only: the struct's V5 tail (`gateway`, the executors, the per-(token,
+    ///      bridge) caps and the stable prices) is left at its memory default of 0, since no production
+    ///      chain has V5 addresses to bake yet. A beacon impl deployed from here therefore publishes those
+    ///      getters as 0/`address(0)` — fail-closed for the address getters, "fee-free"/"unpriced" for the
+    ///      numeric ones. The V5 test beacons fill them from their own config; see
+    ///      `script/counterfactual/v5-test-beacons/`.
     function _buildChainConfig() internal returns (CounterfactualChainConfig memory cfg) {
         cfg.signer = _loadSigner();
         cfg.spokePool = _resolveSpokePool();
