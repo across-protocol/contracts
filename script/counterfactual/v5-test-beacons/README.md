@@ -64,6 +64,31 @@ Add `--sig "run(bool)" true` to step 4 to also `transferOwnership` to the config
 (Ownable2Step — the new owner accepts out of band). Both deploy steps are idempotent: an already-deployed
 contract is skipped, and a run interrupted between steps self-heals on the next invocation.
 
+### Withdraw contracts (optional, order-independent)
+
+Two more pieces of the V4 substrate, under the same salt. Neither is beacon-bound and neither depends on the
+beacon existing, so run them whenever — before or after steps 3–4:
+
+```sh
+# WithdrawImplementation — the withdraw leaf a clone's merkle tree includes.
+FOUNDRY_PROFILE=counterfactual forge script \
+  script/counterfactual/v5-test-beacons/DeployV5TestWithdrawImplementation.s.sol:DeployV5TestWithdrawImplementation \
+  --sig "run()" --rpc-url base --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+
+# AdminWithdrawManager — owner AND directWithdrawer are the DEPLOYER, and stay that way.
+FOUNDRY_PROFILE=counterfactual forge script \
+  script/counterfactual/v5-test-beacons/DeployV5TestAdminWithdrawManager.s.sol:DeployV5TestAdminWithdrawManager \
+  --sig "run()" --rpc-url base --broadcast --verify --etherscan-api-key $ETHERSCAN_API_KEY
+```
+
+Both take a `run(bytes32 salt)` overload like the others, and `--sig` is required either way (two overloads).
+
+Because they hold no beacon reference, the **production** deployments would work with the test beacon too — a
+route leaf names the withdraw implementation directly. They are redeployed here for two reasons: so the test
+tree can be built entirely from `V5Test*` addresses, and — the substantive one — so `AdminWithdrawManager`'s
+`owner`/`directWithdrawer` stay on the dev wallet. Production's roles transfer to the multisig, which would
+turn every test withdrawal into a signing ceremony. No role transfer is performed here, by design.
+
 ### Filling in later
 
 Values left unset bake as zero, and zero means different things by type — deliberately:
@@ -98,7 +123,14 @@ beacon at a new proxy address therefore needs its own dispatcher and factory —
 The leaf implementations (`CounterfactualDepositSpokePool`, `…CCTP`, `…OFT`, `…VanillaCCTP`) hold **no** beacon
 immutable: they read config from the proxy's ERC-1967 beacon slot at runtime, and a route leaf names the
 implementation address directly. The **existing production deployments are reused as-is** — nothing to
-redeploy, nothing to register.
+redeploy, nothing to register. `WithdrawImplementation` and `AdminWithdrawManager` are in the same category;
+they get their own deployment here for the reasons above, not because they have to.
+
+Every contract this folder deploys is namespaced `V5Test*` in `broadcast/deployed-addresses.json`, so it cannot
+displace its production twin. That renaming lives in `ExtractDeployedFoundryAddresses.ts`, keyed off the
+`DeployV5Test` script-name prefix — **so keep that prefix on any script added here.** Without it the extractor
+records the test address under the production key and, because it keeps the highest block number, the newer
+test deployment wins.
 
 ## Where each value comes from
 

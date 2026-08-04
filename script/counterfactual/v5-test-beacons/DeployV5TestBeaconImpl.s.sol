@@ -48,11 +48,42 @@ contract DeployV5TestBeaconImpl is V5TestBeaconConfig {
         console.log("============================================");
         console.log("Chain ID:", block.chainid);
 
+        _warnIfDestinationExecutorBoundElsewhere(
+            chainConfig.destinationExecutor,
+            _predictBeaconProxy(vm.addr(deployerPrivateKey))
+        );
+
         vm.startBroadcast(deployerPrivateKey);
         address beaconImpl = address(new CounterfactualBeacon(chainConfig));
         vm.stopBroadcast();
 
         console.log("V5 test beacon impl:", beaconImpl);
         console.log("Next: run DeployV5TestBeacon to point the test proxy at this impl.");
+    }
+
+    /// @dev The configured `destinationExecutor` is constructor-bound to a beacon; if that is not the proxy
+    ///      THIS folder deploys, the two halves disagree — the executor would read `signer()`/`stablePrice()`
+    ///      off a different beacon. The usual cause is a salt bump (new proxy, executors still bound to the
+    ///      old one). Warn rather than revert: the getter is advisory, the value is legitimately zero before
+    ///      the V5 stack exists, and a non-conforming executor ABI must not block the deploy.
+    function _warnIfDestinationExecutorBoundElsewhere(address executor, address expectedProxy) private view {
+        if (executor == address(0) || executor.code.length == 0) return;
+        (bool ok, bytes memory ret) = executor.staticcall(abi.encodeWithSignature("beacon()"));
+        if (!ok || ret.length != 32) {
+            console.log("NOTE: destinationExecutor has no readable beacon(); cannot verify its binding.");
+            return;
+        }
+        address boundBeacon = abi.decode(ret, (address));
+        if (boundBeacon == expectedProxy) {
+            console.log("destinationExecutor is bound to this beacon proxy:", boundBeacon);
+            return;
+        }
+        console.log("--------------------------------------------");
+        console.log("WARNING: destinationExecutor is bound to a DIFFERENT beacon.");
+        console.log("  executor:      ", executor);
+        console.log("  its beacon():  ", boundBeacon);
+        console.log("  this proxy:    ", expectedProxy);
+        console.log("Check the salt, or redeploy the executor against this proxy, before broadcasting.");
+        console.log("--------------------------------------------");
     }
 }

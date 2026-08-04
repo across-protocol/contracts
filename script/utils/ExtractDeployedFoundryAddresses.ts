@@ -454,6 +454,18 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             }
           }
 
+          // Namespace the V5 test counterfactual stack (script/counterfactual/v5-test-beacons/). It redeploys
+          // several production contracts under its own CREATE2 salt — dispatcher, factory, withdraw
+          // implementation, admin withdraw manager — so they arrive here with the SAME artifact names as their
+          // production twins. `deduplicateContracts` keeps the highest block number, so without this the newer
+          // test addresses would silently replace the production entries. Applied last, once `contractName` is
+          // final: names the branches above `continue` on (the beacon impl and bootstrap) never reach it, and
+          // the `!startsWith` guard keeps the test beacon proxy — already named `V5TestBeacon` from its script
+          // name — from becoming `V5TestV5TestBeacon`.
+          if (broadcastFile.scriptName.startsWith("DeployV5Test") && !contractName.startsWith("V5Test")) {
+            contractName = `V5Test${contractName}`;
+          }
+
           contracts.push({
             contractName: contractName || "Unknown",
             contractAddress: tx.contractAddress,

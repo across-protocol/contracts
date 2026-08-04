@@ -77,18 +77,27 @@ cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 # non-OFT token.
 # usdtOft = ""
 
-# ── V5 stack. No resolver exists for these — fill them from the V5 repo's script/deployments.toml records.
-# The `Gateway` is already deployed on this chain. The five executors are not (as of this writing): deploy
-# them from the V5 repo against the PREDICTED beacon proxy address that PredictV5TestBeacon.s.sol prints,
-# then paste the addresses here and deploy the impl. That ordering is forced by
-# `CounterfactualDestinationExecutor`, which is constructor-bound to the beacon while the beacon bakes it as
-# an immutable — the proxy address is predictable from the salt, so the cycle resolves in that direction only.
+# ── V5 stack. No resolver exists for these — they come from the V5 repo's script/deployments.toml records.
+# The executor getters carry the V5 repo's contract names in the comments; a route leaf commits one of them as
+# its `executorGetter`, and V5's prefunder requires the caller to be BOTH `gateway.currentExecutor()` and the
+# address resolved here.
+#
+# `destinationExecutor` is constructor-bound to the beacon while the beacon bakes it as an immutable, so the
+# cycle only resolves one way: the executor is deployed against the PREDICTED proxy address (a function of the
+# salt, bootstrap and deployer — run PredictV5TestBeacon.s.sol), then baked here. VERIFIED on-chain: this
+# executor's `beacon()` reads 0xdEEc7040B3D92Ee5ABE005C3BE4c9d33da27407f, the salt-0x…0501 proxy this folder
+# deploys. Re-check that after ANY salt bump — the executors would then point at the old proxy.
 gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
-# spokePoolDepositExecutor = ""   # CounterfactualSpokePoolBridgeExecutor
-# cctpDepositExecutor = ""        # CounterfactualCCTPBridgeExecutor
-# oftDepositExecutor = ""         # CounterfactualOFTBridgeExecutor
-# sameChainExecutor = ""          # CounterfactualSameChainExecutor
-# destinationExecutor = ""        # CounterfactualDestinationExecutor (must be bound to THIS beacon proxy)
+spokePoolDepositExecutor = "0x35554ABcf700bEdBEf086d4A8daA04e91C6dAA7F" # CounterfactualSpokePoolBridgeExecutor
+cctpDepositExecutor = "0xB04606C6b5ac4315827EA7B4BE13347e4435bf53"      # CounterfactualCCTPBridgeExecutor
+oftDepositExecutor = "0xC4f3AB1ee614269c39E8Db68Fc259b3168Fb260C"       # CounterfactualOFTBridgeExecutor
+sameChainExecutor = "0x73999e2353cE1F73d22013788983f117cef87094"        # CounterfactualSameChainExecutor
+destinationExecutor = "0xdB72eA6E824538F2a7EA0200faA44D67930b414B"      # CounterfactualDestinationExecutor
+
+# NOT a beacon value: `CounterfactualPrefunder` (0x3c64A26dAA4F2111630F1992adBDFE7e2cFb7745, identical on every
+# chain — no constructor args) is the V5 leaf implementation, which a route names DIRECTLY in its merkle leaf,
+# exactly like the V4 leaves. It has no getter here and needs none. What the beacon does publish for the
+# substrate is `implementation()` — the `CounterfactualDeposit` dispatcher, set by DeployV5TestBeacon step 5.
 
 [8453.uint]
 # Execution-fee caps in funded-token units (USDC/USDT/USDC.e 6 decimals, WETH 18).
@@ -149,12 +158,15 @@ cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 # periphery). Pairs with the `usdt` above, which is USDT0's token on this chain.
 usdtOft = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
 
+# Same shape as the Base section above. `destinationExecutor().beacon()` VERIFIED as
+# 0xdEEc7040B3D92Ee5ABE005C3BE4c9d33da27407f, the salt-0x…0501 proxy. The four bridge/same-chain executors are
+# per-chain addresses (their `weth` ctor arg differs); the prefunder is not a beacon value — see Base.
 gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
-# spokePoolDepositExecutor = ""
-# cctpDepositExecutor = ""
-# oftDepositExecutor = ""
-# sameChainExecutor = ""
-# destinationExecutor = ""
+spokePoolDepositExecutor = "0xba905F0Bc674EE10539e846Dc42B7CEd64B991df" # CounterfactualSpokePoolBridgeExecutor
+cctpDepositExecutor = "0xde257101E9180121789DcA2D232FF63C577767AE"      # CounterfactualCCTPBridgeExecutor
+oftDepositExecutor = "0xa44C4948514f316848906b9b326919EAd2E07D92"       # CounterfactualOFTBridgeExecutor
+sameChainExecutor = "0xeD9b42a299902286Ce777b0C7E82D83173F3e478"        # CounterfactualSameChainExecutor
+destinationExecutor = "0xcA1DD4f61Cbb0D2F3049e4Cf48CE46e2D44e8758"      # CounterfactualDestinationExecutor
 
 [42161.uint]
 usdcSpokePoolMaxExecutionFee = 5000000
