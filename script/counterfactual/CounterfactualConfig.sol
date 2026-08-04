@@ -169,8 +169,13 @@ abstract contract CounterfactualConfig is DeploymentUtils {
 
     /// @dev Resolves native (Circle-issued or chain-canonical) USDC from constants.json
     ///      (`.USDC.<chainId>`); address(0) if absent. Bridged USDC.e is a SEPARATE token with its own
-    ///      slot — see `_resolveUsdce`.
-    function _resolveUsdc() internal view returns (address) {
+    ///      slot — see `_resolveUsdce`. An `[N.address] usdcOverride` entry in config.toml wins over
+    ///      constants.json: it makes a chain-local stablecoin serve as the beacon's USDC (e.g. pathUSD
+    ///      on Tempo) without aliasing it into the global USDC constants that other consumers read.
+    function _resolveUsdc() internal returns (address) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get("usdcOverride");
+        if (v.ty.kind == TypeKind.Address) return v.toAddress();
         if (vm.keyExists(file, string.concat(".USDC.", vm.toString(block.chainid)))) {
             return getUSDCAddress(block.chainid);
         }

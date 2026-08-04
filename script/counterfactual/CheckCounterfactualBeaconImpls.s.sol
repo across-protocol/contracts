@@ -324,7 +324,7 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
     // --- On-chain token identity: symbol() of every configured token vs an expected-symbol allowlist ---
 
     function _checkTokens(uint256 chainId, CounterfactualChainConfig memory c) internal {
-        _checkTokenSymbol(chainId, "usdc", c.usdc, [string("USDC"), "", "", ""]);
+        _checkTokenSymbol(chainId, "usdc", c.usdc, [string("USDC"), "pathUSD", "", ""]);
         _checkTokenSymbol(chainId, "usdce", c.usdce, [string("USDC.e"), "USDC", "USDbC", ""]);
         _checkTokenSymbol(chainId, "usdt", c.usdt, USDT_SYMBOLS());
         _checkTokenSymbol(chainId, "wbtc", c.wbtc, [string("WBTC"), "BTCB", "", ""]);
