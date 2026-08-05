@@ -233,6 +233,12 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
     ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
         if (quote.burnToken.toAddress() != baseToken) revert InvalidBurnToken();
+        // The CCTP-bridged path proves the mint delivered `amountAfterFees` before
+        // executing; the direct path must prove the same invariant — that the funds
+        // backing this quote are actually held — otherwise a compromised or
+        // malfunctioning DIRECT_CALLER_ROLE holder can execute unfunded quotes and
+        // spend balance belonging to in-flight flows.
+        if (IERC20Metadata(baseToken).balanceOf(address(this)) < quote.amount) revert InsufficientFunding();
         MainStorage storage $ = _getMainStorage();
         if ($.usedNonces[quote.nonce]) revert InvalidNonce();
         $.usedNonces[quote.nonce] = true;

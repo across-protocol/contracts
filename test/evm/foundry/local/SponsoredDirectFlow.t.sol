@@ -478,6 +478,23 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
         dstPeriphery.directReceiveMessage(quote);
     }
 
+    function testDirectReceiveMessage_RevertsOnInsufficientFunding() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = _createDirectQuote(keccak256("cctp-unfunded"));
+
+        // Role granted but dstPeriphery holds nothing: the call must not execute an
+        // unfunded quote. The CCTP-bridged path enforces the same invariant via its
+        // minted-balance-delta check.
+        dstPeriphery.grantRole(dstPeriphery.DIRECT_CALLER_ROLE(), address(this));
+
+        vm.expectRevert(SponsoredCCTPInterface.InsufficientFunding.selector);
+        dstPeriphery.directReceiveMessage(quote);
+
+        // Partial funding below quote.amount must also revert
+        deal(address(usdc), address(dstPeriphery), DEFAULT_AMOUNT - 1);
+        vm.expectRevert(SponsoredCCTPInterface.InsufficientFunding.selector);
+        dstPeriphery.directReceiveMessage(quote);
+    }
+
     function testDirectReceiveMessage_RevertsOnInvalidBurnToken() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = _createDirectQuote(keccak256("cctp-bad-token"));
         quote.burnToken = makeAddr("wrongToken").toBytes32();
