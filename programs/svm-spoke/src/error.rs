@@ -76,6 +76,8 @@ pub enum SvmError {
     InvalidATACreationAccounts,
     #[msg("Invalid delegate PDA!")]
     InvalidDelegatePda,
+    #[msg("Inconsistent optional parameters!")]
+    InconsistentOptionalParameters,
 }
 
 // CCTP specific errors.
