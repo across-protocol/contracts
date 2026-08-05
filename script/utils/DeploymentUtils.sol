@@ -71,6 +71,18 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     }
 
     /**
+     * @notice Resolve the Across V5 Gateway address to wire into a SpokePool implementation constructor.
+     * @dev Sourced from the GATEWAY_ADDRESS environment variable, mirroring the env-based HUBPOOL_ADDRESS
+     *      pattern. Defaults to address(0) when unset, which deploys the SpokePool with V5 Gateway flows
+     *      disabled (executeAcrossV5 will revert until a Gateway is wired in via a subsequent upgrade).
+     * @return gateway The Gateway address to pass as the final SpokePool constructor argument.
+     */
+    function getGateway() public view returns (address gateway) {
+        gateway = vm.envOr("GATEWAY_ADDRESS", address(0));
+        console.log("Gateway address:", gateway);
+    }
+
+    /**
      * @notice Deploy a new proxy contract or upgrade existing implementation
      * @dev This function mimics deployNewProxy from utils.hre.ts using custom deployment for OpenZeppelin v4
      * @param contractName Name of the contract to deploy

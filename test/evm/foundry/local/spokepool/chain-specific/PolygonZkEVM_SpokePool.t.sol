@@ -83,7 +83,8 @@ contract PolygonZkEVM_SpokePoolTest is Test {
         spokePoolImplementation = new PolygonZkEVM_SpokePool(
             address(weth),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         // Deploy proxy
@@ -127,7 +128,8 @@ contract PolygonZkEVM_SpokePoolTest is Test {
         PolygonZkEVM_SpokePool newImplementation = new PolygonZkEVM_SpokePool(
             address(weth),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         bytes memory upgradeData = abi.encodeWithSelector(spokePool.upgradeTo.selector, address(newImplementation));

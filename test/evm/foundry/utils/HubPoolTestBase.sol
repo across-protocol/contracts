@@ -531,7 +531,7 @@ abstract contract HubPoolTestBase is Test, Constants {
      */
     function deployMockSpokePool(address crossDomainAdmin) internal returns (MockSpokePool) {
         ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(fixture.weth))),
+            address(new MockSpokePool(address(fixture.weth), address(0))),
             abi.encodeCall(MockSpokePool.initialize, (0, crossDomainAdmin, address(fixture.hubPool)))
         );
         return MockSpokePool(payable(proxy));

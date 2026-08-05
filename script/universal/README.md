@@ -20,15 +20,16 @@ The SP1Helios contract has a constant `MAX_SLOT_AGE = 7 days`, which is the uppe
 
 Create a `.env` file with the following variables:
 
-| Variable                  | Description                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `MNEMONIC`                | BIP-39 mnemonic to derive the deployer's private key (uses index 0)             |
-| `SP1_RELEASE`             | Genesis binary version (e.g., `0.1.0-alpha.20`)                                 |
-| `SP1_PROVER_MODE`         | SP1 prover type: `mock`, `cpu`, `cuda`, or `network`                            |
-| `SP1_VERIFIER_ADDRESS`    | Address of the SP1 verifier contract (use `0x0` to auto-deploy a mock verifier) |
-| `SP1_STATE_UPDATERS`      | Comma-separated list of addresses authorized to submit state updates            |
-| `SP1_VKEY_UPDATER`        | Address authorized to update the verification key                               |
-| `SP1_CONSENSUS_RPCS_LIST` | Comma-separated list of Ethereum consensus (beacon) RPC URLs                    |
+| Variable                  | Description                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `MNEMONIC`                | BIP-39 mnemonic to derive the deployer's private key (uses index 0)                                         |
+| `GATEWAY_ADDRESS`         | Across V5 Gateway address wired into the SpokePool. Optional; defaults to `0x0` (V5 Gateway flows disabled) |
+| `SP1_RELEASE`             | Genesis binary version (e.g., `0.1.0-alpha.20`)                                                             |
+| `SP1_PROVER_MODE`         | SP1 prover type: `mock`, `cpu`, `cuda`, or `network`                                                        |
+| `SP1_VERIFIER_ADDRESS`    | Address of the SP1 verifier contract (use `0x0` to auto-deploy a mock verifier)                             |
+| `SP1_STATE_UPDATERS`      | Comma-separated list of addresses authorized to submit state updates                                        |
+| `SP1_VKEY_UPDATER`        | Address authorized to update the verification key                                                           |
+| `SP1_CONSENSUS_RPCS_LIST` | Comma-separated list of Ethereum consensus (beacon) RPC URLs                                                |
 
 ---
 
