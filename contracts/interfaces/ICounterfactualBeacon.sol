@@ -88,4 +88,27 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Max (fixed) fee for the WETH/native SpokePool route.
     function wethSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    // --- V5 counterfactual (Gateway-routed) config ---
+
+    /// @notice The V5 `Gateway` on this chain. The `GatewayForwarder` resolves it via this getter to route the
+    ///         counterfactual deposit into `Gateway.execute()`.
+    function gateway() external view returns (address);
+
+    /// @notice The per-chain V5 counterfactual **source** executors — specialized `Executor` subclasses that
+    ///         run each bridge's source deposit flow. A leaf names which to use via its `executorGetter`
+    ///         selector, so a bridge integration upgrades by repointing the getter (the leaf/root are untouched).
+    ///         (The destination executor is not exposed here — a route commits it directly as `dstExecutor`
+    ///         folded into `dstStepId`, so no on-chain path reads it back from the beacon.)
+    function spokePoolDepositExecutor() external view returns (address);
+    function cctpDepositExecutor() external view returns (address);
+    function oftDepositExecutor() external view returns (address);
+
+    /// @notice Per-token USD price (1e18-fixed) for the V5 counterfactual **beacon-rate** floor — the source
+    ///         swap floor (`KIND_BEACON_RATE`) and the destination swap-safety. `0` ⇒ the token is unpriced
+    ///         (volatile) and its rate floor is skipped. `usdcStablePrice`/`usdtStablePrice` are the priced-token
+    ///         immutables `stablePrice()` dispatches over.
+    function usdcStablePrice() external view returns (uint256);
+    function usdtStablePrice() external view returns (uint256);
+    function stablePrice(address token) external view returns (uint256);
 }
