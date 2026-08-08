@@ -27,6 +27,7 @@ contract AdminWithdrawManager is Ownable, EIP712 {
     error Unauthorized();
     error InvalidSignature();
     error SignatureExpired();
+    error SignatureAlreadyUsed();
 
     /// @notice EIP-712 typehash for signed withdraw messages.
     bytes32 public constant SIGNED_WITHDRAW_TYPEHASH =
@@ -37,6 +38,9 @@ contract AdminWithdrawManager is Ownable, EIP712 {
 
     /// @notice Address whose EIP-712 signature authorizes `signedWithdrawToUser` calls.
     address public signer;
+
+    /// @notice Consumed EIP-712 digests for `signedWithdrawToUser` (one authorization, one use).
+    mapping(bytes32 => bool) public usedSignatures;
 
     constructor(
         address _owner,
@@ -92,7 +96,12 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         if (block.timestamp > deadline) revert SignatureExpired();
 
         bytes32 structHash = keccak256(abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, token, amount, deadline));
-        if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
+        bytes32 digest = _hashTypedDataV4(structHash);
+        if (usedSignatures[digest]) revert SignatureAlreadyUsed();
+        if (ECDSA.recover(digest, signature) != signer) revert InvalidSignature();
+        // Consume before the external call so a reentrant success path cannot reuse the same authorization
+        // after the clone is re-funded within the same deadline window.
+        usedSignatures[digest] = true;
 
         address to = abi.decode(params, (WithdrawParams)).user;
         ICounterfactualDeposit(depositAddress).execute(implementation, params, abi.encode(token, to, amount), proof);
