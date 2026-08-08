@@ -173,6 +173,45 @@ contract AdminWithdrawManagerTest is CounterfactualTestBase {
         );
     }
 
+    function testSignedWithdrawToUserReplayAfterRefund() public {
+        // Drain the full setUp balance so a later mint is unambiguously a re-fund.
+        uint256 amount = 100e6;
+        uint256 deadline = block.timestamp + 3600;
+        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, deadline);
+
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            deadline,
+            sig
+        );
+        assertEq(token.balanceOf(user), amount);
+        assertEq(token.balanceOf(depositAddress), 0);
+
+        // Counterfactual clones can be re-funded; the same signed authorization must not drain again.
+        uint256 refund = 50e6;
+        token.mint(depositAddress, refund);
+
+        vm.expectRevert(AdminWithdrawManager.SignatureAlreadyUsed.selector);
+        manager.signedWithdrawToUser(
+            depositAddress,
+            address(withdrawImpl),
+            withdrawParams,
+            address(token),
+            amount,
+            withdrawProof,
+            deadline,
+            sig
+        );
+
+        assertEq(token.balanceOf(depositAddress), refund);
+        assertEq(token.balanceOf(user), amount);
+    }
+
     // --- Owner functions ---
 
     function testSetDirectWithdrawer() public {
