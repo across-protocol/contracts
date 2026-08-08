@@ -226,19 +226,19 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
     /**
      * @notice Direct execution entrypoint for same-chain flows that bypass CCTP transport.
-     * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
+     * @dev Caller must hold DIRECT_CALLER_ROLE and pull-fund `quote.amount` of baseToken into
+     *      this contract in the same call (via allowance). A held-balance check alone is weaker
+     *      than the CCTP minted-delta guard: it would let a compromised DIRECT_CALLER spend
+     *      pre-existing in-flight / orphaned balance that already covers the quote.
      * @param quote The quote that contains the data for the deposit.
      */
     function directReceiveMessage(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
     ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
         if (quote.burnToken.toAddress() != baseToken) revert InvalidBurnToken();
-        // The CCTP-bridged path proves the mint delivered `amountAfterFees` before
-        // executing; the direct path must prove the same invariant — that the funds
-        // backing this quote are actually held — otherwise a compromised or
-        // malfunctioning DIRECT_CALLER_ROLE holder can execute unfunded quotes and
-        // spend balance belonging to in-flight flows.
-        if (IERC20Metadata(baseToken).balanceOf(address(this)) < quote.amount) revert InsufficientFunding();
+        // Bind funding to this call (CCTP path binds via mint delta in the same tx).
+        if (IERC20Metadata(baseToken).balanceOf(msg.sender) < quote.amount) revert InsufficientFunding();
+        IERC20Metadata(baseToken).safeTransferFrom(msg.sender, address(this), quote.amount);
         MainStorage storage $ = _getMainStorage();
         if ($.usedNonces[quote.nonce]) revert InvalidNonce();
         $.usedNonces[quote.nonce] = true;

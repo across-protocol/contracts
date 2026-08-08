@@ -177,7 +177,9 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
 
     /**
      * @notice Direct execution entrypoint for same-chain flows that bypass OFT transport.
-     * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
+     * @dev Caller must hold DIRECT_CALLER_ROLE and pull-fund `amountLD` of baseToken into
+     *      this contract in the same call. A held-balance check alone would let a compromised
+     *      DIRECT_CALLER spend pre-existing in-flight / orphaned balance.
      */
     function executeDirect(
         address tokenSent,
@@ -185,10 +187,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
         bytes calldata composeMsg
     ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
         if (tokenSent != baseToken) revert InvalidDirectToken();
-        // Prove the funds backing this execution are actually held — without this,
-        // a compromised or malfunctioning DIRECT_CALLER_ROLE holder can execute
-        // unfunded flows and spend balance belonging to in-flight messages.
-        if (IERC20(baseToken).balanceOf(address(this)) < amountLD) revert InsufficientFunding();
+        if (IERC20(baseToken).balanceOf(msg.sender) < amountLD) revert InsufficientFunding();
+        IERC20(baseToken).safeTransferFrom(msg.sender, address(this), amountLD);
         if (!composeMsg._isValidComposeMsgBytelength()) revert InvalidComposeMsgFormat();
 
         bytes32 quoteNonce = composeMsg._getNonce();
