@@ -62,11 +62,15 @@ interface ICounterfactualBeacon is IBeacon {
     ///         chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
     function weth() external view returns (address);
 
-    /// @notice pathUSD, Tempo's USD-denominated gas token, as a plain ERC-20 input token. It stands to
-    ///         `wrappedNativeToken()` exactly as `weth()` does: that getter is the wrapped GAS token
-    ///         (WpathUSD on Tempo) backing the `msg.value` route, while this one is the ERC-20 route. Being
-    ///         a stablecoin it carries a non-zero `pathUsdStablePrice()`, unlike WETH and WBTC.
+    /// @notice pathUSD on this chain — Tempo's TIP-20 settlement token, and an ordinary ERC-20 input token
+    ///         like any other here. Tempo denominates gas in it, but that changes nothing for routing: there
+    ///         is no wrapped form and no `msg.value` path, so every pathUSD route is a plain ERC-20 transfer
+    ///         paying its fee in pathUSD. Being a stablecoin it carries a non-zero `pathUsdStablePrice()`.
     function pathUsd() external view returns (address);
+
+    /// @notice USDG (Global Dollar) on this chain — a 6-decimal stablecoin, Robinhood only today. A plain
+    ///         ERC-20 input token, priced like the other stablecoins.
+    function usdg() external view returns (address);
 
     // --- Bridge endpoints and routing -----------------------------------------------------------------------
 
@@ -107,6 +111,8 @@ interface ICounterfactualBeacon is IBeacon {
     //
     // Committed as a route leaf's `executorGetter`; the prefunder requires the caller to be both
     // `gateway.currentExecutor()` and the address resolved here, so repointing a getter migrates a route.
+    // Source-side only — the destination executor is committed directly by the route (folded into its
+    // `dstStepId`), so it is never resolved off this beacon and has no getter here.
 
     /// @notice `CounterfactualSpokePoolBridgeExecutor`.
     function spokePoolDepositExecutor() external view returns (address);
@@ -119,11 +125,6 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice `CounterfactualSameChainExecutor`.
     function sameChainExecutor() external view returns (address);
-
-    /// @notice `CounterfactualDestinationExecutor`. Never resolved on-chain — a route commits it directly as
-    ///         `dstExecutor` folded into `dstStepId` — but published here so tooling reads one source of
-    ///         truth. That executor is itself constructor-bound to this beacon, so the two must agree.
-    function destinationExecutor() external view returns (address);
 
     // --- Execution-fee caps (input-token units) ---------------------------------------------------------------
     //
@@ -150,9 +151,11 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Max (fixed) fee for the WBTC SpokePool route.
     function wbtcSpokePoolMaxExecutionFee() external view returns (uint256);
 
-    /// @notice Max (fixed) fee for the pathUSD SpokePool route. On Tempo, where pathUSD is the gas token,
-    ///         this also caps the native (msg.value) route.
+    /// @notice Max (fixed) fee for the pathUSD SpokePool route, in pathUSD units.
     function pathUsdSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max (fixed) fee for the USDG SpokePool route.
+    function usdgSpokePoolMaxExecutionFee() external view returns (uint256);
 
     /// @notice Max execution fee for the USDC same-chain route.
     function usdcSameChainMaxExecutionFee() external view returns (uint256);
@@ -171,6 +174,9 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Max execution fee for the pathUSD same-chain route.
     function pathUsdSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDG same-chain route.
+    function usdgSameChainMaxExecutionFee() external view returns (uint256);
 
     /// @notice Max execution fee for the USDC CCTP route(s) — the only token CCTP burns.
     function usdcCctpMaxExecutionFee() external view returns (uint256);
@@ -201,6 +207,9 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice USD price of pathUSD, 1e18-fixed. A stablecoin, so normally non-zero.
     function pathUsdStablePrice() external view returns (uint256);
+
+    /// @notice USD price of USDG, 1e18-fixed. A stablecoin, so normally non-zero.
+    function usdgStablePrice() external view returns (uint256);
 
     /// @notice USD price of WETH, 1e18-fixed. Normally zero (volatile ⇒ unpriced).
     function wethStablePrice() external view returns (uint256);

@@ -30,11 +30,13 @@ struct CounterfactualChainConfig {
     ///      `wrappedNativeToken` (the wrapped GAS token, e.g. WBNB/WPOL; identical to WETH only on ETH-gas
     ///      chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
     address weth;
-    /// @dev pathUSD, Tempo's USD-denominated gas token, as an ERC-20 input token. Stands to
-    ///      `wrappedNativeToken` exactly as `weth` does: that slot is the wrapped GAS token (WpathUSD on
-    ///      Tempo) for the `msg.value` route, while this one is the plain ERC-20 route. A stablecoin, so
-    ///      unlike WETH/WBTC it carries a non-zero `pathUsdStablePrice`.
+    /// @dev pathUSD — Tempo's TIP-20 settlement token, an ordinary ERC-20 input token. Tempo denominates
+    ///      gas in it, but there is no wrapped form and no `msg.value` path, so its routes are plain ERC-20
+    ///      transfers. A stablecoin, so unlike WETH/WBTC it carries a non-zero `pathUsdStablePrice`.
     address pathUsd;
+    /// @dev USDG (Global Dollar), a 6-decimal stablecoin — Robinhood only today. A plain ERC-20 input token,
+    ///      priced like the other stablecoins.
+    address usdg;
     // --- Bridge endpoints and routing ---------------------------------------------------------------------
     address spokePool;
     address wrappedNativeToken;
@@ -51,14 +53,12 @@ struct CounterfactualChainConfig {
     /// @dev The USDT0 `IOFT` — V5's OFT bridge endpoint, distinct from `oftSrcPeriphery` (V4's periphery).
     address usdtOft;
     // --- Executors ----------------------------------------------------------------------------------------
-    /// @dev Resolved by a route leaf's `executorGetter`. `destinationExecutor` is itself constructor-bound to
-    ///      the beacon proxy, so it must be deployed against this beacon's proxy address (predictable from
-    ///      the CREATE2 salt) before this impl can bake it.
+    /// @dev Resolved by a route leaf's `executorGetter`. Source-side only: the destination executor is
+    ///      committed directly by the route (folded into its `dstStepId`) and never resolved here.
     address spokePoolDepositExecutor;
     address cctpDepositExecutor;
     address oftDepositExecutor;
     address sameChainExecutor;
-    address destinationExecutor;
     // --- Execution-fee caps, in input-token units -----------------------------------------------------------
     // A leaf names which to enforce via a `bytes4` selector (its `maxExecutionFeeGetter`). For SpokePool this
     // is the fixed component of the cap (added to the leaf's `maxFeeBps` term). One entry per (token, bridge)
@@ -70,12 +70,14 @@ struct CounterfactualChainConfig {
     uint256 wethSpokePoolMaxExecutionFee;
     uint256 wbtcSpokePoolMaxExecutionFee;
     uint256 pathUsdSpokePoolMaxExecutionFee;
+    uint256 usdgSpokePoolMaxExecutionFee;
     uint256 usdcSameChainMaxExecutionFee;
     uint256 usdceSameChainMaxExecutionFee;
     uint256 usdtSameChainMaxExecutionFee;
     uint256 wethSameChainMaxExecutionFee;
     uint256 wbtcSameChainMaxExecutionFee;
     uint256 pathUsdSameChainMaxExecutionFee;
+    uint256 usdgSameChainMaxExecutionFee;
     uint256 usdcCctpMaxExecutionFee;
     uint256 usdtOftMaxExecutionFee;
     /// @dev Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP route), in bps of the
@@ -89,6 +91,7 @@ struct CounterfactualChainConfig {
     uint256 usdceStablePrice;
     uint256 usdtStablePrice;
     uint256 pathUsdStablePrice;
+    uint256 usdgStablePrice;
     uint256 wethStablePrice;
     uint256 wbtcStablePrice;
 }
@@ -130,6 +133,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     address public immutable weth;
     /// @inheritdoc ICounterfactualBeacon
     address public immutable pathUsd;
+    /// @inheritdoc ICounterfactualBeacon
+    address public immutable usdg;
     // --- Bridge endpoints and routing ---
     /// @inheritdoc ICounterfactualBeacon
     address public immutable spokePool;
@@ -158,8 +163,6 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     address public immutable oftDepositExecutor;
     /// @inheritdoc ICounterfactualBeacon
     address public immutable sameChainExecutor;
-    /// @inheritdoc ICounterfactualBeacon
-    address public immutable destinationExecutor;
     // --- Execution-fee caps ---
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcSpokePoolMaxExecutionFee;
@@ -174,6 +177,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable pathUsdSpokePoolMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdgSpokePoolMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcSameChainMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdceSameChainMaxExecutionFee;
@@ -185,6 +190,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     uint256 public immutable wbtcSameChainMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable pathUsdSameChainMaxExecutionFee;
+    /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdgSameChainMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable usdcCctpMaxExecutionFee;
     /// @inheritdoc ICounterfactualBeacon
@@ -201,6 +208,8 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable pathUsdStablePrice;
     /// @inheritdoc ICounterfactualBeacon
+    uint256 public immutable usdgStablePrice;
+    /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable wethStablePrice;
     /// @inheritdoc ICounterfactualBeacon
     uint256 public immutable wbtcStablePrice;
@@ -216,6 +225,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         wbtc = config.wbtc;
         weth = config.weth;
         pathUsd = config.pathUsd;
+        usdg = config.usdg;
         spokePool = config.spokePool;
         wrappedNativeToken = config.wrappedNativeToken;
         nativeToken = config.nativeToken;
@@ -229,19 +239,20 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         cctpDepositExecutor = config.cctpDepositExecutor;
         oftDepositExecutor = config.oftDepositExecutor;
         sameChainExecutor = config.sameChainExecutor;
-        destinationExecutor = config.destinationExecutor;
         usdcSpokePoolMaxExecutionFee = config.usdcSpokePoolMaxExecutionFee;
         usdceSpokePoolMaxExecutionFee = config.usdceSpokePoolMaxExecutionFee;
         usdtSpokePoolMaxExecutionFee = config.usdtSpokePoolMaxExecutionFee;
         wethSpokePoolMaxExecutionFee = config.wethSpokePoolMaxExecutionFee;
         wbtcSpokePoolMaxExecutionFee = config.wbtcSpokePoolMaxExecutionFee;
         pathUsdSpokePoolMaxExecutionFee = config.pathUsdSpokePoolMaxExecutionFee;
+        usdgSpokePoolMaxExecutionFee = config.usdgSpokePoolMaxExecutionFee;
         usdcSameChainMaxExecutionFee = config.usdcSameChainMaxExecutionFee;
         usdceSameChainMaxExecutionFee = config.usdceSameChainMaxExecutionFee;
         usdtSameChainMaxExecutionFee = config.usdtSameChainMaxExecutionFee;
         wethSameChainMaxExecutionFee = config.wethSameChainMaxExecutionFee;
         wbtcSameChainMaxExecutionFee = config.wbtcSameChainMaxExecutionFee;
         pathUsdSameChainMaxExecutionFee = config.pathUsdSameChainMaxExecutionFee;
+        usdgSameChainMaxExecutionFee = config.usdgSameChainMaxExecutionFee;
         usdcCctpMaxExecutionFee = config.usdcCctpMaxExecutionFee;
         usdtOftMaxExecutionFee = config.usdtOftMaxExecutionFee;
         usdcCctpMaxFeeBps = config.usdcCctpMaxFeeBps;
@@ -249,6 +260,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         usdceStablePrice = config.usdceStablePrice;
         usdtStablePrice = config.usdtStablePrice;
         pathUsdStablePrice = config.pathUsdStablePrice;
+        usdgStablePrice = config.usdgStablePrice;
         wethStablePrice = config.wethStablePrice;
         wbtcStablePrice = config.wbtcStablePrice;
         _disableInitializers();
@@ -265,6 +277,7 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
         if (token == usdce) return usdceStablePrice;
         if (token == usdt) return usdtStablePrice;
         if (token == pathUsd) return pathUsdStablePrice;
+        if (token == usdg) return usdgStablePrice;
         if (token == weth) return wethStablePrice;
         if (token == wbtc) return wbtcStablePrice;
         return 0;

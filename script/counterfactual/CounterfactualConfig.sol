@@ -213,6 +213,25 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
+    /// @dev Resolves pathUSD from constants.json (`.pathUSD.<chainId>`); address(0) if absent. Tempo only
+    ///      today, where it is the TIP-20 settlement token that gas is denominated in. It has no wrapped
+    ///      form, so `_resolveWrappedNativeToken` stays zero there and Tempo gets no msg.value route — this
+    ///      adds an ordinary ERC-20 input token, nothing more.
+    function _resolvePathUsd() internal view returns (address) {
+        string memory path = string.concat(".pathUSD.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    /// @dev Resolves USDG (Global Dollar) from constants.json (`.USDG.<chainId>`); address(0) if absent.
+    ///      Robinhood only today — upstream's separate `USDG-MAINNET` symbol is deliberately not folded into
+    ///      the USDG map, so mainnet resolves zero here. See `src/consts.ts`.
+    function _resolveUsdg() internal view returns (address) {
+        string memory path = string.concat(".USDG.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
     /// @notice Builds the per-chain `CounterfactualChainConfig` baked into the chain-specific
     ///         `CounterfactualBeacon` impl. Missing values resolve to 0 (route simply not configured).
     ///         `_loadCounterfactualConfig()` must run first — it does, via `_loadSigner` below.
@@ -231,6 +250,8 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.usdt = _resolveUsdt();
         cfg.wbtc = _resolveWbtc();
         cfg.weth = _resolveWeth();
+        cfg.pathUsd = _resolvePathUsd();
+        cfg.usdg = _resolveUsdg();
         // Per-(token, bridge) execution-fee caps: a per-chain raw onchain amount in config.toml, in the
         // token's own decimals. Bridge types share the token's value. A leaf names which cap to enforce
         // via its `maxExecutionFeeGetter` selector.
@@ -246,6 +267,11 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.usdceSpokePoolMaxExecutionFee = _maxExecutionFee("usdceMaxExecutionFee", cfg.usdce);
         cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.weth);
         cfg.wbtcSpokePoolMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
+        // SpokePool is pathUSD's only bridge: CCTP burns USDC and the OFT route is USDT0. Its same-chain cap
+        // is left at zero here like every other token's — this builder populates the V4 caps only.
+        cfg.pathUsdSpokePoolMaxExecutionFee = _maxExecutionFee("pathUsdMaxExecutionFee", cfg.pathUsd);
+        // Same for USDG: SpokePool is its only bridge, and its same-chain cap is left at zero here.
+        cfg.usdgSpokePoolMaxExecutionFee = _maxExecutionFee("usdgMaxExecutionFee", cfg.usdg);
         // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP).
         cfg.usdcCctpMaxFeeBps = _usdcCctpMaxFeeBps();
         // SpokePool is the foundational route. Baking `spokePool = 0` silently bricks every SpokePool leaf,
@@ -286,6 +312,8 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         _checkDeclaredFlag("usdt", cfg.usdt != address(0));
         _checkDeclaredFlag("wbtc", cfg.wbtc != address(0));
         _checkDeclaredFlag("weth", cfg.weth != address(0));
+        _checkDeclaredFlag("pathUsd", cfg.pathUsd != address(0));
+        _checkDeclaredFlag("usdg", cfg.usdg != address(0));
         _checkDeclaredFlag("spokePool", cfg.spokePool != address(0));
         _checkDeclaredFlag("sponsoredCctp", hasCctpDomain(block.chainid) && cfg.cctpSrcPeriphery != address(0));
         _checkDeclaredFlag("vanillaCctp", cfg.cctpTokenMessenger != address(0));
