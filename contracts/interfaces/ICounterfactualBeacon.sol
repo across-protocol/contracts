@@ -28,10 +28,47 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Root of the `(proxy, latestRoot)` merkle tree authorizing per-proxy root updates.
     function upgradeRoot() external view returns (bytes32);
 
-    // --- Chain-specific config (immutable; read by leaf implementations under delegatecall) ---
+    // --- Authority --------------------------------------------------------------------------------------
 
-    /// @notice Off-chain signer that authorizes runtime execution fees for every leaf implementation.
+    /// @notice Off-chain signer that authorizes runtime execution fees for every leaf implementation, and
+    ///         the authority of the requirements plan. A zero value is fatal on every flow.
     function signer() external view returns (address);
+
+    /// @notice The Across V5 `Gateway` on this chain.
+    function gateway() external view returns (address);
+
+    // --- Tokens -------------------------------------------------------------------------------------------
+    //
+    // Each is an input token (named by a leaf's `inputTokenGetter`) and a swap output token (its
+    // `swapOutputTokenGetter`). Every one carries its own fee caps and price below; none is a fallback for
+    // another, and a zero address means the token is not configured, so the route fails closed.
+
+    /// @notice Native (Circle-issued or chain-canonical) USDC token address on this chain.
+    function usdc() external view returns (address);
+
+    /// @notice Bridged USDC.e token address, where it exists as a token distinct from `usdc()` — a
+    ///         separate input token with its own caps (bridged USDC has no CCTP burn path). Zero where
+    ///         USDC.e is absent or identical to native USDC.
+    function usdce() external view returns (address);
+
+    /// @notice USDT token address on this chain.
+    function usdt() external view returns (address);
+
+    /// @notice WBTC token address on this chain.
+    function wbtc() external view returns (address);
+
+    /// @notice Canonical WETH ERC-20 on this chain — an input token like `usdc`/`usdt`/`wbtc`, distinct
+    ///         from `wrappedNativeToken()` (the wrapped GAS token; identical to WETH only on ETH-gas
+    ///         chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
+    function weth() external view returns (address);
+
+    /// @notice pathUSD, Tempo's USD-denominated gas token, as a plain ERC-20 input token. It stands to
+    ///         `wrappedNativeToken()` exactly as `weth()` does: that getter is the wrapped GAS token
+    ///         (WpathUSD on Tempo) backing the `msg.value` route, while this one is the ERC-20 route. Being
+    ///         a stablecoin it carries a non-zero `pathUsdStablePrice()`, unlike WETH and WBTC.
+    function pathUsd() external view returns (address);
+
+    // --- Bridge endpoints and routing -----------------------------------------------------------------------
 
     /// @notice Across SpokePool on this chain.
     function spokePool() external view returns (address);
@@ -61,37 +98,40 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice LayerZero OFT source endpoint id for this chain.
     function oftSrcEid() external view returns (uint32);
 
-    /// @notice Native (Circle-issued or chain-canonical) USDC token address on this chain.
-    function usdc() external view returns (address);
+    /// @notice The USDT0 `IOFT` on this chain — the `send` target of the V5 OFT bridge executor, committed as
+    ///         its route's `bridgeEndpointGetter`. Distinct from `oftSrcPeriphery()` (the V4 sponsored-OFT
+    ///         periphery). OFT endpoints are per-token, so another OFT asset means another getter.
+    function usdtOft() external view returns (address);
 
-    /// @notice Bridged USDC.e token address, where it exists as a token distinct from `usdc()` — a
-    ///         separate input token with its own cap, serving SpokePool routes only (bridged USDC has
-    ///         no CCTP burn path). Zero where USDC.e is absent or identical to native USDC.
-    function usdce() external view returns (address);
+    // --- Executors ------------------------------------------------------------------------------------------
+    //
+    // Committed as a route leaf's `executorGetter`; the prefunder requires the caller to be both
+    // `gateway.currentExecutor()` and the address resolved here, so repointing a getter migrates a route.
 
-    /// @notice USDT token address on this chain.
-    function usdt() external view returns (address);
+    /// @notice `CounterfactualSpokePoolBridgeExecutor`.
+    function spokePoolDepositExecutor() external view returns (address);
 
-    /// @notice WBTC token address on this chain.
-    function wbtc() external view returns (address);
+    /// @notice `CounterfactualCCTPBridgeExecutor`.
+    function cctpDepositExecutor() external view returns (address);
 
-    /// @notice Canonical WETH ERC-20 on this chain — an input token like `usdc`/`usdt`/`wbtc`, distinct
-    ///         from `wrappedNativeToken()` (the wrapped GAS token; identical to WETH only on ETH-gas
-    ///         chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
-    function weth() external view returns (address);
+    /// @notice `CounterfactualOFTBridgeExecutor`.
+    function oftDepositExecutor() external view returns (address);
 
-    // --- Per-(token, bridge) execution-fee caps (input-token units). A leaf names which to enforce via its
-    //     `maxExecutionFeeGetter` selector. Illustrative set; for SpokePool this is the fixed fee component. ---
+    /// @notice `CounterfactualSameChainExecutor`.
+    function sameChainExecutor() external view returns (address);
 
-    /// @notice Max execution fee for the USDC CCTP route(s).
-    function usdcCctpMaxExecutionFee() external view returns (uint256);
+    /// @notice `CounterfactualDestinationExecutor`. Never resolved on-chain — a route commits it directly as
+    ///         `dstExecutor` folded into `dstStepId` — but published here so tooling reads one source of
+    ///         truth. That executor is itself constructor-bound to this beacon, so the two must agree.
+    function destinationExecutor() external view returns (address);
 
-    /// @notice Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP route), in bps of the
-    ///         burned amount; 0 ⇒ standard transfers only.
-    function usdcCctpMaxFeeBps() external view returns (uint256);
-
-    /// @notice Max execution fee for the USDT OFT route.
-    function usdtOftMaxExecutionFee() external view returns (uint256);
+    // --- Execution-fee caps (input-token units) ---------------------------------------------------------------
+    //
+    // A leaf names which to enforce via its `maxExecutionFeeGetter` selector. For SpokePool this is the fixed
+    // fee component (added to the leaf's `maxFeeBps` term). There is one entry per (token, bridge) pair that
+    // can actually exist: SpokePool and same-chain take any supported token, whereas CCTP burns USDC only and
+    // the OFT route is USDT0 only, so those two have a single cap each. Zero is a valid value — a fee-free
+    // route, where any non-zero quoted fee is rejected.
 
     /// @notice Max (fixed) fee for the USDC SpokePool route.
     function usdcSpokePoolMaxExecutionFee() external view returns (uint256);
@@ -109,4 +149,66 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice Max (fixed) fee for the WBTC SpokePool route.
     function wbtcSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max (fixed) fee for the pathUSD SpokePool route. On Tempo, where pathUSD is the gas token,
+    ///         this also caps the native (msg.value) route.
+    function pathUsdSpokePoolMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC same-chain route.
+    function usdcSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC.e same-chain route.
+    function usdceSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDT same-chain route.
+    function usdtSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the WETH same-chain route.
+    function wethSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the WBTC same-chain route.
+    function wbtcSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the pathUSD same-chain route.
+    function pathUsdSameChainMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDC CCTP route(s) — the only token CCTP burns.
+    function usdcCctpMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Max execution fee for the USDT OFT route — the only token the OFT route carries.
+    function usdtOftMaxExecutionFee() external view returns (uint256);
+
+    /// @notice Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP route), in bps of the
+    ///         burned amount; 0 ⇒ standard transfers only. Bps, not token units, unlike every cap above.
+    function usdcCctpMaxFeeBps() external view returns (uint256);
+
+    // --- Prices ------------------------------------------------------------------------------------------
+    //
+    // Per-token USD price, 1e18-fixed and decimal-agnostic: the stable floor divides one by the other and
+    // folds on-chain decimals, so one set of prices serves every chain. Zero marks the token unpriced and
+    // SKIPS the floor for any pair touching it, leaving the authority-signed plan as the only protection.
+    // Every supported token has a getter, volatile ones included: the `*StablePrice` name is the wire format
+    // routes commit against, so the set stays complete even where the value is normally zero.
+
+    /// @notice USD price of USDC, 1e18-fixed. Zero ⇒ unpriced (stable floor skipped).
+    function usdcStablePrice() external view returns (uint256);
+
+    /// @notice USD price of USDC.e, 1e18-fixed. Zero ⇒ unpriced (stable floor skipped).
+    function usdceStablePrice() external view returns (uint256);
+
+    /// @notice USD price of USDT, 1e18-fixed. Zero ⇒ unpriced (stable floor skipped).
+    function usdtStablePrice() external view returns (uint256);
+
+    /// @notice USD price of pathUSD, 1e18-fixed. A stablecoin, so normally non-zero.
+    function pathUsdStablePrice() external view returns (uint256);
+
+    /// @notice USD price of WETH, 1e18-fixed. Normally zero (volatile ⇒ unpriced).
+    function wethStablePrice() external view returns (uint256);
+
+    /// @notice USD price of WBTC, 1e18-fixed. Normally zero (volatile ⇒ unpriced).
+    function wbtcStablePrice() external view returns (uint256);
+
+    /// @notice The price the stable floor reads, dispatched over this beacon's configured token addresses.
+    ///         Any other token — or a configured one whose `*StablePrice` is zero — is unpriced.
+    function stablePrice(address token) external view returns (uint256);
 }
