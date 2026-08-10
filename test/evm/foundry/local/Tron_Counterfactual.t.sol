@@ -59,7 +59,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
     string constant NAME = "CounterfactualDepositSpokePool";
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,bytes32 nonce,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
     function setUp() public {
@@ -122,6 +122,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
                 EXECUTE_DEPOSIT_TYPEHASH,
                 proxy,
                 keccak256(route),
+                keccak256("nonce-1"),
                 inputAmount,
                 outputAmount,
                 bytes32(0),
@@ -141,6 +142,7 @@ contract Tron_CounterfactualTest is CounterfactualTestBase {
                     exclusiveRelayer: bytes32(0),
                     exclusivityDeadline: 0,
                     executionFeeRecipient: relayer,
+                    nonce: keccak256("nonce-1"),
                     quoteTimestamp: ts,
                     fillDeadline: deadline,
                     signatureDeadline: deadline,

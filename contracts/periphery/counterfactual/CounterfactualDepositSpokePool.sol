@@ -9,6 +9,7 @@ import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol"
 import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
+import { CounterfactualNonces } from "./CounterfactualNonces.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
@@ -43,6 +44,7 @@ struct SpokePoolSubmitterData {
     bytes32 exclusiveRelayer;
     uint32 exclusivityDeadline;
     address executionFeeRecipient;
+    bytes32 nonce;
     uint32 quoteTimestamp;
     uint32 fillDeadline;
     uint32 signatureDeadline;
@@ -60,12 +62,18 @@ struct SpokePoolSubmitterData {
  *
  *      No per-token variants or per-variant EIP-712 names: `inputTokenGetter` is in `params` →
  *      `routeParamsHash`, which the fee signature binds, so a signature for one token can't validate for
- *      another. Cross-chain replay is prevented by the domain `chainId`, cross-clone by `verifyingContract`.
- *      No nonce needed (balance is consumed on execution; short deadlines bound the window). Depositor
+ *      another. Cross-chain replay is prevented by the domain `chainId`, cross-clone by `verifyingContract`,
+ *      and same-clone replay by a signed single-use `nonce` consumed in the proxy's storage
+ *      (`CounterfactualNonces`), so a re-funded proxy can't be re-executed on an old signature. Depositor
  *      speed-ups are unsupported: `depositor` is `address(this)` (the clone), which can't sign.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP712, SafeTransferERC20 {
+contract CounterfactualDepositSpokePool is
+    CounterfactualImplementationBase,
+    CounterfactualNonces,
+    EIP712,
+    SafeTransferERC20
+{
     // `using` is restricted to `forceApprove`; `safeTransfer` goes through the `_safeTransfer` hook so
     // chain-specific variants (Tron) can override transfer semantics in one place.
     using { SafeERC20.forceApprove } for IERC20;
@@ -83,6 +91,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
      * @param exclusiveRelayer Address of the exclusive relayer (bytes32-encoded).
      * @param exclusivityDeadline Timestamp until which the exclusive relayer has priority.
      * @param executionFeeRecipient Address that received the execution fee.
+     * @param nonce Single-use nonce consumed by this execution.
      * @param quoteTimestamp Timestamp of the deposit quote.
      * @param fillDeadline Deadline by which the deposit must be filled.
      * @param signatureDeadline Deadline after which the authorizing signature expires.
@@ -94,6 +103,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
         bytes32 indexed exclusiveRelayer,
         uint32 exclusivityDeadline,
         address indexed executionFeeRecipient,
+        bytes32 nonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 signatureDeadline,
@@ -108,7 +118,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
     /// @notice EIP-712 typehash for execute deposit signature verification.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,bytes32 nonce,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
     constructor() EIP712("CounterfactualDepositSpokePool", "v2.0.0") {} // solhint-disable-line no-empty-blocks
@@ -118,7 +128,8 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
      * @dev `routeParamsEncoded`/`submitterDataEncoded` decode to `SpokePoolRouteParams`/`SpokePoolSubmitterData`
      *      (the latter carries the beacon `signer`'s EIP-712 signature). The value resolved from
      *      `inputTokenGetter` decides native (`NATIVE_SENTINEL`, msg.value) vs ERC-20. Reverts:
-     *      `SignatureExpired`, `InvalidSignature`, `MaxFee`, `NativeTransferFailed`, `RouteNotConfigured`.
+     *      `SignatureExpired`, `InvalidSignature`, `InvalidNonce`, `MaxFee`, `NativeTransferFailed`,
+     *      `RouteNotConfigured`.
      */
     function execute(bytes calldata routeParamsEncoded, bytes calldata submitterDataEncoded) external payable {
         SpokePoolRouteParams memory routeParams = abi.decode(routeParamsEncoded, (SpokePoolRouteParams));
@@ -126,6 +137,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
 
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         _verifySignature(keccak256(routeParamsEncoded), submitterData);
+        _useNonce(submitterData.nonce);
 
         uint256 depositAmount = submitterData.inputAmount - submitterData.executionFee;
         _checkFee(
@@ -185,6 +197,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
             submitterData.exclusiveRelayer,
             submitterData.exclusivityDeadline,
             submitterData.executionFeeRecipient,
+            submitterData.nonce,
             submitterData.quoteTimestamp,
             submitterData.fillDeadline,
             submitterData.signatureDeadline,
@@ -219,6 +232,7 @@ contract CounterfactualDepositSpokePool is CounterfactualImplementationBase, EIP
                 EXECUTE_DEPOSIT_TYPEHASH,
                 address(this),
                 routeParamsHash,
+                submitterData.nonce,
                 submitterData.inputAmount,
                 submitterData.outputAmount,
                 submitterData.exclusiveRelayer,
