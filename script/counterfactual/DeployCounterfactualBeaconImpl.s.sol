@@ -19,8 +19,7 @@ import {
 // this impl. After a config change the impl is immutable, so a change means a new impl AND a proxy upgrade —
 // but DeployCounterfactualBeacon is deploy-only and will NOT move a live beacon. The owner must perform that
 // upgrade out of band: `CounterfactualBeacon(proxy).upgradeToAndCall(newImpl, "")` — while the dev wallet is
-// still the owner, UpgradeCounterfactualBeacon.s.sol (or scripts/upgradeCounterfactualBeacons.sh for many
-// chains) does exactly that.
+// still the owner, UpgradeCounterfactualBeacon.s.sol does exactly that.
 //
 // How to run:
 // 1. Edit script/counterfactual/config.toml with the signer, per-token max-execution-fee caps for
@@ -33,8 +32,8 @@ import {
 //      --rpc-url $NODE_URL -vvvv
 // 4. Deploy: append --broadcast --verify
 //
-// To run across many chains (or all config.toml chains except Tron) in one shot with a per-chain
-// PASS/FAIL log, use scripts/deployCounterfactualBeaconImpls.sh.
+// To deploy the whole beacon stack (impl + bootstrap + proxy + dispatcher) across several chains in one
+// run, use DeployCounterfactualBeaconStack.s.sol instead of this script plus DeployCounterfactualBeacon.
 //
 // After deploying, verify the impls (getters vs config sources, on-chain token/periphery identity,
 // upgrade diff + multisig calldata) with CheckCounterfactualBeaconImpls.s.sol before asking the owner

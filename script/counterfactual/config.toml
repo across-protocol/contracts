@@ -6,7 +6,27 @@ endpoint_url = "http://localhost"
 # Global CREATE2 salt for the counterfactual singleton infra (factory, bootstrap, beacon proxy,
 # dispatcher, leaf impls). One value shared by every chain so the deterministic addresses stay in
 # cross-chain parity; bump it to coordinate a fresh redeploy everywhere.
-deploySalt = "0x0000000000000000000000000000000000000000000000000000000000000006"
+#
+# TEST BEACONS. This is `keccak256("across-counterfactual-v5-test-beacons-2026-08-09")`, deliberately a full
+# 32 bytes of entropy rather than a small counter: the previous salts were `0x…01`-`0x…06`, and anything in
+# that range risks being reused by another deploy and silently landing on these addresses. Everything under
+# this salt is a V5 TEST deployment, entirely separate from the production stack still living at salt
+# `0x…06`. Changing it mints a whole new stack — a route migration, not a redeploy.
+deploySalt = "0x91c0b5726eb78098e85d116ce3a407d5465d45efe2e214e7376c161e2e2b6c03"
+
+# Per-token USD prices, 1e18-fixed, read by every chain (hence the globals section, not a per-chain repeat):
+# the stable floor divides one price by the other and folds on-chain decimals, so a single set serves
+# everywhere. A price is baked only where its token actually resolves on the chain. Zero = unpriced, which
+# SKIPS the floor for every pair touching that token, leaving the authority-signed plan as the only
+# protection — the intended setting for the volatile tokens, not an omission.
+[0.uint]
+usdcStablePrice = 1000000000000000000
+usdceStablePrice = 1000000000000000000
+usdtStablePrice = 1000000000000000000
+pathUsdStablePrice = 1000000000000000000
+usdgStablePrice = 1000000000000000000
+wethStablePrice = 0 # volatile
+wbtcStablePrice = 0 # volatile
 
 # A chain's `[N.uint]` section carries its per-token max-execution-fee caps as the raw onchain
 # amount baked into the beacon impl, in the token's own decimals — e.g. 2 USDC is 2000000 on 6-decimal
@@ -40,6 +60,14 @@ endpoint_url = "${NODE_URL_1}"
 [1.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee"
 [1.bool]
 usdc = true
 usdce = false
@@ -64,6 +92,12 @@ endpoint_url = "${NODE_URL_10}"
 [10.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# usdtOft unset: the USDT0 messenger's token() here is USD₮0, not this chain's `usdt` (bridged Tether).
 [10.bool]
 usdc = true
 usdce = true
@@ -89,6 +123,12 @@ endpoint_url = "${NODE_URL_56}"
 [56.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [56.bool]
 usdc = true
 usdce = false
@@ -113,6 +153,14 @@ endpoint_url = "${NODE_URL_130}"
 [130.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0xc07bE8994D035631c36fb4a89C918CeFB2f03EC3"
 [130.bool]
 usdc = true
 usdce = false
@@ -137,6 +185,14 @@ endpoint_url = "${NODE_URL_137}"
 [137.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13"
 [137.bool]
 usdc = true
 usdce = true
@@ -162,6 +218,14 @@ endpoint_url = "${NODE_URL_143}"
 [143.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x9151434b16b9763660705744891fA906F660EcC5"
 [143.bool]
 usdc = true
 usdce = false
@@ -186,6 +250,12 @@ endpoint_url = "${NODE_URL_324}"
 [324.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [324.bool]
 usdc = false
 usdce = true
@@ -210,6 +280,12 @@ endpoint_url = "${NODE_URL_480}"
 [480.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [480.bool]
 usdc = true
 usdce = false
@@ -225,7 +301,6 @@ oft = false
 [480.uint]
 usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
-usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals; unused until USDT is configured for this chain)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
@@ -234,6 +309,14 @@ endpoint_url = "${NODE_URL_999}"
 [999.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98"
 [999.bool]
 usdc = true
 usdce = false
@@ -250,13 +333,20 @@ oft = true
 usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 0 # No WETH configured for this chain
 
 [4217] # Tempo
 endpoint_url = "${NODE_URL_4217}"
 [4217.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff"
 [4217.bool]
 usdc = false
 usdce = true
@@ -280,6 +370,14 @@ endpoint_url = "${NODE_URL_4326}"
 [4326.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x9151434b16b9763660705744891fA906F660EcC5"
 [4326.bool]
 usdc = false
 usdce = false
@@ -302,6 +400,12 @@ endpoint_url = "${NODE_URL_4663}"
 [4663.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [4663.bool]
 usdc = false
 usdce = false
@@ -324,6 +428,12 @@ endpoint_url = "${NODE_URL_5042}"
 [5042.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [5042.bool]
 usdc = true
 usdce = false
@@ -345,6 +455,12 @@ endpoint_url = "${NODE_URL_8453}"
 [8453.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [8453.bool]
 usdc = true
 usdce = false
@@ -368,6 +484,14 @@ endpoint_url = "${NODE_URL_9745}"
 [9745.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x02ca37966753bDdDf11216B73B16C1dE756A7CF9"
 [9745.bool]
 usdc = false
 usdce = false
@@ -382,16 +506,22 @@ vanillaCctp = false
 oft = true
 [9745.uint]
 usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdcMaxExecutionFee = 0 # No USDC
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
-wbtcMaxExecutionFee = 0 # No WBTC
 
 [42161] # Arbitrum One
 endpoint_url = "${NODE_URL_42161}"
 [42161.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
 [42161.bool]
 usdc = true
 usdce = true
@@ -417,6 +547,12 @@ endpoint_url = "${NODE_URL_43114}"
 [43114.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [43114.bool]
 usdc = true
 usdce = false
@@ -433,13 +569,20 @@ oft = false
 usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
 usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
-wethMaxExecutionFee = 0 # No WETH configured for this chain
 
 [57073] # Ink
 endpoint_url = "${NODE_URL_57073}"
 [57073.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# USDT0 `IOFT` — the V5 OFT bridge endpoint (the token's own OFT contract, NOT the LayerZero
+# endpoint and NOT the V4 sponsored-OFT periphery). From script/mintburn/oft/usdt0.toml.
+usdtOft = "0x1cB6De532588fCA4a21B7209DE7C456AF8434A65"
 [57073.bool]
 usdc = true
 usdce = false
@@ -463,6 +606,12 @@ endpoint_url = "${NODE_URL_59144}"
 [59144.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+gateway = "0x998d7c178A1F9607b47eA3A8e22426451b3ce707"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [59144.bool]
 usdc = true
 usdce = false
@@ -488,6 +637,12 @@ endpoint_url = "${NODE_URL_728126428}"
 # EIP-712 fee signer (secp256k1 recovery key — EVM hex format, same key as other chains). Read by
 # script/tron/counterfactual/tron-deploy-counterfactual-beacon-impl.ts (forge cannot broadcast to Tron).
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+gateway = "0x0000000000000000000000000000000000000000"
+spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x0000000000000000000000000000000000000000"
+sameChainExecutor = "0x0000000000000000000000000000000000000000"
+# No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [728126428.bool]
 usdc = false
 usdce = false
@@ -502,6 +657,4 @@ vanillaCctp = false
 oft = false
 [728126428.uint]
 usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdcMaxExecutionFee = 30000000 # 30 USDC (6 decimals; unused until USDC is configured for Tron)
 usdtMaxExecutionFee = 30000000 # 30 USDT (6 decimals on Tron)
-wethMaxExecutionFee = 0 # No WETH configured for Tron

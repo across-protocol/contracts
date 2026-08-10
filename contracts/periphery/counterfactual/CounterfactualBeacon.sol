@@ -50,7 +50,10 @@ struct CounterfactualChainConfig {
     ///      another OFT token is a beacon upgrade adding another getter.
     address oftSrcPeriphery;
     uint32 oftSrcEid;
-    /// @dev The USDT0 `IOFT` — V5's OFT bridge endpoint, distinct from `oftSrcPeriphery` (V4's periphery).
+    /// @dev The USDT0 OFT **messenger** (`IOFT`) — the contract the V5 OFT executor approves and calls
+    ///      `send` on, i.e. `SponsoredOFTSrcPeriphery.OFT_MESSENGER`. Not the USDT token, not the LayerZero
+    ///      endpoint, and distinct from `oftSrcPeriphery` (V4's periphery). Must satisfy
+    ///      `IOFT(usdtOft).token() == usdt` on any chain where it is set — see `ICounterfactualBeacon`.
     address usdtOft;
     // --- Executors ----------------------------------------------------------------------------------------
     /// @dev Resolved by a route leaf's `executorGetter`. Source-side only: the destination executor is
@@ -269,8 +272,10 @@ contract CounterfactualBeacon is CounterfactualBeaconBase {
     /// @inheritdoc ICounterfactualBeacon
     /// @dev Dispatches over the configured token addresses; the only logic in this otherwise
     ///      configuration-only contract, and pure config reads. An unconfigured token slot is `address(0)`,
-    ///      which returns 0 before any comparison can alias it. Every supported token is dispatched, volatile
-    ///      ones included — they simply carry a zero price, which reads as unpriced.
+    ///      which returns 0 before any comparison can alias it. Every NAMED token is dispatched, volatile
+    ///      ones included — they simply carry a zero price, which reads as unpriced. `wrappedNativeToken` is
+    ///      not dispatched: it aliases either `weth` (already covered) or a volatile gas token (correctly
+    ///      unpriced). See `ICounterfactualBeacon.stablePrice` for why it must not get its own price.
     function stablePrice(address token) external view returns (uint256) {
         if (token == address(0)) return 0;
         if (token == usdc) return usdcStablePrice;

@@ -128,6 +128,27 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return fee;
     }
 
+    /// @dev An optional `[<chainId>.address]` value: absent (or explicitly zero) resolves to `address(0)`,
+    ///      which every caller turns into `RouteNotConfigured`. Used for the V5 stack, whose addresses have
+    ///      no on-chain source to resolve from and are placeholders until that chain's V5 deploy lands.
+    function _optionalAddress(string memory key) internal returns (address) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(key);
+        return v.ty.kind == TypeKind.Address ? v.toAddress() : address(0);
+    }
+
+    /// @dev A token's USD price (1e18-fixed) from the `[0]` globals — chain-invariant, so it is configured
+    ///      once rather than per chain. Returns 0 when the token is absent here (nothing to price) or the
+    ///      key is unset; 0 means unpriced, which SKIPS the stable floor for every pair touching the token.
+    ///      That is the intended value for the volatile tokens, so unlike `_maxExecutionFee` this does not
+    ///      reject a zero.
+    function _stablePrice(string memory key, address token) internal returns (uint256) {
+        if (token == address(0)) return 0;
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(GLOBALS_CHAIN_ID, key);
+        return v.ty.kind == TypeKind.Uint256 ? v.toUint256() : 0;
+    }
+
     /// @dev Standard Aave/Compound-style native sentinel, returned by `beacon.nativeToken()` on chains whose
     ///      "native or equivalent" SpokePool route is paid in `msg.value` (input token is then
     ///      `beacon.wrappedNativeToken()`). Mirrors `CounterfactualDepositSpokePool.NATIVE_SENTINEL`.
@@ -232,6 +253,170 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
+    // --- Beacon config as a selector-indexed table -------------------------------------------------------
+    // One list, shared by every script that has to compare a deployed impl against what the resolvers now
+    // produce (the staleness warning in DeployAllCounterfactual, the impl checker). Generated from
+    // `CounterfactualChainConfig` field order, so adding a field means editing exactly one place — a
+    // hand-maintained per-getter comparison silently stops covering whatever was added last.
+
+    /// @dev Number of config getters on the beacon; equals the field count of `CounterfactualChainConfig`.
+    uint256 internal constant BEACON_CONFIG_GETTERS = 46;
+
+    /// @notice Every beacon config getter: its selector and its name, in struct order.
+    function _beaconConfigGetters() internal pure returns (bytes4[46] memory sels, string[46] memory names) {
+        sels[0] = ICounterfactualBeacon.signer.selector;
+        names[0] = "signer";
+        sels[1] = ICounterfactualBeacon.gateway.selector;
+        names[1] = "gateway";
+        sels[2] = ICounterfactualBeacon.usdc.selector;
+        names[2] = "usdc";
+        sels[3] = ICounterfactualBeacon.usdce.selector;
+        names[3] = "usdce";
+        sels[4] = ICounterfactualBeacon.usdt.selector;
+        names[4] = "usdt";
+        sels[5] = ICounterfactualBeacon.wbtc.selector;
+        names[5] = "wbtc";
+        sels[6] = ICounterfactualBeacon.weth.selector;
+        names[6] = "weth";
+        sels[7] = ICounterfactualBeacon.pathUsd.selector;
+        names[7] = "pathUsd";
+        sels[8] = ICounterfactualBeacon.usdg.selector;
+        names[8] = "usdg";
+        sels[9] = ICounterfactualBeacon.spokePool.selector;
+        names[9] = "spokePool";
+        sels[10] = ICounterfactualBeacon.wrappedNativeToken.selector;
+        names[10] = "wrappedNativeToken";
+        sels[11] = ICounterfactualBeacon.nativeToken.selector;
+        names[11] = "nativeToken";
+        sels[12] = ICounterfactualBeacon.cctpSrcPeriphery.selector;
+        names[12] = "cctpSrcPeriphery";
+        sels[13] = ICounterfactualBeacon.cctpTokenMessenger.selector;
+        names[13] = "cctpTokenMessenger";
+        sels[14] = ICounterfactualBeacon.cctpSourceDomain.selector;
+        names[14] = "cctpSourceDomain";
+        sels[15] = ICounterfactualBeacon.oftSrcPeriphery.selector;
+        names[15] = "oftSrcPeriphery";
+        sels[16] = ICounterfactualBeacon.oftSrcEid.selector;
+        names[16] = "oftSrcEid";
+        sels[17] = ICounterfactualBeacon.usdtOft.selector;
+        names[17] = "usdtOft";
+        sels[18] = ICounterfactualBeacon.spokePoolDepositExecutor.selector;
+        names[18] = "spokePoolDepositExecutor";
+        sels[19] = ICounterfactualBeacon.cctpDepositExecutor.selector;
+        names[19] = "cctpDepositExecutor";
+        sels[20] = ICounterfactualBeacon.oftDepositExecutor.selector;
+        names[20] = "oftDepositExecutor";
+        sels[21] = ICounterfactualBeacon.sameChainExecutor.selector;
+        names[21] = "sameChainExecutor";
+        sels[22] = ICounterfactualBeacon.usdcSpokePoolMaxExecutionFee.selector;
+        names[22] = "usdcSpokePoolMaxExecutionFee";
+        sels[23] = ICounterfactualBeacon.usdceSpokePoolMaxExecutionFee.selector;
+        names[23] = "usdceSpokePoolMaxExecutionFee";
+        sels[24] = ICounterfactualBeacon.usdtSpokePoolMaxExecutionFee.selector;
+        names[24] = "usdtSpokePoolMaxExecutionFee";
+        sels[25] = ICounterfactualBeacon.wethSpokePoolMaxExecutionFee.selector;
+        names[25] = "wethSpokePoolMaxExecutionFee";
+        sels[26] = ICounterfactualBeacon.wbtcSpokePoolMaxExecutionFee.selector;
+        names[26] = "wbtcSpokePoolMaxExecutionFee";
+        sels[27] = ICounterfactualBeacon.pathUsdSpokePoolMaxExecutionFee.selector;
+        names[27] = "pathUsdSpokePoolMaxExecutionFee";
+        sels[28] = ICounterfactualBeacon.usdgSpokePoolMaxExecutionFee.selector;
+        names[28] = "usdgSpokePoolMaxExecutionFee";
+        sels[29] = ICounterfactualBeacon.usdcSameChainMaxExecutionFee.selector;
+        names[29] = "usdcSameChainMaxExecutionFee";
+        sels[30] = ICounterfactualBeacon.usdceSameChainMaxExecutionFee.selector;
+        names[30] = "usdceSameChainMaxExecutionFee";
+        sels[31] = ICounterfactualBeacon.usdtSameChainMaxExecutionFee.selector;
+        names[31] = "usdtSameChainMaxExecutionFee";
+        sels[32] = ICounterfactualBeacon.wethSameChainMaxExecutionFee.selector;
+        names[32] = "wethSameChainMaxExecutionFee";
+        sels[33] = ICounterfactualBeacon.wbtcSameChainMaxExecutionFee.selector;
+        names[33] = "wbtcSameChainMaxExecutionFee";
+        sels[34] = ICounterfactualBeacon.pathUsdSameChainMaxExecutionFee.selector;
+        names[34] = "pathUsdSameChainMaxExecutionFee";
+        sels[35] = ICounterfactualBeacon.usdgSameChainMaxExecutionFee.selector;
+        names[35] = "usdgSameChainMaxExecutionFee";
+        sels[36] = ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector;
+        names[36] = "usdcCctpMaxExecutionFee";
+        sels[37] = ICounterfactualBeacon.usdtOftMaxExecutionFee.selector;
+        names[37] = "usdtOftMaxExecutionFee";
+        sels[38] = ICounterfactualBeacon.usdcCctpMaxFeeBps.selector;
+        names[38] = "usdcCctpMaxFeeBps";
+        sels[39] = ICounterfactualBeacon.usdcStablePrice.selector;
+        names[39] = "usdcStablePrice";
+        sels[40] = ICounterfactualBeacon.usdceStablePrice.selector;
+        names[40] = "usdceStablePrice";
+        sels[41] = ICounterfactualBeacon.usdtStablePrice.selector;
+        names[41] = "usdtStablePrice";
+        sels[42] = ICounterfactualBeacon.pathUsdStablePrice.selector;
+        names[42] = "pathUsdStablePrice";
+        sels[43] = ICounterfactualBeacon.usdgStablePrice.selector;
+        names[43] = "usdgStablePrice";
+        sels[44] = ICounterfactualBeacon.wethStablePrice.selector;
+        names[44] = "wethStablePrice";
+        sels[45] = ICounterfactualBeacon.wbtcStablePrice.selector;
+        names[45] = "wbtcStablePrice";
+    }
+
+    /// @notice The value each getter should return for `c`, as a raw 32-byte word, in the same order.
+    function _beaconConfigWords(CounterfactualChainConfig memory c) internal pure returns (bytes32[46] memory w) {
+        w[0] = bytes32(uint256(uint160(c.signer)));
+        w[1] = bytes32(uint256(uint160(c.gateway)));
+        w[2] = bytes32(uint256(uint160(c.usdc)));
+        w[3] = bytes32(uint256(uint160(c.usdce)));
+        w[4] = bytes32(uint256(uint160(c.usdt)));
+        w[5] = bytes32(uint256(uint160(c.wbtc)));
+        w[6] = bytes32(uint256(uint160(c.weth)));
+        w[7] = bytes32(uint256(uint160(c.pathUsd)));
+        w[8] = bytes32(uint256(uint160(c.usdg)));
+        w[9] = bytes32(uint256(uint160(c.spokePool)));
+        w[10] = bytes32(uint256(uint160(c.wrappedNativeToken)));
+        w[11] = bytes32(uint256(uint160(c.nativeToken)));
+        w[12] = bytes32(uint256(uint160(c.cctpSrcPeriphery)));
+        w[13] = bytes32(uint256(uint160(c.cctpTokenMessenger)));
+        w[14] = bytes32(uint256(c.cctpSourceDomain));
+        w[15] = bytes32(uint256(uint160(c.oftSrcPeriphery)));
+        w[16] = bytes32(uint256(c.oftSrcEid));
+        w[17] = bytes32(uint256(uint160(c.usdtOft)));
+        w[18] = bytes32(uint256(uint160(c.spokePoolDepositExecutor)));
+        w[19] = bytes32(uint256(uint160(c.cctpDepositExecutor)));
+        w[20] = bytes32(uint256(uint160(c.oftDepositExecutor)));
+        w[21] = bytes32(uint256(uint160(c.sameChainExecutor)));
+        w[22] = bytes32(uint256(c.usdcSpokePoolMaxExecutionFee));
+        w[23] = bytes32(uint256(c.usdceSpokePoolMaxExecutionFee));
+        w[24] = bytes32(uint256(c.usdtSpokePoolMaxExecutionFee));
+        w[25] = bytes32(uint256(c.wethSpokePoolMaxExecutionFee));
+        w[26] = bytes32(uint256(c.wbtcSpokePoolMaxExecutionFee));
+        w[27] = bytes32(uint256(c.pathUsdSpokePoolMaxExecutionFee));
+        w[28] = bytes32(uint256(c.usdgSpokePoolMaxExecutionFee));
+        w[29] = bytes32(uint256(c.usdcSameChainMaxExecutionFee));
+        w[30] = bytes32(uint256(c.usdceSameChainMaxExecutionFee));
+        w[31] = bytes32(uint256(c.usdtSameChainMaxExecutionFee));
+        w[32] = bytes32(uint256(c.wethSameChainMaxExecutionFee));
+        w[33] = bytes32(uint256(c.wbtcSameChainMaxExecutionFee));
+        w[34] = bytes32(uint256(c.pathUsdSameChainMaxExecutionFee));
+        w[35] = bytes32(uint256(c.usdgSameChainMaxExecutionFee));
+        w[36] = bytes32(uint256(c.usdcCctpMaxExecutionFee));
+        w[37] = bytes32(uint256(c.usdtOftMaxExecutionFee));
+        w[38] = bytes32(uint256(c.usdcCctpMaxFeeBps));
+        w[39] = bytes32(uint256(c.usdcStablePrice));
+        w[40] = bytes32(uint256(c.usdceStablePrice));
+        w[41] = bytes32(uint256(c.usdtStablePrice));
+        w[42] = bytes32(uint256(c.pathUsdStablePrice));
+        w[43] = bytes32(uint256(c.usdgStablePrice));
+        w[44] = bytes32(uint256(c.wethStablePrice));
+        w[45] = bytes32(uint256(c.wbtcStablePrice));
+    }
+
+    /// @dev Staticcall `selector` on `target`, returning the single word it produced. `ok` is false when the
+    ///      call reverts or returns a non-word — which is how an impl predating a getter reports itself
+    ///      instead of aborting the whole run.
+    function _tryReadBeaconWord(address target, bytes4 selector) internal view returns (bool ok, bytes32 word) {
+        (bool success, bytes memory ret) = target.staticcall(abi.encodeWithSelector(selector));
+        if (!success || ret.length != 32) return (false, bytes32(0));
+        return (true, abi.decode(ret, (bytes32)));
+    }
+
     /// @notice Builds the per-chain `CounterfactualChainConfig` baked into the chain-specific
     ///         `CounterfactualBeacon` impl. Missing values resolve to 0 (route simply not configured).
     ///         `_loadCounterfactualConfig()` must run first — it does, via `_loadSigner` below.
@@ -252,28 +437,61 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.weth = _resolveWeth();
         cfg.pathUsd = _resolvePathUsd();
         cfg.usdg = _resolveUsdg();
-        // Per-(token, bridge) execution-fee caps: a per-chain raw onchain amount in config.toml, in the
-        // token's own decimals. Bridge types share the token's value. A leaf names which cap to enforce
-        // via its `maxExecutionFeeGetter` selector.
+        // --- Execution-fee caps. ONE config value per token (its raw onchain amount, in the token's own
+        //     decimals) feeds every bridge that can carry it: SpokePool and same-chain for all of them, plus
+        //     CCTP for USDC and OFT for USDT. A leaf names which cap to enforce via its
+        //     `maxExecutionFeeGetter` selector, and each is required non-zero wherever its token resolves.
         uint256 usdcMaxExecutionFee = _maxExecutionFee("usdcMaxExecutionFee", cfg.usdc);
-        cfg.usdcCctpMaxExecutionFee = usdcMaxExecutionFee;
         cfg.usdcSpokePoolMaxExecutionFee = usdcMaxExecutionFee;
+        cfg.usdcSameChainMaxExecutionFee = usdcMaxExecutionFee;
+        cfg.usdcCctpMaxExecutionFee = usdcMaxExecutionFee;
+        uint256 usdceMaxExecutionFee = _maxExecutionFee("usdceMaxExecutionFee", cfg.usdce);
+        cfg.usdceSpokePoolMaxExecutionFee = usdceMaxExecutionFee;
+        cfg.usdceSameChainMaxExecutionFee = usdceMaxExecutionFee;
         uint256 usdtMaxExecutionFee = _maxExecutionFee("usdtMaxExecutionFee", cfg.usdt);
-        cfg.usdtOftMaxExecutionFee = usdtMaxExecutionFee;
         cfg.usdtSpokePoolMaxExecutionFee = usdtMaxExecutionFee;
+        cfg.usdtSameChainMaxExecutionFee = usdtMaxExecutionFee;
+        cfg.usdtOftMaxExecutionFee = usdtMaxExecutionFee;
         // Denominated in canonical WETH (18 decimals) and required only where WETH exists. On ETH-gas
         // chains the same value caps the native msg.value route (wrapped native IS WETH there); non-ETH-gas
         // chains do not get wrapped-native routes, so no cap is denominated in WBNB/WPOL/etc.
-        cfg.usdceSpokePoolMaxExecutionFee = _maxExecutionFee("usdceMaxExecutionFee", cfg.usdce);
-        cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.weth);
-        cfg.wbtcSpokePoolMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
-        // SpokePool is pathUSD's only bridge: CCTP burns USDC and the OFT route is USDT0. Its same-chain cap
-        // is left at zero here like every other token's — this builder populates the V4 caps only.
-        cfg.pathUsdSpokePoolMaxExecutionFee = _maxExecutionFee("pathUsdMaxExecutionFee", cfg.pathUsd);
-        // Same for USDG: SpokePool is its only bridge, and its same-chain cap is left at zero here.
-        cfg.usdgSpokePoolMaxExecutionFee = _maxExecutionFee("usdgMaxExecutionFee", cfg.usdg);
+        uint256 wethMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.weth);
+        cfg.wethSpokePoolMaxExecutionFee = wethMaxExecutionFee;
+        cfg.wethSameChainMaxExecutionFee = wethMaxExecutionFee;
+        uint256 wbtcMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
+        cfg.wbtcSpokePoolMaxExecutionFee = wbtcMaxExecutionFee;
+        cfg.wbtcSameChainMaxExecutionFee = wbtcMaxExecutionFee;
+        // pathUSD and USDG have no CCTP or OFT leg — CCTP burns USDC and the OFT route is USDT0 — so their
+        // config value feeds the SpokePool and same-chain caps only.
+        uint256 pathUsdMaxExecutionFee = _maxExecutionFee("pathUsdMaxExecutionFee", cfg.pathUsd);
+        cfg.pathUsdSpokePoolMaxExecutionFee = pathUsdMaxExecutionFee;
+        cfg.pathUsdSameChainMaxExecutionFee = pathUsdMaxExecutionFee;
+        uint256 usdgMaxExecutionFee = _maxExecutionFee("usdgMaxExecutionFee", cfg.usdg);
+        cfg.usdgSpokePoolMaxExecutionFee = usdgMaxExecutionFee;
+        cfg.usdgSameChainMaxExecutionFee = usdgMaxExecutionFee;
         // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP).
         cfg.usdcCctpMaxFeeBps = _usdcCctpMaxFeeBps();
+
+        // --- V5 stack. No resolver exists for any of these: they come from `[<chainId>.address]` or stay
+        //     zero, which callers turn into `RouteNotConfigured` — so an unfilled entry is inert, not unsafe.
+        cfg.gateway = _optionalAddress("gateway");
+        cfg.usdtOft = _optionalAddress("usdtOft");
+        cfg.spokePoolDepositExecutor = _optionalAddress("spokePoolDepositExecutor");
+        cfg.cctpDepositExecutor = _optionalAddress("cctpDepositExecutor");
+        cfg.oftDepositExecutor = _optionalAddress("oftDepositExecutor");
+        cfg.sameChainExecutor = _optionalAddress("sameChainExecutor");
+
+        // --- Prices. Chain-invariant (the floor divides one by the other and folds on-chain decimals), so
+        //     they live once in the `[0]` globals rather than being repeated per chain. Baked only where the
+        //     token itself resolves, so an absent token stays wholly unconfigured.
+        cfg.usdcStablePrice = _stablePrice("usdcStablePrice", cfg.usdc);
+        cfg.usdceStablePrice = _stablePrice("usdceStablePrice", cfg.usdce);
+        cfg.usdtStablePrice = _stablePrice("usdtStablePrice", cfg.usdt);
+        cfg.pathUsdStablePrice = _stablePrice("pathUsdStablePrice", cfg.pathUsd);
+        cfg.usdgStablePrice = _stablePrice("usdgStablePrice", cfg.usdg);
+        // WETH and WBTC are volatile: their globals are zero, so the floor is skipped for their pairs.
+        cfg.wethStablePrice = _stablePrice("wethStablePrice", cfg.weth);
+        cfg.wbtcStablePrice = _stablePrice("wbtcStablePrice", cfg.wbtc);
         // SpokePool is the foundational route. Baking `spokePool = 0` silently bricks every SpokePool leaf,
         // fixable only by a registry UUPS upgrade (the value is immutable on the impl). Refuse to deploy
         // without a SpokePool entry.

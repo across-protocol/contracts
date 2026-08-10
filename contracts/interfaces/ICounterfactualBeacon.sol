@@ -102,9 +102,16 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice LayerZero OFT source endpoint id for this chain.
     function oftSrcEid() external view returns (uint32);
 
-    /// @notice The USDT0 `IOFT` on this chain — the `send` target of the V5 OFT bridge executor, committed as
-    ///         its route's `bridgeEndpointGetter`. Distinct from `oftSrcPeriphery()` (the V4 sponsored-OFT
-    ///         periphery). OFT endpoints are per-token, so another OFT asset means another getter.
+    /// @notice The USDT0 OFT **messenger** on this chain — the `IOFT` the V5 OFT executor approves and calls
+    ///         `send` on, committed as its route's `bridgeEndpointGetter`. This is the messenger/adapter, NOT
+    ///         the USDT token itself and NOT the LayerZero endpoint: it is the same contract
+    ///         `SponsoredOFTSrcPeriphery` holds as `OFT_MESSENGER`, whose constructor asserts
+    ///         `IOFT(messenger).token() == token`. Also distinct from `oftSrcPeriphery()`, the V4
+    ///         sponsored-OFT periphery that wraps it.
+    /// @dev    A V5 route commits the funded token and this endpoint as two INDEPENDENT getters, so a chain
+    ///         where `IOFT(usdtOft).token() != usdt()` must leave this unset or the executor approves the
+    ///         wrong asset. Optimism is that case today (USD₮0 vs bridged Tether) and is unset for it.
+    ///         OFT endpoints are per-token, so another OFT asset means another getter.
     function usdtOft() external view returns (address);
 
     // --- Executors ------------------------------------------------------------------------------------------
@@ -219,5 +226,13 @@ interface ICounterfactualBeacon is IBeacon {
 
     /// @notice The price the stable floor reads, dispatched over this beacon's configured token addresses.
     ///         Any other token — or a configured one whose `*StablePrice` is zero — is unpriced.
+    /// @dev    Dispatch is by the NAMED token getters only; an asset is priceable only through its own. In
+    ///         particular `wrappedNativeToken()` gets no branch of its own, and deliberately so: where it is
+    ///         WETH it is already dispatched, and everywhere else it is a volatile gas token (WBNB, WPOL,
+    ///         WAVAX, …) that must read unpriced. Giving it a price getter would put a second, independently
+    ///         settable value behind an address that already has one — misconfigure it and WETH acquires a
+    ///         stable floor. A chain whose gas token is STABLE and whose wrapper is a distinct address (an
+    ///         ARC or Tempo shape) therefore needs that wrapper added as its own named token, the way pathUSD
+    ///         was; until then its native route reads unpriced and relies on the authority-signed plan.
     function stablePrice(address token) external view returns (uint256);
 }
