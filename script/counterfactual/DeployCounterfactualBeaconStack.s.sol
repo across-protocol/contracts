@@ -54,14 +54,22 @@ contract BeaconChainConfigResolver is CounterfactualConfig {
 // 1. `source .env` with MNEMONIC, the NODE_URL_<chainId> for each target chain, and ETHERSCAN_API_KEY.
 // 2. FOUNDRY_PROFILE=counterfactual forge script \
 //      script/counterfactual/DeployCounterfactualBeaconStack.s.sol:DeployCounterfactualBeaconStack \
-//      --sig "run(uint256[])" "[8453,42161]" --rpc-url $NODE_URL_1 -vvvv
+//      --sig "run(uint256[])" "[8453,42161]" --rpc-url $NODE_URL_1 --gas-limit 100000000000 -vvvv
 //    (--rpc-url is required even though the script forks per chain: the inherited DeploymentUtils reads
-//     this chain's constants when the script contract is constructed, and chain 31337 has no entry.)
+//     this chain's constants when the script contract is constructed, and chain 31337 has no entry.
+//     --gas-limit: the whole batch runs in one EVM frame, and per-chain JSON/TOML cheatcode work outgrows
+//     the default limit once you pass a handful of chains.)
 // 3. Deploy: append --broadcast --slow --verify --etherscan-api-key $ETHERSCAN_API_KEY
 //    (--slow: each chain is a multi-tx sequence; without it later txs can be dropped against an RPC whose
 //     nonce view lags, leaving the proxy stranded on the bootstrap.)
 contract DeployCounterfactualBeaconStack is CounterfactualConfig {
     uint256 constant TRON_CHAIN_ID = 728126428;
+
+    /// @dev One resolver for the whole run, persistent across forks. Constructing it re-reads the multi-MB
+    ///      constants.json and the config TOML, so building one per chain exhausts the single EVM frame this
+    ///      script runs in — the batch then fails as bogus "config did not resolve" skips followed by a bare
+    ///      revert. `deployCode` (not `new`) keeps its creation code out of this contract's bytecode.
+    BeaconChainConfigResolver internal resolver;
 
     uint256 internal deployed;
     uint256 internal skipped;
@@ -75,6 +83,11 @@ contract DeployCounterfactualBeaconStack is CounterfactualConfig {
         console.log("Counterfactual beacon stack - %d chain(s)", chainIds.length);
         console.log("Deployer / beacon owner: %s", deployer);
         console.log("============================================");
+
+        resolver = BeaconChainConfigResolver(
+            deployCode("DeployCounterfactualBeaconStack.s.sol:BeaconChainConfigResolver")
+        );
+        vm.makePersistent(address(resolver));
 
         for (uint256 i = 0; i < chainIds.length; i++) {
             _runOn(chainIds[i], deployerPrivateKey, deployer);
@@ -104,7 +117,7 @@ contract DeployCounterfactualBeaconStack is CounterfactualConfig {
         // cheatcodes must also run BEFORE startBroadcast — building StdConfig inside a broadcast region
         // breaks forge's on-chain simulation.
         CounterfactualChainConfig memory chainConfig;
-        try new BeaconChainConfigResolver().build() returns (CounterfactualChainConfig memory c) {
+        try resolver.build() returns (CounterfactualChainConfig memory c) {
             chainConfig = c;
         } catch Error(string memory reason) {
             return _skip(string.concat("config: ", reason));

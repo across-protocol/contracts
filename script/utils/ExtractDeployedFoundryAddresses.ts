@@ -74,6 +74,9 @@ interface JsonOutput {
  */
 const PROXY_LOGICAL_NAME_BY_SCRIPT: Record<string, string> = {
   "DeployCounterfactualBeacon.s.sol": "CounterfactualBeacon",
+  // The multi-chain beacon-stack deploy stands up the same logical contract, so it records under the same
+  // key: whichever ran most recently is the canonical `CounterfactualBeacon` for the chain.
+  "DeployCounterfactualBeaconStack.s.sol": "CounterfactualBeacon",
 };
 
 /** Scripts whose deployed ERC1967Proxy is the canonical Across SpokePool (e.g. DeployBaseSpokePool.s.sol). */
