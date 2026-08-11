@@ -56,6 +56,9 @@
     "tron-deploy-sp1-auto-verifier": "ts-node script/tron/universal/tron-deploy-sp1-auto-verifier.ts",
     "tron-deploy-sp1-helios": "ts-node script/tron/universal/tron-deploy-sp1-helios.ts",
     "tron-deploy-universal-spokepool": "ts-node script/tron/universal/tron-deploy-universal-spokepool.ts",
+    "tron-deploy-counterfactual-beacon-impl": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-beacon-impl.ts",
+    "tron-deploy-counterfactual-beacon": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-beacon.ts",
+    "tron-upgrade-counterfactual-beacon": "ts-node script/tron/counterfactual/tron-upgrade-counterfactual-beacon.ts",
     "tron-deploy-counterfactual-factory": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-factory.ts",
     "tron-deploy-counterfactual-deposit": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-deposit.ts",
     "tron-deploy-counterfactual-deposit-spokepool-tron": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts",
@@ -69,7 +72,7 @@
     "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.118",
+    "@across-protocol/constants": "^3.1.123",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",

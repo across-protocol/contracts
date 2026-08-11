@@ -1,5 +1,7 @@
 # Upgradeable Counterfactuals — Design
 
+> Operational process for mass root upgrades: see [ROOT-UPGRADES.md](./ROOT-UPGRADES.md).
+
 > **Implementation target: this repo (`across-protocol/contracts`), branch
 > `taylor/counterfactual-upgradeable`.** This design supersedes earlier route-policy sketches: there
 > is **no `RoutePolicy` contract**. Each counterfactual is a **`BeaconProxy`** that holds its route root
@@ -191,7 +193,10 @@ a **`public immutable`**, exposed by a named getter:
 signer  spokePool  wrappedNativeToken
 cctpSrcPeriphery  cctpTokenMessenger  cctpSourceDomain
 oftSrcPeriphery  oftSrcEid
-usdc  usdt        (one named getter per supported token)
+usdc  usdce  usdt  wbtc  weth  (one named getter per supported token; `usdce` is bridged USDC.e where
+                         distinct from native `usdc` — SpokePool routes only, no CCTP burn path;
+                         `weth` is the canonical WETH ERC-20, distinct from `wrappedNativeToken` —
+                         identical only on ETH-gas chains)
 ```
 
 A leaf implementation runs under delegatecall, so `address(this)` is the proxy; it resolves the beacon

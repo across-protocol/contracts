@@ -1,125 +1,465 @@
-[1]
+# Synthetic "globals" section (chain id 0 is not a real chain; StdConfig requires top-level keys to
+# resolve to a chain id, so global values live here). Read via CounterfactualConfig._deploySalt().
+[0]
+endpoint_url = "http://localhost"
+[0.bytes32]
+# Global CREATE2 salt for the counterfactual singleton infra (factory, bootstrap, beacon proxy,
+# dispatcher, leaf impls). One value shared by every chain so the deterministic addresses stay in
+# cross-chain parity; bump it to coordinate a fresh redeploy everywhere.
+deploySalt = "0x0000000000000000000000000000000000000000000000000000000000000006"
+
+# A chain's `[N.uint]` section carries its per-token max-execution-fee caps as the raw onchain
+# amount baked into the beacon impl, in the token's own decimals — e.g. 2 USDC is 2000000 on 6-decimal
+# chains but 2000000000000000000 on BSC (18 decimals). Each value applies to every bridge type for that
+# token (CCTP, OFT, SpokePool). The `weth` cap is denominated in canonical WETH (18 decimals) on every
+# chain and required only where `.WETH.<chainId>` exists; on ETH-gas chains it also caps the native
+# msg.value route (the wrapped gas token IS WETH there). Non-ETH-gas chains do not get wrapped-native
+# routes, so no cap is ever denominated in WBNB/WPOL/etc. Chains without required values CANNOT deploy
+# a beacon impl — the deploy script reverts for any token the chain has configured whose fee cap is
+# missing or zero (zero caps are only valid as markers on keys whose token is absent from the chain).
+#
+# `usdcCctpMaxFeeBps` is the one exception to the token-units rule: it caps the submitter-chosen
+# Circle fast-transfer fee (vanilla CCTP) in bps of the burned amount. It is required on EVERY chain
+# (baked into each beacon impl) and zero is a valid value — 0 ⇒ standard transfers only.
+#
+# Native USDC and bridged USDC.e are SEPARATE tokens with separate beacon getters: `usdc` resolves
+# `.USDC.<chainId>` only, `usdce` resolves `.USDCe.<chainId>` where it is distinct from native USDC
+# (mainnet's `.USDCe` entry aliases native USDC and resolves to zero). A supported USDC.e needs its own
+# `usdceMaxExecutionFee` cap. USDC.e serves SpokePool routes only — bridged USDC has no CCTP burn path.
+#
+# A chain's `[N.bool]` section DECLARES its counterfactual support surface: five tokens (usdc, usdce,
+# usdt, wbtc, weth) and four bridges (spokePool, sponsoredCctp, vanillaCctp, oft). These are pure
+# assertions, not switches: the beacon impl deploy cross-checks every flag against what constants.json
+# and broadcast/deployed-addresses.json actually resolve, and reverts on any mismatch in either
+# direction (declared-but-missing AND present-but-undeclared) or on a missing flag. Changing a chain's
+# real capability (deploying a periphery, adding a token upstream) therefore requires a deliberate
+# matching flag change here before beacon impls can deploy again.
+
+[1] # Mainnet
 endpoint_url = "${NODE_URL_1}"
 [1.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+ownerAndDirectWithdrawer = "0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01"
+[1.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[1.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 10000000 # 10 USDC (6 decimals)
+usdtMaxExecutionFee = 10000000 # 10 USDT (6 decimals)
+wethMaxExecutionFee = 6000000000000000 # 0.006 WETH (18 decimals)
+wbtcMaxExecutionFee = 16000 # 0.00016 WBTC (8 decimals)
 
-[10]
+[10] # Optimism
 endpoint_url = "${NODE_URL_10}"
 [10.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[10.bool]
+usdc = true
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[10.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from native USDC)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[56]
+[56] # BNB Smart Chain
 endpoint_url = "${NODE_URL_56}"
 [56.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x40EA40013Ab948ef3e77B87EcdCe715A422CB417"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[56.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
+[56.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+usdcMaxExecutionFee = 2000000000000000000 # 2 USDC (18 decimals on BSC)
+usdtMaxExecutionFee = 2000000000000000000 # 2 USDT (18 decimals on BSC)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals; Binance-peg ETH)
+wbtcMaxExecutionFee = 31000000000000 # 0.000031 BTCB (18 decimals on BSC)
 
-[130]
+[130] # Unichain
 endpoint_url = "${NODE_URL_130}"
 [130.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[130.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[130.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[137]
+[137] # Polygon
 endpoint_url = "${NODE_URL_137}"
 [137.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[137.bool]
+usdc = true
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[137.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from native USDC)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[143]
+[143] # Monad
 endpoint_url = "${NODE_URL_143}"
 [143.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[143.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[143.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[232]
-endpoint_url = "${NODE_URL_232}"
-[232.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
-
-[324]
+[324] # zkSync
 endpoint_url = "${NODE_URL_324}"
 [324.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+ownerAndDirectWithdrawer = "0x396eC04b105587E9DC1a13D27F28D99262f74910"
+[324.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
+[324.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on zkSync)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[480]
+[480] # World Chain
 endpoint_url = "${NODE_URL_480}"
 [480.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[480.bool]
+usdc = true
+usdce = false
+usdt = false
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
+[480.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals; unused until USDT is configured for this chain)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[999]
+[999] # HyperEVM
 endpoint_url = "${NODE_URL_999}"
 [999.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x8d6e1729FeCe1AC62c05aA4F57819A90B4Cd22aF"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[999.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[999.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 0 # No WETH configured for this chain
 
-[1135]
-endpoint_url = "${NODE_URL_1135}"
-[1135.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
-
-[1868]
-endpoint_url = "${NODE_URL_1868}"
-[1868.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
-
-[4217]
+[4217] # Tempo
 endpoint_url = "${NODE_URL_4217}"
 [4217.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4217.bool]
+usdc = false
+usdce = true
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = true
+[4217.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Tempo)
+usdtMaxExecutionFee = 2000000 # 2 USDT0 (6 decimals; TIP-20 system token — see src/consts.ts)
 
-[4326]
+[4326] # MegaETH
 endpoint_url = "${NODE_URL_4326}"
 [4326.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x384122A019e62965eBFB83b55EC48cC5CEEc618d"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4326.bool]
+usdc = false
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = true
+[4326.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[8453]
+[4663] # Robinhood
+endpoint_url = "${NODE_URL_4663}"
+[4663.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[4663.bool]
+usdc = false
+usdce = false
+usdt = false
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
+[4663.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+
+[5042] # ARC
+endpoint_url = "${NODE_URL_5042}"
+[5042.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[5042.bool]
+usdc = true
+usdce = false
+usdt = false
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
+[5042.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals; also ARC's gas token — no wrapped-native route)
+
+[8453] # Base
 endpoint_url = "${NODE_URL_8453}"
 [8453.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[8453.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
+[8453.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[9745]
+[9745] # Plasma
 endpoint_url = "${NODE_URL_9745}"
 [9745.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[9745.bool]
+usdc = false
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = true
+[9745.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+usdcMaxExecutionFee = 0 # No USDC
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 0 # No WBTC
 
-[42161]
+[42161] # Arbitrum One
 endpoint_url = "${NODE_URL_42161}"
 [42161.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[42161.bool]
+usdc = true
+usdce = true
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[42161.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from native USDC)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[57073]
+[43114] # Avalanche
+endpoint_url = "${NODE_URL_43114}"
+[43114.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[43114.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
+[43114.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 0 # No WETH configured for this chain
+
+[57073] # Ink
 endpoint_url = "${NODE_URL_57073}"
 [57073.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x384122A019e62965eBFB83b55EC48cC5CEEc618d"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[57073.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = false
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = true
+[57073.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 
-[59144]
+[59144] # Linea
 endpoint_url = "${NODE_URL_59144}"
 [59144.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+[59144.bool]
+usdc = true
+usdce = false
+usdt = true
+wbtc = true
+weth = true
+spokePool = true
+sponsoredCctp = true
+vanillaCctp = true
+oft = false
+[59144.uint]
+usdcCctpMaxFeeBps = 2500 # Circle fast-transfer fee cap, bps of burned amount
+usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
+usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
+wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
+wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
-[534352]
-endpoint_url = "${NODE_URL_534352}"
-[534352.address]
+[728126428] # TRON
+endpoint_url = "${NODE_URL_728126428}"
+[728126428.address]
+# EIP-712 fee signer (secp256k1 recovery key — EVM hex format, same key as other chains). Read by
+# script/tron/counterfactual/tron-deploy-counterfactual-beacon-impl.ts (forge cannot broadcast to Tron).
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
-
-[7777777]
-endpoint_url = "${NODE_URL_7777777}"
-[7777777.address]
-signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+[728126428.bool]
+usdc = false
+usdce = false
+usdt = true
+wbtc = false
+weth = false
+spokePool = true
+sponsoredCctp = false
+vanillaCctp = false
+oft = false
+[728126428.uint]
+usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
+usdcMaxExecutionFee = 30000000 # 30 USDC (6 decimals; unused until USDC is configured for Tron)
+usdtMaxExecutionFee = 30000000 # 30 USDT (6 decimals on Tron)
+wethMaxExecutionFee = 0 # No WETH configured for Tron

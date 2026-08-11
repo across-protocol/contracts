@@ -66,6 +66,22 @@ interface JsonOutput {
 }
 
 /**
+ * `ERC1967Proxy` is a generic contract name, so the broadcast can't tell us what a given proxy *is*.
+ * Historically every proxy in this repo was a SpokePool, so the extractor blanket-labeled them "SpokePool".
+ * Now other stacks deploy their own proxies (e.g. the counterfactual beacon), so we disambiguate by the
+ * deploying script: an explicit mapping here wins, otherwise SpokePool-named scripts → "SpokePool",
+ * otherwise a name derived from the script.
+ */
+const PROXY_LOGICAL_NAME_BY_SCRIPT: Record<string, string> = {
+  "DeployCounterfactualBeacon.s.sol": "CounterfactualBeacon",
+};
+
+/** Scripts whose deployed ERC1967Proxy is the canonical Across SpokePool (e.g. DeployBaseSpokePool.s.sol). */
+function isSpokePoolDeployScript(scriptName: string): boolean {
+  return /SpokePool\.s\.sol$/.test(scriptName);
+}
+
+/**
  * Get the git repository root directory.
  */
 function getGitRoot(): string {
@@ -308,24 +324,51 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       const transactions = data.transactions || [];
       const receipts = data.receipts || [];
 
-      // Create a mapping of transaction hash to block number
+      // Build receipt lookups keyed by the deployed contract address. Receipts are fetched directly from the
+      // node and are authoritative, whereas `transactions[].hash` is occasionally mis-associated with the wrong
+      // entry by Foundry (e.g. when a sequence contains both a CREATE and a later CALL to the same address). We
+      // therefore resolve a CREATE's transaction hash and block number from the receipt whose `contractAddress`
+      // matches, falling back to `tx.hash` only when no matching receipt exists (e.g. simulation-only runs).
       const txHashToBlock: { [hash: string]: number } = {};
+      const addressToReceipt: { [address: string]: { transactionHash: string; blockNumber: number | null } } = {};
       for (const receipt of receipts) {
         const txHash = receipt.transactionHash;
         let blockNumber = receipt.blockNumber;
+        // Convert hex to decimal
+        if (typeof blockNumber === "string" && blockNumber.startsWith("0x")) {
+          blockNumber = parseInt(blockNumber, 16);
+        }
         if (txHash && blockNumber) {
-          // Convert hex to decimal
-          if (typeof blockNumber === "string" && blockNumber.startsWith("0x")) {
-            blockNumber = parseInt(blockNumber, 16);
-          }
           txHashToBlock[txHash] = blockNumber;
+        }
+        if (receipt.contractAddress) {
+          addressToReceipt[receipt.contractAddress.toLowerCase()] = { transactionHash: txHash, blockNumber };
         }
       }
 
       for (const tx of transactions) {
+        // The beacon PROXY's CREATE only appears in the FIRST beacon run at a given salt; later runs (e.g. a
+        // config upgrade) find it already deployed and skip it, so `run-latest.json` often lacks the proxy
+        // CREATE. Both `upgradeToAndCall(address,bytes)` (0x4f1ef286) and `setImplementation(address)`
+        // (0xd784d426) ALWAYS target the proxy and at least one of them is emitted on any beacon run that
+        // changes anything, so capture the canonical `CounterfactualBeacon` address from their target.
+        if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" && tx.transactionType === "CALL") {
+          const input: string = (tx.transaction && tx.transaction.input) || "";
+          const to: string | undefined = tx.transaction && tx.transaction.to;
+          if (to && (input.startsWith("0x4f1ef286") || input.startsWith("0xd784d426"))) {
+            contracts.push({
+              contractName: "CounterfactualBeacon",
+              contractAddress: to,
+              transactionHash: tx.hash,
+              blockNumber: txHashToBlock[tx.hash] || null,
+            });
+          }
+        }
+
         if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
-          const txHash = tx.hash;
-          const blockNumber = txHashToBlock[txHash] || null;
+          const receipt = addressToReceipt[tx.contractAddress.toLowerCase()];
+          const txHash = receipt?.transactionHash ?? tx.hash;
+          const blockNumber = receipt?.blockNumber ?? txHashToBlock[tx.hash] ?? null;
 
           let contractName = (tx.contractName as string | null) ?? "";
 
@@ -344,9 +387,25 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           }
 
           if (contractName === "ERC1967Proxy") {
-            contractName = "SpokePool";
+            // Resolve which contract this proxy represents by the deploying script (see comment above).
+            const mappedProxyName = PROXY_LOGICAL_NAME_BY_SCRIPT[broadcastFile.scriptName];
+            if (mappedProxyName) {
+              contractName = mappedProxyName;
+            } else if (isSpokePoolDeployScript(broadcastFile.scriptName)) {
+              contractName = "SpokePool";
+            } else {
+              contractName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "") || "UnknownProxy";
+            }
           } else if (contractName.endsWith("_SpokePool")) {
-            // skip
+            // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
+            continue;
+          } else if (contractName === "CounterfactualBeacon" || contractName === "CounterfactualBeaconBootstrap") {
+            // Skip the beacon implementation and bootstrap — neither is an address callers should resolve.
+            // The canonical `CounterfactualBeacon` is the ERC1967 proxy (captured above from the
+            // upgradeToAndCall/setImplementation CALL target, and via the proxy CREATE on first deploy). A
+            // `CounterfactualBeacon` CREATE is always the per-chain impl behind that proxy (the proxy is an
+            // `ERC1967Proxy`); it changes on every upgrade. `CounterfactualBeaconBootstrap` is the one-time
+            // init shim the proxy is deployed over before being upgraded to the impl.
             continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             // Preferred: the deploy script records the destination chain id in the broadcast `returns`

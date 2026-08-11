@@ -1,5 +1,10 @@
 #!/usr/bin/env ts-node
 /**
+ * ⚠️ STALE — predates the beacon architecture. Calls factory.deploy(address,bytes32,bytes32) and
+ * builds pre-beacon merkle leaves; both revert against the current contracts (the factory is now
+ * deploy(bytes32 salt, bytes32 initialRoot) and leaves hash differently). Needs a rewrite against
+ * the CounterfactualDeposit dispatcher execute flow before use.
+ *
  * Deploys a counterfactual deposit clone for testing.
  *
  * Builds a merkle tree with a single leaf for CounterfactualDepositSpokePoolTr,

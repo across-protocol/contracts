@@ -21,9 +21,13 @@ contract DeployAdminWithdrawManager is CounterfactualConfig {
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
+        // Resolve config-derived values (signer, salt) BEFORE startBroadcast — they load config via
+        // file-reading cheatcodes, and constructing the StdConfig helper inside the broadcast region breaks
+        // forge's on-chain simulation.
         _loadCounterfactualConfig();
         address signer = config.get("signer").toAddress();
         require(signer != address(0), "config: signer is zero");
+        bytes32 salt = _deploySalt();
 
         // Deploy with deployer as owner/directWithdrawer and config signer.
         // All three are global (not chain-specific), so CREATE2 address is the same everywhere.
@@ -38,7 +42,7 @@ contract DeployAdminWithdrawManager is CounterfactualConfig {
         console.log("Signer:", signer);
 
         vm.startBroadcast(deployerPrivateKey);
-        address deployed = _deployCreate2(bytes32(0), initCode);
+        address deployed = _deployCreate2(salt, initCode);
         vm.stopBroadcast();
 
         console.log("AdminWithdrawManager deployed to:", deployed);
