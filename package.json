@@ -72,7 +72,7 @@
     "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.123",
+    "@across-protocol/constants": "^3.1.124",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",
