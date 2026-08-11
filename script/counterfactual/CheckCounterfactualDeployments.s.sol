@@ -429,14 +429,20 @@ contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
         return address(0);
     }
 
-    function _getUsdc(uint256 chainId) internal view returns (address) {
+    /// @dev Delegates to the shared `CounterfactualConfig._resolveUsdc` whenever the fork/config context is
+    ///      this chain — which is every per-chain call, since `run()` forks before `_checkChain`. That keeps
+    ///      the check side from drifting from the deploy side, notably over the `usdcOverride` entry that lets
+    ///      a chain-local stablecoin serve as the beacon's USDC (e.g. pathUSD on Tempo). The constants.json
+    ///      lookup below remains for any pre-fork caller.
+    function _getUsdc(uint256 chainId) internal returns (address) {
+        if (chainId == block.chainid) return _resolveUsdc();
         string memory path = string.concat(".USDC.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
     }
 
     /// @dev Bridged USDC.e, only where distinct from native USDC (mirrors CounterfactualConfig._resolveUsdce).
-    function _getUsdce(uint256 chainId) internal view returns (address) {
+    function _getUsdce(uint256 chainId) internal returns (address) {
         string memory path = string.concat(".USDCe.", vm.toString(chainId));
         if (!vm.keyExists(file, path)) return address(0);
         address usdce = vm.parseJsonAddress(file, path);

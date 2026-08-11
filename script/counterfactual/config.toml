@@ -26,6 +26,9 @@ deploySalt = "0x0000000000000000000000000000000000000000000000000000000000000006
 # `.USDC.<chainId>` only, `usdce` resolves `.USDCe.<chainId>` where it is distinct from native USDC
 # (mainnet's `.USDCe` entry aliases native USDC and resolves to zero). A supported USDC.e needs its own
 # `usdceMaxExecutionFee` cap. USDC.e serves SpokePool routes only — bridged USDC has no CCTP burn path.
+# An `[N.address] usdcOverride` entry makes a chain-local stablecoin serve as the beacon's `usdc`
+# (e.g. pathUSD on Tempo) and wins over `.USDC.<chainId>` — scoped here so the global USDC constants
+# other consumers read stay truthful.
 #
 # A chain's `[N.bool]` section DECLARES its counterfactual support surface: five tokens (usdc, usdce,
 # usdt, wbtc, weth) and four bridges (spokePool, sponsoredCctp, vanillaCctp, oft). These are pure
@@ -239,8 +242,9 @@ endpoint_url = "${NODE_URL_4217}"
 [4217.address]
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F"
+usdcOverride = "0x20C0000000000000000000000000000000000000" # pathUSD (6 decimals; TIP-20 system token, Tempo's gas token) serves as the beacon's usdc
 [4217.bool]
-usdc = false
+usdc = true
 usdce = true
 usdt = true
 wbtc = false
@@ -251,7 +255,8 @@ vanillaCctp = false
 oft = true
 [4217.uint]
 usdcCctpMaxFeeBps = 0 # Circle fast-transfer fee cap, bps of burned amount (0 = standard transfers only)
-usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged USDC.e — no native USDC on Tempo)
+usdcMaxExecutionFee = 2000000 # 2 pathUSD (6 decimals; the beacon's usdc via usdcOverride above)
+usdceMaxExecutionFee = 2000000 # 2 USDC.e (6 decimals; bridged variant, distinct from pathUSD/native USDC)
 usdtMaxExecutionFee = 2000000 # 2 USDT0 (6 decimals; TIP-20 system token — see src/consts.ts)
 
 [4326] # MegaETH

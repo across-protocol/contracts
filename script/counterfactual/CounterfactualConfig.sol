@@ -169,12 +169,26 @@ abstract contract CounterfactualConfig is DeploymentUtils {
 
     /// @dev Resolves native (Circle-issued or chain-canonical) USDC from constants.json
     ///      (`.USDC.<chainId>`); address(0) if absent. Bridged USDC.e is a SEPARATE token with its own
-    ///      slot — see `_resolveUsdce`.
-    function _resolveUsdc() internal view returns (address) {
+    ///      slot — see `_resolveUsdce`. An `[N.address] usdcOverride` entry in config.toml wins over
+    ///      constants.json: it makes a chain-local stablecoin serve as the beacon's USDC (e.g. pathUSD
+    ///      on Tempo) without aliasing it into the global USDC constants that other consumers read.
+    function _resolveUsdc() internal returns (address) {
+        address overrideAddr = _usdcOverride();
+        if (overrideAddr != address(0)) return overrideAddr;
         if (vm.keyExists(file, string.concat(".USDC.", vm.toString(block.chainid)))) {
             return getUSDCAddress(block.chainid);
         }
         return address(0);
+    }
+
+    /// @dev The chain's `[N.address] usdcOverride` entry, or address(0) when it configures none. Exposed
+    ///      separately so verifier scripts can assert the beacon's `usdc` against the pinned address rather
+    ///      than guessing at a symbol — a TIP-20 system token's `symbol()` is unreadable under a local EVM
+    ///      fork, so an address comparison is both stronger and the only reliable check for these tokens.
+    function _usdcOverride() internal returns (address) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get("usdcOverride");
+        return v.ty.kind == TypeKind.Address ? v.toAddress() : address(0);
     }
 
     /// @dev Resolves bridged USDC.e from constants.json (`.USDCe.<chainId>`), but only where it is a
