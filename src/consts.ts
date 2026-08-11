@@ -20,6 +20,17 @@ export const WBTC = {
   ...TOKEN_SYMBOLS_MAP.WBTC.addresses,
   [CHAIN_IDs.BSC]: (TOKEN_SYMBOLS_MAP["WBTC-BNB"].addresses as Record<string, string>)[CHAIN_IDs.BSC],
 };
+// pathUSD (6 decimals), Tempo's TIP-20 settlement token. Upstream defines it but nothing here emitted it, so
+// it never reached generated/constants.json. Tempo denominates gas in pathUSD, but it has no wrapped form:
+// the generator's "WpathUSD not found in TOKEN_SYMBOLS_MAP" warning for 4217 reflects that absence, not a
+// missing entry, so Tempo resolves no wrapped-native token and gets no msg.value route.
+export const pathUSD = TOKEN_SYMBOLS_MAP.pathUSD.addresses;
+// USDG (Global Dollar, 6 decimals) — Robinhood only today. Upstream also carries a mainnet deployment under
+// the separate `USDG-MAINNET` symbol; it is deliberately NOT merged in here, so `.USDG.1` stays unresolved
+// and mainnet gets no USDG route. Merge it the way `USDC`/`USDT` fold in their `-BNB` variants if that
+// changes — and flip `[1.bool] usdg` in script/counterfactual/config.toml in the same commit, or the
+// declared-support cross-check will (correctly) revert the mainnet beacon deploy.
+export const USDG = TOKEN_SYMBOLS_MAP.USDG.addresses;
 export const WETH = {
   ...TOKEN_SYMBOLS_MAP.WETH.addresses,
   // WETH on Monad — missing upstream in @across-protocol/constants; remove once added there. Baked into

@@ -432,61 +432,31 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     /// @dev Compares the chain config baked into the live beacon impl against the current resolvers
     ///      (constants.json + deployed-addresses.json + config.toml). Each mismatch is logged individually,
     ///      with a summary pointing to the UUPS-upgrade remediation. Read-only — no broadcasts.
+    /// @dev Drives off `_beaconConfigGetters()`, so it covers EVERY config getter and keeps covering new
+    ///      ones automatically. It previously compared a hand-written subset and had silently stopped
+    ///      checking everything added since. Reads are low-level: a beacon predating a getter reports it as
+    ///      unreadable rather than reverting the whole run.
     function _warnIfBeaconConfigStale(address proxy) internal {
         CounterfactualChainConfig memory expected = _buildChainConfig();
-        CounterfactualBeacon beacon = CounterfactualBeacon(proxy);
+        (
+            bytes4[BEACON_CONFIG_GETTERS] memory sels,
+            string[BEACON_CONFIG_GETTERS] memory names
+        ) = _beaconConfigGetters();
+        bytes32[BEACON_CONFIG_GETTERS] memory words = _beaconConfigWords(expected);
 
         bool stale = false;
-        if (_logStaleAddr("signer", beacon.signer(), expected.signer)) stale = true;
-        if (_logStaleAddr("spokePool", beacon.spokePool(), expected.spokePool)) stale = true;
-        if (_logStaleAddr("wrappedNativeToken", beacon.wrappedNativeToken(), expected.wrappedNativeToken)) {
-            stale = true;
+        for (uint256 i = 0; i < BEACON_CONFIG_GETTERS; i++) {
+            (bool ok, bytes32 actual) = _tryReadBeaconWord(proxy, sels[i]);
+            if (!ok) {
+                console.log("  beacon.%s: getter missing/unreadable on this impl", names[i]);
+                stale = true;
+            } else if (actual != words[i]) {
+                console.log("  stale beacon.%s:", names[i]);
+                console.log("      actual:   %s", vm.toString(actual));
+                console.log("      expected: %s", vm.toString(words[i]));
+                stale = true;
+            }
         }
-        if (_logStaleAddr("nativeToken", beacon.nativeToken(), expected.nativeToken)) stale = true;
-        if (_logStaleAddr("cctpSrcPeriphery", beacon.cctpSrcPeriphery(), expected.cctpSrcPeriphery)) stale = true;
-        if (_logStaleAddr("cctpTokenMessenger", beacon.cctpTokenMessenger(), expected.cctpTokenMessenger)) {
-            stale = true;
-        }
-        if (_logStaleUint("cctpSourceDomain", beacon.cctpSourceDomain(), expected.cctpSourceDomain)) stale = true;
-        if (_logStaleAddr("oftSrcPeriphery", beacon.oftSrcPeriphery(), expected.oftSrcPeriphery)) stale = true;
-        if (_logStaleUint("oftSrcEid", beacon.oftSrcEid(), expected.oftSrcEid)) stale = true;
-        if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
-        if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;
-        if (_logStaleAddr("wbtc", beacon.wbtc(), expected.wbtc)) stale = true;
-        if (_logStaleAddr("weth", beacon.weth(), expected.weth)) stale = true;
-        if (
-            _logStaleUint("usdcCctpMaxExecutionFee", beacon.usdcCctpMaxExecutionFee(), expected.usdcCctpMaxExecutionFee)
-        ) stale = true;
-        if (_logStaleUint("usdtOftMaxExecutionFee", beacon.usdtOftMaxExecutionFee(), expected.usdtOftMaxExecutionFee))
-            stale = true;
-        if (
-            _logStaleUint(
-                "usdcSpokePoolMaxExecutionFee",
-                beacon.usdcSpokePoolMaxExecutionFee(),
-                expected.usdcSpokePoolMaxExecutionFee
-            )
-        ) stale = true;
-        if (
-            _logStaleUint(
-                "usdtSpokePoolMaxExecutionFee",
-                beacon.usdtSpokePoolMaxExecutionFee(),
-                expected.usdtSpokePoolMaxExecutionFee
-            )
-        ) stale = true;
-        if (
-            _logStaleUint(
-                "wethSpokePoolMaxExecutionFee",
-                beacon.wethSpokePoolMaxExecutionFee(),
-                expected.wethSpokePoolMaxExecutionFee
-            )
-        ) stale = true;
-        if (
-            _logStaleUint(
-                "wbtcSpokePoolMaxExecutionFee",
-                beacon.wbtcSpokePoolMaxExecutionFee(),
-                expected.wbtcSpokePoolMaxExecutionFee
-            )
-        ) stale = true;
 
         if (stale) {
             console.log("--------------------------------------------");
@@ -496,20 +466,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             console.log('call `CounterfactualBeacon(proxy).upgradeToAndCall(newImpl, "")` as owner.');
             console.log("--------------------------------------------");
         } else {
-            console.log("Beacon chain config: matches current resolvers");
+            console.log("Beacon chain config: matches current resolvers (all %d getters)", BEACON_CONFIG_GETTERS);
         }
-    }
-
-    function _logStaleAddr(string memory field, address actual, address expected) internal view returns (bool) {
-        if (actual == expected) return false;
-        console.log("  stale beacon.%s: actual=%s expected=%s", field, actual, expected);
-        return true;
-    }
-
-    function _logStaleUint(string memory field, uint256 actual, uint256 expected) internal view returns (bool) {
-        if (actual == expected) return false;
-        console.log("  stale beacon.%s: actual=%d expected=%d", field, actual, expected);
-        return true;
     }
 
     function _logPredicted(string memory name, address predicted) internal view {

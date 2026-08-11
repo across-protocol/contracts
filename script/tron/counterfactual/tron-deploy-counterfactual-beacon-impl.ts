@@ -71,6 +71,22 @@ function tomlUint(section: any, key: string): number | undefined {
   return v;
 }
 
+/** Mirrors CounterfactualConfig._optionalAddress: absent (or explicitly zero) -> zero address. Used for the
+ *  V5 stack, which has no on-chain source to resolve from. Across V5 does not target Tron, so these are
+ *  expected to be unset here — but they are read, not hardcoded, so a filled entry would be honoured. */
+function optionalAddress(section: any, key: string): string {
+  const v = section?.address?.[key];
+  return v == null ? ZERO_ADDRESS : toEvmHex(v, key);
+}
+
+/** Mirrors CounterfactualConfig._stablePrice: a chain-invariant 1e18-fixed USD price from the `[0.uint]`
+ *  globals, baked only where the token itself resolves. Zero = unpriced (the stable floor is skipped). */
+function stablePrice(config: any, key: string, token: string): string {
+  if (token === ZERO_ADDRESS) return "0";
+  const v = config?.["0"]?.uint?.[key];
+  return v == null ? "0" : String(v);
+}
+
 /** Mirrors CounterfactualConfig._maxExecutionFee: 0 when the token is unset on this chain; the config
  *  value must exist and be nonzero when the token is set (a zero cap would make all nonzero fees revert). */
 function maxExecutionFee(section: any, key: string, token: string): number {
@@ -131,12 +147,16 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
   const usdt = resolveAddress(constants, ["USDT", chainId], "usdt");
   const wbtc = resolveAddress(constants, ["WBTC", chainId], "wbtc");
   const weth = resolveAddress(constants, ["WETH", chainId], "weth");
+  const pathUsd = resolveAddress(constants, ["pathUSD", chainId], "pathUsd");
+  const usdg = resolveAddress(constants, ["USDG", chainId], "usdg");
 
   const usdcMaxExecutionFee = maxExecutionFee(section, "usdcMaxExecutionFee", usdc);
-  const usdceSpokePoolMaxExecutionFee = maxExecutionFee(section, "usdceMaxExecutionFee", usdce);
+  const usdceMaxExecutionFee = maxExecutionFee(section, "usdceMaxExecutionFee", usdce);
   const usdtMaxExecutionFee = maxExecutionFee(section, "usdtMaxExecutionFee", usdt);
-  const wethSpokePoolMaxExecutionFee = maxExecutionFee(section, "wethMaxExecutionFee", weth);
-  const wbtcSpokePoolMaxExecutionFee = maxExecutionFee(section, "wbtcMaxExecutionFee", wbtc);
+  const wethMaxExecutionFee = maxExecutionFee(section, "wethMaxExecutionFee", weth);
+  const wbtcMaxExecutionFee = maxExecutionFee(section, "wbtcMaxExecutionFee", wbtc);
+  const pathUsdMaxExecutionFee = maxExecutionFee(section, "pathUsdMaxExecutionFee", pathUsd);
+  const usdgMaxExecutionFee = maxExecutionFee(section, "usdgMaxExecutionFee", usdg);
   // Bps cap on the submitter-chosen Circle fast-transfer fee — per-chain ([N.uint] section); zero is
   // valid (0 ⇒ standard transfers only), unlike the maxExecutionFee caps.
   const usdcCctpMaxFeeBps =
@@ -158,6 +178,8 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
     usdce: usdce !== ZERO_ADDRESS,
     usdt: usdt !== ZERO_ADDRESS,
     wbtc: wbtc !== ZERO_ADDRESS,
+    pathUsd: pathUsd !== ZERO_ADDRESS,
+    usdg: usdg !== ZERO_ADDRESS,
     weth: weth !== ZERO_ADDRESS,
     spokePool: spokePool !== ZERO_ADDRESS,
     sponsoredCctp: hasCctp && cctpSrcPeriphery !== ZERO_ADDRESS,
@@ -178,51 +200,99 @@ function buildChainConfig(chainId: string): { types: string[]; values: (string |
   return {
     types: [
       "address", // signer
-      "address", // spokePool
-      "address", // wrappedNativeToken
-      "address", // nativeToken
-      "address", // cctpSrcPeriphery
-      "address", // cctpTokenMessenger
-      "uint32", //  cctpSourceDomain
-      "address", // oftSrcPeriphery
-      "uint32", //  oftSrcEid
+      "address", // gateway
       "address", // usdc
       "address", // usdce
       "address", // usdt
       "address", // wbtc
       "address", // weth
-      "uint256", // usdcCctpMaxExecutionFee
-      "uint256", // usdcCctpMaxFeeBps
-      "uint256", // usdtOftMaxExecutionFee
+      "address", // pathUsd
+      "address", // usdg
+      "address", // spokePool
+      "address", // wrappedNativeToken
+      "address", // nativeToken
+      "address", // cctpSrcPeriphery
+      "address", // cctpTokenMessenger
+      "uint32", // cctpSourceDomain
+      "address", // oftSrcPeriphery
+      "uint32", // oftSrcEid
+      "address", // usdtOft
+      "address", // spokePoolDepositExecutor
+      "address", // cctpDepositExecutor
+      "address", // oftDepositExecutor
+      "address", // sameChainExecutor
       "uint256", // usdcSpokePoolMaxExecutionFee
       "uint256", // usdceSpokePoolMaxExecutionFee
       "uint256", // usdtSpokePoolMaxExecutionFee
       "uint256", // wethSpokePoolMaxExecutionFee
       "uint256", // wbtcSpokePoolMaxExecutionFee
+      "uint256", // pathUsdSpokePoolMaxExecutionFee
+      "uint256", // usdgSpokePoolMaxExecutionFee
+      "uint256", // usdcSameChainMaxExecutionFee
+      "uint256", // usdceSameChainMaxExecutionFee
+      "uint256", // usdtSameChainMaxExecutionFee
+      "uint256", // wethSameChainMaxExecutionFee
+      "uint256", // wbtcSameChainMaxExecutionFee
+      "uint256", // pathUsdSameChainMaxExecutionFee
+      "uint256", // usdgSameChainMaxExecutionFee
+      "uint256", // usdcCctpMaxExecutionFee
+      "uint256", // usdtOftMaxExecutionFee
+      "uint256", // usdcCctpMaxFeeBps
+      "uint256", // usdcStablePrice
+      "uint256", // usdceStablePrice
+      "uint256", // usdtStablePrice
+      "uint256", // pathUsdStablePrice
+      "uint256", // usdgStablePrice
+      "uint256", // wethStablePrice
+      "uint256", // wbtcStablePrice
     ],
     values: [
-      signer,
-      spokePool,
-      wrappedNativeToken,
-      nativeToken,
-      cctpSrcPeriphery,
-      cctpTokenMessenger,
-      cctpSourceDomain,
-      oftSrcPeriphery,
-      oftSrcEid,
-      usdc,
-      usdce,
-      usdt,
-      wbtc,
-      weth,
-      usdcMaxExecutionFee,
-      usdcCctpMaxFeeBps,
-      usdtMaxExecutionFee,
-      usdcMaxExecutionFee,
-      usdceSpokePoolMaxExecutionFee,
-      usdtMaxExecutionFee,
-      wethSpokePoolMaxExecutionFee,
-      wbtcSpokePoolMaxExecutionFee,
+      signer, // signer
+      optionalAddress(section, "gateway"), // gateway
+      usdc, // usdc
+      usdce, // usdce
+      usdt, // usdt
+      wbtc, // wbtc
+      weth, // weth
+      pathUsd, // pathUsd
+      usdg, // usdg
+      spokePool, // spokePool
+      wrappedNativeToken, // wrappedNativeToken
+      nativeToken, // nativeToken
+      cctpSrcPeriphery, // cctpSrcPeriphery
+      cctpTokenMessenger, // cctpTokenMessenger
+      cctpSourceDomain, // cctpSourceDomain
+      oftSrcPeriphery, // oftSrcPeriphery
+      oftSrcEid, // oftSrcEid
+      optionalAddress(section, "usdtOft"), // usdtOft
+      optionalAddress(section, "spokePoolDepositExecutor"), // spokePoolDepositExecutor
+      optionalAddress(section, "cctpDepositExecutor"), // cctpDepositExecutor
+      optionalAddress(section, "oftDepositExecutor"), // oftDepositExecutor
+      optionalAddress(section, "sameChainExecutor"), // sameChainExecutor
+      usdcMaxExecutionFee, // usdcSpokePoolMaxExecutionFee
+      usdceMaxExecutionFee, // usdceSpokePoolMaxExecutionFee
+      usdtMaxExecutionFee, // usdtSpokePoolMaxExecutionFee
+      wethMaxExecutionFee, // wethSpokePoolMaxExecutionFee
+      wbtcMaxExecutionFee, // wbtcSpokePoolMaxExecutionFee
+      pathUsdMaxExecutionFee, // pathUsdSpokePoolMaxExecutionFee
+      usdgMaxExecutionFee, // usdgSpokePoolMaxExecutionFee
+      usdcMaxExecutionFee, // usdcSameChainMaxExecutionFee
+      usdceMaxExecutionFee, // usdceSameChainMaxExecutionFee
+      usdtMaxExecutionFee, // usdtSameChainMaxExecutionFee
+      wethMaxExecutionFee, // wethSameChainMaxExecutionFee
+      wbtcMaxExecutionFee, // wbtcSameChainMaxExecutionFee
+      pathUsdMaxExecutionFee, // pathUsdSameChainMaxExecutionFee
+      usdgMaxExecutionFee, // usdgSameChainMaxExecutionFee
+      usdcMaxExecutionFee, // usdcCctpMaxExecutionFee
+      usdtMaxExecutionFee, // usdtOftMaxExecutionFee
+      usdcCctpMaxFeeBps, // usdcCctpMaxFeeBps
+      stablePrice(config, "usdcStablePrice", usdc), // usdcStablePrice
+      stablePrice(config, "usdceStablePrice", usdce), // usdceStablePrice
+      stablePrice(config, "usdtStablePrice", usdt), // usdtStablePrice
+      stablePrice(config, "pathUsdStablePrice", pathUsd), // pathUsdStablePrice
+      stablePrice(config, "usdgStablePrice", usdg), // usdgStablePrice
+      stablePrice(config, "wethStablePrice", weth), // wethStablePrice
+      stablePrice(config, "wbtcStablePrice", wbtc), // wbtcStablePrice
     ],
   };
 }

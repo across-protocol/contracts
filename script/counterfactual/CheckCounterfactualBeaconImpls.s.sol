@@ -262,11 +262,17 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
 
     // --- Getter-by-getter compare vs the deploy-time resolver ---
 
-    /// @dev Low-level reads so an impl of any vintage can be checked — an impl predating a getter (e.g.
-    ///      pre-usdce) reports "[FAIL] getter missing" instead of hard-reverting the run.
+    /// @dev Compares every config getter against a freshly resolved config. The getter list is the shared
+    ///      `_beaconConfigGetters()` table in `CounterfactualConfig`, generated from
+    ///      `CounterfactualChainConfig` field order — so a newly added field is covered here automatically
+    ///      rather than needing this list updated too. Low-level reads so an impl of any vintage can be
+    ///      checked: one predating a getter reports "[FAIL] getter missing" instead of hard-reverting.
     function _compareConfig(address impl, CounterfactualChainConfig memory e) internal {
-        (bytes4[22] memory sels, string[22] memory names) = _configGetters();
-        bytes32[22] memory expected = _expectedWords(e);
+        (
+            bytes4[BEACON_CONFIG_GETTERS] memory sels,
+            string[BEACON_CONFIG_GETTERS] memory names
+        ) = _beaconConfigGetters();
+        bytes32[BEACON_CONFIG_GETTERS] memory expected = _beaconConfigWords(e);
         for (uint256 i = 0; i < sels.length; i++) {
             // usdcCctpMaxFeeBps only gates USDC CCTP burns; without a USDC CCTP burn path (no USDC, or
             // no messenger/periphery — e.g. BSC has USDC but no CCTP) the baked value is inert, so a
@@ -289,32 +295,6 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
                 _pass("BeaconImpl", names[i], vm.toString(actual));
             }
         }
-    }
-
-    /// @dev The expected struct as raw words, in `_configGetters` order.
-    function _expectedWords(CounterfactualChainConfig memory e) internal pure returns (bytes32[22] memory w) {
-        w[0] = _addrWord(e.signer);
-        w[1] = _addrWord(e.spokePool);
-        w[2] = _addrWord(e.wrappedNativeToken);
-        w[3] = _addrWord(e.nativeToken);
-        w[4] = _addrWord(e.cctpSrcPeriphery);
-        w[5] = _addrWord(e.cctpTokenMessenger);
-        w[6] = bytes32(uint256(e.cctpSourceDomain));
-        w[7] = _addrWord(e.oftSrcPeriphery);
-        w[8] = bytes32(uint256(e.oftSrcEid));
-        w[9] = _addrWord(e.usdc);
-        w[10] = _addrWord(e.usdce);
-        w[11] = _addrWord(e.usdt);
-        w[12] = _addrWord(e.wbtc);
-        w[13] = _addrWord(e.weth);
-        w[14] = bytes32(e.usdcCctpMaxExecutionFee);
-        w[15] = bytes32(e.usdcCctpMaxFeeBps);
-        w[16] = bytes32(e.usdtOftMaxExecutionFee);
-        w[17] = bytes32(e.usdcSpokePoolMaxExecutionFee);
-        w[18] = bytes32(e.usdceSpokePoolMaxExecutionFee);
-        w[19] = bytes32(e.usdtSpokePoolMaxExecutionFee);
-        w[20] = bytes32(e.wethSpokePoolMaxExecutionFee);
-        w[21] = bytes32(e.wbtcSpokePoolMaxExecutionFee);
     }
 
     function _addrWord(address a) internal pure returns (bytes32) {
@@ -591,7 +571,10 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
     ///      review surface for the multisig signers. Values print as raw bytes32 words (addresses are
     ///      left-padded, uints big-endian).
     function _diffAgainstLiveProxy(address proxy, address impl) internal {
-        (bytes4[22] memory sels, string[22] memory names) = _configGetters();
+        (
+            bytes4[BEACON_CONFIG_GETTERS] memory sels,
+            string[BEACON_CONFIG_GETTERS] memory names
+        ) = _beaconConfigGetters();
         uint256 diffs;
         for (uint256 i = 0; i < sels.length; i++) {
             (bool okLive, bytes32 liveV) = _tryReadWord(proxy, abi.encodeWithSelector(sels[i]));
@@ -613,49 +596,6 @@ contract CheckCounterfactualBeaconImpls is CounterfactualConfig, CheckUtils {
         if (diffs == 0) {
             _info("BeaconImpl", "upgrade is a config no-op: new impl returns values identical to the live beacon");
         }
-    }
-
-    /// @dev Every config getter on ICounterfactualBeacon (excludes `implementation`/`upgradeRoot`, which
-    ///      read proxy storage and are meaningless on a bare impl).
-    function _configGetters() internal pure returns (bytes4[22] memory sels, string[22] memory names) {
-        // Element-wise assignment: a 22-element inline array literal is stack-too-deep without via-ir.
-        (sels[0], names[0]) = (ICounterfactualBeacon.signer.selector, "signer");
-        (sels[1], names[1]) = (ICounterfactualBeacon.spokePool.selector, "spokePool");
-        (sels[2], names[2]) = (ICounterfactualBeacon.wrappedNativeToken.selector, "wrappedNativeToken");
-        (sels[3], names[3]) = (ICounterfactualBeacon.nativeToken.selector, "nativeToken");
-        (sels[4], names[4]) = (ICounterfactualBeacon.cctpSrcPeriphery.selector, "cctpSrcPeriphery");
-        (sels[5], names[5]) = (ICounterfactualBeacon.cctpTokenMessenger.selector, "cctpTokenMessenger");
-        (sels[6], names[6]) = (ICounterfactualBeacon.cctpSourceDomain.selector, "cctpSourceDomain");
-        (sels[7], names[7]) = (ICounterfactualBeacon.oftSrcPeriphery.selector, "oftSrcPeriphery");
-        (sels[8], names[8]) = (ICounterfactualBeacon.oftSrcEid.selector, "oftSrcEid");
-        (sels[9], names[9]) = (ICounterfactualBeacon.usdc.selector, "usdc");
-        (sels[10], names[10]) = (ICounterfactualBeacon.usdce.selector, "usdce");
-        (sels[11], names[11]) = (ICounterfactualBeacon.usdt.selector, "usdt");
-        (sels[12], names[12]) = (ICounterfactualBeacon.wbtc.selector, "wbtc");
-        (sels[13], names[13]) = (ICounterfactualBeacon.weth.selector, "weth");
-        (sels[14], names[14]) = (ICounterfactualBeacon.usdcCctpMaxExecutionFee.selector, "usdcCctpMaxExecutionFee");
-        (sels[15], names[15]) = (ICounterfactualBeacon.usdcCctpMaxFeeBps.selector, "usdcCctpMaxFeeBps");
-        (sels[16], names[16]) = (ICounterfactualBeacon.usdtOftMaxExecutionFee.selector, "usdtOftMaxExecutionFee");
-        (sels[17], names[17]) = (
-            ICounterfactualBeacon.usdcSpokePoolMaxExecutionFee.selector,
-            "usdcSpokePoolMaxExecutionFee"
-        );
-        (sels[18], names[18]) = (
-            ICounterfactualBeacon.usdceSpokePoolMaxExecutionFee.selector,
-            "usdceSpokePoolMaxExecutionFee"
-        );
-        (sels[19], names[19]) = (
-            ICounterfactualBeacon.usdtSpokePoolMaxExecutionFee.selector,
-            "usdtSpokePoolMaxExecutionFee"
-        );
-        (sels[20], names[20]) = (
-            ICounterfactualBeacon.wethSpokePoolMaxExecutionFee.selector,
-            "wethSpokePoolMaxExecutionFee"
-        );
-        (sels[21], names[21]) = (
-            ICounterfactualBeacon.wbtcSpokePoolMaxExecutionFee.selector,
-            "wbtcSpokePoolMaxExecutionFee"
-        );
     }
 
     // --- ZK-stack degradation ---
