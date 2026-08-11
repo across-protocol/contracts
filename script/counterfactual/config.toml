@@ -637,11 +637,21 @@ endpoint_url = "${NODE_URL_728126428}"
 # EIP-712 fee signer (secp256k1 recovery key — EVM hex format, same key as other chains). Read by
 # script/tron/counterfactual/tron-deploy-counterfactual-beacon-impl.ts (forge cannot broadcast to Tron).
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
-gateway = "0x0000000000000000000000000000000000000000"
-spokePoolDepositExecutor = "0x0000000000000000000000000000000000000000"
+# V5 stack as EVM hex, NOT Tron Base58Check (T...). StdConfig parses this whole file when constructed and
+# coerces every `[N.address]` value, so a single base58 string here would break every forge script on every
+# chain. The Tron TypeScript path converts via toEvmHex(), which passes hex through unchanged, so hex is the
+# one form both readers accept. Base58 originals, from the V5 repo's script/deployments.toml:
+#   gateway                  TJeqGqHXjDNiad6nV9rf1oL6rvmdWN9XPa
+#   spokePoolDepositExecutor TCQXUcjYMWU6fGXDYXJHcNVFh5TUZTzCMz
+#   oftDepositExecutor       TCedYHGyEVFhqC1rYEQWHrZoKhE4Q4pD9Z
+#   sameChainExecutor        TSL2Rh4o4ZH3JFKRTJTuarumbmsWCXo13C
+gateway = "0x5f3f81d114cb8f4f57e04204b70681bab12e9b11"
+spokePoolDepositExecutor = "0x1aba12a83b0cbd05589a822f9f0030bb8309000e"
+# V5 deployed no CCTP executor on Tron — the chain has no CCTP at all (see the sponsoredCctp / vanillaCctp
+# flags below) — so this stays zero and any CCTP route fails closed.
 cctpDepositExecutor = "0x0000000000000000000000000000000000000000"
-oftDepositExecutor = "0x0000000000000000000000000000000000000000"
-sameChainExecutor = "0x0000000000000000000000000000000000000000"
+oftDepositExecutor = "0x1d64f5277683db4368fff761cd1a8f54d85c9c54"
+sameChainExecutor = "0xb371eb80048eb83cba879f7b8ec23c98a5f68752"
 # No USDT0 deployment on this chain, so no V5 OFT route: usdtOft stays unset.
 [728126428.bool]
 usdc = false

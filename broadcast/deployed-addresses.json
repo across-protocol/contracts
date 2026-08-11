@@ -2387,19 +2387,19 @@
           "transaction_hash": "0b4f2cf11a811768e15cbb50769ebeaf5c0f9be7eadf6f1d7b2618d6745a7b07"
         },
         "AdminWithdrawManager": {
-          "address": "TLPEEE4DuxS8skpYZe6nF14Ye5Aq5QvLDk",
-          "block_number": 84609769,
-          "transaction_hash": "b6bebafe4c5ce261e7548ab27aea1b30807c11bc022bf41bfa7ad9b69d4dd391"
+          "address": "TDSyKTs6QbandReY7yG6Pq37j5grr1w47e",
+          "block_number": 85248776,
+          "transaction_hash": "9025cd43cb706aec6e5ebb6fcc9b08e26849644db300691861b4893c6129c312"
         },
         "CounterfactualBeaconProxy": {
-          "address": "THPzGxABJ21dckZ5oGc3QScESL2mNnnqSx",
-          "block_number": 84489101,
-          "transaction_hash": "0d794bab98f0c0bfcd962099151d0adb666b9e2d4c3f53b3416049c54a79c9e0"
+          "address": "TCF2MUCZ7LUrHmqQHKse99kqmxCK6t8tyd",
+          "block_number": 85248710,
+          "transaction_hash": "e53e7dd6651f72c1e971f26bcb352abd66987223dcb5a6d23b2b866b96894124"
         },
         "CounterfactualDeposit": {
-          "address": "TXjHNUWoWRQ42UvMvLgg9WvLCyjL8VnrD8",
-          "block_number": 84489121,
-          "transaction_hash": "7be4e9f0edcd66e9e04b4f4d16309d551f34aa7bb3d004bd80e39a05cf5a52bb"
+          "address": "TBEMfWwCanQxwYhNutzM2ranUKUAQPNxzj",
+          "block_number": 85248729,
+          "transaction_hash": "ebc94534d3922d40756bd68e883793311fbe9414b1d491cbd77baa763dcd87d7"
         },
         "CounterfactualDepositFactoryTron": {
           "address": "TUoGXCRHSeAVTVBkdqHMbtNpxj19yXGUuB",

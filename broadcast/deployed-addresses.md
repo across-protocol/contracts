@@ -568,9 +568,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                    | Address                                                                                               |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | AcrossEventEmitter               | [TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu](https://tronscan.org/address/TMv7hAfswe2EvXG4nUeNFGEgNWE8Joedtu) |
-| AdminWithdrawManager             | [TLPEEE4DuxS8skpYZe6nF14Ye5Aq5QvLDk](https://tronscan.org/address/TLPEEE4DuxS8skpYZe6nF14Ye5Aq5QvLDk) |
-| CounterfactualBeaconProxy        | [THPzGxABJ21dckZ5oGc3QScESL2mNnnqSx](https://tronscan.org/address/THPzGxABJ21dckZ5oGc3QScESL2mNnnqSx) |
-| CounterfactualDeposit            | [TXjHNUWoWRQ42UvMvLgg9WvLCyjL8VnrD8](https://tronscan.org/address/TXjHNUWoWRQ42UvMvLgg9WvLCyjL8VnrD8) |
+| AdminWithdrawManager             | [TDSyKTs6QbandReY7yG6Pq37j5grr1w47e](https://tronscan.org/address/TDSyKTs6QbandReY7yG6Pq37j5grr1w47e) |
+| CounterfactualBeaconProxy        | [TCF2MUCZ7LUrHmqQHKse99kqmxCK6t8tyd](https://tronscan.org/address/TCF2MUCZ7LUrHmqQHKse99kqmxCK6t8tyd) |
+| CounterfactualDeposit            | [TBEMfWwCanQxwYhNutzM2ranUKUAQPNxzj](https://tronscan.org/address/TBEMfWwCanQxwYhNutzM2ranUKUAQPNxzj) |
 | CounterfactualDepositFactoryTron | [TUoGXCRHSeAVTVBkdqHMbtNpxj19yXGUuB](https://tronscan.org/address/TUoGXCRHSeAVTVBkdqHMbtNpxj19yXGUuB) |
 | CounterfactualDepositSpokePoolTr | [TGKe2aRJ4CJ3orUKFTSpDuCEePPSKgZ9U3](https://tronscan.org/address/TGKe2aRJ4CJ3orUKFTSpDuCEePPSKgZ9U3) |
 | SP1AutoVerifier                  | [TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84](https://tronscan.org/address/TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84) |
