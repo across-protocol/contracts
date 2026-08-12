@@ -118,6 +118,20 @@ forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpok
 
 After deployment, you must transfer SP1Helios roles to the SpokePool (see below).
 
+This script is for fresh deployments only and reverts if a SpokePool proxy already exists on the chain. This protects the proxy's broadcast record: forge overwrites `broadcast/DeployUniversalSpokePool.s.sol/<chainId>/run-latest.json` on every run, and `ExtractDeployedFoundryAddresses.ts` derives the chain's `SpokePool` entry from the `ERC1967Proxy` transaction in that file.
+
+### DeployUniversalSpokePoolImpl.s.sol
+
+Redeploys only the Universal_SpokePool implementation for a chain that already has a proxy (e.g. ahead of an `upgradeTo` proposed via the HubPool). Same arguments as `DeployUniversalSpokePool`. As a separate script file it broadcasts to its own directory (`broadcast/DeployUniversalSpokePoolImpl.s.sol/<chainId>/`), leaving the original proxy record intact.
+
+```bash
+forge script script/universal/DeployUniversalSpokePoolImpl.s.sol:DeployUniversalSpokePoolImpl \
+  --sig "run(address,uint256)" <SP1_HELIOS_ADDRESS> <OFT_FEE_CAP> \
+  --rpc-url <RPC_URL> \
+  --broadcast \
+  -vvvv
+```
+
 ### Transferring SP1Helios Roles to SpokePool
 
 The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds `DEFAULT_ADMIN_ROLE` and `VKEY_UPDATER_ROLE`. Both must be transferred to the Universal_SpokePool so that admin functions (including verification key updates) can be called through the cross-chain admin flow.

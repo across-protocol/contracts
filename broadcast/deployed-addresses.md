@@ -320,6 +320,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://robinhoodchain.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios          | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://robinhoodchain.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool          | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://robinhoodchain.blockscout.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
 | SpokePoolPeriphery | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://robinhoodchain.blockscout.com/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
 
 ## ARC (5042)
@@ -328,6 +329,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Safe          | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios     | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| SpokePool     | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
 
 ## Base (8453)
 
@@ -409,6 +411,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | PermissionedMulticallHandler        | [0x64A14B477d16F1E9D490B00218ada0c142C885dd](https://snowscan.xyz/address/0x64A14B477d16F1E9D490B00218ada0c142C885dd) |
 | Safe                                | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://snowscan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                           | [0x196767568F848fF7607145A7C1f3CDE44bb4Ce98](https://snowscan.xyz/address/0x196767568F848fF7607145A7C1f3CDE44bb4Ce98) |
+| SpokePool                           | [0xFE9D541c92E4e90437C7152A00244886dE37a658](https://snowscan.xyz/address/0xFE9D541c92E4e90437C7152A00244886dE37a658) |
 | SpokePoolPeriphery                  | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://snowscan.xyz/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
 | SponsoredCCTPDstPeriphery_CCTP_USDC | [0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0](https://snowscan.xyz/address/0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0) |
 | SponsoredCCTPSrcPeriphery           | [0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8](https://snowscan.xyz/address/0x1037A21a30aEfF90c269b01c3933eB9a5285d9b8) |

@@ -1233,6 +1233,11 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 23431236,
           "transaction_hash": "0xfe2d36a024e71c7b1a34698d6041bc7468cf1cfa7c5d9acfd75d0bc9b56ef465"
+        },
+        "SpokePool": {
+          "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978",
+          "block_number": 156309,
+          "transaction_hash": "0xd2d4f305f0ff843b524df7b2d4130cf5e081e7e39db2ea89c483ec14fd7f9608"
         }
       }
     },
@@ -1248,6 +1253,11 @@
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 4828640,
           "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
+        },
+        "SpokePool": {
+          "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
+          "block_number": 4694834,
+          "transaction_hash": "0x31aaba9cef65a567fb5d9cf60217391511e77b9a82c7c24da2e8a3b278e31134"
         }
       }
     },
@@ -1569,6 +1579,11 @@
           "address": "0x5dDA0da4f35826ec9426008155a912C756009252",
           "block_number": 90301225,
           "transaction_hash": "0xf321d0f93a2bdd719ee139705ae1e7b7225f221177e906129c2c7fbed054798b"
+        },
+        "SpokePool": {
+          "address": "0xFE9D541c92E4e90437C7152A00244886dE37a658",
+          "block_number": 89364263,
+          "transaction_hash": "0x170aa84f779561b2d9760ad85845d1f3f4e3b0872885c22226146839449a5046"
         }
       }
     },
