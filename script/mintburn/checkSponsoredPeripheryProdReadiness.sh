@@ -41,7 +41,7 @@ Options:
   --full                     Print successful checks too
   --deployed-addresses       Override broadcast/deployed-addresses.json
   --env-file                 Source an env file and export its vars before running. Default: repo-root .env if present
-  --multisigs-file           Read chainId -> multisig JSON. Default: script/mintburn/prod-readiness-multisigs.json
+  --multisigs-file           Read multisig JSON ({ops_msig, overrides: {chainId: addr}, fallbackEOA}). Default: script/mintburn/prod-readiness-multisigs.json
   -h, --help                 Show this help
 
 Exit code:
@@ -109,7 +109,7 @@ rpc_url_ref_for_chain() {
 multisig_for_chain() {
 	local chain_id="$1"
 	[[ -f "$MULTISIGS_FILE_PATH" ]] || return 0
-	jq -r --arg chain_id "$chain_id" '.[$chain_id] // empty' "$MULTISIGS_FILE_PATH"
+	jq -r --arg chain_id "$chain_id" '.overrides[$chain_id] // .ops_msig // empty' "$MULTISIGS_FILE_PATH"
 }
 
 fallback_eoa() {
@@ -139,7 +139,7 @@ resolve_eventual_owner() {
 
 	raw_fallback="$(fallback_eoa)"
 	if fallback="$(normalized_target_address "$raw_fallback")" && [[ -n "$fallback" ]]; then
-		note="NOTE: chain multisig missing in $MULTISIGS_FILE_PATH; using fallbackEOA $fallback as eventual owner/admin"
+		note="NOTE: ops_msig/override missing in $MULTISIGS_FILE_PATH; using fallbackEOA $fallback as eventual owner/admin"
 		printf -v "$__outvar" '%s' "$fallback"
 		printf -v "$__notevar" '%s' "$note"
 		return 0
@@ -319,6 +319,55 @@ try_cast_view() {
 	return 1
 }
 
+try_cast_code() {
+	local __outvar="$1"
+	local rpc_url="$2"
+	local address="$3"
+
+	local output
+	local attempt
+	for attempt in 1 2 3; do
+		if output="$(cast code "$address" --rpc-url "$rpc_url" 2>/dev/null | tr -d '\r\n')"; then
+			printf -v "$__outvar" '%s' "$output"
+			return 0
+		fi
+		sleep 0.2
+	done
+	return 1
+}
+
+# Chains already checked by check_multisig_has_code, space-separated (bash 3.2 has no associative arrays).
+MSIG_CODE_CHECKED_CHAINS=" "
+
+# The resolved multisig is trusted as the eventual owner/admin, so make sure it actually exists
+# on this chain: a chain missing from `overrides` silently resolves to `ops_msig`, which may not
+# be deployed there. Emits a special WARN once per chain when the resolved multisig has no code.
+check_multisig_has_code() {
+	local chain_id="$1"
+	local chain_name="$2"
+	local rpc_url="$3"
+
+	[[ "$MSIG_CODE_CHECKED_CHAINS" != *" $chain_id "* ]] || return 0
+	MSIG_CODE_CHECKED_CHAINS+="$chain_id "
+
+	local msig
+	msig="$(multisig_for_chain "$chain_id")"
+	[[ -n "$msig" ]] || return 0
+	is_address "$msig" || return 0
+	msig="$(normalize_addr "$msig")"
+
+	local code
+	if ! try_cast_code code "$rpc_url" "$msig"; then
+		add_finding "ERROR" "$chain_id $chain_name" "OpsMultisig" "$msig" "getCode" "query failed"
+		return
+	fi
+	if [[ -z "$code" || "$code" == "0x" ]]; then
+		add_finding \
+			"WARN" \
+			"$chain_id $chain_name" "OpsMultisig" "$msig" "code" "resolved multisig has no code on this chain (missing overrides entry in $MULTISIGS_FILE_PATH?)"
+	fi
+}
+
 json_contract_rows() {
 	local contract_name="$1"
 	jq -r --arg contract_name "$contract_name" '
@@ -426,7 +475,7 @@ propose_default_admin_handoff() {
 			"$chain_name" \
 			"$contract_name" \
 			"$address" \
-			"missing chain multisig and fallbackEOA in $MULTISIGS_FILE_PATH" \
+			"missing ops_msig/override and fallbackEOA in $MULTISIGS_FILE_PATH" \
 			""
 		return
 	fi
@@ -437,7 +486,7 @@ propose_default_admin_handoff() {
 			"$chain_name" \
 			"$contract_name" \
 			"$address" \
-			"missing chain multisig and fallbackEOA in $MULTISIGS_FILE_PATH" \
+			"missing ops_msig/override and fallbackEOA in $MULTISIGS_FILE_PATH" \
 			""
 		return
 	fi
@@ -489,7 +538,7 @@ check_owner_not_dev() {
 				"$chain_name" \
 				"$contract_name" \
 				"$address" \
-				"missing chain multisig and fallbackEOA in $MULTISIGS_FILE_PATH" \
+				"missing ops_msig/override and fallbackEOA in $MULTISIGS_FILE_PATH" \
 				""
 			return
 		fi
@@ -500,7 +549,7 @@ check_owner_not_dev() {
 				"$chain_name" \
 				"$contract_name" \
 				"$address" \
-				"missing chain multisig and fallbackEOA in $MULTISIGS_FILE_PATH" \
+				"missing ops_msig/override and fallbackEOA in $MULTISIGS_FILE_PATH" \
 				""
 			return
 		fi
@@ -983,6 +1032,7 @@ while IFS=$'\t' read -r chain_id chain_name address; do
 		add_finding "ERROR" "$chain_id $chain_name" "SponsoredCCTPSrcPeriphery" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
+	check_multisig_has_code "$chain_id" "$chain_name" "$rpc_url"
 	check_cctp_src_contract "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "SponsoredCCTPSrcPeriphery")
 
@@ -992,6 +1042,7 @@ while IFS=$'\t' read -r chain_id chain_name address; do
 		add_finding "ERROR" "$chain_id $chain_name" "SponsoredOFTSrcPeriphery" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
+	check_multisig_has_code "$chain_id" "$chain_name" "$rpc_url"
 	check_oft_src_contract "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "SponsoredOFTSrcPeriphery")
 
@@ -1001,6 +1052,7 @@ while IFS=$'\t' read -r chain_id chain_name address; do
 		add_finding "ERROR" "$chain_id $chain_name" "SponsoredCCTPDstPeriphery" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
+	check_multisig_has_code "$chain_id" "$chain_name" "$rpc_url"
 	check_cctp_dst_contract "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "SponsoredCCTPDstPeriphery")
 
@@ -1010,6 +1062,7 @@ while IFS=$'\t' read -r chain_id chain_name address; do
 		add_finding "ERROR" "$chain_id $chain_name" "DstOFTHandler" "$address" "rpc" "requires NODE_URL_${chain_id}"
 		continue
 	fi
+	check_multisig_has_code "$chain_id" "$chain_name" "$rpc_url"
 	check_oft_dst_roles "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 	check_oft_authorized_peripheries_from_broadcast "$chain_id" "$chain_name" "$(normalize_addr "$address")" "$rpc_url"
 done < <(json_contract_rows "DstOFTHandler")
