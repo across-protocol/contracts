@@ -54,7 +54,6 @@ monad = "${NODE_URL_143}"
 optimism = "${NODE_URL_10}"
 plasma = "${NODE_URL_9745}"
 polygon = "${NODE_URL_137}"
-scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
 tempo = "${NODE_URL_4217}"
 unichain = "${NODE_URL_130}"
@@ -76,6 +75,7 @@ polygon_amoy = "${NODE_URL_80002}"
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
+ink = { key = "${ETHERSCAN_API_KEY}", url = "https://explorer.inkonchain.com/api", chain = 57073 }
 
 # A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
 [profile.local-test]

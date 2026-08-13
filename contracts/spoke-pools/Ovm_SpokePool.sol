@@ -29,7 +29,8 @@ interface IL2ERC20Bridge {
 }
 
 /**
- * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
+ * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions.
+ * OP stack chains each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  * @custom:security-contact bugs@across.to
  */
 contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
@@ -92,8 +93,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
      * likely be the hub pool.
-     * @param _l2Eth Address of L2 ETH token. Usually should be Lib_PreeployAddresses.OVM_ETH but sometimes this can
-     * be different, like with Boba which flips the WETH and OVM_ETH addresses.
+     * @param _l2Eth Address of L2 ETH token, typically Lib_PredeployAddresses.OVM_ETH.
      */
     function __OvmSpokePool_init(
         uint32 _initialDepositId,

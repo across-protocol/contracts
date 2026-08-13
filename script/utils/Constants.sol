@@ -48,9 +48,6 @@ contract Constants is Script {
         address cctpMessageTransmitter;
         address lineaMessageService;
         address lineaTokenBridge;
-        address scrollERC20GatewayRouter;
-        address scrollMessengerRelay;
-        address scrollGasPriceOracle;
         address adapterStore;
         address donationBox;
         address hubPoolStore;
@@ -120,18 +117,6 @@ contract Constants is Script {
                     lineaTokenBridge: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".lineaTokenBridge")
-                    ),
-                    scrollERC20GatewayRouter: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollERC20GatewayRouter")
-                    ),
-                    scrollMessengerRelay: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollMessengerRelay")
-                    ),
-                    scrollGasPriceOracle: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollGasPriceOracle")
                     ),
                     adapterStore: vm.parseJsonAddress(
                         file,
