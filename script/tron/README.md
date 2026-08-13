@@ -222,17 +222,17 @@ Tron-specific `MulticallHandler` variant that drains leftover TRC20 tokens with 
 yarn tron-deploy-tron-multicall-handler [--testnet]
 ```
 
-### SpokePoolPeriphery
+### Tron_SpokePoolPeriphery
 
-Deploys `SpokePoolPeriphery`. The constructor internally deploys a `SwapProxy`, which is accessible via `spokePoolPeriphery.swapProxy()` — a separate `SwapProxy` deployment is not required when deploying the periphery.
+Deploys `Tron_SpokePoolPeriphery`, the Tron-specific `SpokePoolPeriphery` variant that overrides `_safeTransfer` with a balance-delta transfer check, required for Tron USDT because its `transfer` returns `false` even on success. The constructor internally deploys a `Tron_SwapProxy`, which is accessible via `spokePoolPeriphery.swapProxy()` — a separate `SwapProxy` deployment is not required when deploying the periphery.
 
 ```bash
 yarn tron-deploy-spoke-pool-periphery <permit2> <multicall3> [--testnet]
 ```
 
-### SwapProxy
+### Tron_SwapProxy
 
-Deploys a standalone `SwapProxy`. Use this only if a dedicated `SwapProxy` is needed outside of a periphery deployment (the periphery's constructor already deploys its own).
+Deploys a standalone `Tron_SwapProxy` (the Tron-specific `SwapProxy` variant with the same balance-delta transfer check). Use this only if a dedicated `SwapProxy` is needed outside of a periphery deployment (the periphery's constructor already deploys its own).
 
 ```bash
 yarn tron-deploy-swap-proxy <permit2> [--testnet]
@@ -306,8 +306,8 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                                        |
 | `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction                           |
 | `periphery/tron-deploy-tron-multicall-handler.ts`                     | Deploys TronMulticallHandler (no args)                                              |
-| `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)               |
-| `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone SwapProxy                                                      |
+| `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys Tron_SpokePoolPeriphery (constructor also deploys inner Tron_SwapProxy)     |
+| `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone Tron_SwapProxy                                                 |
 
 ## Chain IDs
 
