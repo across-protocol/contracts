@@ -2,8 +2,21 @@ import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
+// BSC's canonical stablecoins live under separate symbols in TOKEN_SYMBOLS_MAP (Binance-Peg, 18 decimals);
+// merge them in so `.USDC.56` / `.USDT.56` resolve like every other chain.
+export const USDC = {
+  ...TOKEN_SYMBOLS_MAP.USDC.addresses,
+  [CHAIN_IDs.BSC]: (TOKEN_SYMBOLS_MAP["USDC-BNB"].addresses as Record<string, string>)[CHAIN_IDs.BSC],
+};
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
+export const USDT = {
+  ...TOKEN_SYMBOLS_MAP.USDT.addresses,
+  [CHAIN_IDs.BSC]: (TOKEN_SYMBOLS_MAP["USDT-BNB"].addresses as Record<string, string>)[CHAIN_IDs.BSC],
+};
+export const WBTC = {
+  ...TOKEN_SYMBOLS_MAP.WBTC.addresses,
+  [CHAIN_IDs.BSC]: (TOKEN_SYMBOLS_MAP["WBTC-BNB"].addresses as Record<string, string>)[CHAIN_IDs.BSC],
+};
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;

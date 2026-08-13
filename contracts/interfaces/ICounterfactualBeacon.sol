@@ -61,11 +61,24 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice LayerZero OFT source endpoint id for this chain.
     function oftSrcEid() external view returns (uint32);
 
-    /// @notice USDC token address on this chain.
+    /// @notice Native (Circle-issued or chain-canonical) USDC token address on this chain.
     function usdc() external view returns (address);
+
+    /// @notice Bridged USDC.e token address, where it exists as a token distinct from `usdc()` — a
+    ///         separate input token with its own cap, serving SpokePool routes only (bridged USDC has
+    ///         no CCTP burn path). Zero where USDC.e is absent or identical to native USDC.
+    function usdce() external view returns (address);
 
     /// @notice USDT token address on this chain.
     function usdt() external view returns (address);
+
+    /// @notice WBTC token address on this chain.
+    function wbtc() external view returns (address);
+
+    /// @notice Canonical WETH ERC-20 on this chain — an input token like `usdc`/`usdt`/`wbtc`, distinct
+    ///         from `wrappedNativeToken()` (the wrapped GAS token; identical to WETH only on ETH-gas
+    ///         chains). Lets leaves route actual WETH on chains whose native asset is not ETH.
+    function weth() external view returns (address);
 
     // --- Per-(token, bridge) execution-fee caps (input-token units). A leaf names which to enforce via its
     //     `maxExecutionFeeGetter` selector. Illustrative set; for SpokePool this is the fixed fee component. ---
@@ -83,32 +96,17 @@ interface ICounterfactualBeacon is IBeacon {
     /// @notice Max (fixed) fee for the USDC SpokePool route.
     function usdcSpokePoolMaxExecutionFee() external view returns (uint256);
 
+    /// @notice Max (fixed) fee for the USDC.e SpokePool route, in USDC.e units.
+    function usdceSpokePoolMaxExecutionFee() external view returns (uint256);
+
     /// @notice Max (fixed) fee for the USDT SpokePool route.
     function usdtSpokePoolMaxExecutionFee() external view returns (uint256);
 
-    /// @notice Max (fixed) fee for the WETH/native SpokePool route.
+    /// @notice Max (fixed) fee for the WETH SpokePool route, in WETH units. On ETH-gas chains this also
+    ///         caps the native (msg.value) route, since the wrapped gas token IS WETH there; non-ETH-gas
+    ///         chains do not get wrapped-native routes.
     function wethSpokePoolMaxExecutionFee() external view returns (uint256);
 
-    // --- V5 counterfactual (Gateway-routed) config ---
-
-    /// @notice The V5 `Gateway` on this chain. The `GatewayForwarder` resolves it via this getter to route the
-    ///         counterfactual deposit into `Gateway.execute()`.
-    function gateway() external view returns (address);
-
-    /// @notice The per-chain V5 counterfactual **source** executors — specialized `Executor` subclasses that
-    ///         run each bridge's source deposit flow. A leaf names which to use via its `executorGetter`
-    ///         selector, so a bridge integration upgrades by repointing the getter (the leaf/root are untouched).
-    ///         (The destination executor is not exposed here — a route commits it directly as `dstExecutor`
-    ///         folded into `dstStepId`, so no on-chain path reads it back from the beacon.)
-    function spokePoolDepositExecutor() external view returns (address);
-    function cctpDepositExecutor() external view returns (address);
-    function oftDepositExecutor() external view returns (address);
-
-    /// @notice Per-token USD price (1e18-fixed) for the V5 counterfactual **beacon-rate** floor — the source
-    ///         swap floor (`KIND_BEACON_RATE`) and the destination swap-safety. `0` ⇒ the token is unpriced
-    ///         (volatile) and its rate floor is skipped. `usdcStablePrice`/`usdtStablePrice` are the priced-token
-    ///         immutables `stablePrice()` dispatches over.
-    function usdcStablePrice() external view returns (uint256);
-    function usdtStablePrice() external view returns (uint256);
-    function stablePrice(address token) external view returns (uint256);
+    /// @notice Max (fixed) fee for the WBTC SpokePool route.
+    function wbtcSpokePoolMaxExecutionFee() external view returns (uint256);
 }

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Script } from "forge-std/Script.sol";
-import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
+import { CheckUtils } from "./CheckUtils.sol";
 import { CounterfactualBeacon } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
@@ -17,41 +16,47 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - Leaf impls (CounterfactualDeposit dispatcher, CCTP/OFT/VanillaCCTP, SpokePool) get bytecode-only
 //     presence checks.
 //   - Chain-specific config is auto-checked by comparing the beacon's getters against constants.json /
-//     deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, usdc, usdt),
+//     deployed-addresses.json (spokePool, wrappedNativeToken, cctp/oft periphery + domain/eid, usdc, usdt, wbtc),
 //     plus a manual review of the fee `signer`.
 //
-// Owner/directWithdrawer are cross-referenced against config.toml AND
-// script/mintburn/prod-readiness-multisigs.json for an independent second opinion.
+// Owner/directWithdrawer are cross-referenced against config.toml's `ownerAndDirectWithdrawer` AND the
+// chain's actually-deployed governance Safe (the `Safe` entry in deployed-addresses.json, generated from
+// broadcast/DeploySafe.s.sol) for an independent second opinion.
 //
-// Output prefixes for easy grep:
-//   [PASS]   - Auto-check passed
-//   [FAIL]   - Auto-check failed (investigate!)
-//   [REVIEW] - Manual review needed (always printed, never silently passed)
-//   [INFO]   - Informational
+// Before the per-chain forks, a registry-only cross-chain PARITY pass asserts every chain-identical
+// contract (beacon proxy, dispatcher, factory, leaves, AdminWithdrawManager, WithdrawImplementation)
+// sits at the SAME address on every config.toml chain — divergence means a deploy ran under the wrong
+// profile/salt or a redeploy hasn't reached every chain yet. Tron is excluded (Tron solc fork ⇒
+// different CREATE2 addresses by design) and beacon IMPLEMENTATIONS are exempt (per-chain by design).
+//
+// Freshly deployed (not-yet-live) beacon implementations are verified separately by
+// CheckCounterfactualBeaconImpls.s.sol.
+//
+// Output prefixes for easy grep: [PASS] / [FAIL] / [REVIEW] / [INFO] (see CheckUtils).
 //
 // How to run:
 //   source .env
 //   FOUNDRY_PROFILE=counterfactual forge script \
 //     script/counterfactual/CheckCounterfactualDeployments.s.sol:CheckCounterfactualDeployments \
 //     --rpc-url $NODE_URL_1 --ffi -vvvv
-contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
-    string constant MULTISIGS_PATH = "script/mintburn/prod-readiness-multisigs.json";
-
-    string multisigsJson;
-    string deployedAddressesJson;
-
-    uint256 totalPass;
-    uint256 totalFail;
-    uint256 totalReview;
-
+contract CheckCounterfactualDeployments is CounterfactualConfig, CheckUtils {
     function run() external {
         _loadConfig(CONFIG_PATH, false);
-        multisigsJson = vm.readFile(MULTISIGS_PATH);
-        deployedAddressesJson = vm.readFile("broadcast/deployed-addresses.json");
+        _loadDeployedAddresses();
+
+        _checkCrossChainParity();
 
         uint256[] memory chains = config.getChainIds();
         for (uint256 i = 0; i < chains.length; i++) {
             uint256 chainId = chains[i];
+            // Skip the synthetic `[0]` globals section in config.toml (holds the deploy salt, not a real chain).
+            if (chainId == GLOBALS_CHAIN_ID) continue;
+            // Skip Tron: forge cannot fork it (its RPC lacks standard methods and the failure surfaces in
+            // selectFork, outside the try below). Tron deployments are verified via script/tron/ tooling.
+            if (chainId == 728126428) {
+                _info("Tron", "skipped: forge cannot fork Tron (verify via script/tron/ tooling)");
+                continue;
+            }
             try vm.createFork(config.getRpcUrl(chainId)) returns (uint256 forkId) {
                 vm.selectFork(forkId);
                 _checkChain(chainId);
@@ -60,11 +65,7 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             }
         }
 
-        console.log("============================================");
-        console.log("SUMMARY: %s passed, %s failed, %s manual review", totalPass, totalFail, totalReview);
-        console.log("============================================");
-
-        require(totalFail == 0, "Some auto-checks FAILED");
+        _printSummary();
     }
 
     // --- Per-chain entry ---
@@ -79,6 +80,70 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         _checkAdminWithdrawManager(chainId);
     }
 
+    // --- Cross-chain address parity (registry-only; runs before any fork) ---
+
+    /// @dev Every CREATE2-deployed counterfactual contract must sit at the SAME address on every
+    ///      config.toml chain (that is the whole point of the deterministic deploy). Beacon
+    ///      IMPLEMENTATIONS are exempt (per-chain immutable config by design; they never appear in
+    ///      deployed-addresses.json under a shared name) and Tron is excluded (Tron solc fork ⇒
+    ///      different bytecode ⇒ different CREATE2 addresses, see script/tron/README.md). Chains
+    ///      missing a contract entirely are skipped here — per-chain presence checks report those.
+    function _checkCrossChainParity() internal {
+        console.log("");
+        console.log("## Cross-chain address parity (Tron excluded; beacon impls per-chain by design)");
+
+        string[7] memory names = [
+            string("CounterfactualBeacon"), // the address-stable proxy, not the per-chain impl
+            "CounterfactualDeposit",
+            "CounterfactualDepositFactory",
+            "WithdrawImplementation",
+            "AdminWithdrawManager",
+            "CounterfactualDepositSpokePool",
+            "CounterfactualDepositVanillaCCTP"
+        ];
+        for (uint256 i = 0; i < names.length; i++) _checkParityOf(names[i]);
+        // Optional leaves: only deployed where the route exists; non-zero entries must still agree.
+        _checkParityOf("CounterfactualDepositCCTP");
+        _checkParityOf("CounterfactualDepositOFT");
+    }
+
+    function _checkParityOf(string memory name) internal {
+        uint256[] memory chains = config.getChainIds();
+        address firstAddr;
+        uint256 present;
+        bool diverged;
+        for (uint256 i = 0; i < chains.length; i++) {
+            uint256 chainId = chains[i];
+            if (chainId == GLOBALS_CHAIN_ID || chainId == 728126428) continue; // globals section / Tron
+            address addr = _getDeployed(name, chainId);
+            if (addr == address(0)) continue;
+            present++;
+            if (firstAddr == address(0)) {
+                firstAddr = addr;
+            } else if (addr != firstAddr) {
+                diverged = true;
+                _fail(
+                    name,
+                    "parity",
+                    string.concat(
+                        "chain ",
+                        vm.toString(chainId),
+                        ": ",
+                        vm.toString(addr),
+                        " != ",
+                        vm.toString(firstAddr),
+                        " (first seen)"
+                    )
+                );
+            }
+        }
+        if (present == 0) {
+            _info(name, "parity skipped (not deployed on any chain)");
+        } else if (!diverged) {
+            _pass(name, "parity", string.concat(vm.toString(firstAddr), " on ", vm.toString(present), " chains"));
+        }
+    }
+
     // --- Bytecode-only contracts (chain-identical; presence is all we verify on-chain) ---
 
     function _checkBytecodeContracts(uint256 chainId) internal {
@@ -88,12 +153,11 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         string memory spokePoolImpl = chainId == 728126428
             ? string("CounterfactualDepositSpokePoolTr")
             : string("CounterfactualDepositSpokePool");
-        string[6] memory names = [
+        string[5] memory names = [
             string("CounterfactualBeacon"),
             "CounterfactualDeposit",
             "CounterfactualDepositFactory",
             "WithdrawImplementation",
-            "CounterfactualDepositVanillaCCTP",
             spokePoolImpl
         ];
         for (uint256 i = 0; i < names.length; i++) {
@@ -107,12 +171,14 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             }
         }
 
-        // CCTP / OFT leaf impls are only deployed where the route is configured.
+        // CCTP / OFT / vanilla-CCTP leaf impls are only deployed where the route is configured
+        // (gates mirror `_validateDeclaredSupport`'s flag semantics).
         _checkOptionalLeaf(
             "CounterfactualDepositCCTP",
             chainId,
             hasCctpDomain(chainId) && _getCctpPeriphery(chainId) != address(0)
         );
+        _checkOptionalLeaf("CounterfactualDepositVanillaCCTP", chainId, _getCctpTokenMessenger(chainId) != address(0));
         _checkOptionalLeaf(
             "CounterfactualDepositOFT",
             chainId,
@@ -238,39 +304,55 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         // usdc vs constants.json (0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdc", beacon.usdc(), _getUsdc(chainId));
 
+        // usdce vs constants.json (0 when absent or aliasing native usdc; reverts on pre-usdce impls)
+        _assertAddrEq("CounterfactualBeacon", "usdce", beacon.usdce(), _getUsdce(chainId));
+
         // usdt vs constants.json (best-effort; 0 when not present)
         _assertAddrEq("CounterfactualBeacon", "usdt", beacon.usdt(), _getUsdt(chainId));
 
-        // Per-(token, bridge) execution-fee caps vs config.toml (0 when unset).
-        _assertUintEq(
-            "CounterfactualBeacon",
-            "usdcCctpMaxExecutionFee",
-            beacon.usdcCctpMaxExecutionFee(),
-            _resolveFeeCap("usdcCctpMaxExecutionFee")
-        );
-        _assertUintEq(
-            "CounterfactualBeacon",
-            "usdtOftMaxExecutionFee",
-            beacon.usdtOftMaxExecutionFee(),
-            _resolveFeeCap("usdtOftMaxExecutionFee")
-        );
+        // wbtc vs constants.json (0 when not present)
+        _assertAddrEq("CounterfactualBeacon", "wbtc", beacon.wbtc(), _getWbtc(chainId));
+
+        // weth vs constants.json (canonical WETH ERC-20, not the wrapped gas token; 0 when not present)
+        _assertAddrEq("CounterfactualBeacon", "weth", beacon.weth(), _getWeth(chainId));
+
+        // Per-(token, bridge) execution-fee caps vs config.toml — the exact resolver + sharing rule
+        // `_buildChainConfig` bakes from (bridge types share the token's `<token>MaxExecutionFee` value;
+        // 0 when the token is unset on this chain).
+        uint256 usdcCap = _maxExecutionFee("usdcMaxExecutionFee", _getUsdc(chainId));
+        uint256 usdtCap = _maxExecutionFee("usdtMaxExecutionFee", _getUsdt(chainId));
+        _assertUintEq("CounterfactualBeacon", "usdcCctpMaxExecutionFee", beacon.usdcCctpMaxExecutionFee(), usdcCap);
+        _assertUintEq("CounterfactualBeacon", "usdtOftMaxExecutionFee", beacon.usdtOftMaxExecutionFee(), usdtCap);
         _assertUintEq(
             "CounterfactualBeacon",
             "usdcSpokePoolMaxExecutionFee",
             beacon.usdcSpokePoolMaxExecutionFee(),
-            _resolveFeeCap("usdcSpokePoolMaxExecutionFee")
+            usdcCap
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "usdtSpokePoolMaxExecutionFee",
             beacon.usdtSpokePoolMaxExecutionFee(),
-            _resolveFeeCap("usdtSpokePoolMaxExecutionFee")
+            usdtCap
+        );
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "usdceSpokePoolMaxExecutionFee",
+            beacon.usdceSpokePoolMaxExecutionFee(),
+            _maxExecutionFee("usdceMaxExecutionFee", _getUsdce(chainId))
         );
         _assertUintEq(
             "CounterfactualBeacon",
             "wethSpokePoolMaxExecutionFee",
             beacon.wethSpokePoolMaxExecutionFee(),
-            _resolveFeeCap("wethSpokePoolMaxExecutionFee")
+            _maxExecutionFee("wethMaxExecutionFee", _getWeth(chainId))
+        );
+        // wbtc cap vs config.toml (same resolver the deploy script bakes from; 0 when wbtc unset)
+        _assertUintEq(
+            "CounterfactualBeacon",
+            "wbtcSpokePoolMaxExecutionFee",
+            beacon.wbtcSpokePoolMaxExecutionFee(),
+            _maxExecutionFee("wbtcMaxExecutionFee", _getWbtc(chainId))
         );
 
         // Manual review: signer (no second source)
@@ -285,13 +367,14 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         address configOwner = config.get("ownerAndDirectWithdrawer").toAddress();
         address multisig = _getMultisig(chainId);
         _reviewWithMultisig("CounterfactualBeacon", "owner", ownableBeacon.owner(), configOwner, multisig);
-        _reviewWithMultisig(
-            "CounterfactualBeacon",
-            "pendingOwner",
-            ownableBeacon.pendingOwner(),
-            configOwner,
-            multisig
-        );
+        // pendingOwner: zero is the healthy steady state (no transfer in flight); only a nonzero value
+        // needs eyes — it means an Ownable2Step handoff is initiated but unaccepted.
+        address pendingOwner = ownableBeacon.pendingOwner();
+        if (pendingOwner == address(0)) {
+            _pass("CounterfactualBeacon", "pendingOwner", "none (no transfer in flight)");
+        } else {
+            _reviewWithMultisig("CounterfactualBeacon", "pendingOwner", pendingOwner, configOwner, multisig);
+        }
     }
 
     // --- AdminWithdrawManager ---
@@ -323,30 +406,6 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         _review("AdminWithdrawManager", "signer", awm.signer(), configSigner, "config.toml");
     }
 
-    // --- Cached deployed-addresses.json lookups ---
-
-    function _getDeployed(string memory contractName, uint256 chainId) internal view returns (address) {
-        string memory path = string.concat(
-            '.chains["',
-            vm.toString(chainId),
-            '"].contracts["',
-            contractName,
-            '"].address'
-        );
-        if (vm.keyExists(deployedAddressesJson, path)) {
-            return vm.parseJsonAddress(deployedAddressesJson, path);
-        }
-        return address(0);
-    }
-
-    function _getChainName(uint256 chainId) internal view returns (string memory) {
-        string memory path = string.concat('.chains["', vm.toString(chainId), '"].chain_name');
-        if (vm.keyExists(deployedAddressesJson, path)) {
-            return vm.parseJsonString(deployedAddressesJson, path);
-        }
-        return string.concat("Chain ", vm.toString(chainId));
-    }
-
     // --- Cached CCTP/OFT periphery lookups ---
 
     function _getCctpPeriphery(uint256 chainId) internal view returns (address) {
@@ -370,14 +429,40 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         return address(0);
     }
 
-    function _getUsdc(uint256 chainId) internal view returns (address) {
+    /// @dev Delegates to the shared `CounterfactualConfig._resolveUsdc` whenever the fork/config context is
+    ///      this chain — which is every per-chain call, since `run()` forks before `_checkChain`. That keeps
+    ///      the check side from drifting from the deploy side, notably over the `usdcOverride` entry that lets
+    ///      a chain-local stablecoin serve as the beacon's USDC (e.g. pathUSD on Tempo). The constants.json
+    ///      lookup below remains for any pre-fork caller.
+    function _getUsdc(uint256 chainId) internal returns (address) {
+        if (chainId == block.chainid) return _resolveUsdc();
         string memory path = string.concat(".USDC.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
     }
 
+    /// @dev Bridged USDC.e, only where distinct from native USDC (mirrors CounterfactualConfig._resolveUsdce).
+    function _getUsdce(uint256 chainId) internal returns (address) {
+        string memory path = string.concat(".USDCe.", vm.toString(chainId));
+        if (!vm.keyExists(file, path)) return address(0);
+        address usdce = vm.parseJsonAddress(file, path);
+        return usdce == _getUsdc(chainId) ? address(0) : usdce;
+    }
+
     function _getUsdt(uint256 chainId) internal view returns (address) {
         string memory path = string.concat(".USDT.", vm.toString(chainId));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    function _getWbtc(uint256 chainId) internal view returns (address) {
+        string memory path = string.concat(".WBTC.", vm.toString(chainId));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    function _getWeth(uint256 chainId) internal view returns (address) {
+        string memory path = string.concat(".WETH.", vm.toString(chainId));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
     }
@@ -395,51 +480,14 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
 
     // --- Multisig lookup ---
 
+    /// @dev This chain's governance Safe as actually deployed — the `Safe` entry in
+    ///      deployed-addresses.json, generated from broadcast/DeploySafe.s.sol/<chainId>. address(0)
+    ///      when no Safe has been deployed on the chain (reported as such, never silently substituted).
     function _getMultisig(uint256 chainId) internal view returns (address) {
-        string memory path = string.concat(".", vm.toString(chainId));
-        if (vm.keyExists(multisigsJson, path)) {
-            return vm.parseJsonAddress(multisigsJson, path);
-        }
-        return vm.parseJsonAddress(multisigsJson, ".fallbackEOA");
+        return _getDeployed("Safe", chainId);
     }
 
-    // --- Logging helpers ---
-
-    function _pass(string memory contract_, string memory field, string memory value) internal {
-        console.log("[PASS]   %s.%s = %s", contract_, field, value);
-        totalPass++;
-    }
-
-    function _fail(string memory contract_, string memory field, string memory detail) internal {
-        console.log("[FAIL]   %s.%s: %s", contract_, field, detail);
-        totalFail++;
-    }
-
-    function _info(string memory contract_, string memory detail) internal pure {
-        console.log("[INFO]   %s: %s", contract_, detail);
-    }
-
-    function _assertAddrEq(string memory contract_, string memory field, address actual, address expected) internal {
-        if (actual == expected) {
-            _pass(contract_, field, vm.toString(actual));
-        } else {
-            console.log("[FAIL]   %s.%s", contract_, field);
-            console.log("           actual:   %s", actual);
-            console.log("           expected: %s", expected);
-            totalFail++;
-        }
-    }
-
-    function _assertUintEq(string memory contract_, string memory field, uint256 actual, uint256 expected) internal {
-        if (actual == expected) {
-            _pass(contract_, field, vm.toString(actual));
-        } else {
-            console.log("[FAIL]   %s.%s", contract_, field);
-            console.log("           actual:   %s", actual);
-            console.log("           expected: %s", expected);
-            totalFail++;
-        }
-    }
+    // --- Logging helpers (shared ones live in CheckUtils) ---
 
     function _review(
         string memory contract_,
@@ -471,11 +519,13 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
             )
         );
         console.log(
-            string.concat(
-                "           multisigs.json: ",
-                vm.toString(multisig),
-                actual == multisig ? unicode" ✓" : " MISMATCH"
-            )
+            multisig == address(0)
+                ? string("           deployed Safe: none on this chain (broadcast/DeploySafe.s.sol)")
+                : string.concat(
+                    "           deployed Safe: ",
+                    vm.toString(multisig),
+                    actual == multisig ? unicode" ✓" : " MISMATCH"
+                )
         );
         totalReview++;
     }

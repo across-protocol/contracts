@@ -4,16 +4,12 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import {
     CounterfactualBeacon,
     CounterfactualChainConfig
 } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { CounterfactualBeaconBase } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBase.sol";
-import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
-import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
-import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
@@ -50,26 +46,32 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
 //   - No nonce burning for skipped contracts
-//   - No ordering dependency — deploy in any order (except the beacon stack, which is one atomic script)
+//   - No ordering dependency — deploy in any order (except the beacon stack: its impl, then the
+//     proxy/dispatcher, run as two ordered sub-scripts)
 //   - Idempotent — already-deployed contracts are auto-skipped
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
 //   - Chain-specific params (spokePool, wrappedNativeToken, nativeToken, cctp/oft periphery + domain/eid,
 //     USDC/USDT, cctpTokenMessenger): auto-resolved from constants.json + deployed-addresses.json and baked
-//     into the beacon impl by DeployCounterfactualBeacon. `nativeToken` defaults to the native sentinel;
+//     into the beacon impl by DeployCounterfactualBeaconImpl. `nativeToken` defaults to the native sentinel;
 //     override at `.NATIVE_TOKEN.<chainId>` for chains whose gas-token route is an ERC-20.
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from config.toml.
-//     This script transfers those roles after all ffi deployments, verifying directWithdrawer transferred
-//     before ownership.
+//     Beacon + AdminWithdrawManager role transfers to the config.toml `ownerAndDirectWithdrawer` multisig are
+//     NOT performed by this script — do them out of band after deployment.
 //
 // Always deployed:
-//   - Beacon stack (bootstrap + proxy + chain-specific impl + dispatcher) via DeployCounterfactualBeacon
-//   - CounterfactualDepositFactory, WithdrawImplementation, CounterfactualDepositVanillaCCTP,
-//     AdminWithdrawManager
+//   - Beacon stack (chain-specific impl + bootstrap + proxy + dispatcher) via DeployCounterfactualBeaconImpl
+//     then DeployCounterfactualBeacon
+//   - CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
 //
-// Optionally deployed (bool args): CounterfactualDepositSpokePool (deploySpokePool),
-// CounterfactualDepositCCTP (deployCctp), CounterfactualDepositOFT (deployOft).
+// Route leaves — deployed automatically wherever the route is VIABLE on this chain (no flags; derived from
+// on-chain capability, see `run`). A leaf impl is inert until a signed merkle leaf names it, so deploying it
+// wherever its dependency resolves is safe and keeps the address uniform across chains:
+//   - CounterfactualDepositSpokePool    if an Across SpokePool exists
+//   - CounterfactualDepositCCTP         if the chain has a CCTP domain + SponsoredCCTPSrcPeriphery
+//   - CounterfactualDepositOFT          if the chain has an OFT EID + SponsoredOFTSrcPeriphery
+//   - CounterfactualDepositVanillaCCTP  if Circle's CCTP v2 TokenMessenger is configured
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
@@ -79,55 +81,42 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-//      --sig "run(string,bool,bool,bool,bool,bool,string)" <rpcUrl> true true true true true counterfactual \
+//      --sig "run(string,bool,string)" <rpcUrl> true counterfactual \
 //      --rpc-url <rpcUrl> --ffi -vvvv
+//    (args: rpcUrl, broadcast, profile)
 // 4. Verify the logged predicted addresses and forge commands look correct
 contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     string constant SCRIPT_DIR = "script/counterfactual/";
 
     /// @param rpcUrl RPC URL for the target chain.
-    /// @param deploySpokePool If true, deploy CounterfactualDepositSpokePool.
-    /// @param deployCctp If true, deploy CounterfactualDepositCCTP.
-    /// @param deployOft If true, deploy CounterfactualDepositOFT.
-    /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.toml addresses.
-    /// @param broadcast If true, broadcast transactions on-chain.
+    /// @param broadcast If true, broadcast transactions on-chain; otherwise simulate.
     /// @param profile Foundry profile to use for sub-script invocations (e.g. "counterfactual").
-    function run(
-        string calldata rpcUrl,
-        bool deploySpokePool,
-        bool deployCctp,
-        bool deployOft,
-        bool transferRoles,
-        bool broadcast,
-        string calldata profile
-    ) external {
+    function run(string calldata rpcUrl, bool broadcast, string calldata profile) external {
         address signer = _loadSigner();
 
-        // CCTP / OFT gating: leaf impls are chain-identical, but only deploy where the route is configured
-        // (matching the per-script guards). Also require the upstream periphery so the beacon doesn't bake
-        // `address(0)`, which would silently brick every leaf with `RouteNotConfigured`.
-        if (deployCctp) {
-            require(hasCctpDomain(block.chainid), "CCTP not supported on this chain");
-            require(_resolveCctpPeriphery() != address(0), "CCTP periphery not deployed on this chain");
-        }
-        if (deployOft) {
-            require(hasOftEid(block.chainid), "OFT not supported on this chain");
-            require(_resolveOftPeriphery() != address(0), "OFT periphery not deployed on this chain");
-        }
+        // Which route leaves to deploy is DERIVED from on-chain capability, not passed in: deploy a route's
+        // leaf exactly where that route can actually function on this chain (its dependency resolves). Leaf
+        // impls are inert until a signed merkle leaf names them and the beacon config is set, so deploying
+        // them wherever viable is safe and address-stable; skipping them where the dependency is absent just
+        // avoids baking a permanently-`RouteNotConfigured` leaf. This removes the need to know each chain's
+        // capabilities up front and the old revert-on-wrong-flag footgun.
+        //   - SpokePool route  -> an Across SpokePool exists (the beacon also requires this).
+        //   - Sponsored CCTP   -> chain has a CCTP domain AND a SponsoredCCTPSrcPeriphery.
+        //   - Sponsored OFT    -> chain has an OFT EID AND a SponsoredOFTSrcPeriphery.
+        //   - Vanilla CCTP     -> Circle's CCTP v2 TokenMessenger is configured for this chain.
+        bool deploySpokePool = _resolveSpokePool() != address(0);
+        bool deployCctp = hasCctpDomain(block.chainid) && _resolveCctpPeriphery() != address(0);
+        bool deployOft = hasOftEid(block.chainid) && _resolveOftPeriphery() != address(0);
+        bool deployVanillaCctp = _resolveCctpTokenMessenger() != address(0);
 
         uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
         address deployer = vm.addr(deployerPrivateKey);
+        bytes32 salt = _deploySalt();
 
         // Predict the chain-invariant beacon proxy + dispatcher addresses (like DeployCounterfactualBeacon)
         // for logging and idempotency checks.
         address predictedProxy = _predictBeaconProxy(deployer);
-        address predictedDispatcher = _predictCreate2(
-            bytes32(0),
-            abi.encodePacked(
-                type(CounterfactualDeposit).creationCode,
-                abi.encode(ICounterfactualBeacon(predictedProxy))
-            )
-        );
+        address predictedDispatcher = _predictDispatcher(predictedProxy);
 
         // Log predicted addresses upfront so they can be verified before deploying.
         console.log("============================================");
@@ -137,21 +126,23 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("Chain ID:  ", block.chainid);
         console.log("Broadcast: ", broadcast);
         console.log("--------------------------------------------");
-        console.log("Resolved parameters:");
+        console.log("Detected route capabilities (deploy where the route is viable):");
         console.log("  Signer:             ", signer);
-        console.log("  Deploy SpokePool:   ", deploySpokePool);
-        console.log("  Deploy CCTP:        ", deployCctp);
-        console.log("  Deploy OFT:         ", deployOft);
-        console.log("  Transfer roles:     ", transferRoles);
+        console.log("  SpokePool route:    ", deploySpokePool);
+        console.log("  Sponsored CCTP:     ", deployCctp);
+        console.log("  Sponsored OFT:      ", deployOft);
+        console.log("  Vanilla CCTP:       ", deployVanillaCctp);
         console.log("--------------------------------------------");
         console.log("Predicted addresses:");
 
         // Beacon stack + always-on contracts.
-        address predictedFactory = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
-        address predictedWithdraw = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
-        address predictedVanilla = _predictCreate2(bytes32(0), type(CounterfactualDepositVanillaCCTP).creationCode);
+        address predictedFactory = _predictCreate2(
+            salt,
+            abi.encodePacked(type(CounterfactualDepositFactory).creationCode, abi.encode(predictedProxy))
+        );
+        address predictedWithdraw = _predictCreate2(salt, type(WithdrawImplementation).creationCode);
         address predictedAdmin = _predictCreate2(
-            bytes32(0),
+            salt,
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(deployer, deployer, signer))
         );
 
@@ -159,8 +150,13 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         _logPredicted("CounterfactualDeposit (dispatcher)", predictedDispatcher);
         _logPredicted("CounterfactualDepositFactory", predictedFactory);
         _logPredicted("WithdrawImplementation", predictedWithdraw);
-        _logPredicted("CounterfactualDepositVanillaCCTP", predictedVanilla);
         _logPredicted("AdminWithdrawManager", predictedAdmin);
+
+        address predictedVanilla;
+        if (deployVanillaCctp) {
+            predictedVanilla = _predictCreate2(salt, type(CounterfactualDepositVanillaCCTP).creationCode);
+            _logPredicted("CounterfactualDepositVanillaCCTP", predictedVanilla);
+        }
 
         address predictedSpokePool;
         if (deploySpokePool) {
@@ -170,7 +166,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             bytes memory spokePoolCode = isTron
                 ? type(CounterfactualDepositSpokePoolTr).creationCode
                 : type(CounterfactualDepositSpokePool).creationCode;
-            predictedSpokePool = _predictCreate2(bytes32(0), spokePoolCode);
+            predictedSpokePool = _predictCreate2(salt, spokePoolCode);
             _logPredicted(
                 isTron ? "CounterfactualDepositSpokePoolTr" : "CounterfactualDepositSpokePool",
                 predictedSpokePool
@@ -179,23 +175,29 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
 
         address predictedCctp;
         if (deployCctp) {
-            predictedCctp = _predictCreate2(bytes32(0), type(CounterfactualDepositCCTP).creationCode);
+            predictedCctp = _predictCreate2(salt, type(CounterfactualDepositCCTP).creationCode);
             _logPredicted("CounterfactualDepositCCTP", predictedCctp);
         }
 
         address predictedOft;
         if (deployOft) {
-            predictedOft = _predictCreate2(bytes32(0), type(CounterfactualDepositOFT).creationCode);
+            predictedOft = _predictCreate2(salt, type(CounterfactualDepositOFT).creationCode);
             _logPredicted("CounterfactualDepositOFT", predictedOft);
         }
 
         console.log("============================================");
 
-        string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
+        // `--slow` sends each tx in a sub-script's broadcast batch sequentially, waiting for each receipt.
+        // The beacon stack is multi-tx (impl deploy -> upgradeToAndCall -> dispatcher -> setImplementation);
+        // without --slow, forge fires them with rapid sequential nonces and the txs after the first get
+        // dropped against an RPC whose nonce view lags, leaving the proxy stuck on the bootstrap.
+        string memory broadcastFlag = broadcast ? " --broadcast --slow --verify --retries 5 --delay 10" : "";
 
-        // --- Beacon stack (bootstrap + proxy + chain-specific impl + upgrade + dispatcher + setImplementation) ---
-        // The one ordering-dependent step: must run before the dispatcher is usable. The dispatcher is
-        // deployed here by DeployCounterfactualBeacon (not standalone) so it binds to the fresh beacon proxy.
+        // --- Beacon stack (impl + bootstrap + proxy + upgrade + dispatcher + setImplementation) ---
+        // Two ordered sub-scripts: DeployCounterfactualBeaconImpl (chain-specific impl) then
+        // DeployCounterfactualBeacon (bootstrap/proxy/upgrade-to-impl/dispatcher/setImplementation). The one
+        // ordering-dependent step: must run before the dispatcher is usable. The dispatcher is deployed by
+        // DeployCounterfactualBeacon (not standalone) so it binds to the fresh beacon proxy.
         //
         // Code at both addresses is necessary but not sufficient: a prior broadcast may have stopped between
         // deploying the proxy/dispatcher and `setImplementation(dispatcher)`, leaving the proxy on the
@@ -213,13 +215,28 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             // registry UUPS upgrade. Surface the mismatch loudly so a silently-bricked route isn't missed.
             _warnIfBeaconConfigStale(predictedProxy);
         } else {
-            console.log("Deploying Beacon stack (bootstrap + proxy + impl + dispatcher)...");
+            console.log("Deploying Beacon stack (impl + bootstrap + proxy + upgrade + dispatcher)...");
+            // 1. Chain-specific beacon IMPLEMENTATION (per-chain CREATE; bakes this chain's ChainConfig as
+            //    immutables). It MUST be deployed first: DeployCounterfactualBeacon below reads this script's
+            //    broadcast for the latest impl and `upgradeToAndCall`s the proxy to it, reverting if absent.
+            _runForgeScript(
+                rpcUrl,
+                broadcastFlag,
+                string.concat(SCRIPT_DIR, "DeployCounterfactualBeaconImpl.s.sol"),
+                "DeployCounterfactualBeaconImpl",
+                "",
+                profile
+            );
+            // 2. Bootstrap + proxy + upgrade-to-impl + dispatcher + setImplementation. `DeployCounterfactualBeacon`
+            //    has two `run` overloads (`run()` and `run(bool)`), so it MUST be invoked with an explicit `--sig`
+            //    or forge aborts with "Multiple functions with the same name run". We want the no-transfer path
+            //    here (role transfers are performed out of band, not by this orchestrator).
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployCounterfactualBeacon.s.sol"),
                 "DeployCounterfactualBeacon",
-                "",
+                ' --sig "run()"',
                 profile
             );
         }
@@ -306,18 +323,20 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         }
 
         // --- CounterfactualDepositVanillaCCTP (vanilla, non-sponsored Circle CCTP v2) ---
-        if (predictedVanilla.code.length > 0) {
-            console.log("CounterfactualDepositVanillaCCTP: ALREADY DEPLOYED");
-        } else {
-            console.log("Deploying CounterfactualDepositVanillaCCTP...");
-            _runForgeScript(
-                rpcUrl,
-                broadcastFlag,
-                string.concat(SCRIPT_DIR, "DeployCounterfactualDepositVanillaCCTP.s.sol"),
-                "DeployCounterfactualDepositVanillaCCTP",
-                "",
-                profile
-            );
+        if (deployVanillaCctp) {
+            if (predictedVanilla.code.length > 0) {
+                console.log("CounterfactualDepositVanillaCCTP: ALREADY DEPLOYED");
+            } else {
+                console.log("Deploying CounterfactualDepositVanillaCCTP...");
+                _runForgeScript(
+                    rpcUrl,
+                    broadcastFlag,
+                    string.concat(SCRIPT_DIR, "DeployCounterfactualDepositVanillaCCTP.s.sol"),
+                    "DeployCounterfactualDepositVanillaCCTP",
+                    "",
+                    profile
+                );
+            }
         }
 
         // --- AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
@@ -335,68 +354,70 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
             );
         }
 
-        // --- Transfer beacon + AdminWithdrawManager roles ---
-        if (transferRoles) {
-            address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
-            require(ownerAndDirectWithdrawer != address(0), "config: ownerAndDirectWithdrawer is zero or missing");
+        // The deploys above happened in separate `forge script --broadcast` child processes (via ffi), so they
+        // are invisible to THIS script's fork (pinned at the block we started on). Re-fork to latest so the
+        // verification summary sees what the children actually deployed, not our stale snapshot.
+        if (broadcast) vm.createSelectFork(rpcUrl);
 
-            console.log("--------------------------------------------");
-
-            // The beacon admin can retarget every counterfactual proxy and UUPS-upgrade the registry, so it
-            // must end up on the per-chain multisig, not the deployer EOA (Ownable2Step: new owner accepts
-            // out of band). Own broadcast scope, separate from the AdminWithdrawManager block below.
-            CounterfactualBeacon beacon = CounterfactualBeacon(predictedProxy);
-            if (beacon.owner() != ownerAndDirectWithdrawer && beacon.pendingOwner() != ownerAndDirectWithdrawer) {
-                console.log("Transferring beacon ownership to:", ownerAndDirectWithdrawer);
-                vm.startBroadcast(deployerPrivateKey);
-                beacon.transferOwnership(ownerAndDirectWithdrawer);
-                vm.stopBroadcast();
-            } else {
-                console.log("Beacon ownership: already transferred or pending acceptance");
-            }
-
-            AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
-            console.log("Transferring AdminWithdrawManager roles to:", ownerAndDirectWithdrawer);
-
-            vm.startBroadcast(deployerPrivateKey);
-
-            // Transfer directWithdrawer first, then verify before transferring ownership.
-            if (ownerAndDirectWithdrawer != manager.directWithdrawer()) {
-                manager.setDirectWithdrawer(ownerAndDirectWithdrawer);
-
-                if (manager.directWithdrawer() != ownerAndDirectWithdrawer) {
-                    console.log("ERROR: directWithdrawer transfer failed. Skipping ownership transfer.");
-                    vm.stopBroadcast();
-                } else {
-                    if (ownerAndDirectWithdrawer != manager.owner()) {
-                        manager.transferOwnership(ownerAndDirectWithdrawer);
-                    }
-                    vm.stopBroadcast();
-                }
-            } else {
-                // directWithdrawer already correct, just transfer ownership if needed.
-                if (ownerAndDirectWithdrawer != manager.owner()) {
-                    manager.transferOwnership(ownerAndDirectWithdrawer);
-                }
-                vm.stopBroadcast();
-            }
-        }
-
+        // --- On-chain verification summary ---------------------------------------------------------------
+        // Each sub-script is invoked via ffi with a trailing `|| true`, so a failed deploy does NOT stop the
+        // run — it is silently skipped. Rather than print a misleading "complete!", check actual on-chain code
+        // at every predicted address and report exactly what landed. (Skipped in simulation, where nothing is
+        // deployed and every address would read as MISSING.)
         console.log("============================================");
-        console.log("All deployments complete!");
+        if (broadcast) {
+            // Fork was already refreshed to latest above (after the ffi deploy phase), so these on-chain code
+            // checks reflect what the child processes actually deployed.
+            console.log("On-chain deployment results:");
+            uint256 deployed;
+            uint256 total;
+            total++;
+            if (_status("CounterfactualBeacon (proxy)", predictedProxy)) deployed++;
+            total++;
+            if (_status("CounterfactualDeposit (dispatcher)", predictedDispatcher)) deployed++;
+            total++;
+            if (_status("CounterfactualDepositFactory", predictedFactory)) deployed++;
+            total++;
+            if (_status("WithdrawImplementation", predictedWithdraw)) deployed++;
+            total++;
+            if (_status("AdminWithdrawManager", predictedAdmin)) deployed++;
+            if (deployVanillaCctp) {
+                total++;
+                if (_status("CounterfactualDepositVanillaCCTP", predictedVanilla)) deployed++;
+            }
+            if (deploySpokePool) {
+                total++;
+                if (_status("CounterfactualDepositSpokePool", predictedSpokePool)) deployed++;
+            }
+            if (deployCctp) {
+                total++;
+                if (_status("CounterfactualDepositCCTP", predictedCctp)) deployed++;
+            }
+            if (deployOft) {
+                total++;
+                if (_status("CounterfactualDepositOFT", predictedOft)) deployed++;
+            }
+            console.log("--------------------------------------------");
+            console.log("Deployed %d / %d expected contracts.", deployed, total);
+            if (deployed < total) {
+                console.log("SOME DEPLOYMENTS ARE MISSING. Sub-scripts run with a trailing `|| true`, so a failed");
+                console.log("one is skipped silently. Re-run this script (idempotent - done contracts are skipped),");
+                console.log("or run the missing sub-script directly (drop the `|| true`) to see its revert reason.");
+            } else {
+                console.log("All expected contracts are deployed on-chain.");
+            }
+        } else {
+            console.log("Simulation complete (no broadcast). See predicted addresses above.");
+        }
         console.log("============================================");
     }
 
-    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
-    /// @dev Mirrors DeployCounterfactualBeacon: ERC1967Proxy over the chain-identical bootstrap with the
-    ///      deployer as owner (chain-invariant => identical init code => identical address).
-    function _predictBeaconProxy(address deployer) internal pure returns (address) {
-        address bootstrap = _predictCreate2(bytes32(0), type(CounterfactualBeaconBootstrap).creationCode);
-        bytes memory proxyInitCode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
-        );
-        return _predictCreate2(bytes32(0), proxyInitCode);
+    /// @dev Logs whether `addr` has on-chain code and returns true when deployed. Powers the post-run
+    ///      verification summary so a sub-script failure swallowed by `|| true` is surfaced explicitly.
+    function _status(string memory name, address addr) internal view returns (bool) {
+        bool ok = addr.code.length > 0;
+        console.log(ok ? "  [OK]      %s: %s" : "  [MISSING] %s: %s", name, addr);
+        return ok;
     }
 
     /// @dev True when the beacon proxy's `implementation()` already resolves to the expected dispatcher.
@@ -431,6 +452,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (_logStaleUint("oftSrcEid", beacon.oftSrcEid(), expected.oftSrcEid)) stale = true;
         if (_logStaleAddr("usdc", beacon.usdc(), expected.usdc)) stale = true;
         if (_logStaleAddr("usdt", beacon.usdt(), expected.usdt)) stale = true;
+        if (_logStaleAddr("wbtc", beacon.wbtc(), expected.wbtc)) stale = true;
+        if (_logStaleAddr("weth", beacon.weth(), expected.weth)) stale = true;
         if (
             _logStaleUint("usdcCctpMaxExecutionFee", beacon.usdcCctpMaxExecutionFee(), expected.usdcCctpMaxExecutionFee)
         ) stale = true;
@@ -455,6 +478,13 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 "wethSpokePoolMaxExecutionFee",
                 beacon.wethSpokePoolMaxExecutionFee(),
                 expected.wethSpokePoolMaxExecutionFee
+            )
+        ) stale = true;
+        if (
+            _logStaleUint(
+                "wbtcSpokePoolMaxExecutionFee",
+                beacon.wbtcSpokePoolMaxExecutionFee(),
+                expected.wbtcSpokePoolMaxExecutionFee
             )
         ) stale = true;
 
