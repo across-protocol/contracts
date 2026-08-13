@@ -33,9 +33,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
-    scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
-    scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
-    scrollGasPriceOracle: "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     adapterStore: "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
     hubPoolStore: "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
@@ -53,9 +50,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F", // No sepolia deploy address
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319", // No sepolia deploy address
-    scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
-    scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
-    scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
     donationBox: "0x74f00724075443Cbbf55129F17CbAB0F77bA0722",
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
@@ -79,10 +73,6 @@ export const OP_STACK_ADDRESS_MAP: {
       L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
       L1StandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
-    },
-    [CHAIN_IDs.BOBA]: {
-      L1CrossDomainMessenger: "0x6D4528d192dB72E282265D6092F4B872f9Dff69e",
-      L1StandardBridge: "0xdc1664458d2f0B6090bEa60A8793A4E66c2F1c00",
     },
     [CHAIN_IDs.UNICHAIN]: {
       L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
@@ -272,22 +262,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-  },
-  [CHAIN_IDs.SCROLL_SEPOLIA]: {
-    scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
-    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
-    scrollMessenger: "0xba50f5340fb9f3bd074bd638c9be13ecb36e603d",
-  },
-  [CHAIN_IDs.SCROLL]: {
-    scrollERC20GatewayRouter: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
-    scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
-    scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
-    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-  },
-  1442: {
-    // Custom WETH for testing because there is no "official" WETH
-    l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
-    polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
   [CHAIN_IDs.UNICHAIN]: {
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
