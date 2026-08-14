@@ -9,10 +9,14 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 /// @title DeployUniversalSpokePool
-/// @notice Deploy script for the Universal_SpokePool contract.
+/// @notice Deploy script for the Universal_SpokePool contract (fresh deployments only).
 /// @dev See script/universal/README.md for detailed usage instructions.
 /// @dev Be familiar with the README in this directory before deploying, as there are time
 /// considerations and follow-up transactions to execute after deployments.
+/// @dev Reverts if a SpokePool proxy already exists on the chain: forge overwrites this script's
+/// run-latest.json on every run, and an implementation-only rerun would erase the proxy's only
+/// broadcast record (ExtractDeployedFoundryAddresses.ts derives the SpokePool entry from it).
+/// Use DeployUniversalSpokePoolImpl.s.sol for implementation redeploys instead.
 ///
 /// Example:
 ///   forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
@@ -21,7 +25,16 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
     function run() external pure {
         revert("Usage: forge script ... --sig 'run(address,uint256)' <SP1_HELIOS> <OFT_FEE_CAP>");
     }
-    function run(address helios, uint256 oftFeeCap) external {
+
+    function run(address helios, uint256 oftFeeCap) external virtual {
+        require(
+            getDeployedAddress("SpokePool", block.chainid, false) == address(0),
+            "SpokePool proxy already deployed on this chain; use DeployUniversalSpokePoolImpl so the proxy's broadcast record is preserved"
+        );
+        _deploy(helios, oftFeeCap);
+    }
+
+    function _deploy(address helios, uint256 oftFeeCap) internal {
         require(helios != address(0), "SP1Helios address cannot be zero");
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
