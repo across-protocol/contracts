@@ -42,6 +42,7 @@ lint_on_build = false
 [rpc_endpoints]
 avalanche = "${NODE_URL_43114}"
 arbitrum = "${NODE_URL_42161}"
+arc = "${NODE_URL_5042}"
 base = "${NODE_URL_8453}"
 bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
