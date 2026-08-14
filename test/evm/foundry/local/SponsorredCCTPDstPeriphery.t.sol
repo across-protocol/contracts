@@ -16,10 +16,10 @@ import {
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
-import { BaseSimulatorTest } from "./external/hyper-evm-lib/test/BaseSimulatorTest.sol";
-import { PrecompileLib } from "./external/hyper-evm-lib/src/PrecompileLib.sol";
-import { CoreWriterLib } from "./external/hyper-evm-lib/src/CoreWriterLib.sol";
-import { CoreSimulatorLib } from "./external/hyper-evm-lib/test/simulation/CoreSimulatorLib.sol";
+import { BaseSimulatorTest } from "@hyper-evm-lib/test/BaseSimulatorTest.sol";
+import { PrecompileLib } from "@hyper-evm-lib/src/PrecompileLib.sol";
+import { CoreWriterLib } from "@hyper-evm-lib/src/CoreWriterLib.sol";
+import { CoreSimulatorLib } from "@hyper-evm-lib/test/simulation/CoreSimulatorLib.sol";
 
 contract MockMessageTransmitter is IMessageTransmitterV2, Test {
     bool internal shouldSucceed = true;

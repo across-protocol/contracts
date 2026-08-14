@@ -112,7 +112,10 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         Options memory opts;
 
         opts.constructorData = constructorArgs;
-        opts.unsafeAllow = "delegatecall";
+        // incorrect-initializer-order (added in upgrades-core 1.44) flags our standard pattern where
+        // initialize() delegates all parent setup to __SpokePool_init; each nested init is guarded by
+        // onlyInitializing so the ordering heuristic is a false positive here.
+        opts.unsafeAllow = "delegatecall,incorrect-initializer-order";
         // Runs OZ upgrade safety checks via FFI before deployment.
         // NOTE: If the script reverts with no error message, the revert is likely from OZ validation
         // (revert strings are stripped in production builds). To debug:

@@ -22,10 +22,11 @@ evm_version = "prague"
 src = "contracts/spoke-pools/Lens_SpokePool.sol"
 bytecode_hash = "none"
 
+# Key names follow foundry-zksync v0.1.9 (enforced by check-foundry-zksync in package.json).
 [profile.zksync.zksync]
 compile = true
-fallback_oz = true
-mode = '3'
+size_fallback = true
+optimizer_mode = '3'
 zksolc = "1.5.15"
 
 [profile.sizeopt]
