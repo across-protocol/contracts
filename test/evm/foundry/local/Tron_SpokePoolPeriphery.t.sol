@@ -56,7 +56,12 @@ contract Tron_SpokePoolPeripheryTest is Test {
         multicall3 = new Multicall3();
         periphery = new Tron_SpokePoolPeriphery(permit2, address(multicall3));
 
-        Ethereum_SpokePool impl = new Ethereum_SpokePool(address(weth), FILL_DEADLINE_BUFFER, FILL_DEADLINE_BUFFER);
+        Ethereum_SpokePool impl = new Ethereum_SpokePool(
+            address(weth),
+            FILL_DEADLINE_BUFFER,
+            FILL_DEADLINE_BUFFER,
+            address(0)
+        );
         spokePool = Ethereum_SpokePool(
             payable(new ERC1967Proxy(address(impl), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner))))
         );
