@@ -51,9 +51,13 @@ interface SpokePoolPeripheryInterface {
         // The account that can exclusively fill the deposit before the exclusivity parameter.
         bytes32 exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
-        // relative to this chain's current time or deposit will revert.
+        // relative to this chain's current time or deposit will revert. If this value is less than
+        // SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (30 days), it is instead interpreted as an age in seconds
+        // which the periphery subtracts from block.timestamp; 0 therefore means "as of the current block".
         uint32 quoteTimestamp;
-        // The timestamp on the destination chain after which this deposit can no longer be filled.
+        // The timestamp on the destination chain after which this deposit can no longer be filled. If this value is
+        // less than SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (30 days), it is instead interpreted as an offset
+        // which the periphery adds to block.timestamp.
         uint32 fillDeadline;
         // The timestamp or offset on the destination chain after which anyone can fill the deposit. A detailed description on
         // how the parameter is interpreted by the V3 spoke pool can be found at https://github.com/across-protocol/contracts/blob/fa67f5e97eabade68c67127f2261c2d44d9b007e/contracts/SpokePool.sol#L476
@@ -122,8 +126,10 @@ interface SpokePoolPeripheryInterface {
      * @param exclusiveRelayer Address (as bytes32) of the relayer who has exclusive rights to fill this deposit. Can be set to
      * 0x0 if no period is desired. If so, then must set exclusivityParameter to 0.
      * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
-     * to LP pool on HubPool.
-     * @param fillDeadline Timestamp after which this deposit can no longer be filled.
+     * to LP pool on HubPool. Values below SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (30 days) are interpreted as
+     * an age in seconds subtracted from block.timestamp.
+     * @param fillDeadline Timestamp after which this deposit can no longer be filled. Values below
+     * SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (30 days) are interpreted as an offset added to block.timestamp.
      * @param exclusivityParameter Timestamp or offset, after which any relayer can fill this deposit. Must set
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.

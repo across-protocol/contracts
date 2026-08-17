@@ -194,6 +194,10 @@ contract SpokePoolPeripheryTest is Test {
         keccak256(abi.encodePacked(PeripherySigningLib.TOKEN_PERMISSIONS_TYPE));
 
     function setUp() public {
+        // Use a realistic block time so that absolute quoteTimestamp/fillDeadline values exceed the periphery's
+        // MAX_RELATIVE_TIME_SECONDS threshold and are not reinterpreted as relative offsets.
+        vm.warp(1_700_000_000);
+
         hashUtils = new HashUtils();
 
         mockWETH = WETH9Interface(address(new WETH9()));
@@ -278,6 +282,166 @@ contract SpokePoolPeripheryTest is Test {
                 true,
                 0
             )
+        );
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeRelativeTimestamps() public {
+        // Below MAX_RELATIVE_TIME_SECONDS, a quoteTimestamp is an age subtracted from block.timestamp and a
+        // fillDeadline is an offset added to it. A zero quoteTimestamp therefore resolves to the current block.
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+        swapData.depositData.quoteTimestamp = 0;
+        swapData.depositData.fillDeadline = fillDeadlineBuffer;
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp), // quoteTimestamp resolved from a 0 offset
+            uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline resolved from the buffer offset
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeRelativeQuoteTimestampLag() public {
+        // A non-zero relative quoteTimestamp deliberately lags the priced HubPool snapshot.
+        uint32 quoteAge = 600;
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+        swapData.depositData.quoteTimestamp = quoteAge;
+        swapData.depositData.fillDeadline = fillDeadlineBuffer;
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp) - quoteAge, // quoteTimestamp aged into the past
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeAbsoluteTimestampsUnmodified() public {
+        // Timestamps at or above MAX_RELATIVE_TIME_SECONDS are forwarded to the spoke pool untouched.
+        uint32 quoteTimestamp = uint32(block.timestamp) - 100;
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+        swapData.depositData.quoteTimestamp = quoteTimestamp;
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            quoteTimestamp,
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testDepositNativeRelativeTimestamps() public {
+        deal(depositor, mintAmount);
+
+        bytes32 inputToken = address(mockWETH).toBytes32();
+        bytes32 depositorBytes32 = depositor.toBytes32();
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            inputToken,
+            inputToken,
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositorBytes32,
+            depositorBytes32,
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositNative{ value: mintAmount }(
+            address(ethereumSpokePool),
+            depositor,
+            depositorBytes32,
+            address(mockWETH),
+            mintAmount,
+            inputToken,
+            mintAmount,
+            destinationChainId,
+            bytes32(0), // exclusiveRelayer
+            0, // quoteTimestamp offset
+            fillDeadlineBuffer, // fillDeadline offset
+            0,
+            new bytes(0)
         );
         vm.stopPrank();
     }
