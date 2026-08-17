@@ -7,6 +7,3 @@
 [submodule "lib/murky"]
 	path = lib/murky
 	url = https://github.com/dmfxyz/murky
-[submodule "lib/hyper-evm-lib"]
-	path = lib/hyper-evm-lib
-	url = https://github.com/hyperliquid-dev/hyper-evm-lib
