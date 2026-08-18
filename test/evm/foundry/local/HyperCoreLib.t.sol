@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { HyperCoreLib, ICoreWriter } from "../../../../contracts/libraries/HyperCoreLib.sol";
+import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
 
 // Wrapper contract to expose internal library functions for testing
 contract HyperCoreLibWrapper {
@@ -13,10 +14,6 @@ contract HyperCoreLibWrapper {
         int8 decimalDiff
     ) external pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         return HyperCoreLib.maximumEVMSendAmountToAmounts(maximumEVMSendAmount, decimalDiff);
-    }
-
-    function transferUsdClass(uint64 amountPerp, bool toPerp) external {
-        HyperCoreLib.transferUsdClass(amountPerp, toPerp);
     }
 
     function withdrawable(address account) external view returns (uint64) {
@@ -34,9 +31,13 @@ contract HyperCoreLibWrapper {
     function isHype(uint32 erc20CoreIndex) external view returns (bool) {
         return HyperCoreLib.isHype(erc20CoreIndex);
     }
+
+    function toSystemAddress(uint32 erc20CoreIndex) external view returns (address) {
+        return HyperCoreLib.toSystemAddress(erc20CoreIndex);
+    }
 }
 
-contract HyperCoreLibTest is Test {
+contract HyperCoreLibTest is HyperCoreMockHelper {
     HyperCoreLibWrapper wrapper;
 
     function setUp() public {
@@ -155,35 +156,6 @@ contract HyperCoreLibTest is Test {
         assertEq(amountCoreToReceive, uint64(1000e6));
     }
 
-    // ============ transferUsdClass ============
-
-    // Header must be version=1, action=7, followed by the abi-encoded (amount, toPerp) pair
-    function testTransferUsdClass_EncodesPerpToSpot() public {
-        vm.etch(HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS, hex"00");
-        vm.expectCall(
-            HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS,
-            abi.encodeCall(
-                ICoreWriter.sendRawAction,
-                (abi.encodePacked(HyperCoreLib.USD_CLASS_TRANSFER_HEADER, abi.encode(uint64(1000e6), false)))
-            )
-        );
-
-        wrapper.transferUsdClass(1000e6, false);
-    }
-
-    function testTransferUsdClass_EncodesSpotToPerp() public {
-        vm.etch(HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS, hex"00");
-        vm.expectCall(
-            HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS,
-            abi.encodeCall(
-                ICoreWriter.sendRawAction,
-                (abi.encodePacked(HyperCoreLib.USD_CLASS_TRANSFER_HEADER, abi.encode(uint64(1000e6), true)))
-            )
-        );
-
-        wrapper.transferUsdClass(1000e6, true);
-    }
-
     // ============ withdrawable ============
 
     function testWithdrawable_DecodesPrecompileResult() public {
@@ -236,5 +208,36 @@ contract HyperCoreLibTest is Test {
         vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
         assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
         assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
+    }
+
+    // ============ toSystemAddress ============
+
+    // HYPE reports no `evmContract`, so its branch has to be taken before the bridgeability check
+    function testToSystemAddress_HypeIgnoresAbsentEvmContract() public {
+        mockTokenInfoDefault(address(0), "HYPE", 8);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(wrapper.toSystemAddress(HyperCoreLib.HYPE_CORE_INDEX), HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertEq(wrapper.toSystemAddress(HyperCoreLib.HYPE_CORE_INDEX_TESTNET), HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+    }
+
+    function testToSystemAddress_BridgeableTokenDerivesFromIndex() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(wrapper.toSystemAddress(coreIndex), HyperCoreLib.toAssetBridgeAddress(coreIndex));
+    }
+
+    // A token with no linked HyperEVM contract has no EVM side to credit, so the send would strand the funds
+    function testToSystemAddress_RevertsWhenTokenNotBridgeable() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(address(0), "TKN", 8);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, coreIndex));
+        wrapper.toSystemAddress(coreIndex);
     }
 }

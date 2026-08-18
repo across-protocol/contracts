@@ -75,12 +75,15 @@ library HyperCoreLib {
     // CoreWriter action headers
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
     bytes4 public constant SPOT_SEND_HEADER = 0x01000006; // version=1, action=6
-    bytes4 public constant USD_CLASS_TRANSFER_HEADER = 0x01000007; // version=1, action=7
     bytes4 public constant CANCEL_BY_CLOID_HEADER = 0x0100000B; // version=1, action=11
     bytes4 public constant SEND_ASSET_TO_DEX_HEADER = 0x0100000D; // version=1, action=13
 
     // HyperCore protocol constants
     uint32 public constant CORE_SPOT_DEX_ID = type(uint32).max;
+    // The main perp account, as a `sendAsset` dex selector. Any other non-spot id is a builder-deployed dex.
+    uint32 public constant CORE_MAIN_PERP_DEX_ID = 0;
+    // Perp balances read in 1e6 USD, while a USDC send amount is its Core wei (1e8, per `tokenInfo`).
+    uint64 public constant PERP_USD_TO_USDC_CORE_WEI = 100;
 
     // Errors
     error LimitPxIsZero();
@@ -93,6 +96,7 @@ library HyperCoreLib {
     error WithdrawablePrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
     error MaximumEVMSendAmountTooLarge();
+    error TokenNotBridgeable(uint32 erc20CoreIndex);
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -246,20 +250,6 @@ library HyperCoreLib {
         }
 
         ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(payload);
-    }
-
-    /**
-     * @notice Moves this contract's USDC between its perp and spot balances on HyperCore.
-     * @dev Only USDC can be moved this way — a perp account is USDC-collateralized only, so there is no token
-     *      argument. HyperCore settles the transfer a few blocks later, so a subsequent spot send of the moved
-     *      funds has to be a separate transaction rather than a second action in this one.
-     * @param amountPerp The amount to transfer, in perp USD units (1e6)
-     * @param toPerp True to move spot USDC into perp, false to move perp USDC out to spot
-     */
-    function transferUsdClass(uint64 amountPerp, bool toPerp) internal {
-        ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(
-            abi.encodePacked(USD_CLASS_TRANSFER_HEADER, abi.encode(amountPerp, toPerp))
-        );
     }
 
     /**
@@ -452,6 +442,19 @@ library HyperCoreLib {
      */
     function toAssetBridgeAddress(uint64 erc20CoreIndex) internal pure returns (address) {
         return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
+    }
+
+    /**
+     * @notice Converts a core index id to the address that bridges it back to the same address on HyperEVM
+     * @dev Native HYPE uses a fixed system address; every other token derives one from its Core index. An index
+     *      with no linked HyperEVM contract has no EVM side to credit, so a send to it would strand the funds.
+     * @param erc20CoreIndex The core token index id to convert
+     * @return The system address to send to on HyperCore
+     */
+    function toSystemAddress(uint32 erc20CoreIndex) internal view returns (address) {
+        if (isHype(erc20CoreIndex)) return HYPE_SYSTEM_ADDRESS;
+        if (tokenInfo(erc20CoreIndex).evmContract == address(0)) revert TokenNotBridgeable(erc20CoreIndex);
+        return toAssetBridgeAddress(erc20CoreIndex);
     }
 
     /**
