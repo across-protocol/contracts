@@ -165,6 +165,9 @@ interface SpokePoolPeripheryInterface {
      * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev `deadline` is bound into the swapAndDepositData signature as well as the permit, and is checked here.
+     * `permit` is called inside a try/catch, so an expired ERC-2612 signature alone would not stop a
+     * standing allowance from funding the pull; this check is what bounds the payload's lifetime.
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
      * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
      * incredibly unlikely because this would require:
@@ -254,6 +257,9 @@ interface SpokePoolPeripheryInterface {
      * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev `deadline` is bound into the depositData signature as well as the permit, and is checked here.
+     * `permit` is called inside a try/catch, so an expired ERC-2612 signature alone would not stop a
+     * standing allowance from funding the pull; this check is what bounds the payload's lifetime.
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
      * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
      * incredibly unlikely because this would require:

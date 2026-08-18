@@ -205,6 +205,7 @@ contract SpokePoolPeriphery is
     error InvalidMsgValue();
     error InvalidMinExpectedInputAmount();
     error InvalidNonce();
+    error SignatureExpired();
 
     /**
      * @notice Construct a new Periphery contract.
@@ -314,6 +315,7 @@ contract SpokePoolPeriphery is
         bytes calldata permitSignature,
         bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
+        _requireSignatureNotExpired(deadline);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
         address _swapToken = swapAndDepositData.swapToken;
@@ -333,7 +335,7 @@ contract SpokePoolPeriphery is
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
-            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
+            PeripherySigningLib.hashSignedSwapAndDepositData(swapAndDepositData, deadline),
             swapAndDepositDataSignature
         );
         _swapAndBridge(swapAndDepositData, PERMIT_NONCE_IDENTIFIER, signatureOwner);
@@ -484,6 +486,7 @@ contract SpokePoolPeriphery is
         bytes calldata permitSignature,
         bytes calldata depositDataSignature
     ) external override nonReentrant {
+        _requireSignatureNotExpired(deadline);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
         address _inputToken = depositData.baseDepositData.inputToken;
@@ -502,7 +505,11 @@ contract SpokePoolPeriphery is
         // Verify and increment nonce to prevent replay attacks.
         _validateAndIncrementNonce(signatureOwner, depositData.nonce);
         // Verify that the signatureOwner signed the input depositData.
-        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
+        _validateSignature(
+            signatureOwner,
+            PeripherySigningLib.hashSignedDepositData(depositData, deadline),
+            depositDataSignature
+        );
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
@@ -756,6 +763,19 @@ contract SpokePoolPeriphery is
         if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature)) {
             revert PeripherySigningLib.InvalidSignature();
         }
+    }
+
+    /**
+     * @notice Reverts unless the signed payload is still redeemable.
+     * @dev Only the ERC-2612 permit entrypoints need this. There, `permit` is called inside a try/catch, so an
+     * expired permit is silently tolerated and a standing allowance still funds the pull — leaving a payload
+     * with relative timestamps redeemable indefinitely. The deadline is bound into the payload signature via
+     * `hashSignedDepositData`/`hashSignedSwapAndDepositData` so the submitter cannot substitute it. Permit2 and
+     * ERC-3009 bind and enforce their own deadline the same way, so their entrypoints do not call this.
+     * @param signatureDeadline Timestamp after which the signature is no longer valid.
+     */
+    function _requireSignatureNotExpired(uint256 signatureDeadline) private view {
+        if (block.timestamp > signatureDeadline) revert SignatureExpired();
     }
 
     /**
