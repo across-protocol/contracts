@@ -287,7 +287,7 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testSwapAndBridgeRelativeTimestamps() public {
-        // Below MAX_RELATIVE_TIME_SECONDS, a quoteTimestamp is an age subtracted from block.timestamp and a
+        // At or below MAX_RELATIVE_TIME_SECONDS, a quoteTimestamp is an age subtracted from block.timestamp and a
         // fillDeadline is an offset added to it. A zero quoteTimestamp therefore resolves to the current block.
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
             address(mockWETH),
@@ -367,7 +367,7 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testSwapAndBridgeAbsoluteTimestampsUnmodified() public {
-        // Timestamps at or above MAX_RELATIVE_TIME_SECONDS are forwarded to the spoke pool untouched.
+        // Timestamps above MAX_RELATIVE_TIME_SECONDS are forwarded to the spoke pool untouched.
         uint32 quoteTimestamp = uint32(block.timestamp) - 100;
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
             address(mockWETH),
