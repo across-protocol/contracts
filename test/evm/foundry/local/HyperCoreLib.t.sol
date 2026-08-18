@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
+import { HyperCoreLib, ICoreWriter } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // Wrapper contract to expose internal library functions for testing
@@ -13,6 +13,26 @@ contract HyperCoreLibWrapper {
         int8 decimalDiff
     ) external pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         return HyperCoreLib.maximumEVMSendAmountToAmounts(maximumEVMSendAmount, decimalDiff);
+    }
+
+    function transferUsdClass(uint64 amountPerp, bool toPerp) external {
+        HyperCoreLib.transferUsdClass(amountPerp, toPerp);
+    }
+
+    function withdrawable(address account) external view returns (uint64) {
+        return HyperCoreLib.withdrawable(account);
+    }
+
+    function isHyperEVMChain() external view returns (bool) {
+        return HyperCoreLib.isHyperEVMChain();
+    }
+
+    function hypeCoreIndex() external view returns (uint32) {
+        return HyperCoreLib.hypeCoreIndex();
+    }
+
+    function isHype(uint32 erc20CoreIndex) external view returns (bool) {
+        return HyperCoreLib.isHype(erc20CoreIndex);
     }
 }
 
@@ -133,5 +153,88 @@ contract HyperCoreLibTest is Test {
 
         assertEq(amountEVMToSend, amount);
         assertEq(amountCoreToReceive, uint64(1000e6));
+    }
+
+    // ============ transferUsdClass ============
+
+    // Header must be version=1, action=7, followed by the abi-encoded (amount, toPerp) pair
+    function testTransferUsdClass_EncodesPerpToSpot() public {
+        vm.etch(HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS, hex"00");
+        vm.expectCall(
+            HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS,
+            abi.encodeCall(
+                ICoreWriter.sendRawAction,
+                (abi.encodePacked(HyperCoreLib.USD_CLASS_TRANSFER_HEADER, abi.encode(uint64(1000e6), false)))
+            )
+        );
+
+        wrapper.transferUsdClass(1000e6, false);
+    }
+
+    function testTransferUsdClass_EncodesSpotToPerp() public {
+        vm.etch(HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS, hex"00");
+        vm.expectCall(
+            HyperCoreLib.CORE_WRITER_PRECOMPILE_ADDRESS,
+            abi.encodeCall(
+                ICoreWriter.sendRawAction,
+                (abi.encodePacked(HyperCoreLib.USD_CLASS_TRANSFER_HEADER, abi.encode(uint64(1000e6), true)))
+            )
+        );
+
+        wrapper.transferUsdClass(1000e6, true);
+    }
+
+    // ============ withdrawable ============
+
+    function testWithdrawable_DecodesPrecompileResult() public {
+        address account = makeAddr("account");
+        vm.mockCall(
+            HyperCoreLib.WITHDRAWABLE_PRECOMPILE_ADDRESS,
+            abi.encode(account),
+            abi.encode(HyperCoreLib.Withdrawable({ withdrawable: 1234e6 }))
+        );
+
+        assertEq(wrapper.withdrawable(account), uint64(1234e6));
+    }
+
+    function testWithdrawable_RevertsWhenPrecompileFails() public {
+        address account = makeAddr("account");
+        vm.mockCallRevert(HyperCoreLib.WITHDRAWABLE_PRECOMPILE_ADDRESS, abi.encode(account), "");
+
+        vm.expectRevert(HyperCoreLib.WithdrawablePrecompileCallFailed.selector);
+        wrapper.withdrawable(account);
+    }
+
+    // ============ chain and HYPE helpers ============
+
+    function testIsHyperEVMChain() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertTrue(wrapper.isHyperEVMChain());
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertTrue(wrapper.isHyperEVMChain());
+
+        vm.chainId(1);
+        assertFalse(wrapper.isHyperEVMChain());
+    }
+
+    // The HYPE Core index differs between mainnet and testnet, which is why it can't be a constant at call sites
+    function testHypeCoreIndex_DiffersOnTestnet() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
+    }
+
+    function testIsHype() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
+        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
+        assertFalse(wrapper.isHype(uint32(HyperCoreLib.USDC_CORE_INDEX)));
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
+        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
     }
 }

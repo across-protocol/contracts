@@ -42,12 +42,17 @@ library HyperCoreLib {
         bool exists;
     }
 
+    struct Withdrawable {
+        uint64 withdrawable;
+    }
+
     // Base asset bridge addresses
     address public constant BASE_ASSET_BRIDGE_ADDRESS = 0x2000000000000000000000000000000000000000;
     uint256 public constant BASE_ASSET_BRIDGE_ADDRESS_UINT256 = uint256(uint160(BASE_ASSET_BRIDGE_ADDRESS));
 
     // Precompile addresses
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
+    address public constant WITHDRAWABLE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000803;
     address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
     address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
@@ -57,9 +62,20 @@ library HyperCoreLib {
     address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS = 0x6B9E773128f453f5c2C60935Ee2DE2CBc5390A24;
     uint64 public constant USDC_CORE_INDEX = 0;
 
+    // Native HYPE. Unlike every other token, HYPE bridges through a fixed system address rather than one
+    // derived from its Core index, and that index differs between mainnet and testnet.
+    address public constant HYPE_SYSTEM_ADDRESS = 0x2222222222222222222222222222222222222222;
+    uint32 public constant HYPE_CORE_INDEX = 150;
+    uint32 public constant HYPE_CORE_INDEX_TESTNET = 1105;
+
+    // HyperEVM chain ids. The precompiles and CoreWriter below only exist on these chains.
+    uint256 public constant HYPEREVM_CHAIN_ID = 999;
+    uint256 public constant HYPEREVM_TESTNET_CHAIN_ID = 998;
+
     // CoreWriter action headers
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
     bytes4 public constant SPOT_SEND_HEADER = 0x01000006; // version=1, action=6
+    bytes4 public constant USD_CLASS_TRANSFER_HEADER = 0x01000007; // version=1, action=7
     bytes4 public constant CANCEL_BY_CLOID_HEADER = 0x0100000B; // version=1, action=11
     bytes4 public constant SEND_ASSET_TO_DEX_HEADER = 0x0100000D; // version=1, action=13
 
@@ -74,6 +90,7 @@ library HyperCoreLib {
     error CoreUserExistsPrecompileCallFailed();
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
+    error WithdrawablePrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
     error MaximumEVMSendAmountTooLarge();
 
@@ -232,6 +249,20 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Moves this contract's USDC between its perp and spot balances on HyperCore.
+     * @dev Only USDC can be moved this way — a perp account is USDC-collateralized only, so there is no token
+     *      argument. HyperCore settles the transfer a few blocks later, so a subsequent spot send of the moved
+     *      funds has to be a separate transaction rather than a second action in this one.
+     * @param amountPerp The amount to transfer, in perp USD units (1e6)
+     * @param toPerp True to move spot USDC into perp, false to move perp USDC out to spot
+     */
+    function transferUsdClass(uint64 amountPerp, bool toPerp) internal {
+        ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(
+            abi.encodePacked(USD_CLASS_TRANSFER_HEADER, abi.encode(amountPerp, toPerp))
+        );
+    }
+
+    /**
      * @notice Activate a user account on HyperCore from HyperEVM.
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM.
      * @param erc20CoreIndex The HyperCore index id of the token to transfer.
@@ -331,6 +362,20 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Get `account`'s margin-free perp balance on HyperCore.
+     * @dev No token argument — a perp account is USDC-collateralized only. Excludes anything currently posted as
+     *      margin against an open position.
+     * @param account The address of the account to get the withdrawable balance of
+     * @return withdrawable The withdrawable perp balance, in perp USD units (1e6)
+     */
+    function withdrawable(address account) internal view returns (uint64) {
+        (bool success, bytes memory result) = WITHDRAWABLE_PRECOMPILE_ADDRESS.staticcall(abi.encode(account));
+        if (!success) revert WithdrawablePrecompileCallFailed();
+        Withdrawable memory _withdrawable = abi.decode(result, (Withdrawable));
+        return _withdrawable.withdrawable;
+    }
+
+    /**
      * @notice Get the spot price of the specified asset on HyperCore.
      * @param index The asset index to get the spot price of
      * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
@@ -351,6 +396,33 @@ library HyperCoreLib {
         if (!success) revert TokenInfoPrecompileCallFailed();
         TokenInfo memory _tokenInfo = abi.decode(result, (TokenInfo));
         return _tokenInfo;
+    }
+
+    /**
+     * @notice Whether the current chain is HyperEVM (mainnet or testnet), and therefore whether the HyperCore
+     *         precompiles and CoreWriter this library reads and writes actually exist.
+     * @return True on HyperEVM mainnet or testnet, false otherwise
+     */
+    function isHyperEVMChain() internal view returns (bool) {
+        return block.chainid == HYPEREVM_CHAIN_ID || block.chainid == HYPEREVM_TESTNET_CHAIN_ID;
+    }
+
+    /**
+     * @notice The Core index of native HYPE on the current chain.
+     * @dev Differs between mainnet and testnet, so it cannot be a plain constant at the call site.
+     * @return The HyperCore index id of native HYPE
+     */
+    function hypeCoreIndex() internal view returns (uint32) {
+        return block.chainid == HYPEREVM_TESTNET_CHAIN_ID ? HYPE_CORE_INDEX_TESTNET : HYPE_CORE_INDEX;
+    }
+
+    /**
+     * @notice Whether `erc20CoreIndex` is native HYPE on the current chain.
+     * @param erc20CoreIndex The HyperCore index id of the token
+     * @return True if the index is native HYPE, false otherwise
+     */
+    function isHype(uint32 erc20CoreIndex) internal view returns (bool) {
+        return erc20CoreIndex == hypeCoreIndex();
     }
 
     /**
