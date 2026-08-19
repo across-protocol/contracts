@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+import { ICounterfactualBeaconBase } from "./ICounterfactualBeaconBase.sol";
 
 /**
  * @title ICounterfactualBeacon
@@ -15,19 +15,7 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
  * @dev `implementation()` is the **counterfactual** implementation (beacon target), not the registry's own.
  * @custom:security-contact bugs@across.to
  */
-interface ICounterfactualBeacon is IBeacon {
-    /// @notice Emitted when the admin sets the global implementation (the beacon target).
-    event ImplementationSet(address indexed implementation);
-
-    /// @notice Emitted when the admin sets the upgrade-tree root.
-    event UpgradeRootSet(bytes32 indexed upgradeRoot);
-
-    // `implementation()` is inherited from `IBeacon` — the canonical implementation every counterfactual
-    // proxy runs (resolved live by each `BeaconProxy`).
-
-    /// @notice Root of the `(proxy, latestRoot)` merkle tree authorizing per-proxy root updates.
-    function upgradeRoot() external view returns (bytes32);
-
+interface ICounterfactualBeacon is ICounterfactualBeaconBase {
     // --- Chain-specific config (immutable; read by leaf implementations under delegatecall) ---
 
     /// @notice Off-chain signer that authorizes runtime execution fees for every leaf implementation.

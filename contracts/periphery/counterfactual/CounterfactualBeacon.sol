@@ -66,7 +66,7 @@ struct CounterfactualChainConfig {
  *      configuration change and is **not subject to audit** — only changes to the base's *logic* are audited.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualBeacon is CounterfactualBeaconBase {
+contract CounterfactualBeacon is CounterfactualBeaconBase, ICounterfactualBeacon {
     /// @inheritdoc ICounterfactualBeacon
     address public immutable signer;
     /// @inheritdoc ICounterfactualBeacon

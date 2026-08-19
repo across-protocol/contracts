@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
+import { ICounterfactualBeaconBase } from "../../interfaces/ICounterfactualBeaconBase.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 
@@ -44,7 +44,7 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
 
     /// @notice The `CounterfactualBeacon` — the beacon every counterfactual `BeaconProxy` resolves its
     ///         implementation from, and the source of the `upgradeRoot` used by `updateRoot`.
-    ICounterfactualBeacon public immutable BEACON;
+    ICounterfactualBeaconBase public immutable BEACON;
 
     /// @notice Emitted when `activeRoot` is updated via the upgrade tree.
     event RootUpdated(bytes32 newRoot);
@@ -54,7 +54,7 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
     /// @dev New root equals the current `activeRoot` (no-op).
     error RootUnchanged();
 
-    constructor(ICounterfactualBeacon beacon) {
+    constructor(ICounterfactualBeaconBase beacon) {
         BEACON = beacon;
         _disableInitializers();
     }

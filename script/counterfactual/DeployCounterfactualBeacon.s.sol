@@ -29,7 +29,7 @@ import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counter
 //      pointing it at the chain-specific impl. A proxy already on a real impl keeps that impl (no upgrade);
 //      the dispatcher wiring in steps 4-5 still runs so an interrupted deploy is completed.
 //      The bootstrap already consumed the initializer slot, so pass empty calldata (no re-init).
-//   4. The dispatcher `new CounterfactualDeposit(ICounterfactualBeacon(proxy))` via CREATE2 (proxy is
+//   4. The dispatcher `new CounterfactualDeposit(ICounterfactualBeaconBase(proxy))` via CREATE2 (proxy is
 //      chain-invariant => dispatcher is same address everywhere). Skipped when already deployed.
 //   5. `setImplementation(dispatcher)` on the proxy so every counterfactual proxy resolves the dispatcher.
 //   6. Optionally `transferOwnership(ownerAndDirectWithdrawer)` (Ownable2Step; new owner accepts out of band).
