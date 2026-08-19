@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ITokenMessengerV2 } from "../../external/interfaces/CCTPInterfaces.sol";
+import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 import { CounterfactualNonces } from "./CounterfactualNonces.sol";
@@ -121,8 +122,8 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
             (depositAmount * _resolveBeaconUint(routeParams.cctpMaxFeeBpsGetter)) / BPS_SCALAR
         ) revert MaxCctpFee();
 
-        ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(_beacon().cctpTokenMessenger()));
-        address inputToken = _requireConfigured(_beacon().usdc());
+        ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(_configBeacon().cctpTokenMessenger()));
+        address inputToken = _requireConfigured(_configBeacon().usdc());
 
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
@@ -162,6 +163,11 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
         );
     }
 
+    /// @dev The beacon, viewed through this repo's config surface.
+    function _configBeacon() private view returns (ICounterfactualBeacon) {
+        return ICounterfactualBeacon(_beacon());
+    }
+
     function _verifySignature(bytes32 routeParamsHash, VanillaCCTPSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
@@ -176,7 +182,9 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
-            revert InvalidSignature();
+        if (
+            ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
+            _configBeacon().signer()
+        ) revert InvalidSignature();
     }
 }

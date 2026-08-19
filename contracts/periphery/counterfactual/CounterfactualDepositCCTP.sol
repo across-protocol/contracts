@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
+import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
@@ -104,8 +105,8 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
             revert MaxExecutionFee();
 
-        address srcPeriphery = _requireConfigured(_beacon().cctpSrcPeriphery());
-        address inputToken = _requireConfigured(_beacon().usdc());
+        address srcPeriphery = _requireConfigured(_configBeacon().cctpSrcPeriphery());
+        address inputToken = _requireConfigured(_configBeacon().usdc());
 
         // Fee paid before the periphery call (load-bearing): the local signature binds the route and
         // (nonce, fee, deadline) but not `amount`, so amount-replay protection is the periphery's nonce
@@ -128,6 +129,11 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         );
     }
 
+    /// @dev The beacon, viewed through this repo's config surface.
+    function _configBeacon() private view returns (ICounterfactualBeacon) {
+        return ICounterfactualBeacon(_beacon());
+    }
+
     function _verifySignature(bytes32 routeParamsHash, CCTPSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
@@ -139,8 +145,10 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
-            revert InvalidSignature();
+        if (
+            ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
+            _configBeacon().signer()
+        ) revert InvalidSignature();
     }
 
     /// @notice Calls `depositForBurn` on the SponsoredCCTPSrcPeriphery with the constructed quote.
@@ -158,7 +166,7 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
     ) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
-                sourceDomain: _beacon().cctpSourceDomain(),
+                sourceDomain: _configBeacon().cctpSourceDomain(),
                 destinationDomain: routeParams.destinationDomain,
                 mintRecipient: routeParams.mintRecipient,
                 amount: depositAmount,

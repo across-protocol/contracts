@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
+import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 
@@ -138,6 +139,11 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         );
     }
 
+    /// @dev The beacon, viewed through this repo's config surface.
+    function _configBeacon() private view returns (ICounterfactualBeacon) {
+        return ICounterfactualBeacon(_beacon());
+    }
+
     function _verifySignature(bytes32 routeParamsHash, OFTSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
@@ -149,8 +155,10 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
-            revert InvalidSignature();
+        if (
+            ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
+            _configBeacon().signer()
+        ) revert InvalidSignature();
     }
 
     /// @notice Calls `deposit` on the SponsoredOFTSrcPeriphery with the constructed quote.
@@ -167,7 +175,7 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
-                    srcEid: _beacon().oftSrcEid(),
+                    srcEid: _configBeacon().oftSrcEid(),
                     dstEid: routeParams.dstEid,
                     destinationHandler: routeParams.destinationHandler,
                     amountLD: depositAmount,
