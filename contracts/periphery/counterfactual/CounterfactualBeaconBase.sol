@@ -18,15 +18,14 @@ interface IBeaconTarget {
  * @notice The **logic** of the counterfactual registry/beacon: the mutable `implementation` (beacon target)
  *         every proxy runs, the `upgradeRoot` authorizing per-proxy root updates, UUPS upgradeability and the
  *         `Ownable2Step` admin. The chain-specific configuration (endpoints, tokens, fee signer, fee caps)
- *         lives in the derived `CounterfactualBeacon` as immutables. Splitting it out keeps the audit
- *         boundary clean: this base is the reviewable logic; a config-only change is a new derived contract
- *         that touches no logic here (see `CounterfactualBeacon`).
+ *         lives in a derived contract as immutables. Splitting it out keeps the audit boundary clean: this
+ *         base is the reviewable logic; a config-only change is a new derived contract that touches no logic
+ *         here (see `CounterfactualBeacon`).
  * @dev Abstract — the config getters are declared by whichever config interface the derived contract
- *      implements (`ICounterfactualBeacon` here) and satisfied by its immutables.
- *      A UUPS proxy, so the registry address is permanent (anchoring every
- *      `BeaconProxy`) while logic/config evolve. `Ownable2Step` admin (no timelock) — it can retarget every
- *      proxy instantly, so use a trusted multisig. `implementation()` is the beacon target, not the
- *      registry's own UUPS implementation.
+ *      implements (`ICounterfactualBeacon` for this repo's beacon) and satisfied by its immutables. A UUPS
+ *      proxy, so the registry address is permanent (anchoring every `BeaconProxy`) while logic/config
+ *      evolve. `Ownable2Step` admin (no timelock) — it can retarget every proxy instantly, so use a trusted
+ *      multisig. `implementation()` is the beacon target, not the registry's own UUPS implementation.
  * @custom:security-contact bugs@across.to
  */
 abstract contract CounterfactualBeaconBase is

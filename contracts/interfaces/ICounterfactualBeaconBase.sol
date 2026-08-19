@@ -9,11 +9,10 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
  *         resolves, and the `upgradeRoot()` authorizing best-effort per-proxy root updates. This is what
  *         `CounterfactualBeaconBase` implements and all a consumer of the beacon-as-beacon needs; the
  *         chain-specific configuration lives in a config interface extending this one
- *         (`ICounterfactualBeacon` here; the Across V5 vertical declares its own in `contracts-v5`).
+ *         (`ICounterfactualBeacon` for this repo's beacon).
  * @dev Split out from `ICounterfactualBeacon` deliberately: `CounterfactualBeaconBase` is pure registry
  *      logic and should not inherit an obligation to expose config getters it does not own. Keeping them
- *      apart is also what lets a config surface be declared independently — including out-of-repo — without
- *      dragging this repo's v4 getter set along.
+ *      apart is also what lets a config surface be declared independently of this repo's v4 getter set.
  * @custom:security-contact bugs@across.to
  */
 interface ICounterfactualBeaconBase is IBeacon {

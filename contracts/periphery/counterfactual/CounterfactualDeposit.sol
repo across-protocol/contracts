@@ -42,8 +42,9 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
     // keccak256(abi.encode(uint256(keccak256("across.counterfactual.upgradeable.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x5b89d334b964a560e5498fb6b9c95b4213116f116bbd1e59c9c85ba952217700;
 
-    /// @notice The `CounterfactualBeacon` — the beacon every counterfactual `BeaconProxy` resolves its
-    ///         implementation from, and the source of the `upgradeRoot` used by `updateRoot`.
+    /// @notice The per-chain registry/beacon every counterfactual `BeaconProxy` resolves its implementation
+    ///         from, and the source of the `upgradeRoot` used by `updateRoot`. Typed to the registry surface
+    ///         only — the dispatcher reads no chain config.
     ICounterfactualBeaconBase public immutable BEACON;
 
     /// @notice Emitted when `activeRoot` is updated via the upgrade tree.
