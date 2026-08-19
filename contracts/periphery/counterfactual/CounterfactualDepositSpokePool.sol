@@ -149,7 +149,7 @@ contract CounterfactualDepositSpokePool is
             _resolveBeaconUint(routeParams.maxExecutionFeeGetter)
         );
 
-        ICounterfactualBeacon beacon = _configBeacon();
+        ICounterfactualBeacon beacon = ICounterfactualBeacon(_beacon());
         address spokePool = _requireConfigured(beacon.spokePool());
 
         // The leaf names a beacon getter; its resolved value decides native (`NATIVE_SENTINEL`) vs ERC-20.
@@ -226,11 +226,6 @@ contract CounterfactualDepositSpokePool is
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    /// @dev The beacon, viewed through this repo's config surface.
-    function _configBeacon() private view returns (ICounterfactualBeacon) {
-        return ICounterfactualBeacon(_beacon());
-    }
-
     function _verifySignature(bytes32 routeParamsHash, SpokePoolSubmitterData memory submitterData) private view {
         bytes32 structHash = keccak256(
             abi.encode(
@@ -248,7 +243,9 @@ contract CounterfactualDepositSpokePool is
                 submitterData.executionFee
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.signature) != _configBeacon().signer())
-            revert InvalidSignature();
+        if (
+            ECDSA.recover(_hashTypedDataV4(structHash), submitterData.signature) !=
+            ICounterfactualBeacon(_beacon()).signer()
+        ) revert InvalidSignature();
     }
 }

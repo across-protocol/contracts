@@ -139,11 +139,6 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         );
     }
 
-    /// @dev The beacon, viewed through this repo's config surface.
-    function _configBeacon() private view returns (ICounterfactualBeacon) {
-        return ICounterfactualBeacon(_beacon());
-    }
-
     function _verifySignature(bytes32 routeParamsHash, OFTSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
@@ -157,7 +152,7 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         );
         if (
             ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
-            _configBeacon().signer()
+            ICounterfactualBeacon(_beacon()).signer()
         ) revert InvalidSignature();
     }
 
@@ -175,7 +170,7 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
-                    srcEid: _configBeacon().oftSrcEid(),
+                    srcEid: ICounterfactualBeacon(_beacon()).oftSrcEid(),
                     dstEid: routeParams.dstEid,
                     destinationHandler: routeParams.destinationHandler,
                     amountLD: depositAmount,

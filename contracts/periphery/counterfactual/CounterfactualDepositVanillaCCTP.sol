@@ -122,8 +122,9 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
             (depositAmount * _resolveBeaconUint(routeParams.cctpMaxFeeBpsGetter)) / BPS_SCALAR
         ) revert MaxCctpFee();
 
-        ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(_configBeacon().cctpTokenMessenger()));
-        address inputToken = _requireConfigured(_configBeacon().usdc());
+        ICounterfactualBeacon beacon = ICounterfactualBeacon(_beacon());
+        ITokenMessengerV2 tokenMessenger = ITokenMessengerV2(_requireConfigured(beacon.cctpTokenMessenger()));
+        address inputToken = _requireConfigured(beacon.usdc());
 
         if (submitterData.executionFee > 0)
             IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
@@ -163,11 +164,6 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
         );
     }
 
-    /// @dev The beacon, viewed through this repo's config surface.
-    function _configBeacon() private view returns (ICounterfactualBeacon) {
-        return ICounterfactualBeacon(_beacon());
-    }
-
     function _verifySignature(bytes32 routeParamsHash, VanillaCCTPSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
@@ -184,7 +180,7 @@ contract CounterfactualDepositVanillaCCTP is CounterfactualImplementationBase, C
         );
         if (
             ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
-            _configBeacon().signer()
+            ICounterfactualBeacon(_beacon()).signer()
         ) revert InvalidSignature();
     }
 }

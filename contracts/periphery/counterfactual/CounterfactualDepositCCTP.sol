@@ -105,8 +105,9 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         if (submitterData.executionFee > _resolveBeaconUint(routeParams.maxExecutionFeeGetter))
             revert MaxExecutionFee();
 
-        address srcPeriphery = _requireConfigured(_configBeacon().cctpSrcPeriphery());
-        address inputToken = _requireConfigured(_configBeacon().usdc());
+        ICounterfactualBeacon beacon = ICounterfactualBeacon(_beacon());
+        address srcPeriphery = _requireConfigured(beacon.cctpSrcPeriphery());
+        address inputToken = _requireConfigured(beacon.usdc());
 
         // Fee paid before the periphery call (load-bearing): the local signature binds the route and
         // (nonce, fee, deadline) but not `amount`, so amount-replay protection is the periphery's nonce
@@ -129,11 +130,6 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         );
     }
 
-    /// @dev The beacon, viewed through this repo's config surface.
-    function _configBeacon() private view returns (ICounterfactualBeacon) {
-        return ICounterfactualBeacon(_beacon());
-    }
-
     function _verifySignature(bytes32 routeParamsHash, CCTPSubmitterData memory submitterData) private view {
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
@@ -147,7 +143,7 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
         );
         if (
             ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
-            _configBeacon().signer()
+            ICounterfactualBeacon(_beacon()).signer()
         ) revert InvalidSignature();
     }
 
@@ -166,7 +162,7 @@ contract CounterfactualDepositCCTP is CounterfactualImplementationBase, EIP712 {
     ) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
-                sourceDomain: _configBeacon().cctpSourceDomain(),
+                sourceDomain: ICounterfactualBeacon(_beacon()).cctpSourceDomain(),
                 destinationDomain: routeParams.destinationDomain,
                 mintRecipient: routeParams.mintRecipient,
                 amount: depositAmount,
