@@ -9,9 +9,9 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and HUBPOOL_ADDRESS="0x..." entries
-// 2. forge script script/spoke-pools/DeployEthereumSpokePool.s.sol:DeployEthereumSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/spoke-pools/DeployEthereumSpokePool.s.sol:DeployEthereumSpokePool --rpc-url ethereum -vvvv
 // 3. Verify the above works in simulation mode.
-// 4. Deploy with: forge script script/spoke-pools/DeployEthereumSpokePool.s.sol:DeployEthereumSpokePool --rpc-url $NODE_URL_1 --broadcast --verify
+// 4. Deploy with: forge script script/spoke-pools/DeployEthereumSpokePool.s.sol:DeployEthereumSpokePool --rpc-url ethereum --broadcast --verify
 
 contract DeployEthereumSpokePool is Script, Test, DeploymentUtils {
     function run() external {
