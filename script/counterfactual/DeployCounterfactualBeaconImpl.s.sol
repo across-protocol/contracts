@@ -46,12 +46,19 @@ contract DeployCounterfactualBeaconImpl is CounterfactualConfig {
         // Resolve the chain config (which lazily loads config via file-reading cheatcodes) BEFORE
         // startBroadcast. Constructing the StdConfig helper inside the broadcast region breaks forge's
         // on-chain simulation.
-        CounterfactualChainConfig memory chainConfig = _buildChainConfig();
+        //
+        // Refund-only chains (see `_isRefundOnlyChain`) have no SpokePool, so `_buildChainConfig`'s
+        // requirement can never be met there; they get an all-zero route config instead. The beacon
+        // exists purely so a stranded deposit address can be reconstructed and swept back to its
+        // refund address.
+        bool refundOnly = _isRefundOnlyChain(block.chainid);
+        CounterfactualChainConfig memory chainConfig = refundOnly ? _buildRefundOnlyChainConfig() : _buildChainConfig();
 
         console.log("============================================");
         console.log("CounterfactualBeacon implementation deployment");
         console.log("============================================");
         console.log("Chain ID:", block.chainid);
+        if (refundOnly) console.log("Mode:      REFUND-ONLY (all route config zero; no route leaf impls)");
 
         vm.startBroadcast(deployerPrivateKey);
         address beaconImpl = address(new CounterfactualBeacon(chainConfig));

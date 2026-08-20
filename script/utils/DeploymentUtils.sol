@@ -273,6 +273,14 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     }
 
     function checkZkStackChain(uint256 chainId) internal view {
+        // A chain absent from constants.json has no declared family, so it cannot be a ZkStack chain and
+        // there is nothing to assert. Guard rather than let `getChainFamily` revert: this runs in the
+        // DeploymentUtils constructor, so an unknown chain would otherwise fail every script before it
+        // starts (see `_isRefundOnlyChain` — refund-only chains are deliberately not in constants.json).
+        // Skipping is safe because `_deployCreate2` independently requires the CREATE2 factory to have
+        // produced code, which is the property EVM address parity actually depends on.
+        if (!vm.keyExists(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".family"))) return;
+
         bool isZkStackChain = keccak256(abi.encodePacked(getChainFamily(chainId))) ==
             keccak256(abi.encodePacked("ZK_STACK"));
 

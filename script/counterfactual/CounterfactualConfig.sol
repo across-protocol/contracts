@@ -289,6 +289,40 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         _validateDeclaredSupport(cfg);
     }
 
+    /// @notice Chains carrying ONLY the refund surface: no SpokePool, no CCTP/OFT periphery, no route
+    ///         leaf impls — so `_buildChainConfig`'s SpokePool requirement can never be satisfied there.
+    /// @dev A user can send funds to any counterfactual address on ANY EVM chain, because the address is
+    ///      `f(factory, beacon, initialRoot, salt)` and none of those is chain-specific. Standing up the
+    ///      beacon + factory on such a chain makes those addresses reconstructible so
+    ///      `AdminWithdrawManager.signedWithdrawToUser` can return stranded funds to the creation-pinned
+    ///      refund address. It does NOT make the chain a supported origin — nothing advertises or quotes
+    ///      it, and with no route leaf impls deployed no bridge leaf can execute.
+    ///
+    ///      Membership is an explicit allowlist rather than a config.toml flag so that "deploy a beacon
+    ///      with no route config" is always a reviewed code change, never a silent side effect of a
+    ///      missing/incorrect TOML entry on a chain that was meant to be fully supported.
+    function _isRefundOnlyChain(uint256 chainId) internal pure returns (bool) {
+        return chainId == 196; // X Layer
+    }
+
+    /// @notice The `CounterfactualChainConfig` for a refund-only chain: every route value zero.
+    /// @dev Safe because the refund path reads none of them. `AdminWithdrawManager.signedWithdrawToUser`
+    ///      → `CounterfactualDeposit._execute` (merkle-verifies against `activeRoot`, no beacon read) →
+    ///      delegatecall `WithdrawImplementation` (holds no beacon reads at all). The dispatcher only
+    ///      touches `BEACON.upgradeRoot()` inside `_updateRoot`, which the refund path never calls.
+    ///      `signer` is carried for parity with other chains but is cosmetic here too — the withdraw
+    ///      signature is checked against the AdminWithdrawManager's OWN `signer` storage, not the
+    ///      beacon's.
+    ///
+    ///      Every getter returning zero also means each route leaf impl would revert
+    ///      `RouteNotConfigured` if one were ever deployed and named by a leaf — the config is inert, not
+    ///      merely unused. If the chain is later onboarded properly, deploy a real impl and
+    ///      `upgradeToAndCall` the beacon: the proxy address (and therefore every deposit address) is
+    ///      unaffected.
+    function _buildRefundOnlyChainConfig() internal returns (CounterfactualChainConfig memory cfg) {
+        cfg.signer = _loadSigner();
+    }
+
     /// @dev Requires every `[<chainId>.bool]` support flag in config.toml to match resolved reality.
     ///      Tokens assert on the resolved address; bridges assert on the route's full capability:
     ///      SpokePool (deployed SpokePool), sponsored CCTP (Circle domain + SponsoredCCTPSrcPeriphery),

@@ -172,6 +172,19 @@ usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 1200000000000000 # 0.0012 WETH (18 decimals)
 wbtcMaxExecutionFee = 3100 # 0.000031 WBTC (8 decimals)
 
+# REFUND-ONLY chain (see CounterfactualConfig._isRefundOnlyChain). X Layer has no SpokePool and no
+# CCTP/OFT periphery, so it gets an all-zero beacon route config and no route leaf impls. The beacon +
+# factory exist solely so a deposit address that received funds here can be reconstructed and swept back
+# to its refund address via AdminWithdrawManager.signedWithdrawToUser. Consequently there is no
+# [196.bool] / [196.uint] block: those feed _buildChainConfig, which refund-only chains bypass.
+[196] # X Layer
+endpoint_url = "${NODE_URL_196}"
+[196.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+# No X Layer ops multisig exists yet, so the deployer keeps beacon + AdminWithdrawManager ownership.
+# Transfer to a multisig once one is deployed on this chain.
+ownerAndDirectWithdrawer = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"
+
 [324] # zkSync
 endpoint_url = "${NODE_URL_324}"
 [324.address]
