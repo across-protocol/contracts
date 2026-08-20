@@ -82,8 +82,8 @@ library HyperCoreLib {
     uint32 public constant CORE_SPOT_DEX_ID = type(uint32).max;
     // The main perp account, as a `sendAsset` dex selector. Any other non-spot id is a builder-deployed dex.
     uint32 public constant CORE_MAIN_PERP_DEX_ID = 0;
-    // Perp balances read in 1e6 USD, while a USDC send amount is its Core wei (1e8, per `tokenInfo`).
-    uint64 public constant PERP_USD_TO_USDC_CORE_WEI = 100;
+    // Perp balances are denominated in USD with 6 decimals.
+    uint8 public constant PERP_USD_DECIMALS = 6;
 
     // Errors
     error LimitPxIsZero();
@@ -532,6 +532,17 @@ library HyperCoreLib {
             // round down
             return uint64(amountDecimalsFrom / 10 ** (decimalsFrom - decimalsTo));
         }
+    }
+
+    /**
+     * @notice Converts a perp USD amount to USDC Core wei, the unit a USDC send amount is denominated in.
+     * @dev Reads USDC's `weiDecimals` rather than assuming it, so the conversion tracks the token's actual config.
+     * @param amountPerpUsd The amount in perp USD units (1e6)
+     * @return The equivalent amount in USDC Core wei, rounded down
+     */
+    function perpUsdToCoreWei(uint64 amountPerpUsd) internal view returns (uint64) {
+        return
+            convertCoreDecimalsSimple(amountPerpUsd, PERP_USD_DECIMALS, tokenInfo(uint32(USDC_CORE_INDEX)).weiDecimals);
     }
 
     /**
