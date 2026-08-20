@@ -554,6 +554,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 | TokenMessengerMinter      | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://solscan.io/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
 | TokenMessengerMinterV2    | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://solscan.io/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
 
+## Chain 196 (196)
+
+| Contract Name                | Address                                    |
+| ---------------------------- | ------------------------------------------ |
+| AdminWithdrawManager         | 0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00 |
+| CounterfactualBeacon         | 0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133 |
+| CounterfactualDeposit        | 0xD4FdB0930AE127721379D128d9896c88526371E2 |
+| CounterfactualDepositFactory | 0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1 |
+| WithdrawImplementation       | 0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9 |
+
 ## Mode Sepolia (919)
 
 | Contract Name    | Address                                                                                                                                |

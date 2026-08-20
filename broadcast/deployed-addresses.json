@@ -709,6 +709,36 @@
         }
       }
     },
+    "196": {
+      "chain_name": "Chain 196",
+      "contracts": {
+        "AdminWithdrawManager": {
+          "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
+          "block_number": 68417888,
+          "transaction_hash": "0xe511b213bb23fe9942d49e9c33361fb65540ceb730694eb420e8eb8b04d3a993"
+        },
+        "CounterfactualBeacon": {
+          "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
+          "block_number": 68417833,
+          "transaction_hash": "0x4bbc117c25c82269d35170029abfafb34d7cf83b5cb32ef3b73512cd0e52ebfb"
+        },
+        "CounterfactualDeposit": {
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 68417831,
+          "transaction_hash": "0xdf295dea169e68e8473bd510ea823251c4f1073606303af90e6682c7c7dfdc13"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
+          "block_number": 68417856,
+          "transaction_hash": "0x587ed55e982e228393dbca946c1121e41357ad9f9e18235e22ec494bf90a2f0c"
+        },
+        "WithdrawImplementation": {
+          "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
+          "block_number": 68417873,
+          "transaction_hash": "0x8f2ee8a547b16ec78647ba06bf3066c1814a99d2d2fb2aaa244bc0d0f1127540"
+        }
+      }
+    },
     "232": {
       "chain_name": "Lens",
       "contracts": {
