@@ -42,18 +42,8 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
     // keccak256(abi.encode(uint256(keccak256("across.counterfactual.upgradeable.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x5b89d334b964a560e5498fb6b9c95b4213116f116bbd1e59c9c85ba952217700;
 
-    /// @notice The per-chain registry/beacon every counterfactual `BeaconProxy` resolves its implementation
-    ///         from, and the source of the `upgradeRoot` used by `updateRoot`. Typed to the registry surface
-    ///         only — the dispatcher reads no chain config.
+    /// @inheritdoc ICounterfactualDeposit
     ICounterfactualBeaconBase public immutable BEACON;
-
-    /// @notice Emitted when `activeRoot` is updated via the upgrade tree.
-    event RootUpdated(bytes32 newRoot);
-
-    /// @dev Merkle proof against the registry's `(proxy, latestRoot)` tree failed.
-    error InvalidUpgradeProof();
-    /// @dev New root equals the current `activeRoot` (no-op).
-    error RootUnchanged();
 
     constructor(ICounterfactualBeaconBase beacon) {
         BEACON = beacon;
@@ -70,7 +60,7 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
     /// @dev Accept native value sent to the proxy (deposits before/after deployment, refunds).
     receive() external payable {}
 
-    /// @notice The merkle root authorizing this proxy's deposit routes.
+    /// @inheritdoc ICounterfactualDeposit
     function activeRoot() public view returns (bytes32) {
         return _getStorage().activeRoot;
     }
@@ -100,8 +90,7 @@ contract CounterfactualDeposit is Initializable, ICounterfactualDeposit {
         _execute(implementation, params, submitterData, executeProof);
     }
 
-    /// @notice Update `activeRoot`, proving `(address(this), newRoot)` is in the registry's upgrade tree.
-    /// @dev Permissionless. Root updates are best-effort — a proxy keeps its `activeRoot` until updated.
+    /// @inheritdoc ICounterfactualDeposit
     function updateRoot(bytes32 newRoot, bytes32[] calldata proof) external {
         _updateRoot(newRoot, proof);
     }
