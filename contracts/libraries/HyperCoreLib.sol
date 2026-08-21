@@ -42,17 +42,12 @@ library HyperCoreLib {
         bool exists;
     }
 
-    struct Withdrawable {
-        uint64 withdrawable;
-    }
-
     // Base asset bridge addresses
     address public constant BASE_ASSET_BRIDGE_ADDRESS = 0x2000000000000000000000000000000000000000;
     uint256 public constant BASE_ASSET_BRIDGE_ADDRESS_UINT256 = uint256(uint160(BASE_ASSET_BRIDGE_ADDRESS));
 
     // Precompile addresses
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
-    address public constant WITHDRAWABLE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000803;
     address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
     address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
@@ -80,10 +75,6 @@ library HyperCoreLib {
 
     // HyperCore protocol constants
     uint32 public constant CORE_SPOT_DEX_ID = type(uint32).max;
-    // The main perp account, as a `sendAsset` dex selector. Any other non-spot id is a builder-deployed dex.
-    uint32 public constant CORE_MAIN_PERP_DEX_ID = 0;
-    // Perp balances are denominated in USD with 6 decimals.
-    uint8 public constant PERP_USD_DECIMALS = 6;
 
     // Errors
     error LimitPxIsZero();
@@ -93,7 +84,6 @@ library HyperCoreLib {
     error CoreUserExistsPrecompileCallFailed();
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
-    error WithdrawablePrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
     error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint32 erc20CoreIndex);
@@ -352,20 +342,6 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Get `account`'s margin-free perp balance on HyperCore.
-     * @dev No token argument — a perp account is USDC-collateralized only. Excludes anything currently posted as
-     *      margin against an open position.
-     * @param account The address of the account to get the withdrawable balance of
-     * @return withdrawable The withdrawable perp balance, in perp USD units (1e6)
-     */
-    function withdrawable(address account) internal view returns (uint64) {
-        (bool success, bytes memory result) = WITHDRAWABLE_PRECOMPILE_ADDRESS.staticcall(abi.encode(account));
-        if (!success) revert WithdrawablePrecompileCallFailed();
-        Withdrawable memory _withdrawable = abi.decode(result, (Withdrawable));
-        return _withdrawable.withdrawable;
-    }
-
-    /**
      * @notice Get the spot price of the specified asset on HyperCore.
      * @param index The asset index to get the spot price of
      * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
@@ -532,17 +508,6 @@ library HyperCoreLib {
             // round down
             return uint64(amountDecimalsFrom / 10 ** (decimalsFrom - decimalsTo));
         }
-    }
-
-    /**
-     * @notice Converts a perp USD amount to USDC Core wei, the unit a USDC send amount is denominated in.
-     * @dev Reads USDC's `weiDecimals` rather than assuming it, so the conversion tracks the token's actual config.
-     * @param amountPerpUsd The amount in perp USD units (1e6)
-     * @return The equivalent amount in USDC Core wei, rounded down
-     */
-    function perpUsdToCoreWei(uint64 amountPerpUsd) internal view returns (uint64) {
-        return
-            convertCoreDecimalsSimple(amountPerpUsd, PERP_USD_DECIMALS, tokenInfo(uint32(USDC_CORE_INDEX)).weiDecimals);
     }
 
     /**

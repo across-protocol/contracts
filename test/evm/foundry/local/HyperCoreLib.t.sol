@@ -16,10 +16,6 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.maximumEVMSendAmountToAmounts(maximumEVMSendAmount, decimalDiff);
     }
 
-    function withdrawable(address account) external view returns (uint64) {
-        return HyperCoreLib.withdrawable(account);
-    }
-
     function isHyperEVMChain() external view returns (bool) {
         return HyperCoreLib.isHyperEVMChain();
     }
@@ -34,10 +30,6 @@ contract HyperCoreLibWrapper {
 
     function toSystemAddress(uint32 erc20CoreIndex) external view returns (address) {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
-    }
-
-    function perpUsdToCoreWei(uint64 amountPerpUsd) external view returns (uint64) {
-        return HyperCoreLib.perpUsdToCoreWei(amountPerpUsd);
     }
 }
 
@@ -160,27 +152,6 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         assertEq(amountCoreToReceive, uint64(1000e6));
     }
 
-    // ============ withdrawable ============
-
-    function testWithdrawable_DecodesPrecompileResult() public {
-        address account = makeAddr("account");
-        vm.mockCall(
-            HyperCoreLib.WITHDRAWABLE_PRECOMPILE_ADDRESS,
-            abi.encode(account),
-            abi.encode(HyperCoreLib.Withdrawable({ withdrawable: 1234e6 }))
-        );
-
-        assertEq(wrapper.withdrawable(account), uint64(1234e6));
-    }
-
-    function testWithdrawable_RevertsWhenPrecompileFails() public {
-        address account = makeAddr("account");
-        vm.mockCallRevert(HyperCoreLib.WITHDRAWABLE_PRECOMPILE_ADDRESS, abi.encode(account), "");
-
-        vm.expectRevert(HyperCoreLib.WithdrawablePrecompileCallFailed.selector);
-        wrapper.withdrawable(account);
-    }
-
     // ============ chain and HYPE helpers ============
 
     function testIsHyperEVMChain() public {
@@ -243,26 +214,5 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
         vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, coreIndex));
         wrapper.toSystemAddress(coreIndex);
-    }
-
-    // ============ perpUsdToCoreWei ============
-
-    // USDC's live config is 8 wei decimals, so a perp USD amount scales up by 1e2
-    function testPerpUsdToCoreWei_ScalesUpToUsdcWeiDecimals() public {
-        mockTokenInfoDefault(makeAddr("usdc"), "USDC", 8);
-
-        assertEq(wrapper.perpUsdToCoreWei(1234e6), uint64(1234e8));
-        assertEq(wrapper.perpUsdToCoreWei(0), uint64(0));
-    }
-
-    // The conversion reads USDC's `weiDecimals` rather than assuming a fixed 1e2 factor
-    function testPerpUsdToCoreWei_TracksUsdcWeiDecimals() public {
-        mockTokenInfoDefault(makeAddr("usdc"), "USDC", HyperCoreLib.PERP_USD_DECIMALS);
-        assertEq(wrapper.perpUsdToCoreWei(1234e6), uint64(1234e6));
-
-        // Fewer wei decimals than perp USD rounds down rather than reverting
-        mockTokenInfoDefault(makeAddr("usdc"), "USDC", 4);
-        assertEq(wrapper.perpUsdToCoreWei(1234.5678e6), uint64(1234.5678e4));
-        assertEq(wrapper.perpUsdToCoreWei(1), uint64(0));
     }
 }
