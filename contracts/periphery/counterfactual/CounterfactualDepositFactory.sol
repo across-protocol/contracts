@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Create2 } from "@openzeppelin/contracts/utils/Create2.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { CounterfactualDeposit } from "./CounterfactualDeposit.sol";
+import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
 
 /**
  * @title CounterfactualDepositFactory
@@ -20,12 +21,9 @@ import { CounterfactualDeposit } from "./CounterfactualDeposit.sol";
  *      variants (e.g. Tron's 0x41 CREATE2 prefix) can override prediction.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositFactory {
-    /// @notice The beacon (the `CounterfactualBeacon`) every deployed proxy points at.
+contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
+    /// @inheritdoc ICounterfactualDepositFactory
     address public immutable BEACON;
-
-    /// @notice Emitted when a counterfactual proxy is deployed.
-    event CounterfactualDeployed(address indexed counterfactual, bytes32 initialRoot);
 
     constructor(address beacon) {
         BEACON = beacon;
