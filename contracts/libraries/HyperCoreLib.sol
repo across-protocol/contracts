@@ -87,6 +87,7 @@ library HyperCoreLib {
     error InsufficientAmountForAccountActivation();
     error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint32 erc20CoreIndex);
+    error NativeTransferFailed();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -128,7 +129,7 @@ library HyperCoreLib {
                     );
                 }
             } else {
-                IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
+                IERC20(erc20EVMAddress).safeTransfer(toSystemAddress(erc20CoreIndex), _amountEVMToSend);
                 // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
                 if (to != address(this) || destinationDex != CORE_SPOT_DEX_ID) {
                     transferERC20CoreToCore(
@@ -204,6 +205,16 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Bridges `amountEVM` of native HYPE from this address on HyperEVM to this address on HyperCore.
+     * @dev A native transfer to the HYPE system address credits the sender's spot HYPE on Core.
+     * @param amountEVM The amount of native HYPE to transfer, in EVM wei.
+     */
+    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) internal {
+        (bool success, ) = HYPE_SYSTEM_ADDRESS.call{ value: amountEVM }("");
+        if (!success) revert NativeTransferFailed();
+    }
+
+    /**
      * @notice Transfers tokens from this contract on HyperCore to the `to` address on HyperCore on the Spot DEX.
      * @param erc20CoreIndex The HyperCore index id of the token
      * @param to The address to receive tokens on HyperCore
@@ -259,7 +270,7 @@ library HyperCoreLib {
             IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, amountEVM);
             ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(user, amountEVM, CORE_SPOT_DEX_ID);
         } else {
-            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amountEVM);
+            IERC20(erc20EVMAddress).safeTransfer(toSystemAddress(erc20CoreIndex), amountEVM);
             // Transfer 1 wei to user on HyperCore to activate account
             transferERC20CoreToCore(erc20CoreIndex, user, 1, CORE_SPOT_DEX_ID, CORE_SPOT_DEX_ID);
         }
@@ -404,20 +415,11 @@ library HyperCoreLib {
         uint64 coreAmount,
         uint64 coreBufferAmount
     ) internal view returns (bool) {
-        address bridgeAddress = toAssetBridgeAddress(erc20CoreIndex);
+        address bridgeAddress = toSystemAddress(erc20CoreIndex);
         uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
 
         // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
         return currentBridgeBalance >= coreAmount + coreBufferAmount;
-    }
-
-    /**
-     * @notice Converts a core index id to an asset bridge address
-     * @param erc20CoreIndex The core token index id to convert
-     * @return assetBridgeAddress The asset bridge address
-     */
-    function toAssetBridgeAddress(uint64 erc20CoreIndex) internal pure returns (address) {
-        return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
     }
 
     /**
@@ -427,10 +429,11 @@ library HyperCoreLib {
      * @param erc20CoreIndex The core token index id to convert
      * @return The system address to send to on HyperCore
      */
-    function toSystemAddress(uint32 erc20CoreIndex) internal view returns (address) {
-        if (isHype(erc20CoreIndex)) return HYPE_SYSTEM_ADDRESS;
-        if (tokenInfo(erc20CoreIndex).evmContract == address(0)) revert TokenNotBridgeable(erc20CoreIndex);
-        return toAssetBridgeAddress(erc20CoreIndex);
+    function toSystemAddress(uint64 erc20CoreIndex) internal view returns (address) {
+        uint32 index = SafeCast.toUint32(erc20CoreIndex);
+        if (isHype(index)) return HYPE_SYSTEM_ADDRESS;
+        if (tokenInfo(index).evmContract == address(0)) revert TokenNotBridgeable(index);
+        return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
     }
 
     /**

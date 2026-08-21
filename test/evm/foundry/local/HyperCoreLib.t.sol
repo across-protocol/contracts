@@ -28,8 +28,12 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.isHype(erc20CoreIndex);
     }
 
-    function toSystemAddress(uint32 erc20CoreIndex) external view returns (address) {
+    function toSystemAddress(uint64 erc20CoreIndex) external view returns (address) {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
+    }
+
+    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) external {
+        HyperCoreLib.transferNativeEVMToSelfOnSpot(amountEVM);
     }
 }
 
@@ -203,7 +207,10 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
 
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
-        assertEq(wrapper.toSystemAddress(coreIndex), HyperCoreLib.toAssetBridgeAddress(coreIndex));
+        assertEq(
+            wrapper.toSystemAddress(coreIndex),
+            address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex))
+        );
     }
 
     // A token with no linked HyperEVM contract has no EVM side to credit, so the send would strand the funds
@@ -214,5 +221,23 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
         vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, coreIndex));
         wrapper.toSystemAddress(coreIndex);
+    }
+
+    // ============ transferNativeEVMToSelfOnSpot ============
+
+    function testTransferNativeEVMToSelfOnSpot_CreditsTheHypeSystemAddress() public {
+        vm.deal(address(wrapper), 1 ether);
+
+        wrapper.transferNativeEVMToSelfOnSpot(0.4 ether);
+
+        assertEq(HyperCoreLib.HYPE_SYSTEM_ADDRESS.balance, 0.4 ether);
+        assertEq(address(wrapper).balance, 0.6 ether);
+    }
+
+    function testTransferNativeEVMToSelfOnSpot_RevertsWhenTransferFails() public {
+        vm.deal(address(wrapper), 1 ether);
+
+        vm.expectRevert(HyperCoreLib.NativeTransferFailed.selector);
+        wrapper.transferNativeEVMToSelfOnSpot(2 ether);
     }
 }
