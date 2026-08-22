@@ -223,6 +223,16 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         wrapper.toSystemAddress(coreIndex);
     }
 
+    // Ids beyond tokenInfo's uint32 domain (e.g. encoded outcome asset ids) cannot be resolved, so they
+    // are rejected as unbridgeable before any precompile call — note no tokenInfo mock is set here.
+    function testToSystemAddress_RevertsWhenIdExceedsTokenInfoDomain() public {
+        uint64 outcomeAssetId = 100_000_000 + uint64(type(uint32).max) * 10 + 1;
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, outcomeAssetId));
+        wrapper.toSystemAddress(outcomeAssetId);
+    }
+
     // ============ transferNativeEVMToSelfOnSpot ============
 
     function testTransferNativeEVMToSelfOnSpot_CreditsTheHypeSystemAddress() public {

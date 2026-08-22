@@ -86,7 +86,7 @@ library HyperCoreLib {
     error SpotPxPrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
     error MaximumEVMSendAmountTooLarge();
-    error TokenNotBridgeable(uint32 erc20CoreIndex);
+    error TokenNotBridgeable(uint64 erc20CoreIndex);
     error NativeTransferFailed();
 
     /**
@@ -430,9 +430,13 @@ library HyperCoreLib {
      * @return The system address to send to on HyperCore
      */
     function toSystemAddress(uint64 erc20CoreIndex) internal view returns (address) {
-        uint32 index = SafeCast.toUint32(erc20CoreIndex);
-        if (isHype(index)) return HYPE_SYSTEM_ADDRESS;
-        if (tokenInfo(index).evmContract == address(0)) revert TokenNotBridgeable(index);
+        // Only linked tokens convert between Core and EVM (docs: "HyperCore <> HyperEVM transfers"), and
+        // linkage resolves via tokenInfo, declared `tokenInfo(uint32)` in canonical L1Read.sol — an id
+        // beyond that domain (spotBalance's uint64 also carries encoded outcome asset ids) can't be resolved.
+        if (erc20CoreIndex > type(uint32).max) revert TokenNotBridgeable(erc20CoreIndex);
+        uint32 index = uint32(erc20CoreIndex);
+        if (isHype(index)) return HYPE_SYSTEM_ADDRESS; // must precede the linkage check: HYPE has no evmContract
+        if (tokenInfo(index).evmContract == address(0)) revert TokenNotBridgeable(erc20CoreIndex);
         return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
     }
 
