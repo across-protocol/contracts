@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
 
 // Wrapper contract to expose internal library functions for testing
 contract HyperCoreLibWrapper {
@@ -14,9 +15,29 @@ contract HyperCoreLibWrapper {
     ) external pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         return HyperCoreLib.maximumEVMSendAmountToAmounts(maximumEVMSendAmount, decimalDiff);
     }
+
+    function isHyperEVMChain() external view returns (bool) {
+        return HyperCoreLib.isHyperEVMChain();
+    }
+
+    function hypeCoreIndex() external view returns (uint32) {
+        return HyperCoreLib.hypeCoreIndex();
+    }
+
+    function isHype(uint32 erc20CoreIndex) external view returns (bool) {
+        return HyperCoreLib.isHype(erc20CoreIndex);
+    }
+
+    function toSystemAddress(uint64 erc20CoreIndex) external view returns (address) {
+        return HyperCoreLib.toSystemAddress(erc20CoreIndex);
+    }
+
+    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) external {
+        HyperCoreLib.transferNativeEVMToSelfOnSpot(amountEVM);
+    }
 }
 
-contract HyperCoreLibTest is Test {
+contract HyperCoreLibTest is HyperCoreMockHelper {
     HyperCoreLibWrapper wrapper;
 
     function setUp() public {
@@ -133,5 +154,100 @@ contract HyperCoreLibTest is Test {
 
         assertEq(amountEVMToSend, amount);
         assertEq(amountCoreToReceive, uint64(1000e6));
+    }
+
+    // ============ chain and HYPE helpers ============
+
+    function testIsHyperEVMChain() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertTrue(wrapper.isHyperEVMChain());
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertTrue(wrapper.isHyperEVMChain());
+
+        vm.chainId(1);
+        assertFalse(wrapper.isHyperEVMChain());
+    }
+
+    // The HYPE Core index differs between mainnet and testnet, which is why it can't be a constant at call sites
+    function testHypeCoreIndex_DiffersOnTestnet() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
+    }
+
+    function testIsHype() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
+        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
+        assertFalse(wrapper.isHype(uint32(HyperCoreLib.USDC_CORE_INDEX)));
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
+        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
+    }
+
+    // ============ toSystemAddress ============
+
+    // HYPE reports no `evmContract`, so its branch has to be taken before the bridgeability check
+    function testToSystemAddress_HypeIgnoresAbsentEvmContract() public {
+        mockTokenInfoDefault(address(0), "HYPE", 8);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(wrapper.toSystemAddress(HyperCoreLib.HYPE_CORE_INDEX), HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertEq(wrapper.toSystemAddress(HyperCoreLib.HYPE_CORE_INDEX_TESTNET), HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+    }
+
+    function testToSystemAddress_BridgeableTokenDerivesFromIndex() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(
+            wrapper.toSystemAddress(coreIndex),
+            address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex))
+        );
+    }
+
+    // A token with no linked HyperEVM contract has no EVM side to credit, so the send would strand the funds
+    function testToSystemAddress_RevertsWhenTokenNotBridgeable() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(address(0), "TKN", 8);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, coreIndex));
+        wrapper.toSystemAddress(coreIndex);
+    }
+
+    // Ids beyond tokenInfo's uint32 domain (e.g. encoded outcome asset ids) cannot be resolved, so they
+    // are rejected as unbridgeable before any precompile call — note no tokenInfo mock is set here.
+    function testToSystemAddress_RevertsWhenIdExceedsTokenInfoDomain() public {
+        uint64 outcomeAssetId = 100_000_000 + uint64(type(uint32).max) * 10 + 1;
+
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, outcomeAssetId));
+        wrapper.toSystemAddress(outcomeAssetId);
+    }
+
+    // ============ transferNativeEVMToSelfOnSpot ============
+
+    function testTransferNativeEVMToSelfOnSpot_CreditsTheHypeSystemAddress() public {
+        vm.deal(address(wrapper), 1 ether);
+
+        wrapper.transferNativeEVMToSelfOnSpot(0.4 ether);
+
+        assertEq(HyperCoreLib.HYPE_SYSTEM_ADDRESS.balance, 0.4 ether);
+        assertEq(address(wrapper).balance, 0.6 ether);
+    }
+
+    function testTransferNativeEVMToSelfOnSpot_RevertsWhenTransferFails() public {
+        vm.deal(address(wrapper), 1 ether);
+
+        vm.expectRevert(HyperCoreLib.NativeTransferFailed.selector);
+        wrapper.transferNativeEVMToSelfOnSpot(2 ether);
     }
 }
