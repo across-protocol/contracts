@@ -250,6 +250,18 @@ usdcMaxExecutionFee = 2000000 # 2 USDC (6 decimals)
 usdtMaxExecutionFee = 2000000 # 2 USDT (6 decimals)
 wethMaxExecutionFee = 0 # No WETH configured for this chain
 
+# REFUND-ONLY chain (see CounterfactualConfig._isRefundOnlyChain), same shape as [196] above: no
+# SpokePool and no CCTP/OFT periphery, so an all-zero beacon route config and no route leaf impls, and
+# therefore no [2818.bool] / [2818.uint] block. Stood up only so a deposit address that received funds
+# here can be reconstructed and swept back to its refund address.
+[2818] # Morph
+endpoint_url = "${NODE_URL_2818}"
+[2818.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+# No Morph ops multisig exists, so the deployer keeps beacon + AdminWithdrawManager ownership.
+# Transfer to a multisig once one is deployed on this chain.
+ownerAndDirectWithdrawer = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"
+
 [4217] # Tempo
 endpoint_url = "${NODE_URL_4217}"
 [4217.address]

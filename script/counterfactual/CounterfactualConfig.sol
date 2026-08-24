@@ -302,7 +302,7 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     ///      with no route config" is always a reviewed code change, never a silent side effect of a
     ///      missing/incorrect TOML entry on a chain that was meant to be fully supported.
     function _isRefundOnlyChain(uint256 chainId) internal pure returns (bool) {
-        return chainId == 196; // X Layer
+        return chainId == 196 || chainId == 2818; // X Layer, Morph
     }
 
     /// @notice The `CounterfactualChainConfig` for a refund-only chain: every route value zero.
