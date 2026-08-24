@@ -34,8 +34,16 @@ contract DeployPermissionSplitterProxy is Script, Test {
         permissionSplitter.grantRole(PAUSE_ROLE, defaultAdmin);
         // Grant anyone with the pause role the ability to call setPaused.
         permissionSplitter.__setRoleForSelector(PAUSE_SELECTOR, PAUSE_ROLE);
+        // Grant the intended admin the default admin role BEFORE the deployer renounces it. Without this the
+        // proxy is left with zero DEFAULT_ADMIN_ROLE holders, and because _isAllowedToCall resolves any
+        // selector with no explicit role mapping to DEFAULT_ADMIN_ROLE, every admin function except
+        // setPaused (__setTarget, __setRoleForSelector, further grantRole calls, ...) becomes permanently
+        // uncallable — AccessControl provides no way to re-create a role's admin once no holder remains.
+        permissionSplitter.grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         // Revoke the deployer's default admin role.
         permissionSplitter.renounceRole(DEFAULT_ADMIN_ROLE, deployer);
+
+        vm.stopBroadcast();
 
         // Sanity check.
         assertTrue(permissionSplitter.hasRole(PAUSE_ROLE, defaultAdmin));
