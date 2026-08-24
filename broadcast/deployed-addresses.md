@@ -578,6 +578,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0x6999526e507Cc3b03b180BbE05E1Ff938259A874](https://sepolia.uniscan.xyz/address/0x6999526e507Cc3b03b180BbE05E1Ff938259A874) |
 
+## Chain 2818 (2818)
+
+| Contract Name                | Address                                    |
+| ---------------------------- | ------------------------------------------ |
+| AdminWithdrawManager         | 0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00 |
+| CounterfactualBeacon         | 0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133 |
+| CounterfactualDeposit        | 0xD4FdB0930AE127721379D128d9896c88526371E2 |
+| CounterfactualDepositFactory | 0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1 |
+| WithdrawImplementation       | 0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9 |
+
 ## Lisk Sepolia (4202)
 
 | Contract Name    | Address                                                                                                                              |

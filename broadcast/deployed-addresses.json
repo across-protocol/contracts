@@ -1130,6 +1130,36 @@
         }
       }
     },
+    "2818": {
+      "chain_name": "Chain 2818",
+      "contracts": {
+        "AdminWithdrawManager": {
+          "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
+          "block_number": 25759666,
+          "transaction_hash": "0xf5e6fc6bdf6126de1318d704f998b34e078092b9fddf339f27ed6ccd7125940f"
+        },
+        "CounterfactualBeacon": {
+          "address": "0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133",
+          "block_number": 25759649,
+          "transaction_hash": "0x5456ea96156f03040234bca9c7714bff04dbc63d3c46ec8b024a247c1eb86fd0"
+        },
+        "CounterfactualDeposit": {
+          "address": "0xD4FdB0930AE127721379D128d9896c88526371E2",
+          "block_number": 25759648,
+          "transaction_hash": "0x4da0a49a43f1546fc9ec25c16f30eaa99d01d4b07c64db82049f40eddcaf88a6"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1",
+          "block_number": 25759655,
+          "transaction_hash": "0x11c680f1b11438289dd1f1a3e2c6d3ef79f9b4a27bfc6feee182078ba8d8a002"
+        },
+        "WithdrawImplementation": {
+          "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
+          "block_number": 25759660,
+          "transaction_hash": "0x94303647465089c709619b563444a75ffc595121eaaa8772db7576d7a4381904"
+        }
+      }
+    },
     "4202": {
       "chain_name": "Lisk Sepolia",
       "contracts": {
