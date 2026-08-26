@@ -27,7 +27,7 @@ import { MockEndpoint } from "../../../../contracts/test/MockEndpoint.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { DebugQuoteSignLib } from "../../../../script/mintburn/oft/CreateSponsoredDeposit.s.sol";
 
-import { BaseSimulatorTest } from "./external/hyper-evm-lib/test/BaseSimulatorTest.sol";
+import { BaseSimulatorTest } from "@hyper-evm-lib/test/BaseSimulatorTest.sol";
 
 // ──────────────────────────────────────────────────────────────────
 // Mocks
