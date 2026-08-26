@@ -27,10 +27,15 @@ contract TransferProxy {
     error InvalidOutputToken();
     error InvalidOutputAmount();
 
-    event Transfer(address indexed inputToken, address indexed recipient, uint256 inputAmount);
+    event Proxy(
+        address indexed depositor,
+        uint256 indexed depositNonce,
+        address indexed inputToken,
+        uint256 inputAmount
+    );
 
     function deposit(
-        bytes32, // depositor
+        bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
         bytes32 outputToken,
@@ -43,11 +48,12 @@ contract TransferProxy {
         uint32, // exclusivityDeadline
         bytes calldata message
     ) external {
+        emit Proxy(depositor.toAddress(), 0, inputToken.toAddress(), inputAmount);
         _transfer(inputToken, outputToken, recipient, inputAmount, outputAmount, destinationChainId, message);
     }
 
     function unsafeDeposit(
-        bytes32, // depositor
+        bytes32 depositor,
         bytes32 recipient,
         bytes32 inputToken,
         bytes32 outputToken,
@@ -55,12 +61,13 @@ contract TransferProxy {
         uint256 outputAmount,
         uint256 destinationChainId,
         bytes32, // exclusiveRelayer
-        uint256, // depositNonce
+        uint256 depositNonce,
         uint32, // quoteTimestamp
         uint32, // fillDeadline
         uint32, // exclusivityParameter
         bytes calldata message
     ) external {
+        emit Proxy(depositor.toAddress(), depositNonce, inputToken.toAddress(), inputAmount);
         _transfer(inputToken, outputToken, recipient, inputAmount, outputAmount, destinationChainId, message);
     }
 
@@ -79,7 +86,6 @@ contract TransferProxy {
         address token = inputToken.toAddress();
         address to = recipient.toAddress();
         IERC20(token).safeTransferFrom(msg.sender, to, inputAmount);
-        emit Transfer(token, to, inputAmount);
 
         if (message.length > 0 && to.isContract()) {
             AcrossMessageHandler(to).handleV3AcrossMessage(token, inputAmount, msg.sender, message);
