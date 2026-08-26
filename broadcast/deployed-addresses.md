@@ -333,6 +333,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SP1Helios                      | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://robinhoodchain.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
 | SpokePool                      | [0xD29C85F15DF544bA632C9E25829fd29d767d7978](https://robinhoodchain.blockscout.com/address/0xD29C85F15DF544bA632C9E25829fd29d767d7978) |
 | SpokePoolPeriphery             | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://robinhoodchain.blockscout.com/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://robinhoodchain.blockscout.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | WithdrawImplementation         | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://robinhoodchain.blockscout.com/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## ARC (5042)

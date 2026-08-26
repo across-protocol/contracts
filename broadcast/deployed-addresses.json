@@ -1249,6 +1249,10 @@
     "4663": {
       "chain_name": "Robinhood",
       "contracts": {
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "block_number": 35734728
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 14150724,
