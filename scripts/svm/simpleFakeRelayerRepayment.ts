@@ -318,7 +318,7 @@ async function testBundleLogic(): Promise<void> {
     .accounts({ signer: signer.publicKey, instructionParams: instructionParams })
     .rpc();
   console.log(`Close instruction params transaction sent: ${closeInstructionParamsTx}`);
-  // Note we cant close the lookup table account as it needs to be both deactivated and expired at to do this.
+  // Note we can't close the lookup table account as it needs to be both deactivated and expired at to do this.
 
   // Check that the relayers got back the amount you were expecting
   const relayerBalances = [];

@@ -613,7 +613,7 @@ pub mod svm_spoke {
     /// Initializes a claim account for a relayer refund.
     ///
     /// This function sets up a claim account for a relayer to claim their refund at a later time and should only be
-    /// used in the un-happy path where a bundle cant not be executed due to a recipient in the bundle having a blocked
+    /// used in the un-happy path where a bundle cannot be executed due to a recipient in the bundle having a blocked
     /// or uninitialized claim ATA. The refund address becomes the "owner" of the claim_account.
     ///
     /// ### Required Accounts:
