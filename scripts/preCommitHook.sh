@@ -7,6 +7,22 @@
 # Store staged rust files for later use in rustfmt as pretty-quick might revert some changes
 STAGED_RUST_FILES=$(git diff --cached --name-only --diff-filter=d | grep '\.rs$')
 
+# Regenerate deployed-addresses.{json,md} from broadcast data up front so that pretty-quick
+# formats the fresh files (and merge-conflicted or deleted versions get rebuilt cleanly).
+echo "Running extract-addresses on staged files ..."
+yarn extract-addresses
+EXTRACT_ADDRESSES_EXIT=$?
+if [ $EXTRACT_ADDRESSES_EXIT -ne 0 ]; then
+    echo "extract-addresses encountered an error. Aborting the hook."
+    exit $EXTRACT_ADDRESSES_EXIT
+fi
+if [ -f broadcast/deployed-addresses.json ]; then
+    git add broadcast/deployed-addresses.json
+fi
+if [ -f broadcast/deployed-addresses.md ]; then
+    git add broadcast/deployed-addresses.md
+fi
+
 echo "Running pretty-quick on staged files ..."
 
 yarn pretty-quick --staged
@@ -51,16 +67,3 @@ if [ -f generated/constants.json ]; then
     git add generated/constants.json
 fi
 
-echo "Running extract-addresses on staged files ..."
-yarn extract-addresses && yarn prettier --write broadcast/deployed-addresses.json && yarn prettier --write broadcast/deployed-addresses.md
-EXTRACT_ADDRESSES_EXIT=$?
-if [ $EXTRACT_ADDRESSES_EXIT -ne 0 ]; then
-    echo "extract-addresses encountered an error. Aborting the hook."
-    exit $EXTRACT_ADDRESSES_EXIT
-fi
-if [ -f broadcast/deployed-addresses.json ]; then
-    git add broadcast/deployed-addresses.json
-fi
-if [ -f broadcast/deployed-addresses.md ]; then
-    git add broadcast/deployed-addresses.md
-fi
