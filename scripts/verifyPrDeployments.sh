@@ -4,26 +4,31 @@ set -euo pipefail
 # Verifies all contract deployments in a GitHub PR by delegating to verifyBytecode.sh.
 #
 # Usage:
-#   ./scripts/verifyPrDeployments.sh <pr_number> [--env <env_file>]
+#   ./scripts/verifyPrDeployments.sh <pr_number> [--env <env_file>] [--yes-clean-build]
 #
 # Options:
-#   --env <file>   Source an env file for NODE_URL_<chainId> variables (default: .env if it exists)
+#   --env <file>           Source an env file for NODE_URL_<chainId> variables (default: .env if it exists)
+#   --yes-clean-build      Skip the confirmation prompt before running forge clean/cache clean/build
 #
 # Prerequisites:
-#   - PR branch checked out locally (broadcast files + build artifacts must exist)
+#   - PR branch checked out locally (broadcast files must exist)
 #   - gh CLI authenticated
-#   - Contracts built (forge build)
 
 REPO="across-protocol/contracts"
 
 # Parse arguments.
 ENV_FILE=""
 PR=""
+YES_CLEAN_BUILD=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --env)
             ENV_FILE="$2"
             shift 2
+            ;;
+        --yes-clean-build)
+            YES_CLEAN_BUILD=true
+            shift
             ;;
         *)
             if [ -z "$PR" ]; then
@@ -38,7 +43,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$PR" ]; then
-    echo "Usage: $0 <pr_number> [--env <env_file>]"
+    echo "Usage: $0 <pr_number> [--env <env_file>] [--yes-clean-build]"
     exit 1
 fi
 
@@ -64,6 +69,29 @@ if [ -z "$BROADCAST_FILES" ]; then
     echo "No broadcast files found in PR #$PR"
     exit 0
 fi
+
+if [ "$YES_CLEAN_BUILD" != "true" ]; then
+    if [ ! -t 0 ]; then
+        echo "Refusing to run forge clean/cache clean/build without confirmation."
+        echo "Re-run interactively or pass --yes-clean-build."
+        exit 1
+    fi
+    printf "Run 'forge clean && forge cache clean && yarn build-evm-foundry' before verifying PR #%s? [y/N] " "$PR"
+    read -r CONFIRM_CLEAN_BUILD
+    case "$CONFIRM_CLEAN_BUILD" in
+        y|Y|yes|YES)
+            ;;
+        *)
+            echo "Aborting."
+            exit 1
+            ;;
+    esac
+fi
+
+echo "Cleaning Foundry artifacts and rebuilding..."
+forge clean
+forge cache clean
+yarn build-evm-foundry
 
 FILE_COUNT=$(echo "$BROADCAST_FILES" | wc -l | tr -d ' ')
 echo "Found $FILE_COUNT broadcast file(s)"
