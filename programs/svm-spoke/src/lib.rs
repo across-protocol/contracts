@@ -36,6 +36,7 @@ pub mod event;
 mod instructions;
 mod state;
 pub mod utils;
+pub mod v5;
 
 use common::*;
 use instructions::*;
