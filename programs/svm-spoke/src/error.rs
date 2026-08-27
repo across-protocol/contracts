@@ -81,7 +81,7 @@ pub enum SvmError {
 }
 
 // Across V5 adapter specific errors.
-#[error_code]
+#[error_code(offset = 7000)]
 pub enum V5Error {
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat,
@@ -93,6 +93,8 @@ pub enum V5Error {
     InvalidParamModificationSignature,
     #[msg("Missing required Across V5 account!")]
     MissingAccount,
+    #[msg("Invalid Across V5 Gateway dispatch authority!")]
+    InvalidDispatchAuthority,
     #[msg("Across V5 account must be writable!")]
     InvalidAccountMutability,
     #[msg("Resolved Across V5 input amount is below the committed floor!")]
