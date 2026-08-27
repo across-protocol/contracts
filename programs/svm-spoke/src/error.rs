@@ -80,6 +80,29 @@ pub enum SvmError {
     InvalidDelegatePda,
 }
 
+// Across V5 adapter specific errors.
+#[error_code]
+pub enum V5Error {
+    #[msg("Malformed Across V5 wire data!")]
+    InvalidWireFormat,
+    #[msg("Unsupported Across V5 wire version!")]
+    UnsupportedVersion,
+    #[msg("Invalid Across V5 parameter modification rules!")]
+    InvalidParamModificationRules,
+    #[msg("Invalid Across V5 parameter modification signature!")]
+    InvalidParamModificationSignature,
+    #[msg("Missing required Across V5 account!")]
+    MissingAccount,
+    #[msg("Across V5 account must be writable!")]
+    InvalidAccountMutability,
+    #[msg("Resolved Across V5 input amount is below the committed floor!")]
+    ResolvedInputAmountBelowCommitted,
+    #[msg("Across V5 delegate allowance is insufficient!")]
+    InsufficientDelegateAllowance,
+    #[msg("Across V5 parameter modification is not an improvement!")]
+    ParamModificationNotAnImprovement,
+}
+
 // CCTP specific errors.
 #[error_code]
 pub enum CallDataError {
