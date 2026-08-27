@@ -47,14 +47,24 @@ adapter's type boundary. Borsh serializes that fixed struct inline, so the nesti
 serialize in declaration order. Integers use Borsh little-endian encoding. Pubkeys and `[u8; 32]` are raw 32-byte
 values. Vectors use a `u32_le` length. `input_amount_mode` is `Literal = 0` or
 `InputVaultBalance = 1 { bips: u16_le }`; `bips` must not exceed 10,000. The resolved SVM token amount is `u64`, while
-cross-VM uint256 values remain 32-byte big-endian EVM words.
+cross-VM uint256 values remain 32-byte big-endian EVM words. The leading version byte is checked before the mode body
+is decoded, so any unsupported version reports `UnsupportedVersion` even when its body is not compatible with v1.
+
+Gateway token vaults are shared per mint rather than isolated per execution. `InputVaultBalance` therefore resolves
+against shared live state, and the continuing tape must leave no residual balance or stale approval that a later
+permissionless execution could consume. Gateway does not currently enforce this net-zero settlement invariant.
+
+Unlike the EVM `inputAmountParam`, SVM wire v1 has no set-call-value flag. Native SOL must first be wrapped by the
+ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
+token path as any SPL input. Direct lamport deposit from this adapter is outside wire v1.
 
 Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams` and is present exactly when the committed 20-byte
 authority is nonzero and at least one modification is permitted. It is the fixed 129 bytes
 `new_output_amount[32] || new_exclusive_relayer[32] || signature[65]`. A zero authority requires both permission
-booleans false and empty `jit_data`; it never means permissionless modification. Fill mode always decodes `jit_data`
-as `V5FillJit`. Malformed enum tags, invalid Borsh booleans or lengths, unsupported versions, missing required JIT,
-and trailing bytes fail closed.
+booleans false and empty `jit_data`; it never means permissionless modification. This intentionally diverges from
+the EVM `AcrossDepositDelegateAdapter`, which permits authority-less JIT when a permission flag is set. Route builders
+must not emit that EVM-only rule shape for SVM. Fill mode always decodes `jit_data` as `V5FillJit`. Malformed enum tags,
+invalid Borsh booleans or lengths, unsupported versions, missing required JIT, and trailing bytes fail closed.
 
 ## Hashes and signatures
 
@@ -101,4 +111,7 @@ message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
 Transfer-fee mints are excluded until debit/delivery delta semantics are defined. Transfer hooks remain disabled
 unless validator tests prove the complete hook-account set and the Gateway-to-Spoke CPI depth for that mint.
 
-Golden values in `fixtures/v5_adapter_v1.json` are independently checked from Rust, TypeScript, and Solidity.
+Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
+catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation
+of the EVM adapter. The JIT digest layout matches `AcrossDepositDelegateAdapter`, while SVM deposit identity
+necessarily uses a 32-byte executor program ID instead of EVM's 20-byte caller address.
