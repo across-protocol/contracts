@@ -48,7 +48,9 @@ pub enum V5AdapterMode {
 }
 
 /// Literal uses the committed `input_amount`. Balance-relative mode resolves `bips` of the canonical Gateway input
-/// vault's live token amount, rounded down, and later enforces the committed amount as a floor.
+/// vault's live token amount, rounded down, and later enforces the committed amount as a floor. Gateway vaults are
+/// shared per mint, not isolated per execution, so the continuing tape must leave no residual balance; Gateway does
+/// not currently enforce that net-zero settlement invariant.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
 pub enum V5InputAmountMode {
     Literal,
@@ -66,6 +68,8 @@ impl V5DepositModificationRules {
     pub fn validate(&self) -> Result<()> {
         let has_authority = self.authority != [0u8; 20];
         let has_permission = self.allow_output_amount || self.allow_exclusive_relayer;
+        // SVM v1 intentionally requires an authority for any JIT permission. The EVM adapter permits authority-less
+        // JIT when permission bits are set, so route builders must not reuse that EVM-only shape for SVM.
         require!(has_authority == has_permission, V5Error::InvalidParamModificationRules);
         Ok(())
     }
@@ -141,8 +145,9 @@ fn decode_strict<T: AnchorDeserialize>(data: &[u8]) -> Result<T> {
 }
 
 pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
-    let input: V5AdapterInput = decode_strict(data)?;
-    require_eq!(input.version, V5_ADAPTER_WIRE_VERSION, V5Error::UnsupportedVersion);
+    let (&version, body) = data.split_first().ok_or_else(|| error!(V5Error::InvalidWireFormat))?;
+    require_eq!(version, V5_ADAPTER_WIRE_VERSION, V5Error::UnsupportedVersion);
+    let input = V5AdapterInput { version, mode: decode_strict(body)? };
     match &input.mode {
         V5AdapterMode::Deposit(deposit) => {
             if let V5InputAmountMode::InputVaultBalance { bips } = deposit.input_amount_mode {
@@ -325,7 +330,7 @@ pub fn derive_fill_status(relay_hash: &[u8; 32]) -> (Pubkey, u8) {
 
 pub fn require_gateway_dispatch_authority(account: &AccountInfo) -> Result<()> {
     let (expected, _) = derive_gateway_dispatch_authority();
-    require!(account.is_signer && *account.key == expected, V5Error::MissingAccount);
+    require!(account.is_signer && *account.key == expected, V5Error::InvalidDispatchAuthority);
     Ok(())
 }
 
@@ -365,6 +370,18 @@ mod tests {
         let mut bytes = Vec::new();
         value.serialize(&mut bytes).unwrap();
         bytes
+    }
+
+    fn assert_error_name<T>(result: Result<T>, expected: &str) {
+        match result.err().unwrap() {
+            anchor_lang::error::Error::AnchorError(error) => assert_eq!(error.error_name, expected),
+            _ => panic!("expected Anchor error"),
+        }
+    }
+
+    #[test]
+    fn v5_errors_use_dedicated_range() {
+        assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
     }
 
     #[test]
@@ -407,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn evm_hashes_and_signature_match_golden_fixture() {
+    fn evm_hashes_signature_and_domain_separation_match_golden_fixture() {
         let fixture = fixture();
         let gateway = Pubkey::from_str(fixture.pointer("/programs/gateway").unwrap().as_str().unwrap()).unwrap();
         let submitter = Pubkey::new_from_array(array(&fixture, "/context/submitter"));
@@ -438,6 +455,31 @@ mod tests {
         let authority = array(&fixture, "/jit/authority");
         let signature = array(&fixture, "/jit/signature");
         verify_v5_authority(&authority, &digest, &signature).unwrap();
+
+        let mut other_path_id = path_id;
+        other_path_id[0] ^= 1;
+        let other_path_digest = v5_param_modification_digest(
+            &gateway,
+            &other_path_id,
+            nonce,
+            &array(&fixture, "/jit/newOutputAmount"),
+            &Pubkey::new_from_array(array(&fixture, "/jit/newExclusiveRelayer")),
+        );
+        assert!(verify_v5_authority(&authority, &other_path_digest, &signature).is_err());
+
+        let other_nonce_digest = v5_param_modification_digest(
+            &gateway,
+            &path_id,
+            nonce + 1,
+            &array(&fixture, "/jit/newOutputAmount"),
+            &Pubkey::new_from_array(array(&fixture, "/jit/newExclusiveRelayer")),
+        );
+        assert!(verify_v5_authority(&authority, &other_nonce_digest, &signature).is_err());
+
+        let mut other_authority = authority;
+        other_authority[0] ^= 1;
+        assert!(verify_v5_authority(&other_authority, &digest, &signature).is_err());
+
         assert!(recover_v5_authority(&digest, &array(&fixture, "/jit/highSSignature")).is_err());
         let mut invalid_v = signature;
         invalid_v[64] = 0;
@@ -472,7 +514,9 @@ mod tests {
 
         let mut wrong_version = bytes(&fixture, "/wire/depositInput");
         wrong_version[0] = V5_ADAPTER_WIRE_VERSION + 1;
-        assert!(decode_v5_adapter_input(&wrong_version).is_err());
+        assert_error_name(decode_v5_adapter_input(&wrong_version), "UnsupportedVersion");
+        assert_error_name(decode_v5_adapter_input(&[V5_ADAPTER_WIRE_VERSION + 1]), "UnsupportedVersion");
+        assert_error_name(decode_v5_adapter_input(&[]), "InvalidWireFormat");
 
         let mut input = decode_v5_adapter_input(&bytes(&fixture, "/wire/depositInput")).unwrap();
         let deposit = match &mut input.mode {
@@ -546,7 +590,6 @@ mod tests {
             deposit.deposit_params.exclusive_relayer
         );
 
-        deposit.modification_rules.allow_output_amount = true;
         let mut worse = jit;
         worse.new_output_amount = [0u8; 32];
         let digest = v5_param_modification_digest(
