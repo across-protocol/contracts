@@ -131,12 +131,6 @@ pub struct V5FillJit {
     pub repayment_address: Pubkey,
 }
 
-#[derive(Clone)]
-pub enum V5AdapterJit {
-    Deposit(Option<AcrossDepositJitParams>),
-    Fill(V5FillJit),
-}
-
 fn decode_strict<T: AnchorDeserialize>(data: &[u8]) -> Result<T> {
     let mut remaining = data;
     let decoded = T::deserialize(&mut remaining).map_err(|_| error!(V5Error::InvalidWireFormat))?;
@@ -160,19 +154,18 @@ pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
     Ok(input)
 }
 
-pub fn decode_v5_adapter_jit(mode: &V5AdapterMode, data: &[u8]) -> Result<V5AdapterJit> {
-    match mode {
-        V5AdapterMode::Deposit(deposit) if deposit.modification_rules.jit_enabled() => {
-            deposit.modification_rules.validate()?;
-            Ok(V5AdapterJit::Deposit(Some(decode_strict(data)?)))
-        }
-        V5AdapterMode::Deposit(deposit) => {
-            deposit.modification_rules.validate()?;
-            require!(data.is_empty(), V5Error::InvalidWireFormat);
-            Ok(V5AdapterJit::Deposit(None))
-        }
-        V5AdapterMode::Fill(_) => Ok(V5AdapterJit::Fill(decode_strict(data)?)),
+pub fn decode_v5_deposit_jit(deposit: &AcrossDepositInput, data: &[u8]) -> Result<Option<AcrossDepositJitParams>> {
+    deposit.modification_rules.validate()?;
+    if deposit.modification_rules.jit_enabled() {
+        Ok(Some(decode_strict(data)?))
+    } else {
+        require!(data.is_empty(), V5Error::InvalidWireFormat);
+        Ok(None)
     }
+}
+
+pub fn decode_v5_fill_jit(data: &[u8]) -> Result<V5FillJit> {
+    decode_strict(data)
 }
 
 pub fn resolve_v5_input_amount(mode: V5InputAmountMode, committed_amount: u64, vault_balance: u64) -> Result<u64> {
@@ -401,10 +394,9 @@ mod tests {
         assert!(matches!(deposit.input_amount_mode, V5InputAmountMode::InputVaultBalance { bips: 9_750 }));
         assert_eq!(deposit.modification_rules.authority, array(&fixture, "/jit/authority"));
 
-        let jit = match decode_v5_adapter_jit(&input.mode, &jit_bytes).unwrap() {
-            V5AdapterJit::Deposit(Some(jit)) => jit,
-            _ => panic!("golden JIT must be Deposit"),
-        };
+        let jit = decode_v5_deposit_jit(deposit, &jit_bytes)
+            .unwrap()
+            .expect("golden JIT must be Deposit");
         assert_eq!(serialize(&jit), jit_bytes);
 
         let ctx = V5GatewayContext {
@@ -530,8 +522,12 @@ mod tests {
             allow_exclusive_relayer: false,
         };
         let input = decode_v5_adapter_input(&serialize(&input)).unwrap();
-        assert!(matches!(decode_v5_adapter_jit(&input.mode, &[]).unwrap(), V5AdapterJit::Deposit(None)));
-        assert!(decode_v5_adapter_jit(&input.mode, &[0]).is_err());
+        let deposit = match &input.mode {
+            V5AdapterMode::Deposit(deposit) => deposit,
+            _ => unreachable!(),
+        };
+        assert!(decode_v5_deposit_jit(deposit, &[]).unwrap().is_none());
+        assert!(decode_v5_deposit_jit(deposit, &[0]).is_err());
 
         let mut invalid_rules = input;
         if let V5AdapterMode::Deposit(deposit) = &mut invalid_rules.mode {
@@ -544,9 +540,9 @@ mod tests {
     fn fill_wire_is_branch_specific() {
         let fixture = fixture();
         let input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
-        let jit = decode_v5_adapter_jit(&input.mode, &bytes(&fixture, "/wire/fillJit")).unwrap();
-        assert!(matches!(jit, V5AdapterJit::Fill(_)));
-        assert!(decode_v5_adapter_jit(&input.mode, &bytes(&fixture, "/wire/depositJit")).is_err());
+        assert!(matches!(input.mode, V5AdapterMode::Fill(_)));
+        decode_v5_fill_jit(&bytes(&fixture, "/wire/fillJit")).unwrap();
+        assert!(decode_v5_fill_jit(&bytes(&fixture, "/wire/depositJit")).is_err());
     }
 
     #[test]
