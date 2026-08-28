@@ -6,16 +6,17 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+    token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 use crate::{
-    constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
+    constants::MAX_EXCLUSIVITY_PERIOD_SECONDS,
     error::{CommonError, SvmError},
     event::FundsDeposited,
     state::State,
     utils::{
-        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DepositNowSeedData, DepositSeedData,
+        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from_with_delegate, DelegatePda,
+        DepositNowSeedData, DepositSeedData,
     },
 };
 
@@ -67,8 +68,38 @@ pub struct Deposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
+pub struct DepositAccounts<'info> {
+    pub from: AccountInfo<'info>,
+    pub vault: AccountInfo<'info>,
+    pub delegate: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    pub mint_decimals: u8,
+}
+
+impl<'info> From<&Deposit<'info>> for DepositAccounts<'info> {
+    fn from(accounts: &Deposit<'info>) -> Self {
+        Self {
+            from: accounts.depositor_token_account.to_account_info(),
+            vault: accounts.vault.to_account_info(),
+            delegate: accounts.delegate.to_account_info(),
+            mint: accounts.mint.to_account_info(),
+            token_program: accounts.token_program.to_account_info(),
+            mint_decimals: accounts.mint.decimals,
+        }
+    }
+}
+
+pub enum DepositId<'a> {
+    Next(&'a mut State),
+    Fixed { state: &'a State, value: [u8; 32] },
+}
+
+/// Executes shared deposit validation and the vault transfer, resolves the deposit ID, and constructs the canonical
+/// deposit event.
+/// The instruction handler emits the event because Anchor's `emit_cpi!` macro requires its concrete `ctx` in scope.
 pub fn _deposit(
-    ctx: Context<Deposit>,
+    accounts: DepositAccounts,
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -77,14 +108,18 @@ pub fn _deposit(
     output_amount: [u8; 32],
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
-    deposit_id: [u8; 32],
+    deposit_id: DepositId<'_>,
     quote_timestamp: u32,
     fill_deadline: u32,
     exclusivity_parameter: u32,
     message: Vec<u8>,
-    delegate_seed_hash: [u8; 32],
-) -> Result<()> {
-    let state = &mut ctx.accounts.state;
+    delegate_pda: DelegatePda,
+) -> Result<FundsDeposited> {
+    let state = match &deposit_id {
+        DepositId::Next(state) => &**state,
+        DepositId::Fixed { state, .. } => *state,
+    };
+
     let current_time = get_current_time(state)?;
 
     if output_token == Pubkey::default() {
@@ -109,24 +144,26 @@ pub fn _deposit(
     }
 
     // Depositor must have delegated input_amount to the delegate PDA
-    transfer_from(
-        &ctx.accounts.depositor_token_account,
-        &ctx.accounts.vault,
+    transfer_from_with_delegate(
+        TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.vault, authority: accounts.delegate },
+        accounts.token_program,
         input_amount,
-        &ctx.accounts.delegate,
-        &ctx.accounts.mint,
-        &ctx.accounts.token_program,
-        delegate_seed_hash,
+        accounts.mint_decimals,
+        delegate_pda,
     )?;
 
-    let mut applied_deposit_id = deposit_id;
-    // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
-    if deposit_id == ZERO_DEPOSIT_ID {
-        state.number_of_deposits += 1;
-        applied_deposit_id[28..].copy_from_slice(&state.number_of_deposits.to_be_bytes());
-    }
+    let applied_deposit_id = match deposit_id {
+        DepositId::Next(state) => {
+            // Sequential deposits use the state's number of deposits as deposit_id.
+            state.number_of_deposits += 1;
+            let mut applied_deposit_id = [0u8; 32];
+            applied_deposit_id[28..].copy_from_slice(&state.number_of_deposits.to_be_bytes());
+            applied_deposit_id
+        }
+        DepositId::Fixed { value, .. } => value,
+    };
 
-    emit_cpi!(FundsDeposited {
+    Ok(FundsDeposited {
         input_token,
         output_token,
         input_amount,
@@ -140,9 +177,7 @@ pub fn _deposit(
         recipient,
         exclusive_relayer,
         message,
-    });
-
-    Ok(())
+    })
 }
 
 pub fn deposit(
@@ -176,8 +211,9 @@ pub fn deposit(
             message: &message,
         }),
     );
-    _deposit(
-        ctx,
+    let accounts = DepositAccounts::from(&*ctx.accounts);
+    let event = _deposit(
+        accounts,
         depositor,
         recipient,
         input_token,
@@ -186,14 +222,14 @@ pub fn deposit(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
-        ZERO_DEPOSIT_ID, // ZERO_DEPOSIT_ID informs internal function to use state.number_of_deposits as id.
+        DepositId::Next(&mut ctx.accounts.state),
         quote_timestamp,
         fill_deadline,
         exclusivity_parameter,
         message,
-        seed_hash,
+        DelegatePda::UniqueHash(seed_hash),
     )?;
-
+    emit_cpi!(event);
     Ok(())
 }
 
@@ -228,8 +264,9 @@ pub fn deposit_now(
             message: &message,
         }),
     );
-    _deposit(
-        ctx,
+    let accounts = DepositAccounts::from(&*ctx.accounts);
+    let event = _deposit(
+        accounts,
         depositor,
         recipient,
         input_token,
@@ -238,14 +275,14 @@ pub fn deposit_now(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
-        ZERO_DEPOSIT_ID, // ZERO_DEPOSIT_ID informs internal function to use state.number_of_deposits as id.
+        DepositId::Next(&mut ctx.accounts.state),
         current_time,
         current_time + fill_deadline_offset,
         exclusivity_period,
         message,
-        seed_hash,
+        DelegatePda::UniqueHash(seed_hash),
     )?;
-
+    emit_cpi!(event);
     Ok(())
 }
 
@@ -283,8 +320,9 @@ pub fn unsafe_deposit(
             message: &message,
         }),
     );
-    _deposit(
-        ctx,
+    let accounts = DepositAccounts::from(&*ctx.accounts);
+    let event = _deposit(
+        accounts,
         depositor,
         recipient,
         input_token,
@@ -293,13 +331,13 @@ pub fn unsafe_deposit(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
-        deposit_id,
+        DepositId::Fixed { state: &ctx.accounts.state, value: deposit_id },
         quote_timestamp,
         fill_deadline,
         exclusivity_parameter,
         message,
-        seed_hash,
+        DelegatePda::UniqueHash(seed_hash),
     )?;
-
+    emit_cpi!(event);
     Ok(())
 }

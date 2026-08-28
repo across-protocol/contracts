@@ -42,6 +42,7 @@ use common::*;
 use instructions::*;
 use state::*;
 use utils::*;
+use v5::V5GatewayContext;
 
 #[program]
 pub mod svm_spoke {
@@ -351,6 +352,17 @@ pub mod svm_spoke {
         deposit_nonce: u64,
     ) -> Result<[u8; 32]> {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
+    }
+
+    /// Executes one Gateway-authenticated Across V5 adapter branch. Wire version 1 enables source deposits; the
+    /// reserved Fill discriminant fails closed until its destination behavior is enabled.
+    pub fn adapter_execute_across_v5<'info>(
+        ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+        ctx_values: V5GatewayContext,
+        input: Vec<u8>,
+        jit_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::adapter_execute_across_v5(ctx, ctx_values, input, jit_data)
     }
 
     // **************************************
