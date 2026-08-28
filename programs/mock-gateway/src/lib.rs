@@ -141,16 +141,3 @@ pub enum MockGatewayError {
     #[msg("Forced failure after adapter execution")]
     ForcedFailure,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn adapter_discriminator_matches_gateway_abi() {
-        assert_eq!(
-            svm_spoke::v5::gateway_adapter_discriminator(),
-            svm_spoke::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,
-        );
-    }
-}

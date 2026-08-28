@@ -119,7 +119,9 @@ message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
 Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
 or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,
 permanent delegates, default-frozen accounts, and all other extensions remain disabled unless their custody and CPI
-semantics are explicitly reviewed and validator-tested.
+semantics are explicitly reviewed and validator-tested. This gate covers mint extensions only. Account-side guards
+relevant to this path, such as source CPI guard or destination memo requirements, fail the token transfer rather than
+altering accounting.
 
 ## Enabled source-deposit behavior
 
