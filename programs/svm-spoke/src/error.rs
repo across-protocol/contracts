@@ -109,6 +109,14 @@ pub enum V5Error {
     InvalidTokenAccount,
     #[msg("Unsupported Across V5 token extension!")]
     UnsupportedTokenExtension,
+    #[msg("Invalid Across V5 fill payer!")]
+    InvalidFillPayer,
+    #[msg("Invalid Across V5 fill status account!")]
+    InvalidFillStatusAccount,
+    #[msg("Across V5 fill payer balance is insufficient!")]
+    InsufficientFillPayerBalance,
+    #[msg("Across V5 fill payer remainder must be zero or rent-exempt!")]
+    FillPayerRemainderNotRentExempt,
 }
 
 // CCTP specific errors.

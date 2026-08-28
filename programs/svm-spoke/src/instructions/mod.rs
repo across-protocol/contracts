@@ -9,6 +9,7 @@ mod refund_claims;
 mod slow_fill;
 mod token_bridge;
 mod v5_adapter;
+mod v5_fill_status;
 
 pub use admin::*;
 pub use bundle::*;
@@ -21,3 +22,4 @@ pub use refund_claims::*;
 pub use slow_fill::*;
 pub use token_bridge::*;
 pub use v5_adapter::*;
+pub use v5_fill_status::*;
