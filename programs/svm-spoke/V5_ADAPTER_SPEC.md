@@ -112,7 +112,9 @@ self-transfer or approval. The continuing atomic tape must consume the output.
 
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself; a nonzero remainder must be rent-exempt, and
-`u64::MAX` means withdraw the live balance. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
+`u64::MAX` means withdraw the live balance. The unchanged `FillStatusAccount.relayer` field stores the payer PDA for
+V5 fills (legacy fills continue to store their relayer), binding permissionless reclaim to the float that paid the
+rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode requires an empty callback
 message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
 

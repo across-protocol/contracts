@@ -459,6 +459,32 @@ pub mod svm_spoke {
         instructions::close_fill_pda(ctx)
     }
 
+    /// Permissionlessly closes an expired V5 FillStatusAccount back to the submitter-scoped payer float that created
+    /// it. Unlike the legacy close path, no relayer signature is forwarded or required.
+    pub fn reclaim_v5_fill_status(
+        ctx: Context<ReclaimV5FillStatus>,
+        relay_hash: [u8; 32],
+        submitter: Pubkey,
+    ) -> Result<()> {
+        instructions::reclaim_v5_fill_status(ctx, relay_hash, submitter)
+    }
+
+    /// Withdraws lamports from the signing submitter's V5 fill-status payer float back to that same submitter.
+    /// `u64::MAX` withdraws the live balance.
+    pub fn withdraw_v5_fill_payer(ctx: Context<WithdrawV5FillPayer>, amount: u64) -> Result<()> {
+        instructions::withdraw_v5_fill_payer(ctx, amount)
+    }
+
+    #[cfg(feature = "test")]
+    pub fn test_create_v5_fill_status(
+        ctx: Context<TestCreateV5FillStatus>,
+        submitter: Pubkey,
+        relay_hash: [u8; 32],
+        fill_deadline: u32,
+    ) -> Result<()> {
+        instructions::test_create_v5_fill_status(ctx, submitter, relay_hash, fill_deadline)
+    }
+
     /// Claims a relayer refund for the caller.
     ///
     /// In the event a relayer refund was sent to a claim account, then this function enables the relayer to claim it by
