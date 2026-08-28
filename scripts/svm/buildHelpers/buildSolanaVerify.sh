@@ -16,6 +16,11 @@ for program in programs/*; do
   dir_name=$(basename "$program")
   program_name=${dir_name//-/_}
 
+  # Build the mock only for validator tests, never as a production verified artifact.
+  if [[ "$program_name" == "mock_gateway" && "${IS_TEST:-}" != "true" ]]; then
+    continue
+  fi
+
   echo "Running verified build for $program_name"
   solana-verify build --library-name "$program_name" --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" -- $CARGO_OPTIONS
 

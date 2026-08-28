@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program_option::COption;
 use anchor_spl::{
     associated_token::get_associated_token_address_with_program_id,
     token_2022::spl_token_2022::{
@@ -21,11 +22,11 @@ use crate::{
             V5AdapterInput,
         },
         jit::{derive_v5_deposit_id, resolve_v5_deposit_modifications},
-        pda::{find_v5_account, require_gateway_dispatch_authority},
+        pda::{find_v5_account, require_gateway_dispatch_authority, require_v5_delegate_allowance},
     },
 };
 
-use super::{DepositAccounts, DepositId, _deposit};
+use super::{_deposit, DepositAccounts, DepositId};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -68,6 +69,9 @@ fn execute_v5_deposit<'info>(
     let (accounts, source) =
         load_v5_deposit_accounts(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
     let input_amount = resolve_v5_input_amount(deposit.input_amount_mode, params.input_amount, source.amount)?;
+    // Match EVM transferFrom semantics: sufficient and max allowances are valid; the adapter pulls exactly
+    // input_amount.
+    require_v5_delegate_allowance(source.delegated_amount, input_amount)?;
 
     let mut message = Vec::with_capacity(64);
     message.extend_from_slice(&V5_MAGIC_PREFIX);
@@ -115,7 +119,6 @@ fn load_v5_deposit_accounts<'info>(
         V5Error::InvalidTokenAccount
     );
     let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
-    require!(token_program.executable, V5Error::InvalidTokenAccount);
     reject_unsupported_mint_extensions(mint_info, &token_program_id)?;
 
     let gateway_vault =
@@ -126,10 +129,11 @@ fn load_v5_deposit_accounts<'info>(
     let source_delegate_info = find_v5_account(remaining_accounts, &V5_SOURCE_DELEGATE, false)?;
 
     // Together with the canonical addresses above, these checks mirror the corresponding static mint and
-    // associated-token constraints. Delegate authorization and allowance are enforced by transfer_checked.
-    let mint = load_mint(mint_info, &token_program_id)?;
+    // associated-token constraints.
+    let mint = load_mint(mint_info)?;
     let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &GATEWAY_VAULT_AUTHORITY)?;
     load_token_account(spoke_vault_info, &token_program_id, &input_token, &state)?;
+    require!(source.delegate == COption::Some(V5_SOURCE_DELEGATE), V5Error::InvalidTokenAccount);
 
     Ok((
         DepositAccounts {
@@ -144,8 +148,7 @@ fn load_v5_deposit_accounts<'info>(
     ))
 }
 
-fn load_mint(info: &AccountInfo, token_program: &Pubkey) -> Result<Mint> {
-    require_keys_eq!(*info.owner, *token_program, V5Error::InvalidTokenAccount);
+fn load_mint(info: &AccountInfo) -> Result<Mint> {
     Mint::try_deserialize(&mut &info.try_borrow_data()?[..]).map_err(|_| error!(V5Error::InvalidTokenAccount))
 }
 
@@ -172,9 +175,34 @@ fn reject_unsupported_mint_extensions(info: &AccountInfo, token_program: &Pubkey
     let extensions = mint
         .get_extension_types()
         .map_err(|_| error!(V5Error::InvalidTokenAccount))?;
-    require!(
-        !extensions.contains(&ExtensionType::TransferFeeConfig) && !extensions.contains(&ExtensionType::TransferHook),
-        V5Error::UnsupportedTokenExtension
-    );
+    require!(extensions.iter().all(is_supported_v5_mint_extension), V5Error::UnsupportedTokenExtension);
     Ok(())
+}
+
+fn is_supported_v5_mint_extension(extension: &ExtensionType) -> bool {
+    matches!(
+        extension,
+        ExtensionType::MintCloseAuthority
+            | ExtensionType::MetadataPointer
+            | ExtensionType::TokenMetadata
+            | ExtensionType::GroupPointer
+            | ExtensionType::TokenGroup
+            | ExtensionType::GroupMemberPointer
+            | ExtensionType::TokenGroupMember
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_2022_mint_extension_allowlist_is_fail_closed() {
+        assert!(is_supported_v5_mint_extension(&ExtensionType::MetadataPointer));
+        assert!(is_supported_v5_mint_extension(&ExtensionType::MintCloseAuthority));
+        assert!(!is_supported_v5_mint_extension(&ExtensionType::TransferFeeConfig));
+        assert!(!is_supported_v5_mint_extension(&ExtensionType::TransferHook));
+        assert!(!is_supported_v5_mint_extension(&ExtensionType::PermanentDelegate));
+        assert!(!is_supported_v5_mint_extension(&ExtensionType::DefaultAccountState));
+    }
 }
