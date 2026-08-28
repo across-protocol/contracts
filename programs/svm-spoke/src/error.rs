@@ -103,6 +103,12 @@ pub enum V5Error {
     ParamModificationNotAnImprovement,
     #[msg("Across V5 input amount bips exceed the denominator!")]
     InvalidAmountBips,
+    #[msg("Across V5 adapter mode is not enabled!")]
+    UnsupportedMode,
+    #[msg("Invalid Across V5 token account!")]
+    InvalidTokenAccount,
+    #[msg("Unsupported Across V5 token extension!")]
+    UnsupportedTokenExtension,
 }
 
 // CCTP specific errors.
