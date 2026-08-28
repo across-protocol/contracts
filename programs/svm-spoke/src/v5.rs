@@ -342,6 +342,7 @@ pub fn find_v5_account<'a, 'info>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anchor_lang::Discriminator;
     use serde_json::Value;
     use std::str::FromStr;
 
@@ -375,6 +376,14 @@ mod tests {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
         assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
         assert_eq!(u32::from(V5Error::UnsupportedTokenExtension), 7_012);
+    }
+
+    #[test]
+    fn adapter_discriminator_matches_gateway_abi() {
+        assert_eq!(
+            gateway_adapter_discriminator(),
+            crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,
+        );
     }
 
     #[test]
