@@ -56,8 +56,11 @@ is decoded, so any unsupported version reports `UnsupportedVersion` even when it
 
 Gateway token vaults are shared per mint rather than isolated per execution. `InputVaultBalance` therefore resolves
 against shared live state, and the continuing tape must leave no residual balance. Gateway does not currently enforce
-this net-zero settlement invariant. A residual delegate allowance is not privileged—the next permissionless
-`APPROVE` may replace it—but the SpokePool never delegates its own vault.
+this net-zero settlement invariant. The adapter binds the vault's delegate to `v5_source_delegate` and requires its
+allowance to cover the resolved amount, but deliberately does not require equality: this matches the EVM
+`transferFrom` behavior and accepts sufficient or maximum approvals. Any residual Gateway-vault balance is already
+movable by a later committed Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The
+SpokePool never delegates its own vault.
 
 Unlike the EVM `inputAmountParam`, SVM wire v1 has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
@@ -113,8 +116,10 @@ standing float. Only that submitter may withdraw the float to itself; a nonzero 
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode requires an empty callback
 message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
 
-Transfer-fee mints are excluded until debit/delivery delta semantics are defined. Transfer hooks remain disabled
-unless validator tests prove the complete hook-account set and the Gateway-to-Spoke CPI depth for that mint.
+Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
+or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,
+permanent delegates, default-frozen accounts, and all other extensions remain disabled unless their custody and CPI
+semantics are explicitly reviewed and validator-tested.
 
 ## Enabled source-deposit behavior
 
