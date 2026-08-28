@@ -1,14 +1,28 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
 import {
+  ExtensionType,
+  TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createInitializeMintInstruction,
+  createInitializeTransferFeeConfigInstruction,
+  createInitializeTransferHookInstruction,
   createMint,
   getAccount,
   getAssociatedTokenAddressSync,
+  getMintLen,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
-import { AccountMeta, Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import {
+  AccountMeta,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import { assert } from "chai";
 import { createHash } from "crypto";
 import { ethers } from "ethers";
@@ -140,6 +154,7 @@ describe("svm_spoke V5 source deposit", () => {
   let mint: PublicKey;
   let gatewayVault: PublicKey;
   let spokeVault: PublicKey;
+  let tokenProgram = TOKEN_PROGRAM_ID;
   let context: ContextValues;
   let deposit: DepositFields;
 
@@ -147,7 +162,7 @@ describe("svm_spoke V5 source deposit", () => {
     { pubkey: gatewayVault, isSigner: false, isWritable: true },
     { pubkey: destination, isSigner: false, isWritable: true },
     { pubkey: mint, isSigner: false, isWritable: false },
-    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    { pubkey: tokenProgram, isSigner: false, isWritable: false },
     { pubkey: delegate, isSigner: false, isWritable: false },
   ];
 
@@ -171,7 +186,7 @@ describe("svm_spoke V5 source deposit", () => {
         { pubkey: delegate, isSigner: false, isWritable: false },
         { pubkey: state, isSigner: false, isWritable: false },
         { pubkey: eventAuthority, isSigner: false, isWritable: false },
-        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: tokenProgram, isSigner: false, isWritable: false },
         { pubkey: svmSpoke.programId, isSigner: false, isWritable: false },
       ],
       data: Buffer.concat([
@@ -205,12 +220,68 @@ describe("svm_spoke V5 source deposit", () => {
     }
   };
 
+  const setInputMint = async (nextMint: PublicKey, nextTokenProgram: PublicKey, updateDeposit = false) => {
+    mint = nextMint;
+    tokenProgram = nextTokenProgram;
+    gatewayVault = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        payer,
+        mint,
+        vaultAuthority,
+        true,
+        undefined,
+        undefined,
+        tokenProgram
+      )
+    ).address;
+    spokeVault = (
+      await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true, undefined, undefined, tokenProgram)
+    ).address;
+    await mintTo(connection, payer, mint, gatewayVault, owner, 1_000_000, [], undefined, tokenProgram);
+    if (updateDeposit) deposit.inputToken = mint;
+  };
+
+  const createExtendedMint = async (extension: ExtensionType) => {
+    const mintKeypair = Keypair.generate();
+    const mintLen = getMintLen([extension]);
+    const initializeExtension =
+      extension === ExtensionType.TransferFeeConfig
+        ? createInitializeTransferFeeConfigInstruction(
+            mintKeypair.publicKey,
+            owner,
+            owner,
+            100,
+            10_000n,
+            TOKEN_2022_PROGRAM_ID
+          )
+        : createInitializeTransferHookInstruction(
+            mintKeypair.publicKey,
+            owner,
+            Keypair.generate().publicKey,
+            TOKEN_2022_PROGRAM_ID
+          );
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mintKeypair.publicKey,
+          lamports: await connection.getMinimumBalanceForRentExemption(mintLen),
+          space: mintLen,
+          programId: TOKEN_2022_PROGRAM_ID,
+        }),
+        initializeExtension,
+        createInitializeMintInstruction(mintKeypair.publicKey, 6, owner, owner, TOKEN_2022_PROGRAM_ID)
+      ),
+      [payer, mintKeypair]
+    );
+    return mintKeypair.publicKey;
+  };
+
   beforeEach(async () => {
     ({ state } = await initializeState());
-    mint = await createMint(connection, payer, owner, owner, 6);
-    gatewayVault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, vaultAuthority, true)).address;
-    spokeVault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address;
-    await mintTo(connection, payer, mint, gatewayVault, owner, 1_000_000);
+    await setInputMint(await createMint(connection, payer, owner, owner, 6), TOKEN_PROGRAM_ID);
     const now = (await svmSpoke.account.state.fetch(state)).currentTime;
     context = {
       stepId: Buffer.alloc(32, 0xaa),
@@ -308,9 +379,37 @@ describe("svm_spoke V5 source deposit", () => {
       execute(input, Buffer.alloc(0), 1_000_000n, false, sourceDelegate, gatewayVault),
       "MissingAccount"
     );
-    await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "insufficient funds");
+    await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "InsufficientDelegateAllowance");
+    await expectError(
+      execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n),
+      "InsufficientDelegateAllowance"
+    );
     assert.equal((await getAccount(connection, gatewayVault)).amount, 1_000_000n);
     assert.equal((await getAccount(connection, spokeVault)).amount, 0n);
+  });
+
+  it("enforces paused deposits and the committed dynamic-amount floor", async () => {
+    const input = encodeDeposit(deposit, { literal: true });
+    await svmSpoke.methods.pauseDeposits(true).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await expectError(execute(input), "DepositsArePaused");
+    await svmSpoke.methods.pauseDeposits(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await expectError(execute(encodeDeposit(deposit, { bips: 4000 })), "ResolvedInputAmountBelowCommitted");
+  });
+
+  it("supports plain Token-2022 mints and rejects unsupported mint extensions", async () => {
+    for (const extension of [ExtensionType.TransferFeeConfig, ExtensionType.TransferHook]) {
+      await setInputMint(await createExtendedMint(extension), TOKEN_2022_PROGRAM_ID, true);
+      await expectError(execute(encodeDeposit(deposit, { literal: true })), "UnsupportedTokenExtension");
+    }
+
+    await setInputMint(
+      await createMint(connection, payer, owner, owner, 6, undefined, undefined, TOKEN_2022_PROGRAM_ID),
+      TOKEN_2022_PROGRAM_ID,
+      true
+    );
+    await execute(encodeDeposit(deposit, { literal: true }));
+    assert.equal((await getAccount(connection, gatewayVault, undefined, tokenProgram)).amount, 500_000n);
+    assert.equal((await getAccount(connection, spokeVault, undefined, tokenProgram)).amount, 500_000n);
   });
 
   it("binds JIT authorization to Gateway domain, path, and deposit nonce", async () => {
