@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::{prelude::*, solana_program::keccak, Discriminator};
 
 use super::{codec::*, jit::*, pda::*};
 use crate::{
@@ -43,6 +43,15 @@ fn assert_error_name<T>(result: Result<T>, expected: &str) {
 fn v5_errors_use_dedicated_range() {
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
     assert_eq!(u32::from(V5Error::InvalidAmountBips), 7_008);
+    assert_eq!(u32::from(V5Error::UnsupportedTokenExtension), 7_011);
+}
+
+#[test]
+fn adapter_discriminator_matches_gateway_abi() {
+    assert_eq!(
+        GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR,
+        crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,
+    );
 }
 
 #[test]
