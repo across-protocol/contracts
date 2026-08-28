@@ -9,6 +9,12 @@ SVM_TYPES="$SVM_ASSETS"
 IDL_OUTPUT_FILE="$SVM_IDL/index.ts"
 TYPES_OUTPUT_FILE="$SVM_TYPES/index.ts"
 
+# A prior test build may leave mock artifacts behind. Never publish them from a production asset generation.
+if [ "${IS_TEST:-}" != "true" ]; then
+  rm -f "$TARGET_IDL/mock_gateway.json" "$TARGET_TYPES/mock_gateway.ts"
+  rm -f "$SVM_IDL/mock_gateway.json" "$SVM_TYPES/mock_gateway.ts"
+fi
+
 # Ensure the destination directories exist
 mkdir -p "$SVM_IDL"
 mkdir -p "$SVM_TYPES"
