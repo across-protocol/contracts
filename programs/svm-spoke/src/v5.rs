@@ -380,10 +380,7 @@ mod tests {
 
     #[test]
     fn adapter_discriminator_matches_gateway_abi() {
-        assert_eq!(
-            gateway_adapter_discriminator(),
-            crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,
-        );
+        assert_eq!(gateway_adapter_discriminator(), crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,);
     }
 
     #[test]
