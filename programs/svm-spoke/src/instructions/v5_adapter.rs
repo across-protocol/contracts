@@ -21,7 +21,7 @@ use crate::{
     },
 };
 
-use super::{DepositAccounts, DepositId, _deposit};
+use super::{_deposit, DepositAccounts, DepositId};
 
 #[event_cpi]
 #[derive(Accounts)]
