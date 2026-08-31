@@ -206,6 +206,16 @@ describe("svm_spoke V5 fill-status payer", () => {
       "ConstraintSeeds"
     );
 
+    await expectError(
+      program.methods
+        .withdrawV5FillPayer(new BN(rentMinimum + 1))
+        .accounts({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
+        .signers([submitter])
+        .rpc(),
+      "insufficient funds for rent"
+    );
+    assert.equal(await connection.getBalance(payer), initialFloat);
+
     await program.methods
       .withdrawV5FillPayer(new BN(rentMinimum))
       .accounts({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
