@@ -61,7 +61,7 @@ describe("svm_spoke V5 fill-status payer", () => {
         .testCreateV5FillStatus(submitter, [...relayHash], fillDeadline)
         .accounts({ payer, fillStatus: status, systemProgram: SystemProgram.programId })
         .rpc(),
-      "RelayFilled"
+      "InvalidFillStatusAccount"
     );
 
     await common.setCurrentTime(program, state, Keypair.generate(), new BN(fillDeadline + 1));

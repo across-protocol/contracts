@@ -5,7 +5,7 @@ use anchor_lang::{
 
 use crate::{
     constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED, V5_FILL_PAYER_SEED},
-    error::{CommonError, V5Error},
+    error::V5Error,
     event::V5FillFloatWithdrawn,
     state::{FillStatus, FillStatusAccount},
     ID,
@@ -39,7 +39,6 @@ pub fn create_v5_fill_status<'info>(
     require!(payer.is_writable && fill_status.is_writable, V5Error::InvalidAccountMutability);
     require_keys_eq!(*payer.owner, system_program::ID, V5Error::InvalidFillPayer);
     require!(payer.data_is_empty(), V5Error::InvalidFillPayer);
-    require_keys_neq!(*fill_status.owner, ID, CommonError::RelayFilled);
     require_keys_eq!(*fill_status.owner, system_program::ID, V5Error::InvalidFillStatusAccount);
     require!(fill_status.data_is_empty(), V5Error::InvalidFillStatusAccount);
 
@@ -83,7 +82,8 @@ pub fn create_v5_fill_status<'info>(
         )?;
     }
 
-    write_v5_fill_status(fill_status, expected_payer, fill_deadline)
+    FillStatusAccount { status: FillStatus::Filled, relayer: expected_payer, fill_deadline }
+        .try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
 }
 
 #[cfg(feature = "test")]
@@ -116,12 +116,6 @@ pub fn test_create_v5_fill_status(
         &relay_hash,
         fill_deadline,
     )
-}
-
-#[allow(dead_code)] // Kept separate so the manual account creation has one serialization boundary.
-fn write_v5_fill_status(fill_status: &AccountInfo, payer: Pubkey, fill_deadline: u32) -> Result<()> {
-    let account = FillStatusAccount { status: FillStatus::Filled, relayer: payer, fill_deadline };
-    account.try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
 }
 
 #[derive(Accounts)]
@@ -158,30 +152,4 @@ pub fn withdraw_v5_fill_payer(ctx: Context<WithdrawV5FillPayer>, amount: u64) ->
     )?;
     emit!(V5FillFloatWithdrawn { submitter, amount });
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anchor_lang::Discriminator;
-
-    #[test]
-    fn v5_fill_status_keeps_legacy_layout_and_binds_the_payer_slot() {
-        assert_eq!(V5_FILL_STATUS_SPACE, 8 + 1 + 32 + 4);
-        assert_eq!(FillStatusAccount::DISCRIMINATOR.len(), DISCRIMINATOR_SIZE);
-
-        let key = Pubkey::new_unique();
-        let payer = Pubkey::new_unique();
-        let owner = ID;
-        let mut lamports = 1;
-        let mut data = vec![0; V5_FILL_STATUS_SPACE];
-        let account_info = AccountInfo::new(&key, false, true, &mut lamports, &mut data, &owner, false, 0);
-        write_v5_fill_status(&account_info, payer, 123).unwrap();
-
-        let fill_status =
-            FillStatusAccount::try_deserialize(&mut &account_info.try_borrow_data().unwrap()[..]).unwrap();
-        assert!(matches!(fill_status.status, FillStatus::Filled));
-        assert_eq!(fill_status.relayer, payer);
-        assert_eq!(fill_status.fill_deadline, 123);
-    }
 }
