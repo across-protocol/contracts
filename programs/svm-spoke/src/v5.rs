@@ -375,7 +375,7 @@ mod tests {
     fn v5_errors_use_dedicated_range() {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
         assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
-        assert_eq!(u32::from(V5Error::FillPayerRemainderNotRentExempt), 7_016);
+        assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 7_014);
     }
 
     #[test]

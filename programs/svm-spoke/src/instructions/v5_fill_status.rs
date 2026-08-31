@@ -13,10 +13,14 @@ use crate::{
 
 pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE;
 
-/// Creates and records a V5 fill status using program-derived signers only. Gateway does not forward the transaction
-/// signer to adapter callees, so the submitter-scoped payer float funds the standard fill-status PDA. Storing the payer
-/// PDA in the existing `relayer` slot binds permissionless expiry reclaim to the correct float without changing the
-/// account layout; legacy fills continue to store their signing relayer there.
+/// Creates and records a V5 fill status using program-derived signers only. The account-creation sequence intentionally
+/// mirrors Anchor 0.31.1's generated `init_if_needed` implementation in
+/// `anchor-syn/src/codegen/accounts/constraints.rs::generate_create_account`: create an unfunded account, or top up,
+/// allocate, and assign a prefunded account. This must be expanded here because Gateway does not forward the transaction
+/// signer and Anchor cannot use the submitter-scoped payer PDA as its payer; `invoke_signed` supplies that signature only
+/// to the nested System Program calls. Unlike `init_if_needed`, an existing program-owned fill status is rejected as a
+/// replay. Storing the payer PDA in the existing `relayer` slot binds permissionless expiry reclaim to the correct float
+/// without changing the account layout; legacy fills continue to store their signing relayer there.
 #[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status<'info>(
     payer: &AccountInfo<'info>,
@@ -39,13 +43,11 @@ pub fn create_v5_fill_status<'info>(
     require_keys_eq!(*fill_status.owner, system_program::ID, V5Error::InvalidFillStatusAccount);
     require!(fill_status.data_is_empty(), V5Error::InvalidFillStatusAccount);
 
-    let rent = Rent::get()?;
     let current_lamports = fill_status.lamports();
-    let required_lamports = rent
+    let required_lamports = Rent::get()?
         .minimum_balance(V5_FILL_STATUS_SPACE)
         .max(1)
         .saturating_sub(current_lamports);
-    require_fill_payer_spend(payer.lamports(), required_lamports, rent.minimum_balance(0))?;
 
     let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[payer_bump]];
     let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, relay_hash, &[fill_status_bump]];
@@ -122,14 +124,6 @@ fn write_v5_fill_status(fill_status: &AccountInfo, payer: Pubkey, fill_deadline:
     account.try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
 }
 
-fn require_fill_payer_spend(balance: u64, amount: u64, rent_minimum: u64) -> Result<()> {
-    let remaining = balance
-        .checked_sub(amount)
-        .ok_or_else(|| error!(V5Error::InsufficientFillPayerBalance))?;
-    require!(remaining == 0 || remaining >= rent_minimum, V5Error::FillPayerRemainderNotRentExempt);
-    Ok(())
-}
-
 #[derive(Accounts)]
 pub struct WithdrawV5FillPayer<'info> {
     /// The float owner and the only withdrawal destination.
@@ -152,7 +146,6 @@ pub fn withdraw_v5_fill_payer(ctx: Context<WithdrawV5FillPayer>, amount: u64) ->
     let submitter = ctx.accounts.submitter.key();
     let balance = ctx.accounts.payer.lamports();
     let amount = if amount == u64::MAX { balance } else { amount };
-    require_fill_payer_spend(balance, amount, Rent::get()?.minimum_balance(0))?;
     let seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[ctx.bumps.payer]];
     invoke_signed(
         &system_instruction::transfer(ctx.accounts.payer.key, &submitter, amount),
@@ -171,21 +164,6 @@ pub fn withdraw_v5_fill_payer(ctx: Context<WithdrawV5FillPayer>, amount: u64) ->
 mod tests {
     use super::*;
     use anchor_lang::Discriminator;
-
-    fn assert_error_name(result: Result<()>, expected: &str) {
-        match result.unwrap_err() {
-            anchor_lang::error::Error::AnchorError(error) => assert_eq!(error.error_name, expected),
-            _ => panic!("expected Anchor error"),
-        }
-    }
-
-    #[test]
-    fn payer_spend_requires_sufficient_balance_and_rent_safe_remainder() {
-        assert!(require_fill_payer_spend(20, 10, 10).is_ok());
-        assert!(require_fill_payer_spend(20, 20, 10).is_ok());
-        assert_error_name(require_fill_payer_spend(20, 11, 10), "FillPayerRemainderNotRentExempt");
-        assert_error_name(require_fill_payer_spend(20, 21, 10), "InsufficientFillPayerBalance");
-    }
 
     #[test]
     fn v5_fill_status_keeps_legacy_layout_and_binds_the_payer_slot() {
