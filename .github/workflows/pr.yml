@@ -164,9 +164,7 @@ jobs:
         run: tar -cf svm-verified-test-binaries.tar target/deploy
       - name: Generate test-feature IDLs
         if: steps.filter.outputs.svm == 'true'
-        run: |
-          anchor idl build --program-name svm_spoke --out target/idl/svm_spoke.json --out-ts target/types/svm_spoke.ts -- --features test
-          anchor idl build --program-name mock_gateway --out target/idl/mock_gateway.json -- --features test
+        run: yarn generate-svm-test-idls
       - name: Test verified SVM build
         if: steps.filter.outputs.svm == 'true'
         run: anchor test --skip-build
