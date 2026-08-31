@@ -479,7 +479,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       state,
       fillStatus: fillStatusPDA,
     };
-    await program.methods.closeFillPda().accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+    await program.methods.closeFillPda().accounts(closeFillPdaAccounts).rpc();
 
     // Verify the fill PDA is closed
     const fillStatusAccountAfter = await connection.getAccountInfo(fillStatusPDA);

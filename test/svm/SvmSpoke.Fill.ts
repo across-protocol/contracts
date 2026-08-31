@@ -368,7 +368,7 @@ describe("svm_spoke.fill", () => {
 
     // Attempt to close the fill PDA before the fill deadline should fail.
     try {
-      await program.methods.closeFillPda().accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+      await program.methods.closeFillPda().accounts(closeFillPdaAccounts).rpc();
       assert.fail("Closing fill PDA should have failed before fill deadline");
     } catch (err: any) {
       assert.include(
@@ -382,7 +382,7 @@ describe("svm_spoke.fill", () => {
     await setCurrentTime(program, state, relayer, new BN(relayData.fillDeadline + 1));
 
     // Close the fill PDA
-    await program.methods.closeFillPda().accounts(closeFillPdaAccounts).signers([relayer]).rpc();
+    await program.methods.closeFillPda().accounts(closeFillPdaAccounts).rpc();
 
     // Verify the fill PDA is closed
     const fillStatusAccountAfter = await connection.getAccountInfo(accounts.fillStatus);
