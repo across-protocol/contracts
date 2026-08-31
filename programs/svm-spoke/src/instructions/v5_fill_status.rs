@@ -140,8 +140,7 @@ pub struct WithdrawV5FillPayer<'info> {
     #[account(
         mut,
         seeds = [V5_FILL_PAYER_SEED, submitter.key().as_ref()],
-        bump,
-        owner = system_program::ID
+        bump
     )]
     pub payer: UncheckedAccount<'info>,
 
