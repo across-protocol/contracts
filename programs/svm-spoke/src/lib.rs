@@ -448,25 +448,15 @@ pub mod svm_spoke {
     /// Closes the FillStatusAccount PDA to reclaim relayer rent.
     ///
     /// This function is used to close the FillStatusAccount associated with a specific relay hash, effectively marking
-    /// the end of its lifecycle. This can only be done once the fill deadline has passed. Relayers should do this for
-    /// all fills once they expire to reclaim their rent.
+    /// the end of its lifecycle. This can only be done once the fill deadline has passed. Anyone can trigger closure,
+    /// but rent is always returned to the recorded relayer.
     ///
     /// ### Required Accounts:
-    /// - signer (Signer): The account that authorizes the closure. Must be the relayer in the fill_status PDA.
+    /// - signer (Writable): The recorded relayer that receives rent; no signature is required.
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - fill_status (Writable): The FillStatusAccount PDA to be closed.
     pub fn close_fill_pda(ctx: Context<CloseFillPda>) -> Result<()> {
         instructions::close_fill_pda(ctx)
-    }
-
-    /// Permissionlessly closes an expired V5 FillStatusAccount back to the submitter-scoped payer float that created
-    /// it. Unlike the legacy close path, no relayer signature is forwarded or required.
-    pub fn reclaim_v5_fill_status(
-        ctx: Context<ReclaimV5FillStatus>,
-        relay_hash: [u8; 32],
-        submitter: Pubkey,
-    ) -> Result<()> {
-        instructions::reclaim_v5_fill_status(ctx, relay_hash, submitter)
     }
 
     /// Withdraws lamports from the signing submitter's V5 fill-status payer float back to that same submitter.
