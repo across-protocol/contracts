@@ -87,13 +87,6 @@ pub struct FilledRelay {
 }
 
 #[event]
-pub struct V5FillStatusReclaimed {
-    pub relay_hash: [u8; 32],
-    pub submitter: Pubkey,
-    pub amount: u64,
-}
-
-#[event]
 pub struct V5FillFloatWithdrawn {
     pub submitter: Pubkey,
     pub amount: u64,

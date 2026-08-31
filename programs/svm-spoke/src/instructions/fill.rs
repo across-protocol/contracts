@@ -201,8 +201,9 @@ fn unwrap_fill_relay_params(
 
 #[derive(Accounts)]
 pub struct CloseFillPda<'info> {
+    /// CHECK: The address constraint binds this non-signing account to the recorded rent recipient.
     #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
-    pub signer: Signer<'info>,
+    pub signer: UncheckedAccount<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
