@@ -118,9 +118,8 @@ The unchanged `FillStatusAccount.relayer` field stores the payer PDA for
 V5 fills (legacy fills continue to store their relayer), binding permissionless reclaim to the float that paid the
 rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode requires an empty callback
-message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. A pre-existing `RequestedSlowFill` remains
-replaceable as `ReplacedSlowFill`, matching the standard fill path, although new V5-tagged slow-fill requests are
-disabled.
+message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. As on EVM, V5-tagged relays are quarantined
+from the slow-fill lifecycle, so their fill status can only transition directly from an uninitialized PDA to `Filled`.
 
 Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
 or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,

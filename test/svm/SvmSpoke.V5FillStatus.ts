@@ -3,14 +3,12 @@ import { BN, Program } from "@coral-xyz/anchor";
 import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { assert } from "chai";
 import { randomBytes } from "crypto";
-import { calculateRelayHashUint8Array, intToU8Array32 } from "../../src/svm/web3-v1";
-import { RelayData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";
 
 describe("svm_spoke V5 fill-status payer", () => {
   anchor.setProvider(common.provider);
-  const { chainId, connection, provider } = common;
+  const { connection, provider } = common;
   const program = common.program as Program<SvmSpoke>;
   const providerPayer = (provider.wallet as anchor.Wallet).payer;
 
@@ -119,64 +117,6 @@ describe("svm_spoke V5 fill-status payer", () => {
     assert.isNull(await connection.getAccountInfo(status));
     assert.isNull(await connection.getAccountInfo(prefundedStatus));
     assert.equal(await connection.getBalance(payer), initialFloat + prefundedLamports);
-  });
-
-  it("replaces an existing requested slow fill", async () => {
-    const { state } = await common.initializeState();
-    const currentTime = Number(await common.getCurrentTime(program, state));
-    const relayData: RelayData = {
-      depositor: Keypair.generate().publicKey,
-      recipient: Keypair.generate().publicKey,
-      exclusiveRelayer: PublicKey.default,
-      inputToken: Keypair.generate().publicKey,
-      outputToken: Keypair.generate().publicKey,
-      inputAmount: intToU8Array32(1),
-      outputAmount: new BN(1),
-      originChainId: new BN(1),
-      depositId: intToU8Array32(1),
-      fillDeadline: currentTime + 10,
-      exclusivityDeadline: currentTime - 1,
-      message: Buffer.alloc(0),
-    };
-    const relayHash = Buffer.from(calculateRelayHashUint8Array(relayData, chainId));
-    const status = fillStatus(relayHash);
-    const requester = Keypair.generate();
-    await sendAndConfirmTransaction(
-      connection,
-      new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: providerPayer.publicKey,
-          toPubkey: requester.publicKey,
-          lamports: await connection.getMinimumBalanceForRentExemption(45),
-        })
-      ),
-      [providerPayer]
-    );
-    await program.methods
-      .requestSlowFill([...relayHash], relayData)
-      .accounts({
-        signer: requester.publicKey,
-        instructionParams: program.programId,
-        state,
-        fillStatus: status,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([requester])
-      .rpc();
-    assert.hasAnyKeys((await program.account.fillStatusAccount.fetch(status)).status, ["requestedSlowFill"]);
-
-    const submitter = Keypair.generate();
-    const payer = fillPayer(submitter.publicKey);
-    await program.methods
-      .testCreateV5FillStatus([...relayHash], relayData.fillDeadline)
-      .accounts({ submitter: submitter.publicKey, payer, fillStatus: status, systemProgram: SystemProgram.programId })
-      .signers([submitter])
-      .rpc();
-
-    const account = await program.account.fillStatusAccount.fetch(status);
-    assert.hasAnyKeys(account.status, ["filled"]);
-    assert.equal(account.relayer.toBase58(), payer.toBase58());
-    assert.equal(await connection.getBalance(payer), 0);
   });
 
   it("binds partial and full withdrawals to the submitter", async () => {
