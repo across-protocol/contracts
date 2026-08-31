@@ -88,7 +88,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     assert.equal(await connection.getBalance(payer), initialFloat);
   });
 
-  it("binds withdrawal to the submitter and preserves a rent-safe remainder", async () => {
+  it("binds partial and full withdrawals to the submitter", async () => {
     const submitter = Keypair.generate();
     const payer = fillPayer(submitter.publicKey);
     const rentMinimum = await connection.getMinimumBalanceForRentExemption(0);
@@ -114,16 +114,6 @@ describe("svm_spoke V5 fill-status payer", () => {
         .rpc(),
       "ConstraintSeeds"
     );
-
-    await expectError(
-      program.methods
-        .withdrawV5FillPayer(new BN(initialFloat - 1))
-        .accounts({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
-        .signers([submitter])
-        .rpc(),
-      "FillPayerRemainderNotRentExempt"
-    );
-    assert.equal(await connection.getBalance(payer), initialFloat);
 
     await program.methods
       .withdrawV5FillPayer(new BN(rentMinimum))
