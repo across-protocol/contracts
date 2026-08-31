@@ -5,22 +5,29 @@ use anchor_lang::{
 
 use crate::{
     constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED, V5_FILL_PAYER_SEED},
-    error::V5Error,
-    event::V5FillFloatWithdrawn,
+    error::{CommonError, V5Error},
+    event::{FillType, V5FillFloatWithdrawn},
     state::{FillStatus, FillStatusAccount},
+    v5::{derive_fill_status, derive_v5_fill_payer},
     ID,
 };
 
 pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE;
 
-/// Creates and records a V5 fill status using program-derived signers only. The account-creation sequence intentionally
-/// mirrors Anchor 0.31.1's generated `init_if_needed` implementation in
+/// Creates or updates a V5 fill status using program-derived signers only. For an uninitialized account, the creation
+/// sequence intentionally mirrors Anchor 0.31.1's generated `init_if_needed` implementation in
 /// `anchor-syn/src/codegen/accounts/constraints.rs::generate_create_account`: create an unfunded account, or top up,
 /// allocate, and assign a prefunded account. This must be expanded here because Gateway does not forward the transaction
 /// signer and Anchor cannot use the submitter-scoped payer PDA as its payer; `invoke_signed` supplies that signature only
-/// to the nested System Program calls. Unlike `init_if_needed`, an existing program-owned fill status is rejected as a
-/// replay. Storing the payer PDA in the existing `relayer` slot binds permissionless expiry reclaim to the correct float
-/// without changing the account layout; legacy fills continue to store their signing relayer there.
+/// to the nested System Program calls. Existing unfilled or requested-slow-fill accounts remain fillable, while a filled
+/// account is rejected as a replay. Storing the payer PDA in the existing `relayer` slot binds permissionless expiry
+/// reclaim to the correct float without changing the account layout; legacy fills continue to store their signing
+/// relayer there.
+///
+/// # Safety
+///
+/// The caller must source `submitter` from Gateway-attested context; this helper validates accounts derived from that
+/// value but does not authenticate the value itself.
 #[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status<'info>(
     payer: &AccountInfo<'info>,
@@ -29,9 +36,9 @@ pub fn create_v5_fill_status<'info>(
     submitter: &Pubkey,
     relay_hash: &[u8; 32],
     fill_deadline: u32,
-) -> Result<()> {
-    let (expected_payer, payer_bump) = Pubkey::find_program_address(&[V5_FILL_PAYER_SEED, submitter.as_ref()], &ID);
-    let (expected_fill_status, fill_status_bump) = Pubkey::find_program_address(&[FILL_STATUS_SEED, relay_hash], &ID);
+) -> Result<FillType> {
+    let (expected_payer, payer_bump) = derive_v5_fill_payer(submitter);
+    let (expected_fill_status, fill_status_bump) = derive_fill_status(relay_hash);
     require_keys_eq!(*payer.key, expected_payer, V5Error::InvalidFillPayer);
     require_keys_eq!(*fill_status.key, expected_fill_status, V5Error::InvalidFillStatusAccount);
     require_keys_eq!(*system_program_info.key, system_program::ID, V5Error::MissingAccount);
@@ -39,56 +46,73 @@ pub fn create_v5_fill_status<'info>(
     require!(payer.is_writable && fill_status.is_writable, V5Error::InvalidAccountMutability);
     require_keys_eq!(*payer.owner, system_program::ID, V5Error::InvalidFillPayer);
     require!(payer.data_is_empty(), V5Error::InvalidFillPayer);
-    require_keys_eq!(*fill_status.owner, system_program::ID, V5Error::InvalidFillStatusAccount);
-    require!(fill_status.data_is_empty(), V5Error::InvalidFillStatusAccount);
-
-    let current_lamports = fill_status.lamports();
-    let required_lamports = Rent::get()?
-        .minimum_balance(V5_FILL_STATUS_SPACE)
-        .max(1)
-        .saturating_sub(current_lamports);
-
-    let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[payer_bump]];
-    let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, relay_hash, &[fill_status_bump]];
-    if current_lamports == 0 {
-        invoke_signed(
-            &system_instruction::create_account(
-                payer.key,
-                fill_status.key,
-                required_lamports,
-                V5_FILL_STATUS_SPACE as u64,
-                &ID,
-            ),
-            &[payer.clone(), fill_status.clone(), system_program_info.clone()],
-            &[payer_seeds, fill_status_seeds],
-        )?;
+    let (fill_type, needs_init) = if fill_status.owner == &ID {
+        let data = fill_status.try_borrow_data()?;
+        let existing = FillStatusAccount::try_deserialize(&mut &data[..])
+            .map_err(|_| error!(V5Error::InvalidFillStatusAccount))?;
+        let fill_type = match existing.status {
+            FillStatus::Unfilled => FillType::FastFill,
+            FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
+            FillStatus::Filled => return err!(CommonError::RelayFilled),
+        };
+        (fill_type, false)
     } else {
-        if required_lamports > 0 {
+        require_keys_eq!(*fill_status.owner, system_program::ID, V5Error::InvalidFillStatusAccount);
+        require!(fill_status.data_is_empty(), V5Error::InvalidFillStatusAccount);
+        (FillType::FastFill, true)
+    };
+
+    if needs_init {
+        let current_lamports = fill_status.lamports();
+        let required_lamports = Rent::get()?
+            .minimum_balance(V5_FILL_STATUS_SPACE)
+            .max(1)
+            .saturating_sub(current_lamports);
+        let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[payer_bump]];
+        let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, relay_hash, &[fill_status_bump]];
+        if current_lamports == 0 {
             invoke_signed(
-                &system_instruction::transfer(payer.key, fill_status.key, required_lamports),
+                &system_instruction::create_account(
+                    payer.key,
+                    fill_status.key,
+                    required_lamports,
+                    V5_FILL_STATUS_SPACE as u64,
+                    &ID,
+                ),
                 &[payer.clone(), fill_status.clone(), system_program_info.clone()],
-                &[payer_seeds],
+                &[payer_seeds, fill_status_seeds],
+            )?;
+        } else {
+            if required_lamports > 0 {
+                invoke_signed(
+                    &system_instruction::transfer(payer.key, fill_status.key, required_lamports),
+                    &[payer.clone(), fill_status.clone(), system_program_info.clone()],
+                    &[payer_seeds],
+                )?;
+            }
+            invoke_signed(
+                &system_instruction::allocate(fill_status.key, V5_FILL_STATUS_SPACE as u64),
+                &[fill_status.clone(), system_program_info.clone()],
+                &[fill_status_seeds],
+            )?;
+            invoke_signed(
+                &system_instruction::assign(fill_status.key, &ID),
+                &[fill_status.clone(), system_program_info.clone()],
+                &[fill_status_seeds],
             )?;
         }
-        invoke_signed(
-            &system_instruction::allocate(fill_status.key, V5_FILL_STATUS_SPACE as u64),
-            &[fill_status.clone(), system_program_info.clone()],
-            &[fill_status_seeds],
-        )?;
-        invoke_signed(
-            &system_instruction::assign(fill_status.key, &ID),
-            &[fill_status.clone(), system_program_info.clone()],
-            &[fill_status_seeds],
-        )?;
     }
 
     FillStatusAccount { status: FillStatus::Filled, relayer: expected_payer, fill_deadline }
-        .try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
+        .try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])?;
+    Ok(fill_type)
 }
 
 #[cfg(feature = "test")]
 #[derive(Accounts)]
 pub struct TestCreateV5FillStatus<'info> {
+    pub submitter: Signer<'info>,
+
     /// CHECK: Validated by `create_v5_fill_status` against the submitter-scoped payer PDA.
     #[account(mut)]
     pub payer: UncheckedAccount<'info>,
@@ -104,10 +128,10 @@ pub struct TestCreateV5FillStatus<'info> {
 #[cfg(feature = "test")]
 pub fn test_create_v5_fill_status(
     ctx: Context<TestCreateV5FillStatus>,
-    submitter: Pubkey,
     relay_hash: [u8; 32],
     fill_deadline: u32,
 ) -> Result<()> {
+    let submitter = ctx.accounts.submitter.key();
     create_v5_fill_status(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fill_status.to_account_info(),
@@ -115,7 +139,8 @@ pub fn test_create_v5_fill_status(
         &submitter,
         &relay_hash,
         fill_deadline,
-    )
+    )?;
+    Ok(())
 }
 
 #[derive(Accounts)]
