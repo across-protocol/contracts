@@ -5,10 +5,9 @@ use anchor_lang::{
 
 use crate::{
     constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED, V5_FILL_PAYER_SEED},
-    error::{CommonError, SvmError, V5Error},
-    event::{V5FillFloatWithdrawn, V5FillStatusReclaimed},
-    state::{FillStatus, FillStatusAccount, State},
-    utils::get_current_time,
+    error::{CommonError, V5Error},
+    event::V5FillFloatWithdrawn,
+    state::{FillStatus, FillStatusAccount},
     ID,
 };
 
@@ -128,51 +127,6 @@ fn require_fill_payer_spend(balance: u64, amount: u64, rent_minimum: u64) -> Res
         .checked_sub(amount)
         .ok_or_else(|| error!(V5Error::InsufficientFillPayerBalance))?;
     require!(remaining == 0 || remaining >= rent_minimum, V5Error::FillPayerRemainderNotRentExempt);
-    Ok(())
-}
-
-#[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], submitter: Pubkey)]
-pub struct ReclaimV5FillStatus<'info> {
-    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
-    pub state: Account<'info, State>,
-
-    /// CHECK: The seed binds the close destination to the submitted identity; the fill status binds that payer to the
-    /// fill that originally funded its rent.
-    #[account(
-        mut,
-        seeds = [V5_FILL_PAYER_SEED, submitter.as_ref()],
-        bump,
-        owner = system_program::ID
-    )]
-    pub payer: UncheckedAccount<'info>,
-
-    #[account(
-        mut,
-        seeds = [FILL_STATUS_SEED, relay_hash.as_ref()],
-        bump,
-        constraint = fill_status.status == FillStatus::Filled @ V5Error::InvalidFillStatusAccount,
-        constraint = fill_status.relayer == payer.key() @ V5Error::InvalidFillPayer,
-        close = payer
-    )]
-    pub fill_status: Account<'info, FillStatusAccount>,
-}
-
-/// Permissionlessly closes an expired V5 fill status back to the submitter-scoped payer float that created it.
-pub fn reclaim_v5_fill_status(
-    ctx: Context<ReclaimV5FillStatus>,
-    relay_hash: [u8; 32],
-    submitter: Pubkey,
-) -> Result<()> {
-    require!(
-        get_current_time(&ctx.accounts.state)? > ctx.accounts.fill_status.fill_deadline,
-        SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed
-    );
-    emit!(V5FillStatusReclaimed {
-        relay_hash,
-        submitter,
-        amount: ctx.accounts.fill_status.to_account_info().lamports(),
-    });
     Ok(())
 }
 

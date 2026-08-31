@@ -65,10 +65,25 @@ describe("svm_spoke V5 fill-status payer", () => {
     );
 
     await common.setCurrentTime(program, state, Keypair.generate(), new BN(fillDeadline + 1));
-    await program.methods
-      .reclaimV5FillStatus([...relayHash], submitter)
-      .accounts({ state, payer, fillStatus: status })
-      .rpc();
+
+    const wrongRecipient = Keypair.generate().publicKey;
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: providerPayer.publicKey,
+          toPubkey: wrongRecipient,
+          lamports: await connection.getMinimumBalanceForRentExemption(0),
+        })
+      ),
+      [providerPayer]
+    );
+    await expectError(
+      program.methods.closeFillPda().accounts({ state, signer: wrongRecipient, fillStatus: status }).rpc(),
+      "NotRelayer"
+    );
+
+    await program.methods.closeFillPda().accounts({ state, signer: payer, fillStatus: status }).rpc();
     assert.isNull(await connection.getAccountInfo(status));
     assert.equal(await connection.getBalance(payer), initialFloat);
   });
