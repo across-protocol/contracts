@@ -459,8 +459,8 @@ pub mod svm_spoke {
         instructions::close_fill_pda(ctx)
     }
 
-    /// Withdraws lamports from the signing submitter's V5 fill-status payer float back to that same submitter.
-    /// `u64::MAX` withdraws the live balance.
+    /// Withdraws lamports from the signing submitter's V5 fill-status payer float back to that same submitter. Partial
+    /// withdrawals remain subject to the runtime's rent-state rules; `u64::MAX` withdraws the live balance.
     pub fn withdraw_v5_fill_payer(ctx: Context<WithdrawV5FillPayer>, amount: u64) -> Result<()> {
         instructions::withdraw_v5_fill_payer(ctx, amount)
     }
@@ -468,11 +468,10 @@ pub mod svm_spoke {
     #[cfg(feature = "test")]
     pub fn test_create_v5_fill_status(
         ctx: Context<TestCreateV5FillStatus>,
-        submitter: Pubkey,
         relay_hash: [u8; 32],
         fill_deadline: u32,
     ) -> Result<()> {
-        instructions::test_create_v5_fill_status(ctx, submitter, relay_hash, fill_deadline)
+        instructions::test_create_v5_fill_status(ctx, relay_hash, fill_deadline)
     }
 
     /// Claims a relayer refund for the caller.
