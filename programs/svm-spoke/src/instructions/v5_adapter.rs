@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-use super::{_deposit, _fill, create_v5_fill_status, DepositAccounts, DepositId, FillAccounts, FillStatusMode};
+use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusMode};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -126,23 +126,20 @@ fn execute_v5_fill<'info>(
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
     let accounts =
         load_v5_fill_accounts(ctx.remaining_accounts, &fill, relay.output_amount, &ctx_values.submitter, &relay_hash)?;
-    create_v5_fill_status(
-        &accounts.payer,
-        &accounts.fill_status,
-        &accounts.system_program,
-        &ctx_values.submitter,
-        &relay_hash,
-        relay.fill_deadline,
-    )?;
+    let V5FillAccounts { fill, payer, fill_status, system_program } = accounts;
     let event = _fill(
-        accounts.fill,
+        fill,
         &ctx.accounts.state,
         relay,
         jit.repayment_chain_id,
         jit.repayment_address,
         ctx_values.submitter,
-        FillStatusMode::V5,
-        false,
+        FillStatusMode::V5 {
+            payer: &payer,
+            fill_status: &fill_status,
+            system_program: &system_program,
+            relay_hash: &relay_hash,
+        },
         DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
     )?;
 
