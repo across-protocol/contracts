@@ -89,6 +89,7 @@ pub enum FillStatusMode<'a> {
 /// Executes the shared fill validation, replay/type resolution, and canonical event construction. Instruction
 /// handlers remain responsible for their intentionally distinct funding, status-account creation, callback, and event
 /// emission mechanics.
+// Preserve a separate SBF frame; inlining event construction can push stack-heavy fill handlers past the 4 KiB limit.
 #[inline(never)]
 pub fn _fill(
     state: &State,
