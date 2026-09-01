@@ -29,7 +29,6 @@ pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::
 /// The caller must source `submitter` from Gateway-attested context, derive `relay_hash` from the same validated V5
 /// `RelayData` that supplies `fill_deadline`, and reject an expired `fill_deadline` before calling this helper. This
 /// helper validates accounts derived from those values but does not authenticate or bind the values themselves.
-#[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status<'info>(
     payer: &AccountInfo<'info>,
     fill_status: &AccountInfo<'info>,
@@ -115,7 +114,7 @@ pub struct TestCreateV5FillStatus<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Test-only entrypoint for exercising the PDA-signed account-creation path before Step 4 wires it into V5 Fill.
+/// Test-only entrypoint for focused coverage of the PDA-signed account-creation lifecycle.
 #[cfg(feature = "test")]
 pub fn test_create_v5_fill_status(
     ctx: Context<TestCreateV5FillStatus>,

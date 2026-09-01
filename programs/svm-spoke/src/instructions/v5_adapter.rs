@@ -6,22 +6,25 @@ use anchor_spl::{
         extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
         state::Mint as SplMint,
     },
-    token_interface::{Mint, TokenAccount},
+    token_interface::{Mint, TokenAccount, TransferChecked},
 };
 
 use crate::{
-    constants::{GATEWAY_PROGRAM_ID, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE_SEED},
+    constants::{GATEWAY_PROGRAM_ID, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE_SEED},
     error::{CommonError, V5Error},
+    event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::State,
-    utils::DelegatePda,
+    utils::{get_current_time, get_relay_hash, hash_non_empty_message, transfer_from_with_delegate, DelegatePda},
     v5::{
-        decode_v5_adapter_input, decode_v5_deposit_jit, derive_gateway_vault_authority, derive_v5_deposit_id,
+        decode_v5_adapter_input, decode_v5_deposit_jit, decode_v5_fill_jit, derive_fill_status,
+        derive_gateway_vault_authority, derive_v5_deposit_id, derive_v5_fill_delegate, derive_v5_fill_payer,
         derive_v5_source_delegate, find_v5_account, require_gateway_dispatch_authority, require_v5_delegate_allowance,
-        resolve_v5_deposit_modifications, resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5GatewayContext,
+        resolve_v5_deposit_modifications, resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5FillInput,
+        V5GatewayContext,
     },
 };
 
-use super::{_deposit, DepositAccounts, DepositId};
+use super::{_deposit, create_v5_fill_status, DepositAccounts, DepositId};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -42,7 +45,7 @@ pub fn adapter_execute_across_v5<'info>(
     require_gateway_dispatch_authority(&ctx.accounts.dispatch_authority)?;
     match decode_v5_adapter_input(&input)?.mode {
         V5AdapterMode::Deposit(deposit) => execute_v5_deposit(ctx, ctx_values, deposit, &jit_data),
-        V5AdapterMode::Fill(_) => err!(V5Error::UnsupportedMode),
+        V5AdapterMode::Fill(fill) => execute_v5_fill(ctx, ctx_values, fill, &jit_data),
     }
 }
 
@@ -98,6 +101,156 @@ fn execute_v5_deposit<'info>(
     )?;
     emit_cpi!(event);
     Ok(())
+}
+
+fn execute_v5_fill<'info>(
+    ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+    ctx_values: V5GatewayContext,
+    fill: V5FillInput,
+    jit_data: &[u8],
+) -> Result<()> {
+    require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
+
+    let jit = decode_v5_fill_jit(jit_data)?;
+    let relay = &jit.relay_data;
+    require!(
+        relay.recipient == fill.recipient
+            && relay.output_token == fill.output_token
+            && relay.message.len() == 64
+            && relay.message[..32] == V5_MAGIC_PREFIX
+            && relay.message[32..] == ctx_values.step_id,
+        V5Error::FillCommitmentMismatch
+    );
+    require!(relay.output_amount >= fill.min_output_amount, V5Error::FillOutputAmountTooLow);
+
+    let current_time = get_current_time(&ctx.accounts.state)?;
+    if relay.exclusive_relayer != ctx_values.submitter
+        && relay.exclusivity_deadline >= current_time
+        && relay.exclusive_relayer != Pubkey::default()
+    {
+        return err!(CommonError::NotExclusiveRelayer);
+    }
+    require!(relay.fill_deadline >= current_time, CommonError::ExpiredFillDeadline);
+
+    let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
+    let accounts =
+        load_v5_fill_accounts(ctx.remaining_accounts, &fill, relay.output_amount, &ctx_values.submitter, &relay_hash)?;
+    create_v5_fill_status(
+        &accounts.payer,
+        &accounts.fill_status,
+        &accounts.system_program,
+        &ctx_values.submitter,
+        &relay_hash,
+        relay.fill_deadline,
+    )?;
+
+    if let Some(fill_delegate) = accounts.fill_delegate {
+        transfer_from_with_delegate(
+            TransferChecked {
+                from: accounts.gateway_vault.clone(),
+                mint: accounts.mint.clone(),
+                to: accounts.recipient.clone(),
+                authority: fill_delegate,
+            },
+            accounts.token_program.clone(),
+            relay.output_amount,
+            accounts.mint_decimals,
+            DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
+        )?;
+    }
+
+    let witness_hash = hash_non_empty_message(&relay.message);
+    emit_cpi!(FilledRelay {
+        input_token: relay.input_token,
+        output_token: relay.output_token,
+        input_amount: relay.input_amount,
+        output_amount: relay.output_amount,
+        repayment_chain_id: jit.repayment_chain_id,
+        origin_chain_id: relay.origin_chain_id,
+        deposit_id: relay.deposit_id,
+        fill_deadline: relay.fill_deadline,
+        exclusivity_deadline: relay.exclusivity_deadline,
+        exclusive_relayer: relay.exclusive_relayer,
+        relayer: jit.repayment_address,
+        depositor: relay.depositor,
+        recipient: relay.recipient,
+        message_hash: witness_hash,
+        relay_execution_info: RelayExecutionEventInfo {
+            updated_recipient: relay.recipient,
+            updated_message_hash: [0u8; 32],
+            updated_output_amount: relay.output_amount,
+            fill_type: FillType::FastFill,
+        },
+    });
+    Ok(())
+}
+
+struct V5FillAccounts<'info> {
+    gateway_vault: AccountInfo<'info>,
+    recipient: AccountInfo<'info>,
+    fill_delegate: Option<AccountInfo<'info>>,
+    mint: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    payer: AccountInfo<'info>,
+    fill_status: AccountInfo<'info>,
+    system_program: AccountInfo<'info>,
+    mint_decimals: u8,
+}
+
+fn load_v5_fill_accounts<'info>(
+    remaining_accounts: &[AccountInfo<'info>],
+    fill: &V5FillInput,
+    output_amount: u64,
+    submitter: &Pubkey,
+    relay_hash: &[u8; 32],
+) -> Result<V5FillAccounts<'info>> {
+    let mint_info = find_v5_account(remaining_accounts, &fill.output_token, false)?;
+    let token_program_id = *mint_info.owner;
+    require!(
+        token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
+        V5Error::InvalidTokenAccount
+    );
+    let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
+    require!(token_program.executable, V5Error::InvalidTokenAccount);
+    reject_unsupported_mint_extensions(mint_info, &token_program_id)?;
+
+    let (vault_authority, _) = derive_gateway_vault_authority();
+    let gateway_vault =
+        get_associated_token_address_with_program_id(&vault_authority, &fill.output_token, &token_program_id);
+    let recipient =
+        get_associated_token_address_with_program_id(&fill.recipient, &fill.output_token, &token_program_id);
+    let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
+    let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
+    let source = load_token_account(gateway_vault_info, &token_program_id, &fill.output_token, &vault_authority)?;
+    load_token_account(recipient_info, &token_program_id, &fill.output_token, &fill.recipient)?;
+
+    let (fill_delegate, _) = derive_v5_fill_delegate();
+    let fill_delegate_info = if gateway_vault == recipient {
+        require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
+        None
+    } else {
+        require!(source.delegate == COption::Some(fill_delegate), V5Error::InvalidTokenAccount);
+        require_v5_delegate_allowance(source.delegated_amount, output_amount)?;
+        Some(find_v5_account(remaining_accounts, &fill_delegate, false)?.clone())
+    };
+
+    let (payer, _) = derive_v5_fill_payer(submitter);
+    let payer_info = find_v5_account(remaining_accounts, &payer, true)?;
+    let (fill_status, _) = derive_fill_status(relay_hash);
+    let fill_status_info = find_v5_account(remaining_accounts, &fill_status, true)?;
+    let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
+
+    Ok(V5FillAccounts {
+        gateway_vault: gateway_vault_info.clone(),
+        recipient: recipient_info.clone(),
+        fill_delegate: fill_delegate_info,
+        mint: mint_info.clone(),
+        token_program: token_program.clone(),
+        payer: payer_info.clone(),
+        fill_status: fill_status_info.clone(),
+        system_program: system_program_info.clone(),
+        mint_decimals: load_mint(mint_info)?.decimals,
+    })
 }
 
 fn load_v5_deposit_accounts<'info>(

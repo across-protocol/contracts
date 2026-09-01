@@ -354,22 +354,23 @@ pub mod svm_spoke {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
-    /// Executes one Gateway-authenticated Across V5 adapter branch. Wire version 1 enables source deposits; the
-    /// reserved Fill discriminant fails closed until its destination behavior is enabled.
+    /// Executes one Gateway-authenticated Across V5 source-deposit or destination-fill adapter branch.
     ///
     /// ### Required Accounts:
     /// - dispatch_authority (Signer): Gateway PDA derived from ["dispatch_authority", svm_spoke::ID].
     /// - state: Spoke state PDA derived from ["state", state.seed], where `state.seed` is 0 on mainnet.
     /// - event_authority: Anchor event CPI authority derived from ["__event_authority"].
     /// - program: The SVM Spoke program.
-    /// - remaining accounts: The input mint, its token program, writable canonical Gateway vault ATA, writable
-    ///   canonical SpokePool vault ATA, and source delegate PDA derived from ["v5_source_delegate"]. Account order
-    ///   is unrestricted because each account is resolved by its authenticated expected key.
+    /// - remaining accounts: Branch-specific mint and token-program accounts plus writable canonical token accounts.
+    ///   Deposit mode also requires the SpokePool vault and ["v5_source_delegate"]. Fill mode requires the
+    ///   submitter-scoped ["v5_fill_payer"], relay-scoped fill-status PDA, and System Program; external delivery also
+    ///   requires the recipient ATA and ["v5_fill_delegate"]. Account order is unrestricted because each account is
+    ///   resolved by its authenticated expected key.
     ///
     /// ### Parameters:
     /// - ctx_values: Gateway-attested step ID, path ID, and submitter.
     /// - input: Strictly encoded, versioned `Deposit | Fill` committed input.
-    /// - jit_data: Branch-specific JIT data; empty when no permitted source-deposit modification is applied.
+    /// - jit_data: Branch-specific JIT data: optional signed source modifications or destination relay/repayment data.
     pub fn adapter_execute_across_v5<'info>(
         ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
         ctx_values: V5GatewayContext,
