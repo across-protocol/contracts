@@ -1,8 +1,7 @@
 # SVM SpokePool V5 adapter specification (wire version 1)
 
 This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. Wire version 1
-currently enables `Deposit`; the reserved `Fill` discriminant returns `UnsupportedMode` until destination behavior
-lands.
+enables both `Deposit` and `Fill`.
 
 ## Dispatch ABI and accounts
 
