@@ -173,9 +173,6 @@ pub fn _fill(
             (FillStatusStorage::V5(fill_status), FillType::FastFill, false, relayer)
         }
     };
-    // V5 reserves the relayer slot for its payer PDA so expiry reclaim restores the correct rent float.
-    fill_status.write_filled(status_relayer, relay_data.fill_deadline)?;
-
     let message_hash = hash_non_empty_message(&relay_data.message);
     if let Some(delegate) = accounts.delegate {
         transfer_from_with_delegate(
@@ -188,6 +185,8 @@ pub fn _fill(
     } else {
         require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount);
     }
+    // V5 reserves the relayer slot for its payer PDA so expiry reclaim restores the correct rent float.
+    fill_status.write_filled(status_relayer, relay_data.fill_deadline)?;
 
     Ok(FilledRelay {
         input_token: relay_data.input_token,
@@ -454,6 +453,7 @@ mod tests {
             ),
             "InvalidTokenAccount",
         );
+        assert!(matches!(status.status, FillStatus::Unfilled));
     }
 }
 
