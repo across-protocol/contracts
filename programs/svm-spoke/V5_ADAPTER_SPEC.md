@@ -2,7 +2,7 @@
 
 This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. `V5` identifies the
 Across protocol generation, while `V1` identifies the first SVM wire-schema revision of a context or input variant.
-`DepositV1` is callable; the reserved `FillV1` variant returns `UnsupportedMode` until destination behavior lands.
+Both `DepositV1` and `FillV1` are callable.
 
 ## Dispatch ABI and accounts
 
