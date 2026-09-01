@@ -144,8 +144,8 @@ exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. The legacy and V5 entrypoints share the same internal `_fill` core for pause, exclusivity, deadline,
-legacy replay/fill-type resolution, callback-mode event fields, and canonical event construction. Each handler retains
-only its intentionally distinct funding, status-account creation, and callback mechanics.
+token delivery, legacy replay/fill-type resolution, callback-mode event fields, and canonical event construction. Each
+handler retains only its intentionally distinct status-account lifecycle and callback mechanics.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
