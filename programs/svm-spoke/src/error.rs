@@ -113,6 +113,12 @@ pub enum V5Error {
     InvalidFillPayer,
     #[msg("Invalid Across V5 fill status account!")]
     InvalidFillStatusAccount,
+    #[msg("Across V5 fill data does not match the committed input!")]
+    FillCommitmentMismatch,
+    #[msg("Across V5 fill output amount is below the committed floor!")]
+    FillOutputAmountTooLow,
+    #[msg("Across V5 Gateway vault balance is insufficient!")]
+    InsufficientVaultBalance,
 }
 
 // CCTP specific errors.
