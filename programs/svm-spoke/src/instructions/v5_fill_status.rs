@@ -69,7 +69,6 @@ impl PendingV5FillStatus<'_, '_> {
 /// then complete semantic validation before calling this helper. Every successful instruction path must then call
 /// `PendingV5FillStatus::write_filled` with the unexpired deadline committed in that `RelayData`; failed paths atomically
 /// roll back the zeroed intermediate account.
-#[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status_account<'a, 'info>(
     payer: &AccountInfo<'info>,
     fill_status: &AccountInfo<'info>,
