@@ -6,7 +6,7 @@ use anchor_spl::{
         extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
         state::Mint as SplMint,
     },
-    token_interface::{Mint, TokenAccount, TransferChecked},
+    token_interface::{Mint, TokenAccount},
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     },
     error::{CommonError, V5Error},
     state::State,
-    utils::{get_relay_hash, transfer_from_with_delegate, DelegatePda},
+    utils::{get_relay_hash, DelegatePda},
     v5::{
         decode_v5_adapter_input, decode_v5_deposit_jit, decode_v5_fill_jit, derive_fill_status,
         derive_v5_deposit_id, derive_v5_fill_payer, find_v5_account, require_gateway_dispatch_authority,
@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::{_deposit, _fill, create_v5_fill_status, DepositAccounts, DepositId, FillStatusMode};
+use super::{_deposit, _fill, create_v5_fill_status, DepositAccounts, DepositId, FillAccounts, FillStatusMode};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -126,15 +126,6 @@ fn execute_v5_fill<'info>(
     require!(relay.output_amount >= fill.min_output_amount, V5Error::FillOutputAmountTooLow);
 
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
-    let event = _fill(
-        &ctx.accounts.state,
-        relay,
-        jit.repayment_chain_id,
-        jit.repayment_address,
-        ctx_values.submitter,
-        FillStatusMode::V5,
-        false,
-    )?;
     let accounts =
         load_v5_fill_accounts(ctx.remaining_accounts, &fill, relay.output_amount, &ctx_values.submitter, &relay_hash)?;
     create_v5_fill_status(
@@ -145,36 +136,27 @@ fn execute_v5_fill<'info>(
         &relay_hash,
         relay.fill_deadline,
     )?;
-
-    if let Some(fill_delegate) = accounts.fill_delegate {
-        transfer_from_with_delegate(
-            TransferChecked {
-                from: accounts.gateway_vault,
-                mint: accounts.mint,
-                to: accounts.recipient,
-                authority: fill_delegate,
-            },
-            accounts.token_program,
-            relay.output_amount,
-            accounts.mint_decimals,
-            DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
-        )?;
-    }
+    let event = _fill(
+        accounts.fill,
+        &ctx.accounts.state,
+        relay,
+        jit.repayment_chain_id,
+        jit.repayment_address,
+        ctx_values.submitter,
+        FillStatusMode::V5,
+        false,
+        DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
+    )?;
 
     emit_cpi!(event);
     Ok(())
 }
 
 struct V5FillAccounts<'info> {
-    gateway_vault: AccountInfo<'info>,
-    recipient: AccountInfo<'info>,
-    fill_delegate: Option<AccountInfo<'info>>,
-    mint: AccountInfo<'info>,
-    token_program: AccountInfo<'info>,
+    fill: FillAccounts<'info>,
     payer: AccountInfo<'info>,
     fill_status: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
-    mint_decimals: u8,
 }
 
 fn load_v5_fill_accounts<'info>(
@@ -225,15 +207,17 @@ fn load_v5_fill_accounts<'info>(
     let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
 
     Ok(V5FillAccounts {
-        gateway_vault: gateway_vault_info.clone(),
-        recipient: recipient_info.clone(),
-        fill_delegate: fill_delegate_info,
-        mint: mint_info.clone(),
-        token_program: token_program.clone(),
+        fill: FillAccounts {
+            from: gateway_vault_info.clone(),
+            recipient: recipient_info.clone(),
+            delegate: fill_delegate_info,
+            mint: mint_info.clone(),
+            token_program: token_program.clone(),
+            mint_decimals,
+        },
         payer: payer_info.clone(),
         fill_status: fill_status_info.clone(),
         system_program: system_program_info.clone(),
-        mint_decimals,
     })
 }
 
