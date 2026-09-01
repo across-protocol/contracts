@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusMode};
+use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillExecution, FillStatusMode};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -126,11 +126,12 @@ fn execute_v5_fill<'info>(
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
     let accounts =
         load_v5_fill_accounts(ctx.remaining_accounts, &fill, relay.output_amount, &ctx_values.submitter, &relay_hash)?;
-    let V5FillAccounts { fill, payer, fill_status, system_program } = accounts;
+    let V5FillAccounts { fill: fill_accounts, payer, fill_status, system_program } = accounts;
     let event = _fill(
-        fill,
+        fill_accounts,
         &ctx.accounts.state,
         relay,
+        FillExecution::delivery_only(&fill.message),
         jit.repayment_chain_id,
         jit.repayment_address,
         ctx_values.submitter,
