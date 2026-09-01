@@ -14,30 +14,27 @@ use crate::{
 
 pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE;
 
-/// Creates or updates a V5 fill status using program-derived signers only. For an uninitialized account, the creation
+/// Creates or assigns the zeroed storage for a V5 fill-status PDA using program-derived signers only. The creation
 /// sequence intentionally mirrors Anchor 0.31.1's generated `init_if_needed` implementation in
 /// `anchor-syn/src/codegen/accounts/constraints.rs::generate_create_account`: create an unfunded account, or top up,
 /// allocate, and assign a prefunded account. This must be expanded here because Gateway does not forward the transaction
 /// signer and Anchor cannot use the submitter-scoped payer PDA as its payer; `invoke_signed` supplies that signature only
 /// to the nested System Program calls. An existing filled account is rejected as a replay; other program-owned states
-/// are invalid because V5-tagged relays cannot enter the slow-fill lifecycle. Storing the payer PDA in the existing
-/// `relayer` slot binds permissionless expiry reclaim to the correct float without changing the account layout; legacy
-/// fills continue to store their signing relayer there.
+/// are invalid because V5-tagged relays cannot enter the slow-fill lifecycle. The caller owns account serialization and
+/// the semantic status transition, mirroring Anchor's exit behavior.
 ///
 /// # Safety
 ///
-/// The caller must source `submitter` from Gateway-attested context, derive `relay_hash` from the same validated V5
-/// `RelayData` that supplies `fill_deadline`, and reject an expired `fill_deadline` before calling this helper. This
-/// helper validates accounts derived from those values but does not authenticate or bind the values themselves.
-#[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
-pub fn create_v5_fill_status<'info>(
+/// The caller must source `submitter` from Gateway-attested context, derive `relay_hash` from the validated V5
+/// `RelayData`, and complete semantic validation before calling this helper. This helper validates accounts derived from
+/// those values but does not authenticate or bind the values themselves.
+pub fn create_v5_fill_status_account<'info>(
     payer: &AccountInfo<'info>,
     fill_status: &AccountInfo<'info>,
     system_program_info: &AccountInfo<'info>,
     submitter: &Pubkey,
     relay_hash: &[u8; 32],
-    fill_deadline: u32,
-) -> Result<()> {
+) -> Result<Pubkey> {
     let (expected_payer, payer_bump) = derive_v5_fill_payer(submitter);
     let (expected_fill_status, fill_status_bump) = derive_fill_status(relay_hash);
     require_keys_eq!(*payer.key, expected_payer, V5Error::InvalidFillPayer);
@@ -95,8 +92,7 @@ pub fn create_v5_fill_status<'info>(
         )?;
     }
 
-    FillStatusAccount { status: FillStatus::Filled, relayer: expected_payer, fill_deadline }
-        .try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
+    Ok(expected_payer)
 }
 
 #[cfg(feature = "test")]
@@ -104,18 +100,18 @@ pub fn create_v5_fill_status<'info>(
 pub struct TestCreateV5FillStatus<'info> {
     pub submitter: Signer<'info>,
 
-    /// CHECK: Validated by `create_v5_fill_status` against the submitter-scoped payer PDA.
+    /// CHECK: Validated by `create_v5_fill_status_account` against the submitter-scoped payer PDA.
     #[account(mut)]
     pub payer: UncheckedAccount<'info>,
 
-    /// CHECK: Validated by `create_v5_fill_status` against the relay-scoped fill-status PDA.
+    /// CHECK: Validated by `create_v5_fill_status_account` against the relay-scoped fill-status PDA.
     #[account(mut)]
     pub fill_status: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-/// Test-only entrypoint for exercising the PDA-signed account-creation path before Step 4 wires it into V5 Fill.
+/// Test-only entrypoint for focused coverage of the PDA-signed account-creation lifecycle.
 #[cfg(feature = "test")]
 pub fn test_create_v5_fill_status(
     ctx: Context<TestCreateV5FillStatus>,
@@ -123,15 +119,16 @@ pub fn test_create_v5_fill_status(
     fill_deadline: u32,
 ) -> Result<()> {
     let submitter = ctx.accounts.submitter.key();
-    create_v5_fill_status(
+    let relayer = create_v5_fill_status_account(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fill_status.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
         &submitter,
         &relay_hash,
-        fill_deadline,
     )?;
-    Ok(())
+    // Mirror production finalization for this lifecycle-only test entrypoint.
+    FillStatusAccount { status: FillStatus::Filled, relayer, fill_deadline }
+        .try_serialize(&mut &mut ctx.accounts.fill_status.try_borrow_mut_data()?[..])
 }
 
 #[derive(Accounts)]

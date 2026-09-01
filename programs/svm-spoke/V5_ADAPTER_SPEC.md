@@ -1,8 +1,7 @@
 # SVM SpokePool V5 adapter specification (wire version 1)
 
 This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. Wire version 1
-currently enables `Deposit`; the reserved `Fill` discriminant returns `UnsupportedMode` until destination behavior
-lands.
+enables both `Deposit` and `Fill`.
 
 ## Dispatch ABI and accounts
 
@@ -137,6 +136,22 @@ only signed, committed JIT modifications, derives the final 32-byte deposit ID d
 identity and live context, and emits the standard `FundsDeposited` event with
 `message = V5_MAGIC_PREFIX || dst_step_id`. Any later failure in the same transaction rolls back the approval,
 transfer, and event atomically.
+
+## Enabled destination-fill behavior
+
+Fill mode strictly decodes the JIT relay and repayment data, binds the recipient, output mint, minimum amount, and
+exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
+Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
+submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
+message hash. The legacy and V5 entrypoints share the same internal `_fill` core for pause, exclusivity, deadline,
+replay protection and status transition, token delivery, fill-type and callback-mode event fields, and canonical event
+construction. Each handler retains only its branch-specific account loading, callback, and event-emission mechanics.
+
+External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
+from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
+vault itself, the adapter instead authenticates its live balance, records the fill in place, and performs no approval
+or self-transfer; the continuing atomic tape must consume the output. Any later failure rolls back token, fill-status,
+and payer-float changes together.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation

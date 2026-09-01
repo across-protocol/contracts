@@ -1,5 +1,4 @@
-//! Wire, cryptographic, and PDA helpers for the Gateway-facing V5 adapter. Source deposits are live in wire version
-//! 1; the reserved fill branch remains closed until its destination behavior lands.
+//! Wire, cryptographic, and PDA helpers for the Gateway-facing V5 source-deposit and destination-fill adapter.
 
 use anchor_lang::{
     prelude::*,
@@ -376,6 +375,7 @@ mod tests {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
         assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
         assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 7_014);
+        assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 7_017);
     }
 
     #[test]
