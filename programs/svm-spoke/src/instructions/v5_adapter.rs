@@ -12,9 +12,8 @@ use anchor_spl::{
 use crate::{
     constants::{GATEWAY_PROGRAM_ID, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE_SEED},
     error::{CommonError, V5Error},
-    event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::State,
-    utils::{get_current_time, get_relay_hash, hash_non_empty_message, transfer_from_with_delegate, DelegatePda},
+    utils::{get_relay_hash, transfer_from_with_delegate, DelegatePda},
     v5::{
         decode_v5_adapter_input, decode_v5_deposit_jit, decode_v5_fill_jit, derive_fill_status,
         derive_gateway_vault_authority, derive_v5_deposit_id, derive_v5_fill_delegate, derive_v5_fill_payer,
@@ -24,7 +23,7 @@ use crate::{
     },
 };
 
-use super::{_deposit, create_v5_fill_status, DepositAccounts, DepositId};
+use super::{_deposit, _fill, create_v5_fill_status, DepositAccounts, DepositId, FillStatusMode};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -109,6 +108,7 @@ fn execute_v5_fill<'info>(
     fill: V5FillInput,
     jit_data: &[u8],
 ) -> Result<()> {
+    // Fail fast before decoding branch-specific JIT data; `_fill` repeats the invariant for both entrypoints.
     require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
 
     let jit = decode_v5_fill_jit(jit_data)?;
@@ -123,16 +123,16 @@ fn execute_v5_fill<'info>(
     );
     require!(relay.output_amount >= fill.min_output_amount, V5Error::FillOutputAmountTooLow);
 
-    let current_time = get_current_time(&ctx.accounts.state)?;
-    if relay.exclusive_relayer != ctx_values.submitter
-        && relay.exclusivity_deadline >= current_time
-        && relay.exclusive_relayer != Pubkey::default()
-    {
-        return err!(CommonError::NotExclusiveRelayer);
-    }
-    require!(relay.fill_deadline >= current_time, CommonError::ExpiredFillDeadline);
-
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
+    let event = _fill(
+        &ctx.accounts.state,
+        relay,
+        jit.repayment_chain_id,
+        jit.repayment_address,
+        ctx_values.submitter,
+        FillStatusMode::V5,
+        false,
+    )?;
     let accounts =
         load_v5_fill_accounts(ctx.remaining_accounts, &fill, relay.output_amount, &ctx_values.submitter, &relay_hash)?;
     create_v5_fill_status(
@@ -147,41 +147,19 @@ fn execute_v5_fill<'info>(
     if let Some(fill_delegate) = accounts.fill_delegate {
         transfer_from_with_delegate(
             TransferChecked {
-                from: accounts.gateway_vault.clone(),
-                mint: accounts.mint.clone(),
-                to: accounts.recipient.clone(),
+                from: accounts.gateway_vault,
+                mint: accounts.mint,
+                to: accounts.recipient,
                 authority: fill_delegate,
             },
-            accounts.token_program.clone(),
+            accounts.token_program,
             relay.output_amount,
             accounts.mint_decimals,
             DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
         )?;
     }
 
-    let witness_hash = hash_non_empty_message(&relay.message);
-    emit_cpi!(FilledRelay {
-        input_token: relay.input_token,
-        output_token: relay.output_token,
-        input_amount: relay.input_amount,
-        output_amount: relay.output_amount,
-        repayment_chain_id: jit.repayment_chain_id,
-        origin_chain_id: relay.origin_chain_id,
-        deposit_id: relay.deposit_id,
-        fill_deadline: relay.fill_deadline,
-        exclusivity_deadline: relay.exclusivity_deadline,
-        exclusive_relayer: relay.exclusive_relayer,
-        relayer: jit.repayment_address,
-        depositor: relay.depositor,
-        recipient: relay.recipient,
-        message_hash: witness_hash,
-        relay_execution_info: RelayExecutionEventInfo {
-            updated_recipient: relay.recipient,
-            updated_message_hash: [0u8; 32],
-            updated_output_amount: relay.output_amount,
-            fill_type: FillType::FastFill,
-        },
-    });
+    emit_cpi!(event);
     Ok(())
 }
 
@@ -221,6 +199,7 @@ fn load_v5_fill_accounts<'info>(
         get_associated_token_address_with_program_id(&fill.recipient, &fill.output_token, &token_program_id);
     let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
     let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
+    let mint_decimals = load_mint(mint_info)?.decimals;
     let source = load_token_account(gateway_vault_info, &token_program_id, &fill.output_token, &vault_authority)?;
     load_token_account(recipient_info, &token_program_id, &fill.output_token, &fill.recipient)?;
 
@@ -249,7 +228,7 @@ fn load_v5_fill_accounts<'info>(
         payer: payer_info.clone(),
         fill_status: fill_status_info.clone(),
         system_program: system_program_info.clone(),
-        mint_decimals: load_mint(mint_info)?.decimals,
+        mint_decimals,
     })
 }
 
