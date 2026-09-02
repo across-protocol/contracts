@@ -85,7 +85,6 @@ library HyperCoreLib {
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
-    error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint64 erc20CoreIndex);
     error NativeTransferFailed();
 
