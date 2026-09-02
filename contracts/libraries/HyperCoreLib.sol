@@ -423,11 +423,13 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Converts a core index id to the address that bridges it back to the same address on HyperEVM
+     * @notice Resolves a core index id to its system address, the bridge account shared by both chains. On HyperEVM,
+     *         a transfer to it credits the sender's spot balance on HyperCore; on HyperCore, a spot send to it
+     *         credits the sender's balance on HyperEVM.
      * @dev Native HYPE uses a fixed system address; every other token derives one from its Core index. An index
      *      with no linked HyperEVM contract has no EVM side to credit, so a send to it would strand the funds.
      * @param erc20CoreIndex The core token index id to convert
-     * @return The system address to send to on HyperCore
+     * @return The token's system address, valid as a destination on either chain
      */
     function toSystemAddress(uint64 erc20CoreIndex) internal view returns (address) {
         // Only linked tokens convert between Core and EVM (docs: "HyperCore <> HyperEVM transfers"), and
