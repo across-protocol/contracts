@@ -394,15 +394,6 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Whether `erc20CoreIndex` is native HYPE on the current chain.
-     * @param erc20CoreIndex The HyperCore index id of the token
-     * @return True if the index is native HYPE, false otherwise
-     */
-    function isHype(uint32 erc20CoreIndex) internal view returns (bool) {
-        return erc20CoreIndex == hypeCoreIndex();
-    }
-
-    /**
      * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
      * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
      * @param erc20CoreIndex The HyperCore index id of the token
@@ -415,8 +406,9 @@ library HyperCoreLib {
         uint64 coreAmount,
         uint64 coreBufferAmount
     ) internal view returns (bool) {
-        address bridgeAddress = toSystemAddress(erc20CoreIndex);
-        uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
+        // Deliberately not `toSystemAddress`: this is a predicate, and an unlinked token's system address simply
+        // holds nothing, so it evaluates to false instead of reverting a fill that has a HyperEVM fallback.
+        uint64 currentBridgeBalance = spotBalance(toSystemAddressNoRevert(erc20CoreIndex), erc20CoreIndex);
 
         // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
         return currentBridgeBalance >= coreAmount + coreBufferAmount;
@@ -434,9 +426,24 @@ library HyperCoreLib {
         // linkage resolves via tokenInfo, declared `tokenInfo(uint32)` in canonical L1Read.sol — an id
         // beyond that domain (spotBalance's uint64 also carries encoded outcome asset ids) can't be resolved.
         if (erc20CoreIndex > type(uint32).max) revert TokenNotBridgeable(erc20CoreIndex);
-        uint32 index = uint32(erc20CoreIndex);
-        if (isHype(index)) return HYPE_SYSTEM_ADDRESS; // must precede the linkage check: HYPE has no evmContract
-        if (tokenInfo(index).evmContract == address(0)) revert TokenNotBridgeable(erc20CoreIndex);
+        address systemAddress = toSystemAddressNoRevert(erc20CoreIndex);
+        // HYPE skips the linkage check: it has no evmContract
+        if (systemAddress != HYPE_SYSTEM_ADDRESS && tokenInfo(uint32(erc20CoreIndex)).evmContract == address(0)) {
+            revert TokenNotBridgeable(erc20CoreIndex);
+        }
+        return systemAddress;
+    }
+
+    /**
+     * @notice `toSystemAddress` without the linkage check: HYPE's fixed address, else the index-derived one.
+     * @dev For reads such as bridge-balance lookups. Anything that sends to the result must use `toSystemAddress`,
+     *      since a send to an unlinked token's derived address strands the funds.
+     * @param erc20CoreIndex The core token index id to convert
+     * @return The system address for the index on HyperCore
+     */
+    function toSystemAddressNoRevert(uint64 erc20CoreIndex) internal view returns (address) {
+        // A uint64 above the uint32 domain can never equal the uint32 HYPE index, so no range check is needed
+        if (erc20CoreIndex == hypeCoreIndex()) return HYPE_SYSTEM_ADDRESS;
         return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
     }
 
