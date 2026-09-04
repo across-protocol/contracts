@@ -394,15 +394,6 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Whether `erc20CoreIndex` is native HYPE on the current chain.
-     * @param erc20CoreIndex The HyperCore index id of the token
-     * @return True if the index is native HYPE, false otherwise
-     */
-    function isHype(uint32 erc20CoreIndex) internal view returns (bool) {
-        return erc20CoreIndex == hypeCoreIndex();
-    }
-
-    /**
      * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
      * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
      * @param erc20CoreIndex The HyperCore index id of the token

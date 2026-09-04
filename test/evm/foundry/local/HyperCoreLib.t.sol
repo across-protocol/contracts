@@ -24,10 +24,6 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.hypeCoreIndex();
     }
 
-    function isHype(uint32 erc20CoreIndex) external view returns (bool) {
-        return HyperCoreLib.isHype(erc20CoreIndex);
-    }
-
     function toSystemAddress(uint64 erc20CoreIndex) external view returns (address) {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
     }
@@ -188,17 +184,6 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
 
         vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
         assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
-    }
-
-    function testIsHype() public {
-        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
-        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
-        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
-        assertFalse(wrapper.isHype(uint32(HyperCoreLib.USDC_CORE_INDEX)));
-
-        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
-        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
-        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
     }
 
     // ============ toSystemAddress ============
