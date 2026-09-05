@@ -24,6 +24,10 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.hypeCoreIndex();
     }
 
+    function usdcCoreDepositWallet() external view returns (address) {
+        return address(HyperCoreLib.usdcCoreDepositWallet());
+    }
+
     function isHype(uint32 erc20CoreIndex) external view returns (bool) {
         return HyperCoreLib.isHype(erc20CoreIndex);
     }
@@ -176,6 +180,23 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
 
         vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
         assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
+    }
+
+    // Circle deployed CoreDepositWallet at different addresses on mainnet and testnet; the mainnet one has no
+    // code on testnet, so a single hardcoded address would revert every USDC deposit there
+    function testUsdcCoreDepositWallet_DiffersOnTestnet() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertEq(wrapper.usdcCoreDepositWallet(), HyperCoreLib.USDC_CORE_DEPOSIT_WALLET_ADDRESS);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        assertEq(wrapper.usdcCoreDepositWallet(), HyperCoreLib.USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET);
+    }
+
+    // Off HyperEVM there is no CoreDepositWallet at all, so resolving one should fail loudly, not default to mainnet
+    function testUsdcCoreDepositWallet_RevertsOffHyperEVM() public {
+        vm.chainId(1);
+        vm.expectRevert(HyperCoreLib.UnsupportedChain.selector);
+        wrapper.usdcCoreDepositWallet();
     }
 
     function testIsHype() public {

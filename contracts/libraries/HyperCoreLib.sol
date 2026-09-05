@@ -53,8 +53,9 @@ library HyperCoreLib {
     address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
 
-    // USDC
+    // USDC. Circle's CoreDepositWallet is deployed at a different address on mainnet and testnet.
     address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS = 0x6B9E773128f453f5c2C60935Ee2DE2CBc5390A24;
+    address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET = 0x0B80659a4076E9E93C7DbE0f10675A16a3e5C206;
     uint64 public constant USDC_CORE_INDEX = 0;
 
     // Native HYPE. Unlike every other token, HYPE bridges through a fixed system address rather than one
@@ -88,6 +89,7 @@ library HyperCoreLib {
     error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint64 erc20CoreIndex);
     error NativeTransferFailed();
+    error UnsupportedChain();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -118,15 +120,12 @@ library HyperCoreLib {
         if (_amountEVMToSend != 0) {
             if (erc20CoreIndex == USDC_CORE_INDEX) {
                 // USDC flow takes care of account creation fee for us, we don't need to reduce `_amountEVMToSend`
-                IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, _amountEVMToSend);
+                ICoreDepositWallet depositWallet = usdcCoreDepositWallet();
+                IERC20(erc20EVMAddress).forceApprove(address(depositWallet), _amountEVMToSend);
                 if (to == address(this)) {
-                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(_amountEVMToSend, destinationDex);
+                    depositWallet.deposit(_amountEVMToSend, destinationDex);
                 } else {
-                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(
-                        to,
-                        _amountEVMToSend,
-                        destinationDex
-                    );
+                    depositWallet.depositFor(to, _amountEVMToSend, destinationDex);
                 }
             } else {
                 IERC20(erc20EVMAddress).safeTransfer(toSystemAddress(erc20CoreIndex), _amountEVMToSend);
@@ -267,8 +266,9 @@ library HyperCoreLib {
         uint256 amountEVM
     ) internal {
         if (erc20CoreIndex == USDC_CORE_INDEX) {
-            IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, amountEVM);
-            ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(user, amountEVM, CORE_SPOT_DEX_ID);
+            ICoreDepositWallet depositWallet = usdcCoreDepositWallet();
+            IERC20(erc20EVMAddress).forceApprove(address(depositWallet), amountEVM);
+            depositWallet.depositFor(user, amountEVM, CORE_SPOT_DEX_ID);
         } else {
             IERC20(erc20EVMAddress).safeTransfer(toSystemAddress(erc20CoreIndex), amountEVM);
             // Transfer 1 wei to user on HyperCore to activate account
@@ -391,6 +391,19 @@ library HyperCoreLib {
      */
     function hypeCoreIndex() internal view returns (uint32) {
         return block.chainid == HYPEREVM_TESTNET_CHAIN_ID ? HYPE_CORE_INDEX_TESTNET : HYPE_CORE_INDEX;
+    }
+
+    /**
+     * @notice Circle's USDC CoreDepositWallet on the current chain.
+     * @dev Differs between mainnet and testnet; the mainnet address has no code on testnet, so using it there
+     *      would revert every USDC bridge and account activation. Reverts off HyperEVM rather than defaulting.
+     * @return The CoreDepositWallet to approve and deposit USDC through
+     */
+    function usdcCoreDepositWallet() internal view returns (ICoreDepositWallet) {
+        if (block.chainid == HYPEREVM_CHAIN_ID) return ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS);
+        if (block.chainid == HYPEREVM_TESTNET_CHAIN_ID)
+            return ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET);
+        revert UnsupportedChain();
     }
 
     /**
