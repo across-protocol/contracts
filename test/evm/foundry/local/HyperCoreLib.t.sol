@@ -192,6 +192,13 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         assertEq(wrapper.usdcCoreDepositWallet(), HyperCoreLib.USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET);
     }
 
+    // Off HyperEVM there is no CoreDepositWallet at all, so resolving one should fail loudly, not default to mainnet
+    function testUsdcCoreDepositWallet_RevertsOffHyperEVM() public {
+        vm.chainId(1);
+        vm.expectRevert(HyperCoreLib.UnsupportedChain.selector);
+        wrapper.usdcCoreDepositWallet();
+    }
+
     function testIsHype() public {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
         assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));

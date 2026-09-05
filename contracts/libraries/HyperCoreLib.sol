@@ -89,6 +89,7 @@ library HyperCoreLib {
     error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint64 erc20CoreIndex);
     error NativeTransferFailed();
+    error UnsupportedChain();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -395,16 +396,14 @@ library HyperCoreLib {
     /**
      * @notice Circle's USDC CoreDepositWallet on the current chain.
      * @dev Differs between mainnet and testnet; the mainnet address has no code on testnet, so using it there
-     *      would revert every USDC bridge and account activation.
+     *      would revert every USDC bridge and account activation. Reverts off HyperEVM rather than defaulting.
      * @return The CoreDepositWallet to approve and deposit USDC through
      */
     function usdcCoreDepositWallet() internal view returns (ICoreDepositWallet) {
-        return
-            ICoreDepositWallet(
-                block.chainid == HYPEREVM_TESTNET_CHAIN_ID
-                    ? USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET
-                    : USDC_CORE_DEPOSIT_WALLET_ADDRESS
-            );
+        if (block.chainid == HYPEREVM_CHAIN_ID) return ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS);
+        if (block.chainid == HYPEREVM_TESTNET_CHAIN_ID)
+            return ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET);
+        revert UnsupportedChain();
     }
 
     /**
