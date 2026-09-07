@@ -161,14 +161,21 @@ pub fn _fill(
     require!(!state.paused_fills, CommonError::FillsArePaused);
 
     let current_time = get_current_time(state)?;
+
+    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer.
     if relay_data.exclusive_relayer != filler
         && relay_data.exclusivity_deadline >= current_time
         && relay_data.exclusive_relayer != Pubkey::default()
     {
         return err!(CommonError::NotExclusiveRelayer);
     }
-    require!(relay_data.fill_deadline >= current_time, CommonError::ExpiredFillDeadline);
 
+    // Check if the fill deadline has passed.
+    if relay_data.fill_deadline < current_time {
+        return err!(CommonError::ExpiredFillDeadline);
+    }
+
+    // Check the fill status and set the fill type.
     let (fill_status, fill_type, status_relayer) = match status {
         FillStatusMode::Legacy(fill_status) => {
             let fill_type = match fill_status.status {
@@ -183,7 +190,8 @@ pub fn _fill(
             (FillStatusStorage::V5(fill_status), FillType::FastFill, relayer)
         }
     };
-    let message_hash = hash_non_empty_message(&relay_data.message);
+
+    // Source must have delegated output_amount to the delegate PDA unless delivery is authenticated in place.
     if let Some(delegate) = accounts.delegate {
         transfer_from_with_delegate(
             TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
@@ -195,8 +203,13 @@ pub fn _fill(
     } else {
         require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount);
     }
+
+    // Update the fill status to Filled, set the relayer and fill deadline.
     // V5 reserves the relayer slot for its payer PDA so expiry reclaim restores the correct rent float.
     fill_status.write_filled(status_relayer, relay_data.fill_deadline)?;
+
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
 
     Ok(FilledRelay {
         input_token: relay_data.input_token,
