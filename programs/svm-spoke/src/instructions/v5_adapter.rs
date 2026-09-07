@@ -30,7 +30,7 @@ use crate::{
     },
 };
 
-use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillExecution, FillStatusMode};
+use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusMode};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -134,7 +134,7 @@ fn execute_v5_fill<'info>(
         fill_accounts,
         &ctx.accounts.state,
         relay,
-        FillExecution::delivery_only(&fill.message),
+        &[],
         jit.repayment_chain_id,
         jit.repayment_address,
         ctx_values.submitter,
