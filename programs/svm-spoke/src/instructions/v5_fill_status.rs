@@ -99,8 +99,8 @@ pub fn create_v5_fill_status_account<'info>(
 
 /// Serializes the terminal V5 fill status after the caller completes semantic validation and token delivery.
 #[cfg_attr(not(feature = "test"), allow(dead_code))]
-pub fn write_v5_fill_status(fill_status: &AccountInfo<'_>, relayer: Pubkey, fill_deadline: u32) -> Result<()> {
-    FillStatusAccount { status: FillStatus::Filled, relayer, fill_deadline }
+pub fn write_v5_fill_status(fill_status: &AccountInfo<'_>, rent_recipient: Pubkey, fill_deadline: u32) -> Result<()> {
+    FillStatusAccount { status: FillStatus::Filled, relayer: rent_recipient, fill_deadline }
         .try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
 }
 
@@ -128,14 +128,14 @@ pub fn test_create_v5_fill_status(
     fill_deadline: u32,
 ) -> Result<()> {
     let submitter = ctx.accounts.submitter.key();
-    let relayer = create_v5_fill_status_account(
+    let rent_recipient = create_v5_fill_status_account(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fill_status.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
         &submitter,
         &relay_hash,
     )?;
-    write_v5_fill_status(&ctx.accounts.fill_status.to_account_info(), relayer, fill_deadline)
+    write_v5_fill_status(&ctx.accounts.fill_status.to_account_info(), rent_recipient, fill_deadline)
 }
 
 #[derive(Accounts)]
