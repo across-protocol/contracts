@@ -545,8 +545,13 @@ mod tests {
     #[test]
     fn fill_wire_is_branch_specific() {
         let fixture = fixture();
-        let input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
-        assert!(matches!(input.mode, V5AdapterMode::Fill(_)));
+        let mut input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
+        assert!(matches!(&input.mode, V5AdapterMode::Fill(_)));
+        if let V5AdapterMode::Fill(fill) = &mut input.mode {
+            fill.message.push(1);
+        }
+        assert_error_name(decode_v5_adapter_input(&serialize(&input)), "InvalidWireFormat");
+
         decode_v5_fill_jit(&bytes(&fixture, "/wire/fillJit")).unwrap();
         assert!(decode_v5_fill_jit(&bytes(&fixture, "/wire/depositJit")).is_err());
     }

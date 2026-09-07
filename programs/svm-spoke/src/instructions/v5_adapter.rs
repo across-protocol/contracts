@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillExecution, FillStatusMode};
+use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusMode};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -110,9 +110,6 @@ fn execute_v5_fill<'info>(
     fill: V5FillInput,
     jit_data: &[u8],
 ) -> Result<()> {
-    // Fail fast before decoding branch-specific JIT data; `_fill` repeats the invariant for both entrypoints.
-    require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
-
     let jit = decode_v5_fill_jit(jit_data)?;
     let relay = &jit.relay_data;
     require!(
@@ -133,7 +130,7 @@ fn execute_v5_fill<'info>(
         fill_accounts,
         &ctx.accounts.state,
         relay,
-        FillExecution::delivery_only(&fill.message),
+        &fill.message,
         jit.repayment_chain_id,
         jit.repayment_address,
         ctx_values.submitter,
