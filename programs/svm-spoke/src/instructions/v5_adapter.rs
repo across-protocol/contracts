@@ -187,6 +187,8 @@ fn load_v5_fill_accounts<'info>(
     load_token_account(recipient_info, &token_program_id, &fill.output_token, &fill.recipient)?;
 
     let fill_delegate_info = if gateway_vault == recipient {
+        // Canonical builders must not reuse this step across source deposits; the committed continuing path
+        // must consume this in-place balance through an independently enforced atomic delivery.
         require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
         None
     } else {
