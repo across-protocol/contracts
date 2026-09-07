@@ -46,7 +46,7 @@ pub fn adapter_execute_across_v5<'info>(
     require_gateway_dispatch_authority(&ctx.accounts.dispatch_authority)?;
     match decode_v5_adapter_input(&input)?.mode {
         V5AdapterMode::Deposit(deposit) => execute_v5_deposit(ctx, ctx_values, deposit, &jit_data),
-        V5AdapterMode::Fill(fill) => execute_v5_fill(ctx, ctx_values, fill, &jit_data),
+        V5AdapterMode::Fill(fill_input) => execute_v5_fill(ctx, ctx_values, fill_input, &jit_data),
     }
 }
 
@@ -107,37 +107,41 @@ fn execute_v5_deposit<'info>(
 fn execute_v5_fill<'info>(
     ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
     ctx_values: V5GatewayContext,
-    fill: V5FillInput,
+    fill_input: V5FillInput,
     jit_data: &[u8],
 ) -> Result<()> {
     let jit = decode_v5_fill_jit(jit_data)?;
     let relay = &jit.relay_data;
     require!(
-        relay.recipient == fill.recipient
-            && relay.output_token == fill.output_token
+        relay.recipient == fill_input.recipient
+            && relay.output_token == fill_input.output_token
             && relay.message.len() == 64
             && relay.message[..32] == V5_MAGIC_PREFIX
             && relay.message[32..] == ctx_values.step_id,
         V5Error::FillCommitmentMismatch
     );
-    require!(relay.output_amount >= fill.min_output_amount, V5Error::FillOutputAmountTooLow);
+    require!(relay.output_amount >= fill_input.min_output_amount, V5Error::FillOutputAmountTooLow);
 
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
-    let accounts =
-        load_v5_fill_accounts(ctx.remaining_accounts, &fill, relay.output_amount, &ctx_values.submitter, &relay_hash)?;
-    let V5FillAccounts { fill: fill_accounts, payer, fill_status, system_program } = accounts;
+    let accounts = load_v5_fill_accounts(
+        ctx.remaining_accounts,
+        &fill_input,
+        relay.output_amount,
+        &ctx_values.submitter,
+        &relay_hash,
+    )?;
     let event = _fill(
-        fill_accounts,
+        accounts.fill,
         &ctx.accounts.state,
         relay,
-        &fill.message,
+        &fill_input.message,
         jit.repayment_chain_id,
         jit.repayment_address,
         ctx_values.submitter,
         FillStatusInput::V5 {
-            payer: &payer,
-            fill_status: &fill_status,
-            system_program: &system_program,
+            payer: &accounts.payer,
+            fill_status: &accounts.fill_status,
+            system_program: &accounts.system_program,
             relay_hash: &relay_hash,
         },
         DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
@@ -156,12 +160,12 @@ struct V5FillAccounts<'info> {
 
 fn load_v5_fill_accounts<'info>(
     remaining_accounts: &[AccountInfo<'info>],
-    fill: &V5FillInput,
+    fill_input: &V5FillInput,
     output_amount: u64,
     submitter: &Pubkey,
     relay_hash: &[u8; 32],
 ) -> Result<V5FillAccounts<'info>> {
-    let mint_info = find_v5_account(remaining_accounts, &fill.output_token, false)?;
+    let mint_info = find_v5_account(remaining_accounts, &fill_input.output_token, false)?;
     let token_program_id = *mint_info.owner;
     require!(
         token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
@@ -172,19 +176,22 @@ fn load_v5_fill_accounts<'info>(
     reject_unsupported_mint_extensions(mint_info, &token_program_id)?;
 
     let gateway_vault =
-        get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &fill.output_token, &token_program_id);
-    let recipient =
-        get_associated_token_address_with_program_id(&fill.recipient, &fill.output_token, &token_program_id);
+        get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &fill_input.output_token, &token_program_id);
+    let recipient = get_associated_token_address_with_program_id(
+        &fill_input.recipient,
+        &fill_input.output_token,
+        &token_program_id,
+    );
     let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
     let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
     let mint_decimals = load_mint(mint_info)?.decimals;
     let source = load_token_account(
         gateway_vault_info,
         &token_program_id,
-        &fill.output_token,
+        &fill_input.output_token,
         &GATEWAY_VAULT_AUTHORITY,
     )?;
-    load_token_account(recipient_info, &token_program_id, &fill.output_token, &fill.recipient)?;
+    load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
 
     let fill_delegate_info = if gateway_vault == recipient {
         // Canonical builders must not reuse this step across source deposits; the committed continuing path
