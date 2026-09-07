@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::create_v5_fill_status_account;
+use super::{create_v5_fill_status_account, write_v5_fill_status};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -115,7 +115,7 @@ impl FillStatusStorage<'_, '_> {
                 *fill_status = filled;
                 Ok(())
             }
-            Self::V5(fill_status) => filled.try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..]),
+            Self::V5(fill_status) => write_v5_fill_status(fill_status, relayer, fill_deadline),
         }
     }
 }
