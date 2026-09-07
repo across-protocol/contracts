@@ -186,6 +186,7 @@ pub fn _fill(
             (FillStatusStorage::Legacy(fill_status), fill_type, filler)
         }
         FillStatusMode::V5 { payer, fill_status, system_program, relay_hash } => {
+            // Account creation rejects existing program-owned state; V5 has no slow-fill lifecycle.
             let relayer = create_v5_fill_status_account(payer, fill_status, system_program, &filler, relay_hash)?;
             (FillStatusStorage::V5(fill_status), FillType::FastFill, relayer)
         }
