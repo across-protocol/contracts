@@ -130,42 +130,6 @@ pub struct FillAccounts<'info> {
     pub mint_decimals: u8,
 }
 
-struct FillHandler<'a, 'info> {
-    relayer: &'a AccountInfo<'info>,
-    remaining_accounts: &'a [AccountInfo<'info>],
-}
-
-/// Execution-time message and optional handler context, equivalent to EVM's updated relay message.
-pub struct FillExecution<'a, 'info> {
-    updated_message: &'a [u8],
-    handler: Option<FillHandler<'a, 'info>>,
-}
-
-impl<'a, 'info> FillExecution<'a, 'info> {
-    pub fn with_handler(
-        updated_message: &'a [u8],
-        relayer: &'a AccountInfo<'info>,
-        remaining_accounts: &'a [AccountInfo<'info>],
-    ) -> Self {
-        Self { updated_message, handler: Some(FillHandler { relayer, remaining_accounts }) }
-    }
-
-    pub fn delivery_only(updated_message: &'a [u8]) -> Self {
-        Self { updated_message, handler: None }
-    }
-
-    fn invoke_handler(&self) -> Result<()> {
-        if self.updated_message.is_empty() {
-            return Ok(());
-        }
-        let handler = self
-            .handler
-            .as_ref()
-            .ok_or_else(|| error!(V5Error::InvalidWireFormat))?;
-        invoke_handler(handler.relayer, handler.remaining_accounts, self.updated_message)
-    }
-}
-
 impl<'info> From<&FillRelay<'info>> for FillAccounts<'info> {
     fn from(accounts: &FillRelay<'info>) -> Self {
         Self {
@@ -179,15 +143,15 @@ impl<'info> From<&FillRelay<'info>> for FillAccounts<'info> {
     }
 }
 
-/// Executes shared fill validation, token delivery, status transition, and optional callback, then constructs the event.
-/// Instruction handlers retain only branch-specific account loading and event emission.
+/// Executes shared fill validation, token delivery, and status transition, then constructs the event.
+/// Instruction handlers retain only branch-specific account loading, callback handling, and event emission.
 // Preserve a separate SBF frame; inlining event construction can push stack-heavy fill handlers past the 4 KiB limit.
 #[inline(never)]
 pub fn _fill(
     accounts: FillAccounts<'_>,
     state: &State,
     relay_data: &RelayData,
-    execution: FillExecution<'_, '_>,
+    updated_message: &[u8],
     repayment_chain_id: u64,
     repayment_address: Pubkey,
     filler: Pubkey,
@@ -233,7 +197,6 @@ pub fn _fill(
     }
     // V5 reserves the relayer slot for its payer PDA so expiry reclaim restores the correct rent float.
     fill_status.write_filled(status_relayer, relay_data.fill_deadline)?;
-    execution.invoke_handler()?;
 
     Ok(FilledRelay {
         input_token: relay_data.input_token,
@@ -252,7 +215,7 @@ pub fn _fill(
         message_hash,
         relay_execution_info: RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message_hash: hash_non_empty_message(execution.updated_message),
+            updated_message_hash: hash_non_empty_message(updated_message),
             updated_output_amount: relay_data.output_amount,
             fill_type,
         },
@@ -266,9 +229,6 @@ pub fn fill_relay<'info>(
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
-    // Fail fast before loading buffered params; `_fill` repeats the invariant for both entrypoints.
-    require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
-
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
@@ -284,13 +244,17 @@ pub fn fill_relay<'info>(
         accounts,
         &ctx.accounts.state,
         &relay_data,
-        FillExecution::with_handler(&relay_data.message, ctx.accounts.signer.as_ref(), ctx.remaining_accounts),
+        &relay_data.message,
         repayment_chain_id,
         repayment_address,
         filler,
         FillStatusMode::Legacy(&mut ctx.accounts.fill_status),
         DelegatePda::UniqueHash(seed_hash),
     )?;
+
+    if !relay_data.message.is_empty() {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
+    }
 
     emit_cpi!(event);
 
@@ -360,7 +324,7 @@ mod tests {
             in_place_fill_accounts(),
             state,
             relay_data,
-            FillExecution::delivery_only(&[]),
+            &[],
             repayment_chain_id,
             repayment_address,
             filler,
@@ -413,11 +377,6 @@ mod tests {
             Err(_) => panic!("expected Anchor error"),
             Ok(_) => panic!("expected error"),
         }
-    }
-
-    #[test]
-    fn delivery_only_execution_rejects_callback_message() {
-        assert_error_name(FillExecution::delivery_only(&[1]).invoke_handler(), "InvalidWireFormat");
     }
 
     #[test]
@@ -496,7 +455,7 @@ mod tests {
                 accounts,
                 &state(),
                 &relay_data(),
-                FillExecution::delivery_only(&[]),
+                &[],
                 10,
                 Pubkey::new_unique(),
                 Pubkey::new_unique(),
