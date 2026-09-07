@@ -1,6 +1,6 @@
 use crate::{error::SvmError, program::SvmSpoke};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
+use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 
 #[derive(Clone, Copy)]
 pub enum DelegatePda {
@@ -9,29 +9,6 @@ pub enum DelegatePda {
 }
 
 pub fn transfer_from<'info>(
-    from: &InterfaceAccount<'info, TokenAccount>,
-    to: &InterfaceAccount<'info, TokenAccount>,
-    amount: u64,
-    delegate: &UncheckedAccount<'info>,
-    mint: &InterfaceAccount<'info, Mint>,
-    token_program: &Interface<'info, TokenInterface>,
-    delegate_seed_hash: [u8; 32],
-) -> Result<()> {
-    transfer_from_with_delegate(
-        TransferChecked {
-            from: from.to_account_info(),
-            mint: mint.to_account_info(),
-            to: to.to_account_info(),
-            authority: delegate.to_account_info(),
-        },
-        token_program.to_account_info(),
-        amount,
-        mint.decimals,
-        DelegatePda::UniqueHash(delegate_seed_hash),
-    )
-}
-
-pub fn transfer_from_with_delegate<'info>(
     accounts: TransferChecked<'info>,
     token_program: AccountInfo<'info>,
     amount: u64,

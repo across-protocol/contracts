@@ -12,8 +12,8 @@ use crate::{
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
     utils::{
-        derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, is_v5_message,
-        transfer_from_with_delegate, DelegatePda, FillSeedData,
+        derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, is_v5_message, transfer_from,
+        DelegatePda, FillSeedData,
     },
 };
 
@@ -193,7 +193,7 @@ pub fn _fill(
 
     // Source must have delegated output_amount to the delegate PDA unless delivery is authenticated in place.
     if let Some(delegate) = accounts.delegate {
-        transfer_from_with_delegate(
+        transfer_from(
             TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
             accounts.token_program,
             relay_data.output_amount,
