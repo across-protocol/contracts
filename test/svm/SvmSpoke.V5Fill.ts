@@ -289,6 +289,7 @@ describe("svm_spoke V5 destination fill", () => {
     assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
   });
 
+  // Pins accepted low-level behavior; off-chain route builders must prevent aggregate underdelivery.
   it("records two distinct in-place fills against one unconsumed Gateway-vault balance", async () => {
     relay = { ...relay, recipient: vaultAuthority };
     const firstFillStatus = fillStatus();
