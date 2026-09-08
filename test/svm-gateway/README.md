@@ -1,4 +1,4 @@
-# Actual Gateway conformance for ACP-184 Step 5
+# SVM V5 real-Gateway conformance
 
 Run `yarn test-svm-gateway`. It builds Gateway and PrefundedAdapter from the immutable `GATEWAY_COMMIT` in
 `reference.ts`, builds this checkout's SpokePool with `--features test`, generates only the target test IDL, and starts
@@ -64,10 +64,9 @@ The additional `v5_gateway_path.json` vector is a deterministic consumption-tape
 independently checked by Rust and Solidity as well as TypeScript. Existing `v5_adapter_v1.json` vectors continue to
 cover deposit/fill input bytes, dispatch, signature and deposit-ID domains.
 
-SVM port work is tracked in [ACB-637](https://linear.app/uma/issue/ACB-637) (API builders) and
-[ENG-320](https://linear.app/uma/issue/ENG-320) (relayer integration). Reuse the EVM delivery policy, port applicable
-tests, and validate supported paths before enabling SVM Across. Unsupported action/aggregate shapes stay disabled;
-no new generic validator or aggregation project is requested. These follow-ups do not blanket-block ACP-184.
+API builders and relayers must reuse the EVM delivery policy, port applicable tests, and validate supported paths
+before enabling SVM Across. Unsupported action/aggregate shapes stay disabled; supporting them is not required
+to enable validated routes.
 
 Companion documentation belongs in `solana-v5/AGENTS.md` (SpokePool adapter relationship and shared-vault trust boundary),
 `contracts-v5/docs/SPOKE_V5_FILLS.md` (SVM continuing-tape/proportional-delivery counterpart), and each owning off-chain
