@@ -18,14 +18,13 @@ use crate::{
     state::State,
     utils::{get_relay_hash, DelegatePda},
     v5::{
-        decode_v5_adapter_input, decode_v5_deposit_jit, decode_v5_fill_jit, derive_fill_status,
-        derive_v5_deposit_id, derive_v5_fill_payer, find_v5_account, require_gateway_dispatch_authority,
-        require_v5_delegate_allowance, resolve_v5_deposit_modifications, resolve_v5_input_amount, AcrossDepositInput,
-        V5AdapterMode, V5FillInput, V5GatewayContext,
+        decode_v5_adapter_input, decode_v5_deposit_jit, decode_v5_fill_jit, derive_v5_deposit_id, find_v5_account,
+        require_gateway_dispatch_authority, require_v5_delegate_allowance, resolve_v5_deposit_modifications,
+        resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5FillInput, V5GatewayContext,
     },
 };
 
-use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusInput};
+use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusInput, V5FillStatusPdas};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -142,7 +141,7 @@ fn execute_v5_fill<'info>(
             payer: &accounts.payer,
             fill_status: &accounts.fill_status,
             system_program: &accounts.system_program,
-            relay_hash: &relay_hash,
+            pdas: &accounts.fill_status_pdas,
         },
         DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
     )?;
@@ -151,20 +150,21 @@ fn execute_v5_fill<'info>(
     Ok(())
 }
 
-struct V5FillAccounts<'info> {
+struct V5FillAccounts<'a, 'info> {
     fill: FillAccounts<'info>,
     payer: AccountInfo<'info>,
     fill_status: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
+    fill_status_pdas: V5FillStatusPdas<'a>,
 }
 
-fn load_v5_fill_accounts<'info>(
+fn load_v5_fill_accounts<'a, 'info>(
     remaining_accounts: &[AccountInfo<'info>],
     fill_input: &V5FillInput,
     output_amount: u64,
-    submitter: &Pubkey,
-    relay_hash: &[u8; 32],
-) -> Result<V5FillAccounts<'info>> {
+    submitter: &'a Pubkey,
+    relay_hash: &'a [u8; 32],
+) -> Result<V5FillAccounts<'a, 'info>> {
     let mint_info = find_v5_account(remaining_accounts, &fill_input.output_token, false)?;
     let token_program_id = *mint_info.owner;
     require!(
@@ -204,10 +204,9 @@ fn load_v5_fill_accounts<'info>(
         Some(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
     };
 
-    let (payer, _) = derive_v5_fill_payer(submitter);
-    let payer_info = find_v5_account(remaining_accounts, &payer, true)?;
-    let (fill_status, _) = derive_fill_status(relay_hash);
-    let fill_status_info = find_v5_account(remaining_accounts, &fill_status, true)?;
+    let fill_status_pdas = V5FillStatusPdas::derive(submitter, relay_hash);
+    let payer_info = find_v5_account(remaining_accounts, &fill_status_pdas.payer(), true)?;
+    let fill_status_info = find_v5_account(remaining_accounts, &fill_status_pdas.fill_status(), true)?;
     let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
 
     Ok(V5FillAccounts {
@@ -222,6 +221,7 @@ fn load_v5_fill_accounts<'info>(
         payer: payer_info.clone(),
         fill_status: fill_status_info.clone(),
         system_program: system_program_info.clone(),
+        fill_status_pdas,
     })
 }
 
