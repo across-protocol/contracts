@@ -223,13 +223,15 @@ describe("SVM V5 with the pinned real Gateway", () => {
         assert.isNotNull(receipt!.meta!.err, "must be a failed transaction, never an accepted fill event");
         return {
           signature,
-          logs: receipt!.meta!.logMessages ?? [],
-          attemptedEvents: processEventFromTx(receipt!, [spoke]),
+          failedReceipt: {
+            logs: receipt!.meta!.logMessages ?? [],
+            attemptedEvents: processEventFromTx(receipt!, [spoke]),
+          },
         };
       }
       const signature = await send(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction);
       assert.isNull(await connection.getAccountInfo(buffer), "successful execution closes parameter buffer");
-      return { signature, logs: [] as string[], attemptedEvents: [] };
+      return { signature };
     } finally {
       if (await connection.getAccountInfo(buffer))
         await send(
@@ -430,7 +432,9 @@ describe("SVM V5 with the pinned real Gateway", () => {
     const relay = await origin(pathId(dst), false);
     await fund();
     const payerBefore = await connection.getBalance(fillPayer);
-    const { signature } = await execute(dst, { relays: [relay] });
+    const result = await execute(dst, { relays: [relay] });
+    assert.notProperty(result, "failedReceipt", "successful execution does not return placeholder diagnostics");
+    const { signature } = result;
     await filled(relay);
     assert.equal((await getAccount(connection, vault)).amount, 0n);
     assert.equal((await getAccount(connection, recipientAta)).amount, amount);
@@ -548,14 +552,19 @@ describe("SVM V5 with the pinned real Gateway", () => {
     const relay = await origin(pathId(dst));
     const userBefore = (await getAccount(connection, userAta)).amount;
     const payerBefore = await connection.getBalance(fillPayer);
-    const result = await execute(dst, { relays: [relay], funds: [funding(userAta, mint, amount)], failed: true });
+    const { failedReceipt } = await execute(dst, {
+      relays: [relay],
+      funds: [funding(userAta, mint, amount)],
+      failed: true,
+    });
+    if (!failedReceipt) assert.fail("expected failed transaction diagnostics");
     assert.include(
-      result.logs.join("\n"),
+      failedReceipt.logs.join("\n"),
       `Program ${spoke.programId} success`,
-      "fill completed before the later failure"
+      "fill completed before failure"
     );
-    assert.include(result.logs.join("\n"), "BalanceRequirementNotMet");
-    const attemptedFills = result.attemptedEvents.filter((e) => e.name === "filledRelay");
+    assert.include(failedReceipt.logs.join("\n"), "BalanceRequirementNotMet");
+    const attemptedFills = failedReceipt.attemptedEvents.filter((e) => e.name === "filledRelay");
     assert.lengthOf(attemptedFills, 1, "failed receipt still contains the attempted FilledRelay CPI event");
     assert.deepEqual(Buffer.from(attemptedFills[0].data.depositId), Buffer.from(relay.depositId));
     assert.isNull(await connection.getAccountInfo(status(relay)));
