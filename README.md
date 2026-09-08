@@ -35,6 +35,9 @@ yarn build # Will build all code. Compile solidity & rust (local toolchain), gen
 yarn build-verified # Will build all code. Compile solidity & rust (verified docker build), generate ts outputs
 ```
 
+EVM CI builds and tests use Foundry **v1.7.1**. Run `foundryup --install v1.7.1` to match CI locally.
+Keep the version pins in `.github/actions/generate-evm-artifacts/action.yml` and `.github/workflows/pr.yml` in sync.
+
 ## Test
 
 ```shell

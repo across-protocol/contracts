@@ -205,6 +205,8 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-optional
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.7.1
       - name: Install forge dependencies
         run: forge install
       - name: Inspect storage layouts
