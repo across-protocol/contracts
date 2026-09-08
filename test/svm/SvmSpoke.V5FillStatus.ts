@@ -119,6 +119,40 @@ describe("svm_spoke V5 fill-status payer", () => {
     assert.equal(await connection.getBalance(payer), initialFloat + prefundedLamports);
   });
 
+  it("rejects noncanonical payer and fill-status accounts", async () => {
+    const submitter = Keypair.generate();
+    const relayHash = randomBytes(32);
+    const payer = fillPayer(submitter.publicKey);
+    const status = fillStatus(relayHash);
+
+    await expectError(
+      program.methods
+        .testCreateV5FillStatus([...relayHash], 1)
+        .accounts({
+          submitter: submitter.publicKey,
+          payer: Keypair.generate().publicKey,
+          fillStatus: status,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([submitter])
+        .rpc(),
+      "InvalidFillPayer"
+    );
+    await expectError(
+      program.methods
+        .testCreateV5FillStatus([...relayHash], 1)
+        .accounts({
+          submitter: submitter.publicKey,
+          payer,
+          fillStatus: Keypair.generate().publicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([submitter])
+        .rpc(),
+      "InvalidFillStatusAccount"
+    );
+  });
+
   it("binds partial and full withdrawals to the submitter", async () => {
     const submitter = Keypair.generate();
     const payer = fillPayer(submitter.publicKey);
