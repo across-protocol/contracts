@@ -14,6 +14,29 @@ use crate::{
 
 pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE;
 
+pub struct V5FillStatusPdas {
+    payer: Pubkey,
+    fill_status: Pubkey,
+    payer_bump: u8,
+    fill_status_bump: u8,
+}
+
+impl V5FillStatusPdas {
+    pub fn derive(submitter: &Pubkey, relay_hash: &[u8; 32]) -> Self {
+        let (payer, payer_bump) = derive_v5_fill_payer(submitter);
+        let (fill_status, fill_status_bump) = derive_fill_status(relay_hash);
+        Self { payer, fill_status, payer_bump, fill_status_bump }
+    }
+
+    pub fn payer(&self) -> Pubkey {
+        self.payer
+    }
+
+    pub fn fill_status(&self) -> Pubkey {
+        self.fill_status
+    }
+}
+
 /// Creates or assigns the zeroed storage for a V5 fill-status PDA using program-derived signers only. The creation
 /// sequence intentionally mirrors Anchor 0.31.1's generated `init_if_needed` implementation in
 /// `anchor-syn/src/codegen/accounts/constraints.rs::generate_create_account`: create an unfunded account, or top up,
@@ -25,10 +48,10 @@ pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::
 /// # Safety
 ///
 /// The caller must source `submitter` from Gateway-attested context, derive `relay_hash` from the validated V5
-/// `RelayData`, and complete semantic validation before calling this helper. Every successful instruction path must then
-/// call `write_v5_fill_status` with the unexpired deadline committed in that `RelayData`; failed paths atomically roll
-/// back the zeroed intermediate account. This helper validates accounts derived from those values but does not
-/// authenticate or bind the values themselves.
+/// `RelayData`, derive `pdas` from those same values, and complete semantic validation before calling this helper. Every
+/// successful instruction path must then call `write_v5_fill_status` with the unexpired deadline committed in that
+/// `RelayData`; failed paths atomically roll back the zeroed intermediate account. This helper validates accounts against
+/// the canonical PDA bundle but does not authenticate or bind the seed values themselves.
 #[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status_account<'info>(
     payer: &AccountInfo<'info>,
@@ -36,11 +59,10 @@ pub fn create_v5_fill_status_account<'info>(
     system_program_info: &AccountInfo<'info>,
     submitter: &Pubkey,
     relay_hash: &[u8; 32],
+    pdas: &V5FillStatusPdas,
 ) -> Result<Pubkey> {
-    let (expected_payer, payer_bump) = derive_v5_fill_payer(submitter);
-    let (expected_fill_status, fill_status_bump) = derive_fill_status(relay_hash);
-    require_keys_eq!(*payer.key, expected_payer, V5Error::InvalidFillPayer);
-    require_keys_eq!(*fill_status.key, expected_fill_status, V5Error::InvalidFillStatusAccount);
+    require_keys_eq!(*payer.key, pdas.payer(), V5Error::InvalidFillPayer);
+    require_keys_eq!(*fill_status.key, pdas.fill_status(), V5Error::InvalidFillStatusAccount);
     require_keys_eq!(*system_program_info.key, system_program::ID, V5Error::MissingAccount);
     require!(system_program_info.executable, V5Error::MissingAccount);
     require!(payer.is_writable && fill_status.is_writable, V5Error::InvalidAccountMutability);
@@ -60,8 +82,8 @@ pub fn create_v5_fill_status_account<'info>(
         .minimum_balance(V5_FILL_STATUS_SPACE)
         .max(1)
         .saturating_sub(current_lamports);
-    let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[payer_bump]];
-    let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, relay_hash, &[fill_status_bump]];
+    let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[pdas.payer_bump]];
+    let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, relay_hash, &[pdas.fill_status_bump]];
     if current_lamports == 0 {
         invoke_signed(
             &system_instruction::create_account(
@@ -94,7 +116,7 @@ pub fn create_v5_fill_status_account<'info>(
         )?;
     }
 
-    Ok(expected_payer)
+    Ok(pdas.payer())
 }
 
 /// Serializes the terminal V5 fill status after the caller completes semantic validation and token delivery.
@@ -128,12 +150,14 @@ pub fn test_create_v5_fill_status(
     fill_deadline: u32,
 ) -> Result<()> {
     let submitter = ctx.accounts.submitter.key();
+    let pdas = V5FillStatusPdas::derive(&submitter, &relay_hash);
     let rent_recipient = create_v5_fill_status_account(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fill_status.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
         &submitter,
         &relay_hash,
+        &pdas,
     )?;
     write_v5_fill_status(&ctx.accounts.fill_status.to_account_info(), rent_recipient, fill_deadline)
 }
