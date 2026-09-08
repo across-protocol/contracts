@@ -28,8 +28,8 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
     }
 
-    function toSystemAddressNoRevert(uint64 erc20CoreIndex) external view returns (address) {
-        return HyperCoreLib.toSystemAddressNoRevert(erc20CoreIndex);
+    function toSystemAddressIfBridgeable(uint64 erc20CoreIndex) external view returns (address, bool) {
+        return HyperCoreLib.toSystemAddressIfBridgeable(erc20CoreIndex);
     }
 
     function isCoreAmountSafeToBridge(
@@ -230,39 +230,72 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         wrapper.toSystemAddress(outcomeAssetId);
     }
 
-    // ============ toSystemAddressNoRevert ============
+    // ============ toSystemAddressIfBridgeable ============
 
-    // The no-revert resolver is for reads: it derives an address for any id, linked or not, without a precompile call
-    function testToSystemAddressNoRevert_NeverReverts() public {
+    function testToSystemAddressIfBridgeable_LinkedTokenIsBridgeable() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+
+        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(coreIndex);
+        assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex)));
+        assertTrue(bridgeable);
+    }
+
+    // Same derived address as the linked case, but reported unbridgeable instead of reverting
+    function testToSystemAddressIfBridgeable_UnlinkedTokenIsNotBridgeable() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(address(0), "TKN", 8);
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+
+        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(coreIndex);
+        assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex)));
+        assertFalse(bridgeable);
+    }
+
+    // Out-of-domain ids are reported unbridgeable before any precompile call — note no tokenInfo mock is set here
+    function testToSystemAddressIfBridgeable_IdBeyondTokenInfoDomainIsNotBridgeable() public {
         uint64 outcomeAssetId = 100_000_000 + uint64(type(uint32).max) * 10 + 1;
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
 
-        // No tokenInfo mock is set: an unlinked index and an out-of-domain id both resolve arithmetically
-        assertEq(
-            wrapper.toSystemAddressNoRevert(42),
-            address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + 42))
-        );
-        assertEq(
-            wrapper.toSystemAddressNoRevert(outcomeAssetId),
-            address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + outcomeAssetId))
-        );
-        assertEq(wrapper.toSystemAddressNoRevert(HyperCoreLib.HYPE_CORE_INDEX), HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(outcomeAssetId);
+        assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + outcomeAssetId)));
+        assertFalse(bridgeable);
+    }
+
+    // HYPE has no evmContract yet is always bridgeable, via its fixed system address — no tokenInfo mock is set here
+    function testToSystemAddressIfBridgeable_HypeIsAlwaysBridgeable() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(HyperCoreLib.HYPE_CORE_INDEX);
+        assertEq(systemAddress, HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+        assertTrue(bridgeable);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        (systemAddress, bridgeable) = wrapper.toSystemAddressIfBridgeable(HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
+        assertEq(systemAddress, HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+        assertTrue(bridgeable);
     }
 
     // ============ isCoreAmountSafeToBridge ============
 
-    // A predicate must answer, not revert: an unlinked token's bridge address holds nothing, so the answer is
-    // false and the fill path keeps its HyperEVM fallback. No tokenInfo mock is set, proving the check never
-    // consults linkage.
+    // A predicate must answer, not revert: an unlinked token is reported unsafe even if its bridge address happens
+    // to hold balance, so the fill path keeps its HyperEVM fallback and never reaches the reverting send
     function testIsCoreAmountSafeToBridge_ReturnsFalseForUnlinkedTokenInsteadOfReverting() public {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
-        mockSpotBalanceDefault(0, 0, 0);
+        mockSpotBalanceDefault(10e8, 0, 0);
 
+        mockTokenInfoDefault(address(0), "TKN", 8);
         assertFalse(wrapper.isCoreAmountSafeToBridge(42, 1, 0));
 
-        mockSpotBalanceDefault(10e8, 0, 0);
+        mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
         assertTrue(wrapper.isCoreAmountSafeToBridge(42, 9e8, 1e8));
         assertFalse(wrapper.isCoreAmountSafeToBridge(42, 9e8, 1e8 + 1));
+    }
+
+    // Out-of-domain ids are unsafe without any precompile call — no tokenInfo or spotBalance mock is set here
+    function testIsCoreAmountSafeToBridge_ReturnsFalseForIdBeyondTokenInfoDomain() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertFalse(wrapper.isCoreAmountSafeToBridge(100_000_000 + uint64(type(uint32).max) * 10 + 1, 1, 0));
     }
 
     // HYPE's bridge balance lives at its fixed system address, not the index-derived one
