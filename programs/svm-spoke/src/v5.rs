@@ -374,13 +374,17 @@ mod tests {
         let b = path_hash("/siblingSalt");
         assert_eq!(a, array::<32>(&fixture, "/pathId"));
         assert_eq!(b, array::<32>(&fixture, "/siblingPathId"));
-        let root = if a < b {
-            keccak::hashv(&[&a, &b])
-        } else {
-            keccak::hashv(&[&b, &a])
-        }
-        .to_bytes();
+        let pair = |a: [u8; 32], b: [u8; 32]| {
+            if a < b {
+                keccak::hashv(&[&a, &b])
+            } else {
+                keccak::hashv(&[&b, &a])
+            }
+            .to_bytes()
+        };
+        let root = pair(a, b);
         assert_eq!(root, array::<32>(&fixture, "/stepRoot"));
+        assert_eq!(pair(b, a), root);
         assert_eq!([crate::constants::V5_MAGIC_PREFIX.as_slice(), &root].concat(), bytes(&fixture, "/witness"));
     }
 

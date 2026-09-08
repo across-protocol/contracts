@@ -22,7 +22,8 @@ run; arbitrary prebuilt binaries are not accepted as conformance evidence. Depen
 ports require network permission in sandboxed environments.
 
 While `solana-v5` is private, run this lane locally with existing repository access; do not add a cross-repository
-credential to `contracts` CI. Ordinary PR checks remain unchanged and do not run the real-Gateway lane.
+credential to `contracts` CI. Ordinary PR checks run `yarn test-svm-gateway-vectors` for the dependency-free hash
+fixture, but do not run the real-Gateway lane. Changes in `test/svm-gateway` also trigger the ordinary SVM tests.
 
 After `solana-v5` is public, add CI coverage using a public checkout at the immutable `GATEWAY_COMMIT`, without a
 cross-repository token or approval environment. This is a temporary CI limitation, not a protocol blocker.
@@ -56,8 +57,8 @@ Delivery tests deliberately separate two results:
 
 `ALLOW_REVERT` is unsupported by this Gateway, so an optional downstream command fails atomically. A separate test
 submits an actual failing transaction after the fill and transfer, checks `meta.err`, and proves that fill status,
-tokens and payer rent were rolled back. Failed transaction logs can contain attempted events; such events never count
-as successful settlement.
+tokens and payer rent were rolled back. It decodes the attempted `FilledRelay` event from that failed receipt's inner
+instructions and matches its deposit ID; such events never count as successful settlement.
 
 The additional `v5_gateway_path.json` vector is a deterministic consumption-tape/hash fixture with placeholder keys,
 independently checked by Rust and Solidity as well as TypeScript. Existing `v5_adapter_v1.json` vectors continue to

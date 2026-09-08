@@ -67,6 +67,7 @@ async function main() {
     "test",
   ]);
 
+  const spokeId = JSON.parse(readFileSync("target/idl/svm_spoke.json", "utf8")).address;
   const walletPath = path.resolve("test/svm/keys/localnet-wallet.json");
   const wallet = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(walletPath, "utf8"))));
   const rpcPort = await freePort();
@@ -99,7 +100,7 @@ async function main() {
       path.join(checkout, "target/deploy/prefunded_adapter.so"),
       wallet.publicKey.toBase58(),
       "--upgradeable-program",
-      "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru",
+      spokeId,
       path.resolve("target/deploy/svm_spoke.so"),
       wallet.publicKey.toBase58(),
     ],
@@ -138,7 +139,16 @@ async function main() {
     console.log(`Real Gateway ${GATEWAY_COMMIT}; validator logs: ${logPath}`);
     const tests = spawnSync(
       "yarn",
-      ["ts-mocha", "--bail", "-p", "tsconfig.json", "-t", "1000000", "test/svm-gateway/*.ts"],
+      [
+        "ts-mocha",
+        "--bail",
+        "-p",
+        "tsconfig.json",
+        "-t",
+        "1000000",
+        "test/svm-gateway/PathVectors.ts",
+        "test/svm-gateway/RealGateway.ts",
+      ],
       {
         stdio: "inherit",
         env: {
