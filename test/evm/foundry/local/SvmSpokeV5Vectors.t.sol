@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { Hashes } from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
 
 /// @notice EVM-side conformance checks for the SVM V5 adapter's cross-VM hash and signature fixtures.
 contract SvmSpokeV5VectorsTest is Test {
@@ -69,10 +70,11 @@ contract SvmSpokeV5VectorsTest is Test {
         );
         assertEq(a, vm.parseJsonBytes32(pathFixture, ".pathId"));
         assertEq(b, vm.parseJsonBytes32(pathFixture, ".siblingPathId"));
-        bytes32 root = a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
+        bytes32 root = Hashes.commutativeKeccak256(a, b);
         assertEq(root, vm.parseJsonBytes32(pathFixture, ".stepRoot"));
+        assertEq(Hashes.commutativeKeccak256(b, a), root);
         assertEq(
-            abi.encodePacked(bytes32(0x89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd), root),
+            abi.encodePacked(keccak256("AcrossV5MessagePrefix.V1"), root),
             vm.parseJsonBytes(pathFixture, ".witness")
         );
     }
