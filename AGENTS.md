@@ -65,10 +65,8 @@ actual output amount. Step roots may be reused when every matching deposit's out
 enforces Across-specific downstream delivery by inspecting the tape.
 
 The real-Gateway lane (`yarn test-svm-gateway`) and reference encoders in `test/svm-gateway` specify this boundary;
-they do not implement production order assembly. SVM integration follow-ups reuse the EVM delivery policy:
-[API builders in ACB-637](https://linear.app/uma/issue/ACB-637) and
-[relayer conformance in ENG-320](https://linear.app/uma/issue/ENG-320). Validate supported paths before route enablement;
-these are not blanket blockers on the contract work. See
+they do not implement production order assembly. API builders and relayers must reuse the EVM delivery policy and
+validate supported SVM paths before route enablement. See
 [the adapter spec](programs/svm-spoke/V5_ADAPTER_SPEC.md) and [integration guide](test/svm-gateway/README.md).
 
 ### Deployments
