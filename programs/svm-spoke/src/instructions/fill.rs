@@ -122,11 +122,16 @@ impl FillStatusStorage<'_, '_> {
     }
 }
 
+pub enum FillDelivery<'info> {
+    Delegated(AccountInfo<'info>),
+    /// Tokens are already in the recipient account; `_fill` verifies the source and recipient match.
+    InPlace,
+}
+
 pub struct FillAccounts<'info> {
     pub from: AccountInfo<'info>,
     pub recipient: AccountInfo<'info>,
-    /// `None` represents an authenticated in-place balance assertion; the continuing path must enforce delivery.
-    pub delegate: Option<AccountInfo<'info>>,
+    pub delivery: FillDelivery<'info>,
     pub mint: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
     pub mint_decimals: u8,
@@ -137,7 +142,7 @@ impl<'info> From<&FillRelay<'info>> for FillAccounts<'info> {
         Self {
             from: accounts.relayer_token_account.to_account_info(),
             recipient: accounts.recipient_token_account.to_account_info(),
-            delegate: Some(accounts.delegate.to_account_info()),
+            delivery: FillDelivery::Delegated(accounts.delegate.to_account_info()),
             mint: accounts.mint.to_account_info(),
             token_program: accounts.token_program.to_account_info(),
             mint_decimals: accounts.mint.decimals,
@@ -194,17 +199,18 @@ pub fn _fill(
         }
     };
 
-    // Source must have delegated output_amount to the delegate PDA unless delivery is authenticated in place.
-    if let Some(delegate) = accounts.delegate {
-        transfer_from(
+    // Enforce the shared contract for explicitly selected in-place delivery.
+    match accounts.delivery {
+        FillDelivery::Delegated(delegate) => transfer_from(
             TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
             accounts.token_program,
             relay_data.output_amount,
             accounts.mint_decimals,
             delegate_pda,
-        )?;
-    } else {
-        require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount);
+        )?,
+        FillDelivery::InPlace => {
+            require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
+        }
     }
 
     // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
@@ -317,7 +323,7 @@ mod tests {
         FillAccounts {
             from: account.clone(),
             recipient: account.clone(),
-            delegate: None,
+            delivery: FillDelivery::InPlace,
             mint: account.clone(),
             token_program: account,
             mint_decimals: 0,
