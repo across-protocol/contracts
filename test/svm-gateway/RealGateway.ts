@@ -20,7 +20,7 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import { createHash, randomBytes } from "crypto";
-import { calculateRelayHashUint8Array, readEventsUntilFound } from "../../src/svm/web3-v1";
+import { calculateRelayHashUint8Array, processEventFromTx, readEventsUntilFound } from "../../src/svm/web3-v1";
 import { RelayData } from "../../src/types/svm";
 import { common } from "../svm/SvmSpoke.common";
 import {
@@ -173,34 +173,34 @@ describe("SVM V5 with the pinned real Gateway", () => {
       .update(Buffer.concat([accountDiscriminator, bytes]))
       .digest();
     const buffer = pda(GATEWAY, Buffer.from("execute_params"), owner.toBuffer(), digest);
-    await send(
-      ix(GATEWAY, "initialize_execute_params", Buffer.concat([digest, u32(bytes.length)]), [
+    try {
+      await send(
+        ix(GATEWAY, "initialize_execute_params", Buffer.concat([digest, u32(bytes.length)]), [
+          { ...writable(owner), isSigner: true },
+          writable(buffer),
+          readonly(SystemProgram.programId),
+        ])
+      );
+      for (let offset = 0; offset < bytes.length; offset += 800) {
+        await send(
+          ix(
+            GATEWAY,
+            "write_execute_params_fragment",
+            Buffer.concat([digest, u32(offset), vec(bytes.subarray(offset, offset + 800))]),
+            [{ ...readonly(owner), isSigner: true }, writable(buffer)]
+          )
+        );
+      }
+      const instruction = ix(GATEWAY, "execute", Buffer.from([0]), [
+        { ...readonly(owner), isSigner: true },
         { ...writable(owner), isSigner: true },
         writable(buffer),
-        readonly(SystemProgram.programId),
-      ])
-    );
-    for (let offset = 0; offset < bytes.length; offset += 800) {
-      await send(
-        ix(
-          GATEWAY,
-          "write_execute_params_fragment",
-          Buffer.concat([digest, u32(offset), vec(bytes.subarray(offset, offset + 800))]),
-          [{ ...readonly(owner), isSigner: true }, writable(buffer)]
-        )
-      );
-    }
-    const instruction = ix(GATEWAY, "execute", Buffer.from([0]), [
-      { ...readonly(owner), isSigner: true },
-      { ...writable(owner), isSigner: true },
-      writable(buffer),
-      readonly(gatewayConfig),
-      readonly(gatewayEvent),
-      readonly(GATEWAY),
-      ...(opts.accounts ?? remaining(relays)),
-      ...(opts.extra ?? []),
-    ]);
-    try {
+        readonly(gatewayConfig),
+        readonly(gatewayEvent),
+        readonly(GATEWAY),
+        ...(opts.accounts ?? remaining(relays)),
+        ...(opts.extra ?? []),
+      ]);
       if (opts.failed) {
         const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction);
         tx.feePayer = owner;
@@ -221,11 +221,15 @@ describe("SVM V5 with the pinned real Gateway", () => {
         }
         assert.isNotNull(receipt);
         assert.isNotNull(receipt!.meta!.err, "must be a failed transaction, never an accepted fill event");
-        return { signature, logs: receipt!.meta!.logMessages ?? [] };
+        return {
+          signature,
+          logs: receipt!.meta!.logMessages ?? [],
+          attemptedEvents: processEventFromTx(receipt!, [spoke]),
+        };
       }
       const signature = await send(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction);
       assert.isNull(await connection.getAccountInfo(buffer), "successful execution closes parameter buffer");
-      return { signature, logs: [] as string[] };
+      return { signature, logs: [] as string[], attemptedEvents: [] };
     } finally {
       if (await connection.getAccountInfo(buffer))
         await send(
@@ -398,6 +402,29 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await send(SystemProgram.transfer({ fromPubkey: owner, toPubkey: fillPayer, lamports: 10_000_000 }));
   });
 
+  it("cleans parameter buffers after setup errors so byte-identical executions can retry", async () => {
+    for (const failAfter of ["initialize_execute_params", "write_execute_params_fragment"]) {
+      const dst = path([floor(mint, 0n)]);
+      const originalSend = provider.sendAndConfirm;
+      provider.sendAndConfirm = async (tx, ...args) => {
+        const signature = await originalSend.call(provider, tx, ...args);
+        if (
+          tx instanceof Transaction &&
+          tx.instructions.some(
+            (ix) => ix.programId.equals(GATEWAY) && ix.data.subarray(0, 8).equals(discriminator(failAfter))
+          )
+        )
+          throw new Error("injected setup confirmation failure");
+        return signature;
+      };
+      try {
+        await expectFailure(execute(dst), "injected setup confirmation failure");
+      } finally {
+        provider.sendAndConfirm = originalSend;
+      }
+      await execute(dst);
+    }
+  });
   it("StepDelegate origin binds the destination root; external fill delivers exactly and reclaims payer rent", async () => {
     const dst = destination(false);
     const relay = await origin(pathId(dst), false);
@@ -528,6 +555,9 @@ describe("SVM V5 with the pinned real Gateway", () => {
       "fill completed before the later failure"
     );
     assert.include(result.logs.join("\n"), "BalanceRequirementNotMet");
+    const attemptedFills = result.attemptedEvents.filter((e) => e.name === "filledRelay");
+    assert.lengthOf(attemptedFills, 1, "failed receipt still contains the attempted FilledRelay CPI event");
+    assert.deepEqual(Buffer.from(attemptedFills[0].data.depositId), Buffer.from(relay.depositId));
     assert.isNull(await connection.getAccountInfo(status(relay)));
     assert.equal(await connection.getBalance(fillPayer), payerBefore);
     assert.equal((await getAccount(connection, userAta)).amount, userBefore);
@@ -552,8 +582,10 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await fund();
     for (const jit of [relayJit(relay, wrong), relayJit(relay, status(relay), wrong)]) {
       await expectFailure(execute(dst, { relays: [relay], jit: [jit], extra: [writable(wrong)] }), "MissingAccount");
+      assert.isNull(await connection.getAccountInfo(status(relay)));
     }
     await expectFailure(execute(dst, { relays: [relay], jit: [Buffer.alloc(31)] }), "InjectedAccountsMismatch");
+    assert.isNull(await connection.getAccountInfo(status(relay)));
   });
   it("rejects an optional downstream command and rolls back an already executed fill", async () => {
     const optional = transfer(mint, recipient);
@@ -580,6 +612,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       await execute(dst, { relays: [relay] });
       await filled(relay);
       const delivered = (await getAccount(connection, recipientAta)).amount - before;
+      assert.equal(delivered, consumed);
       assert.throws(() => assertAggregateDelivery([amount], delivered), "aggregate underdelivery");
       // Explicitly clean this deliberately unsafe fixture before the next origin.
       await execute(path([transfer(mint, recipient)]));
