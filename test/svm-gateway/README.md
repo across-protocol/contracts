@@ -64,11 +64,10 @@ The additional `v5_gateway_path.json` vector is a deterministic consumption-tape
 independently checked by Rust and Solidity as well as TypeScript. Existing `v5_adapter_v1.json` vectors continue to
 cover deposit/fill input bytes, dispatch, signature and deposit-ID domains.
 
-Production release prerequisites are [ACB-863](https://linear.app/uma/issue/ACB-863) (integrator-api quote/order builders)
-and [ENG-320](https://linear.app/uma/issue/ENG-320) (relayer-madrid admission, reveal validation and execution). Their
-production implementations and conformance tests must land before enabling the SVM Across V5 route. Existing CCTP
-enablement and Jussi gas-cost support do not satisfy these Across delivery obligations. Any delegated production
-builder must be identified and have its own linked blocker before enablement.
+SVM port work is tracked in [ACB-637](https://linear.app/uma/issue/ACB-637) (API builders) and
+[ENG-320](https://linear.app/uma/issue/ENG-320) (relayer integration). Reuse the EVM delivery policy, port applicable
+tests, and validate supported paths before enabling SVM Across. Unsupported action/aggregate shapes stay disabled;
+no new generic validator or aggregation project is requested. These follow-ups do not blanket-block ACP-184.
 
 Companion documentation belongs in `solana-v5/AGENTS.md` (SpokePool adapter relationship and shared-vault trust boundary),
 `contracts-v5/docs/SPOKE_V5_FILLS.md` (SVM continuing-tape/proportional-delivery counterpart), and each owning off-chain

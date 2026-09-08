@@ -121,10 +121,10 @@ outcome. A successful path with missing or short consumption retains its recorde
 transaction that actually fails. Failed transaction logs may contain attempted fill events; consumers must check
 transaction success before accepting them.
 
-Production enforcement belongs to the owning off-chain repositories and is a release prerequisite tracked by
-[integrator-api ACB-863](https://linear.app/uma/issue/ACB-863) and
-[relayer-madrid ENG-320](https://linear.app/uma/issue/ENG-320), both blocking ACP-184. Passing this repository's
-conformance lane does not retire those blockers or enable a production route.
+This delivery obligation is shared with EVM. Port the existing policy and applicable conformance cases through
+[ACB-637](https://linear.app/uma/issue/ACB-637) (API builders) and
+[ENG-320](https://linear.app/uma/issue/ENG-320) (SVM relayer integration). These are route-enablement checks, not blanket
+blockers on ACP-184 or requests for new aggregation support. This test lane alone does not enable a production route.
 
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
