@@ -123,7 +123,10 @@ hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v
 
 An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical
 Gateway-vault delivery validates that same live vault in place and its amount, records the fill, and performs no token
-self-transfer or approval. The continuing atomic tape must consume the output.
+self-transfer or approval. This asserts available balance rather than debiting it. A step root may be reused across
+source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor and
+full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
+consumption. A fixed minimum for one fill does not prove aggregate delivery.
 
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
@@ -166,8 +169,8 @@ construction. Each handler retains only its branch-specific account loading, cal
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
 vault itself, the adapter instead authenticates its live balance, records the fill in place, and performs no approval
-or self-transfer; the continuing atomic tape must consume the output. Any later failure rolls back token, fill-status,
-and payer-float changes together.
+or self-transfer. Its safety therefore depends on the proportional or aggregate continuing-path rule above. Any later
+failure rolls back token, fill-status, and payer-float changes together.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation
