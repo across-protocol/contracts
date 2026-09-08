@@ -1,8 +1,9 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys a standalone SwapProxy to Tron. Note that SpokePoolPeriphery's constructor
- * already deploys its own SwapProxy; use this script only when a dedicated SwapProxy
- * is needed outside of a periphery deployment.
+ * Deploys a standalone Tron_SwapProxy (the Tron variant of SwapProxy, which tolerates
+ * Tron USDT's non-standard `transfer` return value) to Tron. Note that
+ * Tron_SpokePoolPeriphery's constructor already deploys its own Tron_SwapProxy; use this
+ * script only when a dedicated SwapProxy is needed outside of a periphery deployment.
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
@@ -28,13 +29,13 @@ async function main(): Promise<void> {
 
   const chainId = resolveChainId();
 
-  console.log("=== SwapProxy Deployment ===");
+  console.log("=== Tron_SwapProxy Deployment ===");
   console.log(`Chain ID: ${chainId}`);
   console.log(`Permit2: ${permit2}`);
 
   const encodedArgs = encodeArgs(["address"], [tronToEvmAddress(permit2)]);
 
-  const artifactPath = path.resolve(__dirname, "../../../out-tron/SpokePoolPeriphery.sol/SwapProxy.json");
+  const artifactPath = path.resolve(__dirname, "../../../out-tron/Tron_SpokePoolPeriphery.sol/Tron_SwapProxy.json");
 
   await deployContract({ chainId, artifactPath, encodedArgs });
 }

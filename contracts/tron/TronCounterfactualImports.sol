@@ -3,7 +3,9 @@ pragma solidity ^0.8.0;
 
 // Entry point for counterfactual contracts in the tron Foundry profile. These use OZ v4 and must
 // be in a separate file from SP1Helios/Tron_SpokePool (OZ v5) to avoid name collisions.
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../periphery/counterfactual/AdminWithdrawManager.sol";
+import "../periphery/counterfactual/CounterfactualBeacon.sol";
 import "../periphery/counterfactual/CounterfactualConstants.sol";
 import "../periphery/counterfactual/CounterfactualDeposit.sol";
 import "../periphery/counterfactual/CounterfactualDepositCCTP.sol";

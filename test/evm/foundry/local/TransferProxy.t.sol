@@ -16,6 +16,7 @@ import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol
 import { MockPermit2, Permit2EIP712 } from "../../../../contracts/test/MockPermit2.sol";
 import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySigningLib.sol";
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
+import { Multicall3 } from "../../../../contracts/external/Multicall3.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
@@ -114,7 +115,7 @@ contract TransferProxyTest is Test {
         multicallHandler = new MulticallHandler();
 
         vm.startPrank(owner);
-        spokePoolPeriphery = new SpokePoolPeriphery(permit2);
+        spokePoolPeriphery = new SpokePoolPeriphery(permit2, address(new Multicall3()));
         domainSeparator = Permit2EIP712(address(permit2)).DOMAIN_SEPARATOR();
         transferProxy = new TransferProxy();
         vm.stopPrank();

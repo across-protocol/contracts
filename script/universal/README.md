@@ -20,15 +20,16 @@ The SP1Helios contract has a constant `MAX_SLOT_AGE = 7 days`, which is the uppe
 
 Create a `.env` file with the following variables:
 
-| Variable                  | Description                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `MNEMONIC`                | BIP-39 mnemonic to derive the deployer's private key (uses index 0)             |
-| `SP1_RELEASE`             | Genesis binary version (e.g., `0.1.0-alpha.20`)                                 |
-| `SP1_PROVER_MODE`         | SP1 prover type: `mock`, `cpu`, `cuda`, or `network`                            |
-| `SP1_VERIFIER_ADDRESS`    | Address of the SP1 verifier contract (use `0x0` to auto-deploy a mock verifier) |
-| `SP1_STATE_UPDATERS`      | Comma-separated list of addresses authorized to submit state updates            |
-| `SP1_VKEY_UPDATER`        | Address authorized to update the verification key                               |
-| `SP1_CONSENSUS_RPCS_LIST` | Comma-separated list of Ethereum consensus (beacon) RPC URLs                    |
+| Variable                  | Description                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `MNEMONIC`                | BIP-39 mnemonic to derive the deployer's private key (uses index 0)                                         |
+| `GATEWAY_ADDRESS`         | Across V5 Gateway address wired into the SpokePool. Optional; defaults to `0x0` (V5 Gateway flows disabled) |
+| `SP1_RELEASE`             | Genesis binary version (e.g., `0.1.0-alpha.20`)                                                             |
+| `SP1_PROVER_MODE`         | SP1 prover type: `mock`, `cpu`, `cuda`, or `network`                                                        |
+| `SP1_VERIFIER_ADDRESS`    | Address of the SP1 verifier contract (use `0x0` to auto-deploy a mock verifier)                             |
+| `SP1_STATE_UPDATERS`      | Comma-separated list of addresses authorized to submit state updates                                        |
+| `SP1_VKEY_UPDATER`        | Address authorized to update the verification key                                                           |
+| `SP1_CONSENSUS_RPCS_LIST` | Comma-separated list of Ethereum consensus (beacon) RPC URLs                                                |
 
 ---
 
@@ -116,6 +117,20 @@ forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpok
 ```
 
 After deployment, you must transfer SP1Helios roles to the SpokePool (see below).
+
+This script is for fresh deployments only and reverts if a SpokePool proxy already exists on the chain. This protects the proxy's broadcast record: forge overwrites `broadcast/DeployUniversalSpokePool.s.sol/<chainId>/run-latest.json` on every run, and `ExtractDeployedFoundryAddresses.ts` derives the chain's `SpokePool` entry from the `ERC1967Proxy` transaction in that file.
+
+### DeployUniversalSpokePoolImpl.s.sol
+
+Redeploys only the Universal_SpokePool implementation for a chain that already has a proxy (e.g. ahead of an `upgradeTo` proposed via the HubPool). Same arguments as `DeployUniversalSpokePool`. As a separate script file it broadcasts to its own directory (`broadcast/DeployUniversalSpokePoolImpl.s.sol/<chainId>/`), leaving the original proxy record intact.
+
+```bash
+forge script script/universal/DeployUniversalSpokePoolImpl.s.sol:DeployUniversalSpokePoolImpl \
+  --sig "run(address,uint256)" <SP1_HELIOS_ADDRESS> <OFT_FEE_CAP> \
+  --rpc-url <RPC_URL> \
+  --broadcast \
+  -vvvv
+```
 
 ### Transferring SP1Helios Roles to SpokePool
 

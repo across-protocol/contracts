@@ -5,7 +5,6 @@
 @maticnetwork/=node_modules/@maticnetwork/
 @matterlabs/=node_modules/@matterlabs/
 @openzeppelin/=node_modules/@openzeppelin/
-@scroll-tech/=node_modules/@scroll-tech/
 @uniswap/=node_modules/@uniswap/
 arb-bridge-eth/=node_modules/arb-bridge-eth/
 arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/

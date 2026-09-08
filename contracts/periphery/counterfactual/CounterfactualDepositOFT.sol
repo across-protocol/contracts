@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
+import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { CounterfactualImplementationBase } from "./CounterfactualImplementationBase.sol";
 
@@ -149,8 +150,10 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
                 submitterData.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != _beacon().signer())
-            revert InvalidSignature();
+        if (
+            ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) !=
+            ICounterfactualBeacon(_beacon()).signer()
+        ) revert InvalidSignature();
     }
 
     /// @notice Calls `deposit` on the SponsoredOFTSrcPeriphery with the constructed quote.
@@ -167,7 +170,7 @@ contract CounterfactualDepositOFT is CounterfactualImplementationBase, EIP712 {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
-                    srcEid: _beacon().oftSrcEid(),
+                    srcEid: ICounterfactualBeacon(_beacon()).oftSrcEid(),
                     dstEid: routeParams.dstEid,
                     destinationHandler: routeParams.destinationHandler,
                     amountLD: depositAmount,

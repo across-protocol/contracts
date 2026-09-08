@@ -146,7 +146,8 @@ contract Polygon_SpokePoolTest is Test, Constants {
             IERC20(address(usdc)),
             cctpMessenger,
             oftHubEid,
-            TEST_OFT_FEE_CAP
+            TEST_OFT_FEE_CAP,
+            address(0)
         );
 
         // Deploy proxy
@@ -192,7 +193,8 @@ contract Polygon_SpokePoolTest is Test, Constants {
             IERC20(address(usdc)),
             cctpMessenger,
             oftHubEid,
-            TEST_OFT_FEE_CAP
+            TEST_OFT_FEE_CAP,
+            address(0)
         );
 
         bytes memory upgradeData = abi.encodeCall(spokePool.upgradeTo, (address(newImplementation)));

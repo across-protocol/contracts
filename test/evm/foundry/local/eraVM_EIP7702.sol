@@ -32,7 +32,8 @@ contract TestableMockSpokePool is ZkSync_SpokePool {
             1,
             ITokenMessenger(address(0)),
             1 hours,
-            9 hours
+            9 hours,
+            address(0)
         )
     {}
 

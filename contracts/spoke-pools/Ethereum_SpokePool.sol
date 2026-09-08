@@ -15,7 +15,8 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
+        uint32 _fillDeadlineBuffer,
+        address _gateway
     )
         SpokePool(
             _wrappedNativeTokenAddress,
@@ -23,7 +24,8 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
             _fillDeadlineBuffer,
             // Ethereum_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
             0,
-            0
+            0,
+            _gateway
         )
     {} // solhint-disable-line no-empty-blocks
 

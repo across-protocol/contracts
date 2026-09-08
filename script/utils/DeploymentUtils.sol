@@ -71,6 +71,18 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     }
 
     /**
+     * @notice Resolve the Across V5 Gateway address to wire into a SpokePool implementation constructor.
+     * @dev Sourced from the GATEWAY_ADDRESS environment variable, mirroring the env-based HUBPOOL_ADDRESS
+     *      pattern. Defaults to address(0) when unset, which deploys the SpokePool with V5 Gateway flows
+     *      disabled (executeAcrossV5 will revert until a Gateway is wired in via a subsequent upgrade).
+     * @return gateway The Gateway address to pass as the final SpokePool constructor argument.
+     */
+    function getGateway() public view returns (address gateway) {
+        gateway = vm.envOr("GATEWAY_ADDRESS", address(0));
+        console.log("Gateway address:", gateway);
+    }
+
+    /**
      * @notice Deploy a new proxy contract or upgrade existing implementation
      * @dev This function mimics deployNewProxy from utils.hre.ts using custom deployment for OpenZeppelin v4
      * @param contractName Name of the contract to deploy
@@ -215,6 +227,37 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         require(deployed.code.length > 0, "CREATE2 deployment did not produce code");
     }
 
+    /// @dev Returns the most recent deployment of `contractName` recorded in
+    ///      `broadcast/<scriptFile>/<chainid>/run-latest.json` (the last matching CREATE/CREATE2 in the run),
+    ///      or address(0) when the script has never broadcast on this chain. Lets one script consume another
+    ///      script's freshly-broadcast deployment without waiting for an extract-addresses round-trip.
+    function getLatestBroadcastDeployment(
+        string memory scriptFile,
+        string memory contractName
+    ) internal view returns (address deployed) {
+        string memory path = string.concat(
+            "broadcast/",
+            scriptFile,
+            "/",
+            vm.toString(block.chainid),
+            "/run-latest.json"
+        );
+        if (!vm.exists(path)) return address(0);
+        string memory json = vm.readFile(path);
+        bytes32 wanted = keccak256(bytes(contractName));
+        for (uint256 i = 0; vm.keyExists(json, string.concat(".transactions[", vm.toString(i), "]")); i++) {
+            string memory txPath = string.concat(".transactions[", vm.toString(i), "]");
+            bytes32 txType = keccak256(bytes(vm.parseJsonString(json, string.concat(txPath, ".transactionType"))));
+            if (txType != keccak256("CREATE") && txType != keccak256("CREATE2")) continue;
+            // contractName can be JSON null for CREATEs forge couldn't match to an artifact; skip those.
+            try vm.parseJsonString(json, string.concat(txPath, ".contractName")) returns (string memory name) {
+                if (keccak256(bytes(name)) == wanted) {
+                    deployed = vm.parseJsonAddress(json, string.concat(txPath, ".contractAddress"));
+                }
+            } catch {}
+        }
+    }
+
     /// @dev Predicts the CREATE2 address for a given salt and initCode.
     function _predictCreate2(bytes32 salt, bytes memory initCode) internal pure returns (address) {
         return
@@ -233,9 +276,16 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         bool isZkStackChain = keccak256(abi.encodePacked(getChainFamily(chainId))) ==
             keccak256(abi.encodePacked("ZK_STACK"));
 
-        string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
-
         if (isZkStackChain) {
+            // ZK-stack chains with the EVM bytecode interpreter enabled (protocol v27+) execute standard
+            // EVM bytecode, so solc-built artifacts deploy fine under any profile — and EVM CREATE2
+            // semantics hold, which the counterfactual system's address parity depends on. The canonical
+            // CREATE2 deployer is the capability probe: it can only exist via its presigned EVM deployment
+            // tx, so code at that address (read from the forked chain state) proves the interpreter is
+            // live. Without it, EVM bytecode cannot run — require the zksync (zksolc) profile.
+            if (StdConstants.CREATE2_FACTORY.code.length > 0) return;
+
+            string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
             vm.assertEq(
                 foundryProfile,
                 string("zksync"),

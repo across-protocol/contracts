@@ -21,6 +21,7 @@ artifacts-zk
 /broadcast/**
 !/broadcast/**/
 !/broadcast/**/run-latest.json
+!/broadcast/multi/*-latest/run.json
 /broadcast/**/dry-run/
 !/broadcast/deployed-addresses.md
 !/broadcast/deployed-addresses.json

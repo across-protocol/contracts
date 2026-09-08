@@ -5,7 +5,9 @@
  * smart contract addresses that are in the broadcast folder.
  *
  * It specifically looks at the run-latest.json file for each smart contract and inside
- * that JSON looks at the `contractAddress` field.
+ * that JSON looks at the `contractAddress` field. Multi-chain broadcasts (broadcast/multi/
+ * <Script>.s.sol-latest/run.json) are also scanned; each per-chain deployment element inside
+ * them is processed exactly like a single-chain run-latest.json.
  */
 
 import * as fs from "fs";
@@ -27,6 +29,9 @@ interface BroadcastFile {
   filePath: string;
   isDeploymentsJson?: boolean;
   deploymentsData?: any;
+  // For multi-chain broadcasts: the per-chain deployment element from broadcast/multi/*/run.json,
+  // shaped identically to a single-chain run-latest.json.
+  multiRunData?: any;
 }
 
 interface Contract {
@@ -58,6 +63,22 @@ interface JsonOutput {
       };
     };
   };
+}
+
+/**
+ * `ERC1967Proxy` is a generic contract name, so the broadcast can't tell us what a given proxy *is*.
+ * Historically every proxy in this repo was a SpokePool, so the extractor blanket-labeled them "SpokePool".
+ * Now other stacks deploy their own proxies (e.g. the counterfactual beacon), so we disambiguate by the
+ * deploying script: an explicit mapping here wins, otherwise SpokePool-named scripts → "SpokePool",
+ * otherwise a name derived from the script.
+ */
+const PROXY_LOGICAL_NAME_BY_SCRIPT: Record<string, string> = {
+  "DeployCounterfactualBeacon.s.sol": "CounterfactualBeacon",
+};
+
+/** Scripts whose deployed ERC1967Proxy is the canonical Across SpokePool (e.g. DeployBaseSpokePool.s.sol). */
+function isSpokePoolDeployScript(scriptName: string): boolean {
+  return /SpokePool\.s\.sol$/.test(scriptName);
 }
 
 /**
@@ -154,6 +175,94 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
   return broadcastFiles;
 }
 
+/**
+ * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/run.json). Forge writes
+ * these instead of per-chain run-latest.json files when a script broadcasts to several chains in one
+ * run. Each element of the sequence's `deployments` array has the same shape as a single-chain
+ * run-latest.json, so each becomes a virtual broadcast file for its chain.
+ *
+ * NB: forge replaces the whole -latest folder on every rerun that broadcasts to two or more chains,
+ * so chains skipped by an idempotent rerun vanish from it. materializeMultiBroadcasts() persists each
+ * element into the durable per-chain layout to protect against that.
+ */
+function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
+  const multiDir = path.join(broadcastDir, "multi");
+  if (!fs.existsSync(multiDir)) return [];
+
+  const broadcastFiles: BroadcastFile[] = [];
+  const trackedFiles = getTrackedFiles(broadcastDir);
+
+  try {
+    for (const seqDir of fs.readdirSync(multiDir)) {
+      // Only the -latest sequence counts (timestamped siblings and dry-run are historical/simulated).
+      const match = seqDir.match(/^(.+?\.s\.sol).*-latest$/);
+      const runJsonPath = path.join(multiDir, seqDir, "run.json");
+
+      // Only include files that exist AND are tracked by git (committed or staged)
+      if (!match || !fs.existsSync(runJsonPath) || !trackedFiles.has(path.resolve(runJsonPath))) continue;
+
+      const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+      for (const deployment of data.deployments ?? []) {
+        if (typeof deployment.chain !== "number") continue;
+        broadcastFiles.push({
+          scriptName: match[1],
+          chainId: deployment.chain,
+          filePath: runJsonPath,
+          multiRunData: deployment,
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading multi broadcast directory: ${error}`);
+  }
+
+  return broadcastFiles;
+}
+
+/**
+ * Materialize each multi-chain deployment element into forge's canonical per-chain layout
+ * (broadcast/<script>/<chainId>/run-latest.json — identical schema). The multi -latest folder is
+ * volatile (see findMultiBroadcastFiles), so the per-chain layout is the durable record: a rerun can
+ * never erase a chain it didn't touch. Existing per-chain files are only replaced when the multi
+ * element is newer (forge timestamps both in milliseconds).
+ */
+function materializeMultiBroadcasts(broadcastDir: string, multiFiles: BroadcastFile[]): void {
+  // Keep only the newest element per (script, chain) in case several sequences overlap.
+  const newest = new Map<string, BroadcastFile>();
+  for (const file of multiFiles) {
+    const key = `${file.scriptName}/${file.chainId}`;
+    const prev = newest.get(key);
+    if (!prev || (file.multiRunData.timestamp ?? 0) > (prev.multiRunData.timestamp ?? 0)) {
+      newest.set(key, file);
+    }
+  }
+
+  const written: string[] = [];
+  for (const file of newest.values()) {
+    const chainDir = path.join(broadcastDir, file.scriptName, String(file.chainId));
+    const target = path.join(chainDir, "run-latest.json");
+    if (fs.existsSync(target)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(target, "utf8"));
+        if ((existing.timestamp ?? 0) >= (file.multiRunData.timestamp ?? 0)) continue;
+      } catch {
+        // Unreadable existing file: replace it.
+      }
+    }
+    fs.mkdirSync(chainDir, { recursive: true });
+    fs.writeFileSync(target, JSON.stringify(file.multiRunData, null, 2) + "\n");
+    written.push(path.relative(broadcastDir, target));
+  }
+
+  if (written.length > 0) {
+    console.log(`Materialized ${written.length} per-chain run-latest.json file(s) from multi-chain sequences.`);
+    console.log("Commit them so these deployments survive later multi-chain reruns:");
+    for (const file of written) {
+      console.log(`  - broadcast/${file}`);
+    }
+  }
+}
+
 function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
   const deploymentsFiles: BroadcastFile[] = [];
 
@@ -208,31 +317,58 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
     return contracts;
   } else {
-    // Handle broadcast file format
+    // Handle broadcast file format (a per-chain multi-broadcast element has the same shape)
     try {
-      const data = JSON.parse(fs.readFileSync(broadcastFile.filePath, "utf8"));
+      const data = broadcastFile.multiRunData ?? JSON.parse(fs.readFileSync(broadcastFile.filePath, "utf8"));
       const contracts: Contract[] = [];
       const transactions = data.transactions || [];
       const receipts = data.receipts || [];
 
-      // Create a mapping of transaction hash to block number
+      // Build receipt lookups keyed by the deployed contract address. Receipts are fetched directly from the
+      // node and are authoritative, whereas `transactions[].hash` is occasionally mis-associated with the wrong
+      // entry by Foundry (e.g. when a sequence contains both a CREATE and a later CALL to the same address). We
+      // therefore resolve a CREATE's transaction hash and block number from the receipt whose `contractAddress`
+      // matches, falling back to `tx.hash` only when no matching receipt exists (e.g. simulation-only runs).
       const txHashToBlock: { [hash: string]: number } = {};
+      const addressToReceipt: { [address: string]: { transactionHash: string; blockNumber: number | null } } = {};
       for (const receipt of receipts) {
         const txHash = receipt.transactionHash;
         let blockNumber = receipt.blockNumber;
+        // Convert hex to decimal
+        if (typeof blockNumber === "string" && blockNumber.startsWith("0x")) {
+          blockNumber = parseInt(blockNumber, 16);
+        }
         if (txHash && blockNumber) {
-          // Convert hex to decimal
-          if (typeof blockNumber === "string" && blockNumber.startsWith("0x")) {
-            blockNumber = parseInt(blockNumber, 16);
-          }
           txHashToBlock[txHash] = blockNumber;
+        }
+        if (receipt.contractAddress) {
+          addressToReceipt[receipt.contractAddress.toLowerCase()] = { transactionHash: txHash, blockNumber };
         }
       }
 
       for (const tx of transactions) {
+        // The beacon PROXY's CREATE only appears in the FIRST beacon run at a given salt; later runs (e.g. a
+        // config upgrade) find it already deployed and skip it, so `run-latest.json` often lacks the proxy
+        // CREATE. Both `upgradeToAndCall(address,bytes)` (0x4f1ef286) and `setImplementation(address)`
+        // (0xd784d426) ALWAYS target the proxy and at least one of them is emitted on any beacon run that
+        // changes anything, so capture the canonical `CounterfactualBeacon` address from their target.
+        if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" && tx.transactionType === "CALL") {
+          const input: string = (tx.transaction && tx.transaction.input) || "";
+          const to: string | undefined = tx.transaction && tx.transaction.to;
+          if (to && (input.startsWith("0x4f1ef286") || input.startsWith("0xd784d426"))) {
+            contracts.push({
+              contractName: "CounterfactualBeacon",
+              contractAddress: to,
+              transactionHash: tx.hash,
+              blockNumber: txHashToBlock[tx.hash] || null,
+            });
+          }
+        }
+
         if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
-          const txHash = tx.hash;
-          const blockNumber = txHashToBlock[txHash] || null;
+          const receipt = addressToReceipt[tx.contractAddress.toLowerCase()];
+          const txHash = receipt?.transactionHash ?? tx.hash;
+          const blockNumber = receipt?.blockNumber ?? txHashToBlock[tx.hash] ?? null;
 
           let contractName = (tx.contractName as string | null) ?? "";
 
@@ -251,9 +387,25 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           }
 
           if (contractName === "ERC1967Proxy") {
-            contractName = "SpokePool";
+            // Resolve which contract this proxy represents by the deploying script (see comment above).
+            const mappedProxyName = PROXY_LOGICAL_NAME_BY_SCRIPT[broadcastFile.scriptName];
+            if (mappedProxyName) {
+              contractName = mappedProxyName;
+            } else if (isSpokePoolDeployScript(broadcastFile.scriptName)) {
+              contractName = "SpokePool";
+            } else {
+              contractName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "") || "UnknownProxy";
+            }
           } else if (contractName.endsWith("_SpokePool")) {
-            // skip
+            // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
+            continue;
+          } else if (contractName === "CounterfactualBeacon" || contractName === "CounterfactualBeaconBootstrap") {
+            // Skip the beacon implementation and bootstrap — neither is an address callers should resolve.
+            // The canonical `CounterfactualBeacon` is the ERC1967 proxy (captured above from the
+            // upgradeToAndCall/setImplementation CALL target, and via the proxy CREATE on first deploy). A
+            // `CounterfactualBeacon` CREATE is always the per-chain impl behind that proxy (the proxy is an
+            // `ERC1967Proxy`); it changes on every upgrade. `CounterfactualBeaconBootstrap` is the one-time
+            // init shim the proxy is deployed over before being upgraded to the impl.
             continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             // Preferred: the deploy script records the destination chain id in the broadcast `returns`
@@ -452,7 +604,12 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
             scripts: {},
           };
         }
-        allContracts[chainId].scripts[scriptName] = contracts;
+        // Concatenate so a per-chain run-latest.json and a multi-broadcast entry for the same script
+        // both contribute; deduplicateContracts keeps the latest deployment per contract name.
+        allContracts[chainId].scripts[scriptName] = [
+          ...(allContracts[chainId].scripts[scriptName] ?? []),
+          ...contracts,
+        ];
       }
     }
   }
@@ -579,18 +736,24 @@ function main(): void {
   // Read legacy-addresses.json
   const deploymentsFiles = readDeploymentsFile(deploymentsDir);
 
-  // Find all broadcast files
+  // Find all broadcast files (per-chain run-latest.json and multi-chain sequences), and persist
+  // multi-chain deployments into the durable per-chain layout.
   const broadcastFiles = findBroadcastFiles(broadcastDir);
+  const multiBroadcastFiles = findMultiBroadcastFiles(broadcastDir);
+  materializeMultiBroadcasts(broadcastDir, multiBroadcastFiles);
 
-  // Combine both sources (order is important, legacy-addresses.json should be first)
-  const allFiles = [...deploymentsFiles, ...broadcastFiles];
+  // Combine all sources (order is important, legacy-addresses.json should be first)
+  const allFiles = [...deploymentsFiles, ...broadcastFiles, ...multiBroadcastFiles];
 
   if (allFiles.length === 0) {
     console.error("No run-latest.json files found in broadcast directory and no legacy-addresses.json found");
     process.exit(1);
   }
 
-  console.log(`Found ${broadcastFiles.length} broadcast files and ${deploymentsFiles.length} deployment entries:`);
+  console.log(
+    `Found ${broadcastFiles.length} broadcast files, ${multiBroadcastFiles.length} multi-chain deployment entries, ` +
+      `and ${deploymentsFiles.length} deployment entries:`
+  );
 
   // Generate output files inside broadcast directory
   const outputFile = path.join(broadcastDir, "deployed-addresses.json");

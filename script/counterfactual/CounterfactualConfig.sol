@@ -3,20 +3,72 @@ pragma solidity ^0.8.0;
 
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { Variable, TypeKind } from "forge-std/LibVariable.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { CounterfactualChainConfig } from "../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
+import { CounterfactualBeaconBootstrap } from "../../contracts/periphery/counterfactual/CounterfactualBeaconBootstrap.sol";
+import { ICounterfactualBeacon } from "../../contracts/interfaces/ICounterfactualBeacon.sol";
+import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 
 /// @notice Shared config loader/resolver for counterfactual deploy scripts: operational params from
 /// config.toml, chain-specific values from Constants and DeployedAddresses.
 abstract contract CounterfactualConfig is DeploymentUtils {
     string constant CONFIG_PATH = "./script/counterfactual/config.toml";
 
+    /// @dev Synthetic "globals" section in config.toml. Top-level TOML keys must resolve to a chain id
+    ///      (StdConfig reverts otherwise), so chain id 0 — not a real chain — hosts cross-chain-global
+    ///      values like the deploy salt. See the `[0]` section in config.toml.
+    uint256 internal constant GLOBALS_CHAIN_ID = 0;
+
     struct OperationalConfig {
         address signer;
         address ownerAndDirectWithdrawer;
     }
 
+    /// @dev Idempotent: the StdConfig helper is fork-persistent, so a second load would only re-parse the
+    ///      TOML for nothing (the check scripts call this once per chain across ~24 forks).
     function _loadCounterfactualConfig() internal {
-        _loadConfig(CONFIG_PATH, false);
+        if (address(config) == address(0)) _loadConfig(CONFIG_PATH, false);
+    }
+
+    // --- Global CREATE2 salt + deterministic-address helpers for the singleton infra contracts ------------
+    // Factory, bootstrap, beacon proxy and dispatcher are deployed via CREATE2 with this single salt so they
+    // land at identical addresses on every chain — the foundation of the chain-agnostic-leaf design. Reading
+    // it from one global config value keeps every script (and every chain) in lockstep; bump it to coordinate
+    // a fresh cross-chain redeploy.
+
+    /// @notice Global CREATE2 salt shared by all counterfactual infra deployments. Read from the `[0]`
+    ///         globals section of config.toml (`[0.bytes32] deploySalt`); defaults to `bytes32(0)` if unset.
+    function _deploySalt() internal returns (bytes32) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(GLOBALS_CHAIN_ID, "deploySalt");
+        return v.ty.kind == TypeKind.Bytes32 ? v.toBytes32() : bytes32(0);
+    }
+
+    /// @dev CREATE2 init code for the beacon proxy: an ERC1967Proxy over the chain-identical bootstrap,
+    ///      initialized with `deployer` as bootstrap owner. Chain-invariant (bootstrap address + deployer
+    ///      both are), so the proxy address is identical everywhere.
+    function _beaconProxyInitCode(address deployer) internal returns (bytes memory) {
+        address bootstrap = _predictCreate2(_deploySalt(), type(CounterfactualBeaconBootstrap).creationCode);
+        return
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(bootstrap, abi.encodeCall(CounterfactualBeaconBootstrap.initialize, (deployer)))
+            );
+    }
+
+    /// @notice Predicts the chain-invariant beacon proxy address for the given deployer (bootstrap owner).
+    function _predictBeaconProxy(address deployer) internal returns (address) {
+        return _predictCreate2(_deploySalt(), _beaconProxyInitCode(deployer));
+    }
+
+    /// @dev CREATE2 init code for the dispatcher (CounterfactualDeposit) bound to the beacon proxy.
+    function _dispatcherInitCode(address proxy) internal pure returns (bytes memory) {
+        return abi.encodePacked(type(CounterfactualDeposit).creationCode, abi.encode(ICounterfactualBeacon(proxy)));
+    }
+
+    /// @notice Predicts the chain-invariant dispatcher address bound to the given beacon proxy.
+    function _predictDispatcher(address proxy) internal returns (address) {
+        return _predictCreate2(_deploySalt(), _dispatcherInitCode(proxy));
     }
 
     function _loadOperationalConfig() internal returns (OperationalConfig memory cfg) {
@@ -28,13 +80,6 @@ abstract contract CounterfactualConfig is DeploymentUtils {
             cfg.ownerAndDirectWithdrawer != address(0),
             "config: ownerAndDirectWithdrawer is zero or missing for chain"
         );
-    }
-
-    /// @dev Optional per-(token, bridge) execution-fee cap from config.toml for the current chain; 0 if the
-    ///      key is absent. These are operational economic params (input-token units), tuned per chain.
-    function _resolveFeeCap(string memory key) internal view returns (uint256) {
-        Variable memory v = config.get(key);
-        return v.ty.kind == TypeKind.Uint256 ? v.toUint256() : 0;
     }
 
     /// @dev Reads the signer address from config.toml.
@@ -54,6 +99,33 @@ abstract contract CounterfactualConfig is DeploymentUtils {
             return getWrappedNativeToken(block.chainid);
         }
         return address(0);
+    }
+
+    /// @dev Cap on the submitter-chosen Circle fast-transfer fee (vanilla CCTP), in bps of the burned
+    ///      amount. Per-chain value from config.toml (`[N.uint]`), required on every chain; zero is a
+    ///      valid value (0 ⇒ standard transfers only), unlike the `_maxExecutionFee` caps.
+    function _usdcCctpMaxFeeBps() internal returns (uint256) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get("usdcCctpMaxFeeBps");
+        require(v.ty.kind == TypeKind.Uint256, "config: usdcCctpMaxFeeBps not configured for this chain");
+        return v.toUint256();
+    }
+
+    /// @dev Resolves a max-execution-fee cap for `token` from this chain's config.toml value (`key` in
+    ///      the `[N.uint256]` section), taken verbatim as the full onchain amount in the token's own
+    ///      decimals — e.g. 2 USDC is 2000000 on 6-decimal chains but 2000000000000000000 on BSC (18).
+    ///      One config value serves every bridge type for the token. Returns 0 (route not configured)
+    ///      when the token is unset on this chain; reverts if the token is set but the config key is
+    ///      missing OR zero, so a beacon impl can't deploy with an unconfigured (or accidentally
+    ///      zero — nonzero fees all revert) cap for a live token.
+    function _maxExecutionFee(string memory key, address token) internal returns (uint256) {
+        if (token == address(0)) return 0;
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get(key);
+        require(v.ty.kind == TypeKind.Uint256, string.concat("config: ", key, " not configured for this chain"));
+        uint256 fee = v.toUint256();
+        require(fee != 0, string.concat("config: ", key, " is zero but its token is configured on this chain"));
+        return fee;
     }
 
     /// @dev Standard Aave/Compound-style native sentinel, returned by `beacon.nativeToken()` on chains whose
@@ -95,12 +167,39 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         return address(0);
     }
 
-    /// @dev Resolves USDC for this chain from constants.json (`.USDC.<chainId>`); address(0) if absent.
-    function _resolveUsdc() internal view returns (address) {
+    /// @dev Resolves native (Circle-issued or chain-canonical) USDC from constants.json
+    ///      (`.USDC.<chainId>`); address(0) if absent. Bridged USDC.e is a SEPARATE token with its own
+    ///      slot — see `_resolveUsdce`. An `[N.address] usdcOverride` entry in config.toml wins over
+    ///      constants.json: it makes a chain-local stablecoin serve as the beacon's USDC (e.g. pathUSD
+    ///      on Tempo) without aliasing it into the global USDC constants that other consumers read.
+    function _resolveUsdc() internal returns (address) {
+        address overrideAddr = _usdcOverride();
+        if (overrideAddr != address(0)) return overrideAddr;
         if (vm.keyExists(file, string.concat(".USDC.", vm.toString(block.chainid)))) {
             return getUSDCAddress(block.chainid);
         }
         return address(0);
+    }
+
+    /// @dev The chain's `[N.address] usdcOverride` entry, or address(0) when it configures none. Exposed
+    ///      separately so verifier scripts can assert the beacon's `usdc` against the pinned address rather
+    ///      than guessing at a symbol — a TIP-20 system token's `symbol()` is unreadable under a local EVM
+    ///      fork, so an address comparison is both stronger and the only reliable check for these tokens.
+    function _usdcOverride() internal returns (address) {
+        if (address(config) == address(0)) _loadCounterfactualConfig();
+        Variable memory v = config.get("usdcOverride");
+        return v.ty.kind == TypeKind.Address ? v.toAddress() : address(0);
+    }
+
+    /// @dev Resolves bridged USDC.e from constants.json (`.USDCe.<chainId>`), but only where it is a
+    ///      token DISTINCT from native USDC (on mainnet the `.USDCe` entry aliases native USDC — that is
+    ///      not a second token). address(0) when absent or aliased. USDC.e serves SpokePool routes only:
+    ///      bridged USDC has no CCTP burn path.
+    function _resolveUsdce(address usdc) internal view returns (address) {
+        string memory path = string.concat(".USDCe.", vm.toString(block.chainid));
+        if (!vm.keyExists(file, path)) return address(0);
+        address usdce = vm.parseJsonAddress(file, path);
+        return usdce == usdc ? address(0) : usdce;
     }
 
     /// @dev Resolves USDT from constants.json (`.USDT.<chainId>`); address(0) if absent. Mainly needed for
@@ -109,6 +208,21 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     ///      route with `RouteNotConfigured`, so `_buildChainConfig` rejects it below.
     function _resolveUsdt() internal view returns (address) {
         string memory path = string.concat(".USDT.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    /// @dev Resolves WBTC from constants.json (`.WBTC.<chainId>`); address(0) if absent (route not configured).
+    function _resolveWbtc() internal view returns (address) {
+        string memory path = string.concat(".WBTC.", vm.toString(block.chainid));
+        if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
+        return address(0);
+    }
+
+    /// @dev Resolves canonical WETH from constants.json (`.WETH.<chainId>`); address(0) if absent. Distinct
+    ///      from `_resolveWrappedNativeToken` (the wrapped GAS token) — identical only on ETH-gas chains.
+    function _resolveWeth() internal view returns (address) {
+        string memory path = string.concat(".WETH.", vm.toString(block.chainid));
         if (vm.keyExists(file, path)) return vm.parseJsonAddress(file, path);
         return address(0);
     }
@@ -127,17 +241,27 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         cfg.oftSrcPeriphery = _resolveOftPeriphery();
         cfg.oftSrcEid = hasOftEid(block.chainid) ? uint32(getOftEid(block.chainid)) : 0;
         cfg.usdc = _resolveUsdc();
+        cfg.usdce = _resolveUsdce(cfg.usdc);
         cfg.usdt = _resolveUsdt();
-        // Per-(token, bridge) execution-fee caps from config.toml (operational; 0 if unset). A leaf names
-        // which cap to enforce via its `maxExecutionFeeGetter` selector.
-        cfg.usdcCctpMaxExecutionFee = _resolveFeeCap("usdcCctpMaxExecutionFee");
-        // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP);
-        // 0 if unset ⇒ standard transfers only on this chain.
-        cfg.usdcCctpMaxFeeBps = _resolveFeeCap("usdcCctpMaxFeeBps");
-        cfg.usdtOftMaxExecutionFee = _resolveFeeCap("usdtOftMaxExecutionFee");
-        cfg.usdcSpokePoolMaxExecutionFee = _resolveFeeCap("usdcSpokePoolMaxExecutionFee");
-        cfg.usdtSpokePoolMaxExecutionFee = _resolveFeeCap("usdtSpokePoolMaxExecutionFee");
-        cfg.wethSpokePoolMaxExecutionFee = _resolveFeeCap("wethSpokePoolMaxExecutionFee");
+        cfg.wbtc = _resolveWbtc();
+        cfg.weth = _resolveWeth();
+        // Per-(token, bridge) execution-fee caps: a per-chain raw onchain amount in config.toml, in the
+        // token's own decimals. Bridge types share the token's value. A leaf names which cap to enforce
+        // via its `maxExecutionFeeGetter` selector.
+        uint256 usdcMaxExecutionFee = _maxExecutionFee("usdcMaxExecutionFee", cfg.usdc);
+        cfg.usdcCctpMaxExecutionFee = usdcMaxExecutionFee;
+        cfg.usdcSpokePoolMaxExecutionFee = usdcMaxExecutionFee;
+        uint256 usdtMaxExecutionFee = _maxExecutionFee("usdtMaxExecutionFee", cfg.usdt);
+        cfg.usdtOftMaxExecutionFee = usdtMaxExecutionFee;
+        cfg.usdtSpokePoolMaxExecutionFee = usdtMaxExecutionFee;
+        // Denominated in canonical WETH (18 decimals) and required only where WETH exists. On ETH-gas
+        // chains the same value caps the native msg.value route (wrapped native IS WETH there); non-ETH-gas
+        // chains do not get wrapped-native routes, so no cap is denominated in WBNB/WPOL/etc.
+        cfg.usdceSpokePoolMaxExecutionFee = _maxExecutionFee("usdceMaxExecutionFee", cfg.usdce);
+        cfg.wethSpokePoolMaxExecutionFee = _maxExecutionFee("wethMaxExecutionFee", cfg.weth);
+        cfg.wbtcSpokePoolMaxExecutionFee = _maxExecutionFee("wbtcMaxExecutionFee", cfg.wbtc);
+        // Bps cap (not token units) on the submitter-chosen Circle fast-transfer fee (vanilla CCTP).
+        cfg.usdcCctpMaxFeeBps = _usdcCctpMaxFeeBps();
         // SpokePool is the foundational route. Baking `spokePool = 0` silently bricks every SpokePool leaf,
         // fixable only by a registry UUPS upgrade (the value is immutable on the impl). Refuse to deploy
         // without a SpokePool entry.
@@ -157,6 +281,47 @@ abstract contract CounterfactualConfig is DeploymentUtils {
         require(
             cfg.nativeToken != NATIVE_SENTINEL || cfg.wrappedNativeToken != address(0),
             "config: nativeToken=sentinel requires wrappedNativeToken"
+        );
+        // Cross-check the chain's DECLARED support surface ([N.bool] in config.toml) against what the
+        // data sources actually resolve. Pure assertions in both directions: declaring a token/bridge
+        // supported that the data can't back — or unsupported when the data says it's live — reverts, so
+        // config.toml is always an accurate, reviewable statement of each chain's counterfactual surface.
+        _validateDeclaredSupport(cfg);
+    }
+
+    /// @dev Requires every `[<chainId>.bool]` support flag in config.toml to match resolved reality.
+    ///      Tokens assert on the resolved address; bridges assert on the route's full capability:
+    ///      SpokePool (deployed SpokePool), sponsored CCTP (Circle domain + SponsoredCCTPSrcPeriphery),
+    ///      vanilla CCTP (Circle CCTP v2 TokenMessenger), OFT (LayerZero EID + SponsoredOFTSrcPeriphery).
+    ///      Missing flags revert too — every chain must declare all nine explicitly.
+    function _validateDeclaredSupport(CounterfactualChainConfig memory cfg) internal {
+        _checkDeclaredFlag("usdc", cfg.usdc != address(0));
+        _checkDeclaredFlag("usdce", cfg.usdce != address(0));
+        _checkDeclaredFlag("usdt", cfg.usdt != address(0));
+        _checkDeclaredFlag("wbtc", cfg.wbtc != address(0));
+        _checkDeclaredFlag("weth", cfg.weth != address(0));
+        _checkDeclaredFlag("spokePool", cfg.spokePool != address(0));
+        _checkDeclaredFlag("sponsoredCctp", hasCctpDomain(block.chainid) && cfg.cctpSrcPeriphery != address(0));
+        _checkDeclaredFlag("vanillaCctp", cfg.cctpTokenMessenger != address(0));
+        _checkDeclaredFlag("oft", hasOftEid(block.chainid) && cfg.oftSrcPeriphery != address(0));
+    }
+
+    function _checkDeclaredFlag(string memory key, bool actual) private {
+        Variable memory v = config.get(key);
+        require(
+            v.ty.kind == TypeKind.Bool,
+            string.concat("config: [", vm.toString(block.chainid), ".bool] ", key, " flag missing")
+        );
+        require(
+            v.toBool() == actual,
+            string.concat(
+                "config: ",
+                key,
+                " declared ",
+                v.toBool() ? "true" : "false",
+                " but constants/broadcasts resolve it as ",
+                actual ? "supported" : "unsupported"
+            )
         );
     }
 }

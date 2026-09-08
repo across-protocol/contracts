@@ -29,7 +29,7 @@ contract AnotherSimpleContract {
 
 // Extension of MockSpokePool to expose internal functions for testing
 contract TestableMockSpokePool is MockSpokePool {
-    constructor(address _wrappedNativeTokenAddress) MockSpokePool(_wrappedNativeTokenAddress) {}
+    constructor(address _wrappedNativeTokenAddress) MockSpokePool(_wrappedNativeTokenAddress, address(0)) {}
 
     function test_unwrapwrappedNativeTokenTo(address payable to, uint256 amount) external {
         _unwrapwrappedNativeTokenTo(to, amount);

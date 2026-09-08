@@ -22,11 +22,16 @@ evm_version = "prague"
 src = "contracts/spoke-pools/Lens_SpokePool.sol"
 bytecode_hash = "none"
 
+# Key names follow foundry-zksync v0.1.9 (enforced by check-foundry-zksync in package.json).
 [profile.zksync.zksync]
 compile = true
-fallback_oz = true
-mode = '3'
+size_fallback = true
+optimizer_mode = '3'
 zksolc = "1.5.15"
+
+[profile.sizeopt]
+# Some contracts don't fit into the size limit if we deploy them with default optimizer_runs
+optimizer_runs = 1
 
 [profile.mintburn]
 # Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
@@ -36,9 +41,10 @@ optimizer_runs = 300
 lint_on_build = false
 
 [rpc_endpoints]
+avalanche = "${NODE_URL_43114}"
 arbitrum = "${NODE_URL_42161}"
+arc = "${NODE_URL_5042}"
 base = "${NODE_URL_8453}"
-blast = "${NODE_URL_81457}"
 bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
 ink = "${NODE_URL_57073}"
@@ -50,7 +56,6 @@ monad = "${NODE_URL_143}"
 optimism = "${NODE_URL_10}"
 plasma = "${NODE_URL_9745}"
 polygon = "${NODE_URL_137}"
-scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
 tempo = "${NODE_URL_4217}"
 unichain = "${NODE_URL_130}"
@@ -58,6 +63,7 @@ world = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"
+robinhood = "${NODE_URL_4663}"
 zora = "${NODE_URL_7777777}"
 
 # testnet
@@ -71,6 +77,7 @@ polygon_amoy = "${NODE_URL_80002}"
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
+ink = { key = "${ETHERSCAN_API_KEY}", url = "https://explorer.inkonchain.com/api", chain = 57073 }
 
 # A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
 [profile.local-test]

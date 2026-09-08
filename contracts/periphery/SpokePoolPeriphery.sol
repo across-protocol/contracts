@@ -10,12 +10,14 @@ import { ReentrancyGuard } from "@openzeppelin/contracts-v4/security/ReentrancyG
 import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
 import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../interfaces/V3SpokePoolInterface.sol";
-import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
+import { IERC20Auth, IERC20AuthBytes } from "../external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "../libraries/PeripherySigningLib.sol";
 import { SpokePoolPeripheryInterface } from "../interfaces/SpokePoolPeripheryInterface.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
+import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
+import { ERC6492SignatureHandler } from "./ERC6492SignatureHandler.sol";
 
 /**
  * @title SwapProxy
@@ -27,8 +29,10 @@ import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
  * caller.
  * @custom:security-contact bugs@across.to
  */
-contract SwapProxy is ReentrancyGuard {
-    using SafeERC20 for IERC20;
+contract SwapProxy is ReentrancyGuard, SafeTransferERC20 {
+    // `using` is restricted to `forceApprove`; `safeTransfer` goes through the `_safeTransfer` hook so
+    // chain-specific variants (Tron) can override transfer semantics in one place.
+    using { SafeERC20.forceApprove } for IERC20;
     using Address for address;
 
     // Canonical Permit2 contract address
@@ -89,7 +93,7 @@ contract SwapProxy is ReentrancyGuard {
         if (transferType == SpokePoolPeripheryInterface.TransferType.Approval) {
             IERC20(inputToken).forceApprove(exchange, inputAmount);
         } else if (transferType == SpokePoolPeripheryInterface.TransferType.Transfer) {
-            IERC20(inputToken).safeTransfer(exchange, inputAmount);
+            _safeTransfer(inputToken, exchange, inputAmount);
         } else if (transferType == SpokePoolPeripheryInterface.TransferType.Permit2Approval) {
             IERC20(inputToken).forceApprove(address(permit2), inputAmount);
             expectingPermit2Callback = true;
@@ -120,7 +124,7 @@ contract SwapProxy is ReentrancyGuard {
         uint256 outputBalance = IERC20(outputToken).balanceOf(address(this));
 
         // Transfer all output tokens back to the periphery
-        IERC20(outputToken).safeTransfer(msg.sender, outputBalance);
+        _safeTransfer(outputToken, msg.sender, outputBalance);
 
         // Return the net amount received from the swap
         return outputBalance;
@@ -141,10 +145,21 @@ contract SwapProxy is ReentrancyGuard {
 /**
  * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
+ * @dev note: Token transfers here and in SwapProxy that fail the return-value check revert with the
+ * OZ v5 error `SafeERC20FailedOperation`, not the OZ v4 string (see `SafeTransferERC20`).
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712 {
-    using SafeERC20 for IERC20;
+contract SpokePoolPeriphery is
+    SpokePoolPeripheryInterface,
+    ReentrancyGuard,
+    MultiCaller,
+    EIP712,
+    ERC6492SignatureHandler,
+    SafeTransferERC20
+{
+    // `using` is restricted to `forceApprove`/`safeTransferFrom`; `safeTransfer` goes through the
+    // `_safeTransfer` hook so chain-specific variants (Tron) can override transfer semantics in one place.
+    using { SafeERC20.forceApprove, SafeERC20.safeTransferFrom } for IERC20;
     using Address for address;
     using AddressToBytes32 for address;
 
@@ -188,14 +203,25 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     /**
      * @notice Construct a new Periphery contract.
      * @param _permit2 Address of the canonical permit2 contract.
+     * @param _multicall3 Address of the canonical Multicall3 singleton used to route ERC-6492
+     * prepare/deploy calls (see ERC6492SignatureHandler).
      */
-    constructor(IPermit2 _permit2) EIP712("ACROSS-PERIPHERY", "1.0.0") {
+    constructor(
+        IPermit2 _permit2,
+        address _multicall3
+    ) EIP712("ACROSS-PERIPHERY", "1.0.0") ERC6492SignatureHandler(_multicall3) {
         require(address(_permit2) != address(0), "Permit2 cannot be zero address");
         require(_isContract(address(_permit2)), "Permit2 must be a contract");
         permit2 = _permit2;
 
         // Deploy the swap proxy with reference to the permit2 address
-        swapProxy = new SwapProxy(address(_permit2));
+        swapProxy = _deploySwapProxy(address(_permit2));
+    }
+
+    /// @dev Deploys the SwapProxy used to isolate swap execution. Virtual so chain-specific variants
+    ///      (Tron) can substitute a SwapProxy variant with different transfer semantics.
+    function _deploySwapProxy(address _permit2) internal virtual returns (SwapProxy) {
+        return new SwapProxy(_permit2);
     }
 
     /**
@@ -315,6 +341,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
      * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
+     * @dev Permit2 verifies both EOA (ECDSA) and contract (EIP-1271) signatures. The signature may be
+     * ERC-6492 wrapped to additionally support counterfactual (not-yet-deployed) contract wallets; see
+     * `_handleERC6492Signature`.
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -331,13 +360,16 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             requestedAmount: swapAndDepositData.swapTokenAmount + _submissionFeeAmount
         });
 
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. Permit2 remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(signature);
         permit2.permitWitnessTransferFrom(
             permit,
             transferDetails,
             signatureOwner,
             witness,
             PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING,
-            signature
+            innerSignature
         );
         _paySubmissionFees(
             swapAndDepositData.swapToken,
@@ -365,14 +397,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
-        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
         IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
+            swapAndDepositData.swapTokenAmount + swapAndDepositData.submissionFees.amount,
             validAfter,
             validBefore,
             witness,
@@ -380,10 +411,53 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             r,
             s
         );
+        _finishSwapAndBridgeWithAuthorization(swapAndDepositData, witness, signatureOwner);
+    }
+
+    /**
+     * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Mirrors `swapAndBridgeWithAuthorization` but pulls tokens via the extended EIP-3009
+     * `receiveWithAuthorization(...,bytes signature)` overload, allowing both EOA (ECDSA) and
+     * contract (EIP-1271) signers. The signature may be ERC-6492 wrapped to additionally support
+     * counterfactual (not-yet-deployed) contract wallets; see `_handleERC6492Signature`.
+     */
+    function swapAndBridgeWithAuthorizationBytes(
+        address signatureOwner,
+        SwapAndDepositData calldata swapAndDepositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata receiveWithAuthSignature
+    ) external override nonReentrant {
+        bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. The token remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(receiveWithAuthSignature);
+        IERC20AuthBytes(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
+            signatureOwner,
+            address(this),
+            swapAndDepositData.swapTokenAmount + swapAndDepositData.submissionFees.amount,
+            validAfter,
+            validBefore,
+            witness,
+            innerSignature
+        );
+        _finishSwapAndBridgeWithAuthorization(swapAndDepositData, witness, signatureOwner);
+    }
+
+    /**
+     * @notice Shared tail logic for swapAndBridgeWithAuthorization* entry points after the token
+     * pull has succeeded. Pays submission fees and dispatches the swap+bridge using the witness as
+     * the ERC-3009 nonce.
+     */
+    function _finishSwapAndBridgeWithAuthorization(
+        SwapAndDepositData calldata swapAndDepositData,
+        bytes32 witness,
+        address signatureOwner
+    ) private {
         _paySubmissionFees(
             swapAndDepositData.swapToken,
             swapAndDepositData.submissionFees.recipient,
-            _submissionFeeAmount
+            swapAndDepositData.submissionFees.amount
         );
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
@@ -445,6 +519,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Permit2 verifies both EOA (ECDSA) and contract (EIP-1271) signatures. The signature may be
+     * ERC-6492 wrapped to additionally support counterfactual (not-yet-deployed) contract wallets; see
+     * `_handleERC6492Signature`.
      */
     function depositWithPermit2(
         address signatureOwner,
@@ -461,13 +538,16 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             requestedAmount: depositData.inputAmount + _submissionFeeAmount
         });
 
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. Permit2 remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(signature);
         permit2.permitWitnessTransferFrom(
             permit,
             transferDetails,
             signatureOwner,
             witness,
             PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING,
-            signature
+            innerSignature
         );
         _paySubmissionFees(
             depositData.baseDepositData.inputToken,
@@ -507,16 +587,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009DepositWitness(depositData);
-        // Load variables used multiple times onto the stack.
-        uint256 _inputAmount = depositData.inputAmount;
-        uint256 _submissionFeeAmount = depositData.submissionFees.amount;
 
         // Redeem the receiveWithAuthSignature.
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         IERC20Auth(depositData.baseDepositData.inputToken).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            _inputAmount + _submissionFeeAmount,
+            depositData.inputAmount + depositData.submissionFees.amount,
             validAfter,
             validBefore,
             witness,
@@ -524,10 +601,53 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             r,
             s
         );
+        _finishDepositWithAuthorization(depositData, witness, signatureOwner);
+    }
+
+    /**
+     * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Mirrors `depositWithAuthorization` but pulls tokens via the extended EIP-3009
+     * `receiveWithAuthorization(...,bytes signature)` overload, allowing both EOA (ECDSA) and
+     * contract (EIP-1271) signers. The signature may be ERC-6492 wrapped to additionally support
+     * counterfactual (not-yet-deployed) contract wallets; see `_handleERC6492Signature`.
+     */
+    function depositWithAuthorizationBytes(
+        address signatureOwner,
+        DepositData calldata depositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata receiveWithAuthSignature
+    ) external override nonReentrant {
+        bytes32 witness = getERC3009DepositWitness(depositData);
+        // If the signature is ERC-6492 wrapped, deploy the (counterfactual) signer first and unwrap to
+        // the inner signature. The token remains the verifier; we only ensure the signer has code.
+        bytes memory innerSignature = _handleERC6492Signature(receiveWithAuthSignature);
+        IERC20AuthBytes(depositData.baseDepositData.inputToken).receiveWithAuthorization(
+            signatureOwner,
+            address(this),
+            depositData.inputAmount + depositData.submissionFees.amount,
+            validAfter,
+            validBefore,
+            witness,
+            innerSignature
+        );
+        _finishDepositWithAuthorization(depositData, witness, signatureOwner);
+    }
+
+    /**
+     * @notice Shared tail logic for depositWithAuthorization* entry points after the token pull has
+     * succeeded. Pays submission fees and dispatches the bridge using the witness as the ERC-3009
+     * nonce.
+     */
+    function _finishDepositWithAuthorization(
+        DepositData calldata depositData,
+        bytes32 witness,
+        address signatureOwner
+    ) private {
         _paySubmissionFees(
             depositData.baseDepositData.inputToken,
             depositData.submissionFees.recipient,
-            _submissionFeeAmount
+            depositData.submissionFees.amount
         );
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
@@ -539,7 +659,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.recipient,
             depositData.baseDepositData.inputToken,
             depositData.baseDepositData.outputToken,
-            _inputAmount,
+            depositData.inputAmount,
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,
@@ -755,7 +875,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 _swapTokenAmount = swapAndDepositData.swapTokenAmount;
 
         // Transfer tokens to the swap proxy for executing the swap
-        _swapToken.safeTransfer(address(swapProxy), _swapTokenAmount);
+        _safeTransfer(address(_swapToken), address(swapProxy), _swapTokenAmount);
 
         // Execute the swap via the swap proxy using the appropriate transfer type
         // This function will swap _swapToken for _acrossInputToken and return the amount of _acrossInputToken received
@@ -820,7 +940,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         if (amount > 0) {
             // Use msg.sender as recipient if recipient is zero address, otherwise use the specified recipient
             address feeRecipient = recipient == address(0) ? msg.sender : recipient;
-            IERC20(feeToken).safeTransfer(feeRecipient, amount);
+            _safeTransfer(feeToken, feeRecipient, amount);
         }
     }
 

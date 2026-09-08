@@ -9,9 +9,9 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/spoke-pools/DeployArbitrumSpokePool.s.sol:DeployArbitrumSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/spoke-pools/DeployArbitrumSpokePool.s.sol:DeployArbitrumSpokePool --rpc-url arbitrum -vvvv
 // 3. Verify the above works in simulation mode.
-// 4. Deploy with: forge script script/spoke-pools/DeployArbitrumSpokePool.s.sol:DeployArbitrumSpokePool --rpc-url $NODE_URL_1 --broadcast --verify
+// 4. Deploy with: forge script script/spoke-pools/DeployArbitrumSpokePool.s.sol:DeployArbitrumSpokePool --rpc-url arbitrum --broadcast --verify
 
 contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
     function run() external {
@@ -38,7 +38,8 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
             getUSDCAddress(info.spokeChainId), // _usdc
             cctpTokenMessenger, // _cctpTokenMessenger
             getOftEid(info.hubChainId), // _oftDstEid
-            1 ether // _oftFeeCap
+            1 ether, // _oftFeeCap
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's

@@ -10,6 +10,7 @@ import {
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualImplementationBase } from "../../../../contracts/periphery/counterfactual/CounterfactualImplementationBase.sol";
+import { CounterfactualNonces } from "../../../../contracts/periphery/counterfactual/CounterfactualNonces.sol";
 import { CounterfactualChainConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualBeacon.sol";
 import { ICounterfactualBeacon } from "../../../../contracts/interfaces/ICounterfactualBeacon.sol";
 import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
@@ -87,7 +88,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
 
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,bytes32 nonce,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
     function setUp() public {
@@ -153,6 +154,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         uint256 executionFee;
         bytes32 exclusiveRelayer;
         uint32 exclusivityDeadline;
+        bytes32 nonce;
         uint32 quoteTimestamp;
         uint32 fillDeadline;
         uint32 signatureDeadline;
@@ -166,6 +168,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
                 executionFee: 1e6,
                 exclusiveRelayer: bytes32(0),
                 exclusivityDeadline: 0,
+                nonce: keccak256("nonce-1"),
                 quoteTimestamp: uint32(block.timestamp),
                 fillDeadline: uint32(block.timestamp) + 3600,
                 signatureDeadline: uint32(block.timestamp) + 3600
@@ -183,6 +186,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
                 EXECUTE_DEPOSIT_TYPEHASH,
                 proxy,
                 keccak256(routeEncoded),
+                e.nonce,
                 e.inputAmount,
                 e.outputAmount,
                 e.exclusiveRelayer,
@@ -202,6 +206,7 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
                     exclusiveRelayer: e.exclusiveRelayer,
                     exclusivityDeadline: e.exclusivityDeadline,
                     executionFeeRecipient: relayer,
+                    nonce: e.nonce,
                     quoteTimestamp: e.quoteTimestamp,
                     fillDeadline: e.fillDeadline,
                     signatureDeadline: e.signatureDeadline,
@@ -446,6 +451,43 @@ contract CounterfactualDepositSpokePoolTest is CounterfactualTestBase {
         vm.warp(block.timestamp + 101);
         vm.expectRevert(CounterfactualDepositSpokePool.SignatureExpired.selector);
         _execute(proxy, route, submitter, proof);
+    }
+
+    /// @dev The nonce is consumed in the proxy's storage on execution, so re-funding the proxy and
+    ///      replaying the same signed submitter data within the signature window must revert.
+    function testNonceReplayReverts() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+        bytes memory submitter = _signAndEncode(proxy, route, e, signerPk);
+
+        vm.prank(user);
+        token.transfer(proxy, e.inputAmount);
+        _execute(proxy, route, submitter, proof);
+
+        // Re-fund and replay the identical (still unexpired) submitter data.
+        vm.prank(user);
+        token.transfer(proxy, e.inputAmount);
+        vm.expectRevert(CounterfactualNonces.InvalidNonce.selector);
+        _execute(proxy, route, submitter, proof);
+    }
+
+    /// @dev A fresh nonce (freshly signed) executes fine on a re-funded proxy: only replays are blocked.
+    function testFreshNonceAllowsRepeatExecution() public {
+        bytes memory route = abi.encode(_routeParams(USDC_GETTER));
+        (address proxy, bytes32[] memory proof) = _deploy(route, bytes32(0));
+        Exec memory e = _defaultExec();
+
+        vm.prank(user);
+        token.transfer(proxy, e.inputAmount);
+        _execute(proxy, route, _signAndEncode(proxy, route, e, signerPk), proof);
+
+        vm.prank(user);
+        token.transfer(proxy, e.inputAmount);
+        e.nonce = keccak256("nonce-2");
+        _execute(proxy, route, _signAndEncode(proxy, route, e, signerPk), proof);
+
+        assertEq(spokePool.callCount(), 2);
     }
 
     function testCrossProxyReplayReverts() public {

@@ -1,5 +1,9 @@
 #!/usr/bin/env ts-node
 /**
+ * ⚠️ STALE — predates the beacon architecture. Calls clone.execute(implementation, params,
+ * submitterData, proof) and reconstructs pre-beacon merkle leaves; the current dispatcher execute
+ * flow and leaf hashing differ. Needs a rewrite (together with tron-deploy-clone.ts) before use.
+ *
  * Executes a deposit through a deployed counterfactual clone on Tron.
  *
  * Steps:

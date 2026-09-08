@@ -2,13 +2,14 @@
 pragma solidity ^0.8.0;
 
 import { ERC1967Utils } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
-import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 
 /**
  * @title CounterfactualImplementationBase
- * @notice Shared base for leaf implementations: resolves the per-chain `CounterfactualBeacon` to read
- *         chain-specific config (endpoints, fee signer, tokens) at runtime.
+ * @notice Shared base for leaf implementations: resolves the per-chain registry/beacon that leaves read
+ *         chain-specific config (endpoints, fee signer, tokens) from at runtime. Config-agnostic — it
+ *         hands back a plain `address`, so each leaf views the beacon through whichever config interface
+ *         it needs.
  * @dev Leaves run under delegatecall from the `BeaconProxy`, so `address(this)` is the proxy and the beacon
  *      sits in its ERC-1967 beacon slot. Reading config there means a leaf holds **no immutables of its
  *      own** and is byte-identical across chains (one CREATE2 address everywhere).
@@ -20,8 +21,8 @@ abstract contract CounterfactualImplementationBase is ICounterfactualImplementat
     error RouteNotConfigured();
 
     /// @dev The per-chain registry that anchors this proxy (resolved from the ERC-1967 beacon slot).
-    function _beacon() internal view returns (ICounterfactualBeacon) {
-        return ICounterfactualBeacon(ERC1967Utils.getBeacon());
+    function _beacon() internal view returns (address) {
+        return ERC1967Utils.getBeacon();
     }
 
     /// @dev Resolve an address from a no-arg `() -> address` beacon getter named by `getter`'s selector
@@ -29,7 +30,7 @@ abstract contract CounterfactualImplementationBase is ICounterfactualImplementat
     ///      `address(0)`, which callers treat as `RouteNotConfigured`. The selector is merkle-committed (and
     ///      where applicable signature-bound), so trusted; a bad selector can only revert here or downstream.
     function _resolveBeaconAddress(bytes4 getter) internal view returns (address) {
-        (bool ok, bytes memory ret) = address(_beacon()).staticcall(abi.encodeWithSelector(getter));
+        (bool ok, bytes memory ret) = _beacon().staticcall(abi.encodeWithSelector(getter));
         if (!ok || ret.length != 32) return address(0);
         return abi.decode(ret, (address));
     }
@@ -38,7 +39,7 @@ abstract contract CounterfactualImplementationBase is ICounterfactualImplementat
     ///      in the leaf, e.g. `beacon.usdcCctpMaxExecutionFee.selector`). Reverts `RouteNotConfigured` if the
     ///      getter doesn't exist; a configured value of 0 is valid and returned as-is. Merkle/signature-bound.
     function _resolveBeaconUint(bytes4 getter) internal view returns (uint256) {
-        (bool ok, bytes memory ret) = address(_beacon()).staticcall(abi.encodeWithSelector(getter));
+        (bool ok, bytes memory ret) = _beacon().staticcall(abi.encodeWithSelector(getter));
         if (!ok || ret.length != 32) revert RouteNotConfigured();
         return abi.decode(ret, (uint256));
     }

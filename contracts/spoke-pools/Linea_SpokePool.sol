@@ -52,7 +52,8 @@ contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        address _gateway
     )
         SpokePool(
             _wrappedNativeTokenAddress,
@@ -60,7 +61,8 @@ contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
             _fillDeadlineBuffer,
             // Linea_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
             0,
-            0
+            0,
+            _gateway
         )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
