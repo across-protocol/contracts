@@ -27,6 +27,9 @@ fixture, but do not run the real-Gateway lane. Changes in `test/svm-gateway` als
 
 After `solana-v5` is public, add CI coverage using a public checkout at the immutable `GATEWAY_COMMIT`, without a
 cross-repository token or approval environment. This is a temporary CI limitation, not a protocol blocker.
+Reuse `.github/actions/setup-solana-anchor` to derive this repository's toolchain versions and the `NODE_VERSION`
+setting in `pr.yml`. If the Gateway's separate Anchor CLI is downloaded as a release binary, verify it against a
+reviewed, pinned SHA-256 checksum (`sha256sum -c`) before execution; a versioned download URL is not an integrity check.
 
 This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
 oversized account-validation stack frames in the unchanged legacy `FillRelay` and `ExecuteSlowRelayLeaf` handlers;
