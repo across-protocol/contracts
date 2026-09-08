@@ -356,6 +356,35 @@ mod tests {
     }
 
     #[test]
+    fn gateway_path_root_and_witness_match_cross_vm_fixture() {
+        let fixture: Value = serde_json::from_str(include_str!("../fixtures/v5_gateway_path.json")).unwrap();
+        let mut chain_word = [0u8; 32];
+        chain_word[24..].copy_from_slice(&fixture["chainId"].as_u64().unwrap().to_be_bytes());
+        let message_hash = keccak::hash(&bytes(&fixture, "/message")).to_bytes();
+        let path_hash = |salt: &str| {
+            keccak::hashv(&[
+                &chain_word,
+                &bytes(&fixture, salt),
+                &bytes(&fixture, "/executor"),
+                &message_hash,
+            ])
+            .to_bytes()
+        };
+        let a = path_hash("/salt");
+        let b = path_hash("/siblingSalt");
+        assert_eq!(a, array::<32>(&fixture, "/pathId"));
+        assert_eq!(b, array::<32>(&fixture, "/siblingPathId"));
+        let root = if a < b {
+            keccak::hashv(&[&a, &b])
+        } else {
+            keccak::hashv(&[&b, &a])
+        }
+        .to_bytes();
+        assert_eq!(root, array::<32>(&fixture, "/stepRoot"));
+        assert_eq!([crate::constants::V5_MAGIC_PREFIX.as_slice(), &root].concat(), bytes(&fixture, "/witness"));
+    }
+
+    #[test]
     fn v1_wire_and_gateway_dispatch_match_golden_fixture() {
         let fixture = fixture();
         assert_eq!(

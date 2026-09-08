@@ -47,6 +47,7 @@
     "test-evm": "yarn test-evm-foundry",
     "test-evm-foundry": "FOUNDRY_PROFILE=local-test forge test",
     "test-svm": "IS_TEST=true yarn build-svm && yarn generate-svm-artifacts && yarn generate-svm-test-idls && anchor test --skip-build",
+    "test-svm-gateway": "ts-node scripts/svm/testRealGateway.ts",
     "test-svm-solana-verify": "IS_TEST=true yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn generate-svm-test-idls && anchor test --skip-build",
     "test": "yarn test-evm && yarn test-svm",
     "test-verified": "yarn test-evm && yarn test-svm-solana-verify",
