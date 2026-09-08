@@ -52,15 +52,15 @@ impl<'a> V5FillStatusPdas<'a> {
 ///
 /// The caller must derive `pdas` from the Gateway-attested submitter and the relay hash of the validated V5 `RelayData`,
 /// then complete semantic validation before calling this helper. Every successful instruction path must then call
-/// `write_v5_fill_status` with the unexpired deadline committed in that `RelayData`; failed paths atomically roll back the
-/// zeroed intermediate account.
+/// `write_v5_fill_status` with the same bundle and the unexpired deadline committed in that `RelayData`; failed paths
+/// atomically roll back the zeroed intermediate account.
 #[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status_account<'info>(
     payer: &AccountInfo<'info>,
     fill_status: &AccountInfo<'info>,
     system_program_info: &AccountInfo<'info>,
     pdas: &V5FillStatusPdas<'_>,
-) -> Result<Pubkey> {
+) -> Result<()> {
     require_keys_eq!(*payer.key, pdas.payer(), V5Error::InvalidFillPayer);
     require_keys_eq!(*fill_status.key, pdas.fill_status(), V5Error::InvalidFillStatusAccount);
     require_keys_eq!(*system_program_info.key, system_program::ID, V5Error::MissingAccount);
@@ -116,13 +116,17 @@ pub fn create_v5_fill_status_account<'info>(
         )?;
     }
 
-    Ok(pdas.payer())
+    Ok(())
 }
 
 /// Serializes the terminal V5 fill status after the caller completes semantic validation and token delivery.
 #[cfg_attr(not(feature = "test"), allow(dead_code))]
-pub fn write_v5_fill_status(fill_status: &AccountInfo<'_>, rent_recipient: Pubkey, fill_deadline: u32) -> Result<()> {
-    FillStatusAccount { status: FillStatus::Filled, relayer: rent_recipient, fill_deadline }
+pub fn write_v5_fill_status(
+    fill_status: &AccountInfo<'_>,
+    pdas: &V5FillStatusPdas<'_>,
+    fill_deadline: u32,
+) -> Result<()> {
+    FillStatusAccount { status: FillStatus::Filled, relayer: pdas.payer(), fill_deadline }
         .try_serialize(&mut &mut fill_status.try_borrow_mut_data()?[..])
 }
 
@@ -151,13 +155,13 @@ pub fn test_create_v5_fill_status(
 ) -> Result<()> {
     let submitter = ctx.accounts.submitter.key();
     let pdas = V5FillStatusPdas::derive(&submitter, &relay_hash);
-    let rent_recipient = create_v5_fill_status_account(
+    create_v5_fill_status_account(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fill_status.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
         &pdas,
     )?;
-    write_v5_fill_status(&ctx.accounts.fill_status.to_account_info(), rent_recipient, fill_deadline)
+    write_v5_fill_status(&ctx.accounts.fill_status.to_account_info(), &pdas, fill_deadline)
 }
 
 #[derive(Accounts)]
