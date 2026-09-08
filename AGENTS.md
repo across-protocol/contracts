@@ -55,6 +55,21 @@ HubPool on L1 owns all L2 SpokePools. Admin functions are relayed cross-chain vi
 
 Located in `contracts/periphery/mintburn/`. A modular framework for executing cross-chain sponsored token flows using mint-burn bridge integrations (CCTP, LayerZero OFT). Off-chain signers authorize transfer parameters via signed quotes; source periphery contracts validate quotes and initiate bridge transfers, while destination handlers receive bridged tokens and execute on-chain actions (swaps, HyperCore transfers, or arbitrary multicalls). Bridge-specific peripheries live in `sponsored-cctp/` and `sponsored-oft/` subdirectories.
 
+### SVM Across V5 Gateway integration
+
+`svm_spoke` implements V5 source deposits and destination fills as a direct Gateway adapter. External fills transfer
+tokens; in-place fills only assert the shared Gateway vault balance and record repayment eligibility. Production
+builders must ensure every reachable fill path delivers proportionally: one in-place fill followed by a mandatory
+floor and full-balance terminal consumption, or an authenticated aggregate obligation covering every recorded fill's
+actual output amount. Step roots may be reused when every matching deposit's outcome is covered. Neither program
+enforces Across-specific downstream delivery by inspecting the tape.
+
+The real-Gateway lane (`yarn test-svm-gateway`) and reference encoders in `test/svm-gateway` specify this boundary;
+they do not implement production order assembly. SVM Across V5 route enablement is blocked on
+[integrator-api ACB-863](https://linear.app/uma/issue/ACB-863) and
+[relayer-madrid ENG-320](https://linear.app/uma/issue/ENG-320). See
+[the adapter spec](programs/svm-spoke/V5_ADAPTER_SPEC.md) and [integration guide](test/svm-gateway/README.md).
+
 ### Deployments
 
 Canonical deployed addresses are generated into `broadcast/deployed-addresses.json`, with `broadcast/deployed-addresses.md` as the readable companion. `deployments/legacy-addresses.json` is still included for legacy Hardhat deployments. In Foundry scripts, use `script/utils/DeploymentUtils.sol` lookup helpers such as `getDeployedAddress()` and `getSpokePoolDeploymentInfo()`.
