@@ -123,7 +123,7 @@ impl FillStatusStorage<'_, '_> {
 pub struct FillAccounts<'info> {
     pub from: AccountInfo<'info>,
     pub recipient: AccountInfo<'info>,
-    /// `None` represents an authenticated in-place delivery that requires no token transfer.
+    /// `None` represents an authenticated in-place balance assertion; the continuing path must enforce delivery.
     pub delegate: Option<AccountInfo<'info>>,
     pub mint: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
