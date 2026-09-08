@@ -58,6 +58,25 @@ contract SvmSpokeV5VectorsTest is Test {
         assertEq(bytes8(sha256("global:adapter_execute_across_v5")), bytes8(discriminator));
     }
 
+    function testGatewayPathAndStepRootVector() public view {
+        string memory pathFixture = vm.readFile("programs/svm-spoke/fixtures/v5_gateway_path.json");
+        bytes32 messageHash = keccak256(vm.parseJsonBytes(pathFixture, ".message"));
+        uint256 chainId = vm.parseJsonUint(pathFixture, ".chainId");
+        bytes32 executor = vm.parseJsonBytes32(pathFixture, ".executor");
+        bytes32 a = keccak256(abi.encode(chainId, vm.parseJsonBytes32(pathFixture, ".salt"), executor, messageHash));
+        bytes32 b = keccak256(
+            abi.encode(chainId, vm.parseJsonBytes32(pathFixture, ".siblingSalt"), executor, messageHash)
+        );
+        assertEq(a, vm.parseJsonBytes32(pathFixture, ".pathId"));
+        assertEq(b, vm.parseJsonBytes32(pathFixture, ".siblingPathId"));
+        bytes32 root = a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
+        assertEq(root, vm.parseJsonBytes32(pathFixture, ".stepRoot"));
+        assertEq(
+            abi.encodePacked(bytes32(0x89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd), root),
+            vm.parseJsonBytes(pathFixture, ".witness")
+        );
+    }
+
     function _jitDigest(bytes32 domain) internal view returns (bytes32) {
         return
             keccak256(

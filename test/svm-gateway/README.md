@@ -1,0 +1,75 @@
+# Actual Gateway conformance for ACP-184 Step 5
+
+Run `yarn test-svm-gateway`. It builds Gateway and PrefundedAdapter from the immutable `GATEWAY_COMMIT` in
+`reference.ts`, builds this checkout's SpokePool with `--features test`, generates only the target test IDL, and starts
+an isolated validator with all three real programs loaded as upgradeable programs. It does not clone mainnet state.
+The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
+validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
+after the run. Production package IDLs and clients are not regenerated.
+
+Install Agave 4.1.2, Anchor CLI 1.1.2 for foreign builds, and Anchor CLI 0.31.1 for this repository's IDL. The runner
+pins SpokePool compilation to Solana platform-tools v1.52 rather than the CLI's moving default. With both
+versions installed by AVM, for example:
+
+```sh
+SVM_GATEWAY_ANCHOR="$HOME/.avm/bin/anchor-1.1.2" \
+SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
+yarn test-svm-gateway
+```
+
+`SVM_GATEWAY_CHECKOUT` may point to an existing clean checkout at the exact pin to avoid another clone. Builds still
+run; arbitrary prebuilt binaries are not accepted as conformance evidence. Dependency downloads and local validator
+ports require network permission in sandboxed environments.
+
+The manual `SVM real Gateway conformance` workflow runs the same lane. Since `solana-v5` is private, a maintainer must
+first configure the `svm-gateway-integration` environment with required reviewers and an environment secret
+`SVM_GATEWAY_READ_TOKEN` restricted to read-only contents access for that repository. Approve only reviewed refs.
+The workflow does not run on arbitrary PR code, persist checkout credentials, cache private build artifacts, or upload
+them. This credential/environment setup is an outstanding CI prerequisite, not provided by this change. Ordinary PR
+checks do not imply that the real-Gateway workflow ran.
+
+This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
+oversized account-validation stack frames in the unchanged legacy `FillRelay` and `ExecuteSlowRelayLeaf` handlers;
+this lane does not exercise or certify those handlers. The existing verified-build and ordinary SVM lanes remain
+separate requirements.
+
+`reference.ts` is a test-only wire encoder. It mirrors the Gateway Borsh tape/amount/meta/JIT/buffer transport without
+importing the foreign Rust workspace or exporting a production order builder. All command accounts are committed or
+explicit injected slots; the outer remaining-account list is only a lookup pool. Status and payer slots are injected
+because their addresses depend on the relay/root or submitter; the adapter derives their expected addresses.
+Large committed tapes use the Gateway's content-addressed parameter buffer because lookup tables cannot compress
+instruction data. Failed executions leave the buffer available for explicit cleanup.
+
+The suite covers StepDelegate and prefunded source deposits, standard deposit identities and witnesses, external and
+in-place destination delivery, first-fill-wins siblings, root mismatch and reuse, account/dispatch rejection, payer
+funding/reclaim/withdrawal, and downstream rollback. Root reuse examples fund and fully deliver each execution.
+
+Delivery tests deliberately separate two results:
+
+- A single in-place fill followed by a post-fill floor and mandatory full-balance terminal transfer delivers its
+  observed balance. The `canonicalInPlace` helper emits only this template. The production builder must also bind the
+  transfer destination to an outcome acceptable to each deposit matching the root.
+- Raw unsafe paths can succeed: zero/short consumption, or two distinct fills observing one unchanged balance. A
+  fixed `min X` floor and full drain protect only `X`. Even a floor summing committed minima fails to cover larger JIT
+  output amounts. `assertAggregateDelivery` is an accounting oracle for the actual amounts and actual delivery, not
+  an authorization check or proof over all reachable routes. Keep aggregate/action paths disabled until their full
+  proportional or aggregate delivery rule is proved by the owning builder.
+
+`ALLOW_REVERT` is unsupported by this Gateway, so an optional downstream command fails atomically. A separate test
+submits an actual failing transaction after the fill and transfer, checks `meta.err`, and proves that fill status,
+tokens and payer rent were rolled back. Failed transaction logs can contain attempted events; such events never count
+as successful settlement.
+
+The additional `v5_gateway_path.json` vector is a deterministic consumption-tape/hash fixture with placeholder keys,
+independently checked by Rust and Solidity as well as TypeScript. Existing `v5_adapter_v1.json` vectors continue to
+cover deposit/fill input bytes, dispatch, signature and deposit-ID domains.
+
+Production release prerequisites are [ACB-863](https://linear.app/uma/issue/ACB-863) (integrator-api quote/order builders)
+and [ENG-320](https://linear.app/uma/issue/ENG-320) (relayer-madrid admission, reveal validation and execution). Their
+production implementations and conformance tests must land before enabling the SVM Across V5 route. Existing CCTP
+enablement and Jussi gas-cost support do not satisfy these Across delivery obligations. Any delegated production
+builder must be identified and have its own linked blocker before enablement.
+
+Companion documentation belongs in `solana-v5/AGENTS.md` (SpokePool adapter relationship and shared-vault trust boundary),
+`contracts-v5/docs/SPOKE_V5_FILLS.md` (SVM continuing-tape/proportional-delivery counterpart), and each owning off-chain
+repository's route-enablement/runbook documentation. Those repositories are not edited by this step.
