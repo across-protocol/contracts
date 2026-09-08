@@ -21,12 +21,11 @@ yarn test-svm-gateway
 run; arbitrary prebuilt binaries are not accepted as conformance evidence. Dependency downloads and local validator
 ports require network permission in sandboxed environments.
 
-The manual `SVM real Gateway conformance` workflow runs the same lane. Since `solana-v5` is private, a maintainer must
-first configure the `svm-gateway-integration` environment with required reviewers and an environment secret
-`SVM_GATEWAY_READ_TOKEN` restricted to read-only contents access for that repository. Approve only reviewed refs.
-The workflow does not run on arbitrary PR code, persist checkout credentials, cache private build artifacts, or upload
-them. This credential/environment setup is an outstanding CI prerequisite, not provided by this change. Ordinary PR
-checks do not imply that the real-Gateway workflow ran.
+While `solana-v5` is private, run this lane locally with existing repository access; do not add a cross-repository
+credential to `contracts` CI. Ordinary PR checks remain unchanged and do not run the real-Gateway lane.
+
+After `solana-v5` is public, add CI coverage using a public checkout at the immutable `GATEWAY_COMMIT`, without a
+cross-repository token or approval environment. This is a temporary CI limitation, not a protocol blocker.
 
 This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
 oversized account-validation stack frames in the unchanged legacy `FillRelay` and `ExecuteSlowRelayLeaf` handlers;
