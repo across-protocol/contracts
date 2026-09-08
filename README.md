@@ -50,6 +50,9 @@ yarn test-svm # Only test SVM code (local toolchain build)
 yarn test-svm-solana-verify # Only test SVM code (verified docker build)
 ```
 
+HyperEVM simulator tests fork EVM state at block **44,686,920** to avoid races when the public RPC reports a new
+block before all backends can serve it. The simulator's explicit HyperCore precompile calls still use live data.
+
 ## Lint
 
 ```shell

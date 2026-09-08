@@ -33,7 +33,9 @@ abstract contract BaseSimulatorTest is Test {
 
     function setUp() public virtual {
         string memory hyperliquidRpc = "https://rpc.hyperliquid.xyz/evm";
-        vm.createSelectFork(hyperliquidRpc);
+        // Pin EVM state to avoid latest-block races across the public RPC's backends.
+        // The simulator's explicit HyperCore precompile calls still read live data.
+        vm.createSelectFork(hyperliquidRpc, 44_686_920);
 
         hyperCore = CoreSimulatorLib.init();
 
