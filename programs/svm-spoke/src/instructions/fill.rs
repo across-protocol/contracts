@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{create_v5_fill_status_account, write_v5_fill_status};
+use super::{create_v5_fill_status_account, PendingV5FillStatus, V5FillStatusPdas};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -98,24 +98,26 @@ pub enum FillStatusInput<'a, 'info> {
         payer: &'a AccountInfo<'info>,
         fill_status: &'a AccountInfo<'info>,
         system_program: &'a AccountInfo<'info>,
-        relay_hash: &'a [u8; 32],
+        pdas: &'a V5FillStatusPdas<'a>,
     },
 }
 
 enum FillStatusStorage<'a, 'info> {
-    Legacy(&'a mut FillStatusAccount),
-    V5(&'a AccountInfo<'info>),
+    Legacy {
+        fill_status: &'a mut FillStatusAccount,
+        rent_recipient: Pubkey,
+    },
+    V5(PendingV5FillStatus<'a, 'info>),
 }
 
 impl FillStatusStorage<'_, '_> {
-    fn write_filled(self, rent_recipient: Pubkey, fill_deadline: u32) -> Result<()> {
-        let filled = FillStatusAccount { status: FillStatus::Filled, relayer: rent_recipient, fill_deadline };
+    fn write_filled(self, fill_deadline: u32) -> Result<()> {
         match self {
-            Self::Legacy(fill_status) => {
-                *fill_status = filled;
+            Self::Legacy { fill_status, rent_recipient } => {
+                *fill_status = FillStatusAccount { status: FillStatus::Filled, relayer: rent_recipient, fill_deadline };
                 Ok(())
             }
-            Self::V5(fill_status) => write_v5_fill_status(fill_status, rent_recipient, fill_deadline),
+            Self::V5(fill_status) => fill_status.write_filled(fill_deadline),
         }
     }
 }
@@ -176,20 +178,19 @@ pub fn _fill(
     }
 
     // Check the fill status and set the fill type.
-    let (fill_status, fill_type, rent_recipient) = match fill_status_input {
+    let (fill_status, fill_type) = match fill_status_input {
         FillStatusInput::Legacy(fill_status) => {
             let fill_type = match fill_status.status {
                 FillStatus::Filled => return err!(CommonError::RelayFilled),
                 FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
                 FillStatus::Unfilled => FillType::FastFill,
             };
-            (FillStatusStorage::Legacy(fill_status), fill_type, submitter)
+            (FillStatusStorage::Legacy { fill_status, rent_recipient: submitter }, fill_type)
         }
-        FillStatusInput::V5 { payer, fill_status, system_program, relay_hash } => {
+        FillStatusInput::V5 { payer, fill_status, system_program, pdas } => {
             // Account creation rejects existing program-owned state; V5 has no slow-fill lifecycle.
-            let rent_recipient =
-                create_v5_fill_status_account(payer, fill_status, system_program, &submitter, relay_hash)?;
-            (FillStatusStorage::V5(fill_status), FillType::FastFill, rent_recipient)
+            let fill_status = create_v5_fill_status_account(payer, fill_status, system_program, pdas)?;
+            (FillStatusStorage::V5(fill_status), FillType::FastFill)
         }
     };
 
@@ -207,7 +208,7 @@ pub fn _fill(
     }
 
     // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
-    fill_status.write_filled(rent_recipient, relay_data.fill_deadline)?;
+    fill_status.write_filled(relay_data.fill_deadline)?;
 
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
