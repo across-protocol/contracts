@@ -95,6 +95,7 @@ describe("svm_spoke V5 destination fill", () => {
       delegate?: PublicKey;
       payer?: PublicKey;
       status?: PublicKey;
+      stepId?: Buffer;
     } = {}
   ) => {
     const approval = options.approval === undefined ? 750_000n : options.approval;
@@ -121,7 +122,7 @@ describe("svm_spoke V5 destination fill", () => {
       keys,
       data: Buffer.concat([
         mockDiscriminator,
-        encodeContext(stepId, pathId, owner),
+        encodeContext(options.stepId ?? stepId, pathId, owner),
         vec(input),
         vec(jit),
         encodedApproval,
@@ -273,6 +274,57 @@ describe("svm_spoke V5 destination fill", () => {
     assert.isNull(source.delegate);
     assert.equal((await getAccount(connection, consumptionAccount)).amount, outputAmount);
     assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+  });
+
+  it("records an in-place fill without consuming the Gateway-vault balance", async () => {
+    relay = { ...relay, recipient: vaultAuthority };
+    await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      approval: null,
+      consume: 0n,
+      recipientAccount: gatewayVault,
+    });
+
+    assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
+    assert.equal((await getAccount(connection, consumptionAccount)).amount, 0n);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+  });
+
+  it("records two distinct in-place fills against one unconsumed Gateway-vault balance", async () => {
+    relay = { ...relay, recipient: vaultAuthority };
+    const firstFillStatus = fillStatus();
+    await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      approval: null,
+      consume: 0n,
+      recipientAccount: gatewayVault,
+    });
+
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: owner,
+          toPubkey: fillPayer,
+          lamports: await connection.getMinimumBalanceForRentExemption(45),
+        })
+      )
+    );
+    const secondStepId = Buffer.alloc(32, 0xc7);
+    relay = {
+      ...relay,
+      depositId: [...randomBytes(32)],
+      message: Buffer.concat([V5_PREFIX, secondStepId]),
+    };
+    const secondFillStatus = fillStatus();
+    await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      approval: null,
+      consume: 0n,
+      recipientAccount: gatewayVault,
+      stepId: secondStepId,
+    });
+
+    assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
+    assert.equal((await getAccount(connection, consumptionAccount)).amount, 0n);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(firstFillStatus)).status, ["filled"]);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(secondFillStatus)).status, ["filled"]);
   });
 
   it("requires live vault balance for in-place delivery", async () => {
