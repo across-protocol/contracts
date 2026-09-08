@@ -24,7 +24,9 @@ use crate::{
     },
 };
 
-use super::{_deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillStatusInput, V5FillStatusPdas};
+use super::{
+    _deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillDelivery, FillStatusInput, V5FillStatusPdas,
+};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -193,15 +195,15 @@ fn load_v5_fill_accounts<'a, 'info>(
     )?;
     load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
 
-    let fill_delegate_info = if gateway_vault == recipient {
+    let delivery = if gateway_vault == recipient {
         // This check is not a debit. Builders must consume after one fill or enforce an aggregate floor covering
         // every in-place fill recorded before full-balance consumption; step-root reuse alone is valid.
         require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
-        None
+        FillDelivery::InPlace
     } else {
         require!(source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
         require_v5_delegate_allowance(source.delegated_amount, output_amount)?;
-        Some(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
+        FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
     };
 
     let fill_status_pdas = V5FillStatusPdas::derive(submitter, relay_hash);
@@ -213,7 +215,7 @@ fn load_v5_fill_accounts<'a, 'info>(
         fill: FillAccounts {
             from: gateway_vault_info.clone(),
             recipient: recipient_info.clone(),
-            delegate: fill_delegate_info,
+            delivery,
             mint: mint_info.clone(),
             token_program: token_program.clone(),
             mint_decimals,
