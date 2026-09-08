@@ -22,6 +22,7 @@ pub struct V5FillStatusPdas {
 }
 
 impl V5FillStatusPdas {
+    #[cfg_attr(not(feature = "test"), allow(dead_code))]
     pub fn derive(submitter: &Pubkey, relay_hash: &[u8; 32]) -> Self {
         let (payer, payer_bump) = derive_v5_fill_payer(submitter);
         let (fill_status, fill_status_bump) = derive_fill_status(relay_hash);
