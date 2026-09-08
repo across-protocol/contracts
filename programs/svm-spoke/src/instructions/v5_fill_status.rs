@@ -14,19 +14,21 @@ use crate::{
 
 pub const V5_FILL_STATUS_SPACE: usize = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE;
 
-pub struct V5FillStatusPdas {
+pub struct V5FillStatusPdas<'a> {
+    submitter: &'a Pubkey,
+    relay_hash: &'a [u8; 32],
     payer: Pubkey,
     fill_status: Pubkey,
     payer_bump: u8,
     fill_status_bump: u8,
 }
 
-impl V5FillStatusPdas {
+impl<'a> V5FillStatusPdas<'a> {
     #[cfg_attr(not(feature = "test"), allow(dead_code))]
-    pub fn derive(submitter: &Pubkey, relay_hash: &[u8; 32]) -> Self {
+    pub fn derive(submitter: &'a Pubkey, relay_hash: &'a [u8; 32]) -> Self {
         let (payer, payer_bump) = derive_v5_fill_payer(submitter);
         let (fill_status, fill_status_bump) = derive_fill_status(relay_hash);
-        Self { payer, fill_status, payer_bump, fill_status_bump }
+        Self { submitter, relay_hash, payer, fill_status, payer_bump, fill_status_bump }
     }
 
     pub fn payer(&self) -> Pubkey {
@@ -48,19 +50,16 @@ impl V5FillStatusPdas {
 ///
 /// # Safety
 ///
-/// The caller must source `submitter` from Gateway-attested context, derive `relay_hash` from the validated V5
-/// `RelayData`, derive `pdas` from those same values, and complete semantic validation before calling this helper. Every
-/// successful instruction path must then call `write_v5_fill_status` with the unexpired deadline committed in that
-/// `RelayData`; failed paths atomically roll back the zeroed intermediate account. This helper validates accounts against
-/// the canonical PDA bundle but does not authenticate or bind the seed values themselves.
+/// The caller must derive `pdas` from the Gateway-attested submitter and the relay hash of the validated V5 `RelayData`,
+/// then complete semantic validation before calling this helper. Every successful instruction path must then call
+/// `write_v5_fill_status` with the unexpired deadline committed in that `RelayData`; failed paths atomically roll back the
+/// zeroed intermediate account.
 #[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status_account<'info>(
     payer: &AccountInfo<'info>,
     fill_status: &AccountInfo<'info>,
     system_program_info: &AccountInfo<'info>,
-    submitter: &Pubkey,
-    relay_hash: &[u8; 32],
-    pdas: &V5FillStatusPdas,
+    pdas: &V5FillStatusPdas<'_>,
 ) -> Result<Pubkey> {
     require_keys_eq!(*payer.key, pdas.payer(), V5Error::InvalidFillPayer);
     require_keys_eq!(*fill_status.key, pdas.fill_status(), V5Error::InvalidFillStatusAccount);
@@ -83,8 +82,8 @@ pub fn create_v5_fill_status_account<'info>(
         .minimum_balance(V5_FILL_STATUS_SPACE)
         .max(1)
         .saturating_sub(current_lamports);
-    let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, submitter.as_ref(), &[pdas.payer_bump]];
-    let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, relay_hash, &[pdas.fill_status_bump]];
+    let payer_seeds: &[&[u8]] = &[V5_FILL_PAYER_SEED, pdas.submitter.as_ref(), &[pdas.payer_bump]];
+    let fill_status_seeds: &[&[u8]] = &[FILL_STATUS_SEED, pdas.relay_hash, &[pdas.fill_status_bump]];
     if current_lamports == 0 {
         invoke_signed(
             &system_instruction::create_account(
@@ -156,8 +155,6 @@ pub fn test_create_v5_fill_status(
         &ctx.accounts.payer.to_account_info(),
         &ctx.accounts.fill_status.to_account_info(),
         &ctx.accounts.system_program.to_account_info(),
-        &submitter,
-        &relay_hash,
         &pdas,
     )?;
     write_v5_fill_status(&ctx.accounts.fill_status.to_account_info(), rent_recipient, fill_deadline)
