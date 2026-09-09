@@ -75,6 +75,14 @@ try {
       config,
       `[profile.default]\nsrc = "src"\ntest = "test"\nsolc = "${solc}"\n[profile.zksync.zksync]\ncompile = true\nzksolc = "${zksolc}"\n`
     );
+    // --skip test/script only excludes .t.sol/.s.sol; ordinary EVM helpers must also be excluded.
+    mkdirSync(join(project, "script"));
+    for (const dir of ["test", "script"]) {
+      writeFileSync(
+        join(project, dir, "EvmOnlyHelper.sol"),
+        'pragma solidity ^0.8.30; import "../src/Counter.sol"; contract EvmOnlyHelper { function code() external pure returns (bytes memory) { return type(Counter).runtimeCode; } }\n'
+      );
+    }
     run("yarn", ["forge-build-zksync", ...args]);
     assert(existsSync(join(project, "zkout/Counter.sol/Counter.json")), "zkSync must emit an EraVM artifact");
     // Exercise deployment/verification command selection without sending any transactions.

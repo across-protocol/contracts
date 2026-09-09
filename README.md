@@ -110,6 +110,7 @@ yarn forge-build-zksync
 commands select it with `mise -E zksync exec` and set `FOUNDRY_PROFILE=zksync`. Use `yarn forge-script-zksync ...`
 to run deployment scripts, `yarn forge-verify-zksync ...` for verification, or `yarn foundry-zksync forge ...`
 for direct fork commands (set the Foundry profile/flags yourself for direct commands).
+The zkSync build excludes test and script directories, including ordinary `.sol` helpers that use EVM-only features.
 
 Standard Foundry and other repositories keep their own tools; no `foundryup-zksync` or shell activation is needed.
 The independent compiler pins remain in `foundry.toml`: `solc 0.8.30` and `zksolc 1.5.15`.
