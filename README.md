@@ -35,6 +35,10 @@ yarn build # Will build all code. Compile solidity & rust (local toolchain), gen
 yarn build-verified # Will build all code. Compile solidity & rust (verified docker build), generate ts outputs
 ```
 
+EVM builds and tests use the Foundry version pinned in `.foundry-version`; CI installs exactly that version via
+`foundry-rs/foundry-toolchain`. Run `yarn pin-foundry` to switch your local toolchain to it (a no-op when it already
+matches). Bump the pin by editing that file.
+
 ## Test
 
 ```shell
