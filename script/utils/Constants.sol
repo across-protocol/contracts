@@ -13,6 +13,9 @@ contract Constants is Script {
 
     uint32 constant CCTP_NO_DOMAIN = 2 ** 32 - 1;
 
+    // CCTP V2 finality threshold at which Circle attests only after hard finality on the source chain.
+    uint32 constant CCTP_FINALITY_THRESHOLD_FINALIZED = 2000;
+
     constructor() {
         file = vm.readFile("generated/constants.json");
     }
@@ -46,6 +49,7 @@ contract Constants is Script {
         address cctpTokenMessenger;
         address cctpV2TokenMessenger;
         address cctpMessageTransmitter;
+        address cctpV2MessageTransmitter;
         address lineaMessageService;
         address lineaTokenBridge;
         address adapterStore;
@@ -109,6 +113,10 @@ contract Constants is Script {
                     cctpMessageTransmitter: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpMessageTransmitter")
+                    ),
+                    cctpV2MessageTransmitter: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpV2MessageTransmitter")
                     ),
                     lineaMessageService: vm.parseJsonAddress(
                         file,

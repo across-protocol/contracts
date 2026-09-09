@@ -212,12 +212,6 @@ async function testBundleLogic(): Promise<void> {
   const proof = merkleTree.getProof(relayerRefundLeaf).map((p) => Array.from(p));
   const leaf = relayerRefundLeaf as RelayerRefundLeafSolana;
 
-  // Derive the transferLiability PDA
-  const [transferLiability] = PublicKey.findProgramAddressSync(
-    [Buffer.from("transfer_liability"), inputToken.toBuffer()],
-    program.programId
-  );
-
   // Load the instruction parameters
   const proofAsNumbers = proof.map((p) => Array.from(p));
   console.log("loading execute relayer refund leaf params...");
@@ -235,7 +229,6 @@ async function testBundleLogic(): Promise<void> {
     vault: vault,
     tokenProgram: TOKEN_PROGRAM_ID,
     mint: inputToken,
-    transferLiability,
     systemProgram: anchor.web3.SystemProgram.programId,
     // Appended by Acnhor `event_cpi` macro:
     eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],

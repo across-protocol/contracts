@@ -16,16 +16,12 @@ security_txt! {
 
 declare_id!("DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru");
 
-// External programs from idls directory (requires anchor run generateExternalTypes).
-declare_program!(message_transmitter);
-declare_program!(token_messenger_minter);
-
 /// # Across SVM Spoke Program
 ///
 /// Spoke pool implementation for Across Protocol enabling connection to the Solana Ecosystem. Program is functionally
 /// the re-implementation of SpokePool.sol for Solana, with some extensions to be Solana compatible. The implementation
-/// leverages Circle's CCTP for message and token bridging back and forth from Ethereum mainnet. As the EVM spoke pool,
-/// this spoke pool is instructed by the EVM hubpool for pool rebalancing and relayer repayment.
+/// leverages Circle's CCTP V2 to receive admin messages from the HubPool on Ethereum mainnet. As the EVM spoke pool,
+/// this spoke pool is instructed by the EVM hubpool for relayer repayment. Tokens are never bridged back to the HubPool.
 ///
 /// For any issues, please reach out to bugs@across.to.
 pub mod common;
@@ -485,7 +481,7 @@ pub mod svm_spoke {
     /// instruction_params Parameters:
     /// - root_bundle_id: The ID of the root bundle containing the relayer refund root.
     /// - relayer_refund_leaf: The relayer refund leaf to be executed. Contents must include:
-    ///     - amount_to_return: The amount to be to be sent back to mainnet Ethereum from this Spoke pool.
+    ///     - amount_to_return: Must be 0 as this Spoke pool never returns tokens to the HubPool.
     ///     - chain_id: The targeted chainId for the refund. Validated against state.chain_id.
     ///     - refund_amounts: The amounts to be returned to the relayer for each refund_address.
     ///     - leaf_id: The leaf ID of the relayer refund leaf.
@@ -501,8 +497,6 @@ pub mod svm_spoke {
     ///   was initially bridged. seed: ["root_bundle",state.seed,root_bundle_id].
     /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
     /// - mint (Account): The mint account for the token being refunded.
-    /// - transfer_liability (Writable): Account to track pending refunds to be sent to the Ethereum hub pool. Only used
-    ///   if the amount_to_return value is non-zero within the leaf. Seed: ["transfer_liability",mint]
     /// - token_program: The token program.
     /// - system_program: The system program required for account creation.
     ///
@@ -524,40 +518,6 @@ pub mod svm_spoke {
         'c: 'info,
     {
         instructions::execute_relayer_refund_leaf(ctx, true)
-    }
-
-    /// Bridges tokens to the Hub Pool.
-    ///
-    /// This function initiates the process of sending tokens from the vault to the Hub Pool based on the outstanding
-    /// token liability this Spoke Pool has accrued. Enables the caller to choose a custom amount to work around CCTP
-    /// bridging limits. enforces that amount is less than or equal to liability. On execution decrements liability.
-    ///
-    /// ### Required Accounts:
-    /// - signer (Signer): The account that authorizes the bridge operation.
-    /// - payer (Signer): The account responsible for paying the transaction fees.
-    /// - mint (InterfaceAccount): The mint account for the token being bridged.
-    /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - transfer_liability (Account): Account tracking the pending amount to be sent to the Hub Pool. Incremented on
-    ///   relayRootBundle() and decremented on when this function is called. Seed: ["transfer_liability",mint].
-    /// - vault (InterfaceAccount): The ATA for the token being bridged. Authority must be the state.
-    /// - token_messenger_minter_sender_authority (UncheckedAccount): Authority for the token messenger minter.
-    /// - message_transmitter (UncheckedAccount): Account for the message transmitter.
-    /// - token_messenger (UncheckedAccount): Account for the token messenger.
-    /// - remote_token_messenger (UncheckedAccount): Account for the remote token messenger.
-    /// - token_minter (UncheckedAccount): Account for the token minter.
-    /// - local_token (UncheckedAccount): Account for the local token.
-    /// - cctp_event_authority (UncheckedAccount): Authority for CCTP events.
-    /// - message_sent_event_data (Signer): Account for message sent event data.
-    /// - message_transmitter_program (Program): Program for the message transmitter.
-    /// - token_messenger_minter_program (Program): Program for the token messenger minter.
-    /// - token_program (Interface): The token program.
-    /// - system_program (Program): The system program.
-    ///
-    /// ### Parameters:
-    /// - amount: The amount of tokens to bridge to the Hub Pool.
-    pub fn bridge_tokens_to_hub_pool(ctx: Context<BridgeTokensToHubPool>, amount: u64) -> Result<()> {
-        instructions::bridge_tokens_to_hub_pool(ctx, amount)?;
-        Ok(())
     }
 
     /// Initializes the instruction parameters account. Used by data worker when relaying bundles
@@ -731,18 +691,22 @@ pub mod svm_spoke {
     }
 
     // **************************************
-    //       CCTP FUNCTIONS FUNCTIONS       *
+    //            CCTP FUNCTIONS            *
     // *************************************
 
-    /// Handles cross-chain messages received from L1 Ethereum over CCTP.
+    /// Handles finalized cross-chain messages received from L1 Ethereum over CCTP V2.
     ///
     /// This function serves as the permissioned entry point for messages sent from the Ethereum mainnet to the Solana
-    /// SVM Spoke program over CCTP. It processes the incoming message by translating it into a corresponding Solana
+    /// SVM Spoke program over CCTP V2. It processes the incoming message by translating it into a corresponding Solana
     /// instruction and then invokes the instruction within this program.
+    ///
+    /// The CCTP V2 Message Transmitter dispatches messages attested at Circle's finalized threshold (2000) to this
+    /// instruction and anything below to `handle_receive_unfinalized_message`. This program intentionally does not
+    /// implement the latter, so messages attested before the source chain reached hard finality can never be consumed.
     ///
     /// ### Required Accounts:
     /// - authority_pda: A signer account that ensures this instruction can only be called by the Message Transmitter.
-    ///   This acts to block that only the CCTP Message Transmitter can send messages to this program.
+    ///   This acts to block that only the CCTP V2 Message Transmitter can send messages to this program.
     ///   seed:["message_transmitter_authority", program_id]
     /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet. Enforces that the
     ///   remote domain and sender are valid.
@@ -754,13 +718,14 @@ pub mod svm_spoke {
     /// - params: Contains information to process the received message, containing the following fields:
     ///     - remote_domain: The remote domain of the message sender.
     ///     - sender: The sender of the message.
+    ///     - finality_threshold_executed: The finality threshold the message was attested at. Must be finalized.
     ///     - message_body: The body of the message.
     ///     - authority_bump: The authority bump for the message transmitter.
-    pub fn handle_receive_message<'info>(
-        ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
+    pub fn handle_receive_finalized_message<'info>(
+        ctx: Context<'_, '_, '_, 'info, HandleReceiveFinalizedMessage<'info>>,
         params: HandleReceiveMessageParams,
     ) -> Result<()> {
-        instructions::handle_receive_message(ctx, params)
+        instructions::handle_receive_finalized_message(ctx, params)
     }
 
     /// Sets the current time for the SVM Spoke Pool when running in test mode. Disabled on Mainnet.

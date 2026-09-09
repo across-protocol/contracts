@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IMessageTransmitter, ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
-import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
+import { IMessageTransmitterV2, ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
@@ -10,7 +9,7 @@ import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Solana via CCTP.
+ * @notice Contract containing logic to send messages from L1 to Solana via CCTP V2.
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
  * called via delegatecall, which will execute this contract's logic within the context of the originating contract.
  * For example, the HubPool will delegatecall these functions, therefore it's only necessary that the HubPool's methods
@@ -29,11 +28,19 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
     using Bytes32ToAddress for bytes32;
 
     /**
-     * @notice The official Circle CCTP MessageTransmitter contract endpoint.
-     * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
+     * @notice The official Circle CCTP V2 MessageTransmitter contract endpoint.
+     * @dev Posted officially here: https://developers.circle.com/cctp/evm-smart-contracts
      */
     // solhint-disable-next-line immutable-vars-naming
-    IMessageTransmitter public immutable cctpMessageTransmitter;
+    IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    /**
+     * @notice Minimum CCTP finality threshold at which Circle attests messages relayed to Solana.
+     * @dev Circle attests "finalized" (2000) messages only after the source chain reached hard finality. The Solana
+     * spoke pool only implements the finalized message handler, so any message attested below Circle's finalized
+     * threshold could never be consumed. Kept configurable in case Circle redefines its threshold values.
+     */
+    uint32 public immutable CCTP_MIN_FINALITY_THRESHOLD;
 
     // Solana spoke pool address, decoded from Base58 to bytes32.
     bytes32 public immutable SOLANA_SPOKE_POOL_BYTES32;
@@ -63,19 +70,22 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Usdc USDC address on L1.
-     * @param _cctpTokenMessenger TokenMessenger contract to bridge tokens via CCTP.
-     * @param _cctpMessageTransmitter MessageTransmitter contract to bridge messages via CCTP.
+     * @param _cctpTokenMessenger CCTP V2 TokenMessenger contract to bridge tokens via CCTP.
+     * @param _cctpMessageTransmitter CCTP V2 MessageTransmitter contract to bridge messages via CCTP.
      * @param solanaSpokePool Solana spoke pool address, decoded from Base58 to bytes32.
      * @param solanaUsdc USDC mint address on Solana, decoded from Base58 to bytes32.
      * @param solanaSpokePoolUsdcVault USDC token address on Solana for the spoke pool, decoded from Base58 to bytes32.
+     * @param _cctpMinFinalityThreshold Minimum CCTP finality threshold for relayed messages. Should be Circle's
+     * finalized threshold (2000) as the Solana spoke pool only accepts finalized messages.
      */
     constructor(
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        IMessageTransmitter _cctpMessageTransmitter,
+        IMessageTransmitterV2 _cctpMessageTransmitter,
         bytes32 solanaSpokePool,
         bytes32 solanaUsdc,
-        bytes32 solanaSpokePoolUsdcVault
+        bytes32 solanaSpokePoolUsdcVault,
+        uint32 _cctpMinFinalityThreshold
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Solana) {
         // Solana adapter requires CCTP TokenMessenger and MessageTransmitter contracts to be set.
         if (address(_cctpTokenMessenger) == address(0)) {
@@ -86,6 +96,7 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         }
 
         cctpMessageTransmitter = _cctpMessageTransmitter;
+        CCTP_MIN_FINALITY_THRESHOLD = _cctpMinFinalityThreshold;
 
         SOLANA_SPOKE_POOL_BYTES32 = solanaSpokePool;
         SOLANA_SPOKE_POOL_ADDRESS = solanaSpokePool.toAddressUnchecked();
@@ -97,7 +108,7 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Send cross-chain message to target on Solana.
-     * @dev Only allows sending messages to the Solana spoke pool.
+     * @dev Only allows sending messages to the Solana spoke pool. Any caller may relay the attested message on Solana.
      * @param target Program on Solana (translated as EVM address) that will receive message.
      * @param message Data to send to target.
      */
@@ -105,7 +116,13 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         if (target != SOLANA_SPOKE_POOL_ADDRESS) {
             revert InvalidRelayMessageTarget(target);
         }
-        cctpMessageTransmitter.sendMessage(CircleDomainIds.Solana, SOLANA_SPOKE_POOL_BYTES32, message);
+        cctpMessageTransmitter.sendMessage(
+            CircleDomainIds.Solana,
+            SOLANA_SPOKE_POOL_BYTES32,
+            bytes32(0),
+            CCTP_MIN_FINALITY_THRESHOLD,
+            message
+        );
 
         // TODO: consider if we need also to emit the translated message.
         emit MessageRelayed(target, message);
