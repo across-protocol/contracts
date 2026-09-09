@@ -49,7 +49,7 @@
     "check-foundry": "mise exec -- node scripts/checkFoundryVersion.js",
     "test-foundry-toolchain": "node scripts/testFoundryToolchain.js",
     "foundry": "mise exec --",
-    "check-storage-layouts": "mise exec -- bash scripts/checkStorageLayout.sh",
+    "check-storage-layouts": "bash scripts/checkStorageLayout.sh",
     "build-evm-foundry": "mise exec -- forge build",
     "test-evm": "yarn test-evm-foundry",
     "test-evm-foundry": "FOUNDRY_PROFILE=local-test mise exec -- forge test",

@@ -44,7 +44,7 @@ try {
     "bash",
     [
       "-euc",
-      'source "$1"; test "$PWD" -ef "$3"; test "$4" = "argument with spaces"; read -r line; test "$line" = "preserved input"; "$5" "$2"',
+      'source "$1"; command -v cast; command -v forge; test "$PWD" -ef "$3"; test "$4" = "argument with spaces"; read -r line; test "$line" = "preserved input"; "$5" "$2"',
       "bash",
       join(repo, "scripts/setupFoundryEnv.sh"),
       join(repo, "scripts/checkFoundryVersion.js"),
@@ -55,7 +55,35 @@ try {
     otherRepo,
     "preserved input\n"
   );
+  // Startup coverage only; the sourced-shell probe above checks binary availability and pinned versions.
   run("bash", [join(repo, "script/mintburn/checkSponsoredPeripheryProdReadiness.sh"), "--help"], otherRepo);
+
+  const failedMise = join(fixture, "failed-mise");
+  mkdirSync(failedMise);
+  writeFileSync(join(failedMise, "mise"), '#!/bin/sh\necho "invalid PATH"\nexit 42\n', { mode: 0o755 });
+  for (const toolPath of [ambient, `${failedMise}:${process.env.PATH}`]) {
+    const env = { ...process.env, PATH: toolPath };
+    const recovered = spawnSync(
+      "/bin/bash",
+      [
+        "-uc",
+        'original="$PATH"; if source "$1"; then exit 11; fi; test "$PATH" = "$original" || exit 12; if declare -F _across_setup_foundry_env >/dev/null; then exit 13; fi; echo survived',
+        "bash",
+        join(repo, "scripts/setupFoundryEnv.sh"),
+      ],
+      { cwd: otherRepo, env, encoding: "utf8" }
+    );
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.match(recovered.stdout, /survived/);
+    if (toolPath === ambient) assert.match(recovered.stderr, /mise not found; see Requirements in README.md/);
+  }
+  const stopped = spawnSync("/bin/bash", [join(repo, "scripts/checkStorageLayout.sh")], {
+    cwd: otherRepo,
+    env: { ...process.env, PATH: `${failedMise}:${ambient}:${process.env.PATH}` },
+    encoding: "utf8",
+  });
+  assert.equal(stopped.status, 1, "Repo scripts must stop if toolchain setup fails");
+  assert.doesNotMatch(stopped.stdout, /Comparing storage layout|from another repo/);
 
   // Pin lookup must handle an unrelated version first and the inline TOML form.
   mkdirSync(join(project, "scripts"));

@@ -1,5 +1,5 @@
 #!/bin/bash
-source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh" || exit $?
 
 CONTRACT=$1
 if [ -z "$CONTRACT" ]

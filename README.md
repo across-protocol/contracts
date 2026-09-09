@@ -45,6 +45,7 @@ Use `yarn foundry forge ...`, `yarn foundry cast ...`, or `mise exec -- <command
 commands, including scripts that invoke Foundry internally. Bare `forge` still uses your shell's selected tool.
 Repo-owned shell scripts that invoke Foundry load the pin automatically, including storage-layout, bytecode
 verification, contract-size, and production-readiness checks.
+The shared helper returns an error without changing `PATH` if setup fails; these scripts stop on that error.
 The `forge-*-zksync` commands select their own pin from `mise.zksync.toml`; see the zkSync setup below.
 
 To try this setup on Linux or macOS without building the full repo:

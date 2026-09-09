@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh" || exit $?
 
 # Verifies a zkSync deployment tx by comparing its create(bytes32,bytes32,bytes)
 # calldata to the latest dry-run output at:

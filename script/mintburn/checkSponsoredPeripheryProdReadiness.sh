@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-source "$ROOT_DIR/scripts/setupFoundryEnv.sh"
+source "$ROOT_DIR/scripts/setupFoundryEnv.sh" || exit $?
 DEPLOYED_ADDRESSES_PATH="$ROOT_DIR/broadcast/deployed-addresses.json"
 ENV_FILE_PATH="$ROOT_DIR/.env"
 MULTISIGS_FILE_PATH="$ROOT_DIR/script/mintburn/prod-readiness-multisigs.json"

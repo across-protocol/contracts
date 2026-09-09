@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh" || exit $?
 
 # This script verifies the bytecode of a contract onchain matches the bytecode in the artifact
 # It takes the following arguments:
