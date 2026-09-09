@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$ROOT_DIR/scripts/setupFoundryEnv.sh" || exit $?
 DEPLOYED_ADDRESSES_PATH="$ROOT_DIR/broadcast/deployed-addresses.json"
 ENV_FILE_PATH="$ROOT_DIR/.env"
 MULTISIGS_FILE_PATH="$ROOT_DIR/script/mintburn/prod-readiness-multisigs.json"
@@ -156,7 +157,7 @@ build_cast_send() {
 	local chain_id="$3"
 	shift 3
 
-	local cmd="cast send $address \"$signature\""
+	local cmd="yarn foundry cast send $address \"$signature\""
 	local arg
 	for arg in "$@"; do
 		cmd+=" $arg"

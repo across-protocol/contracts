@@ -23,9 +23,40 @@ The latest contract deployments can be found in `/broadcast/deployed-addresses.j
 
 ## Requirements
 
-This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 16.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
+Use Node 22.18 or newer and Yarn 1.x. EVM commands require [mise](https://mise.jdx.dev/getting-started.html);
+SVM commands also require [Anchor](https://www.anchor-lang.com/docs/installation).
 
-Note if you get build issues on the initial `yarn` command try downgrading to node 20.17 (`nvm use 20.17`). If you've never used anchor before you might need to run `avm use latest` as well.
+On macOS, install mise with `brew install mise`. On Linux, follow the linked mise installation guide.
+Then, from the repository root:
+
+```shell
+yarn install --frozen-lockfile
+mise trust mise.toml
+yarn pin-foundry
+yarn check-foundry
+```
+
+The default Foundry version lives in `mise.toml`. `yarn pin-foundry` installs it into mise's versioned storage and
+verifies all four binaries; it does not switch or overwrite `~/.foundry/bin`. Standard EVM build/test commands
+use `mise exec` explicitly, so shell activation is unnecessary and another repo's Foundry can remain on `PATH`.
+CI uses the same file and mise (tested with mise 2026.9.3). Bump the version by editing `mise.toml`.
+
+Use `yarn foundry forge ...`, `yarn foundry cast ...`, or `mise exec -- <command>` for other standard Foundry
+commands, including scripts that invoke Foundry internally. Bare `forge` still uses your shell's selected tool.
+Repo-owned shell scripts that invoke Foundry load the pin automatically, including storage-layout, bytecode
+verification, contract-size, and production-readiness checks.
+The shared helper returns an error without changing `PATH` if setup fails; these scripts stop on that error.
+The `forge-*-zksync` commands select their own pin from `mise.zksync.toml`; see the zkSync setup below.
+
+To try this setup on Linux or macOS without building the full repo:
+
+```shell
+yarn test-foundry-toolchain
+```
+
+This installs/checks the pin, builds and tests a small Solidity project, and verifies that tools supplied by
+another repo remain untouched. CI runs it on Linux, Apple Silicon macOS, and Intel macOS when toolchain configuration
+or scripts change; full EVM CI runs on Linux.
 
 ## Build
 
@@ -34,10 +65,6 @@ yarn
 yarn build # Will build all code. Compile solidity & rust (local toolchain), generate ts outputs
 yarn build-verified # Will build all code. Compile solidity & rust (verified docker build), generate ts outputs
 ```
-
-EVM builds and tests use the Foundry version pinned in `.foundry-version`; CI installs exactly that version via
-`foundry-rs/foundry-toolchain`. Run `yarn pin-foundry` to switch your local toolchain to it (a no-op when it already
-matches). Bump the pin by editing that file.
 
 ## Test
 
@@ -68,23 +95,35 @@ yarn lint-fix
 #### Foundry
 
 ```shell
-forge build
+yarn build-evm-foundry
 
-forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+yarn foundry forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
 
 ```
 
 #### Foundry (ZKSync)
 
-To enable ZKSync support, the zksync fork of foundry must be installed (see [here](https://foundry-book.zksync.io/introduction/installation#using-foundryup-zksync) for instructions).
-
-Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
+Install the separately pinned Foundry fork with mise:
 
 ```shell
-FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+mise trust mise.zksync.toml
+yarn pin-foundry-zksync
+yarn forge-build-zksync
 ```
 
-Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
+`mise.zksync.toml` pins `foundry-zksync v0.1.9` in separate versioned storage. The build, script, and verification
+commands select it with `mise -E zksync exec` and set `FOUNDRY_PROFILE=zksync`. Use `yarn forge-script-zksync ...`
+to run deployment scripts, `yarn forge-verify-zksync ...` for verification, or `yarn foundry-zksync forge ...`
+for direct fork commands (set the Foundry profile/flags yourself for direct commands).
+The zkSync build excludes test and script directories, including ordinary `.sol` helpers that use EVM-only features.
+
+Standard Foundry and other repositories keep their own tools; no `foundryup-zksync` or shell activation is needed.
+The independent compiler pins remain in `foundry.toml`: `solc 0.8.30` and `zksolc 1.5.15`.
+Run `yarn test-foundry-toolchain --zksync` to test both pins, compile a small EraVM contract, and check isolation.
+CI runs this on Linux and Apple Silicon macOS. The pinned fork has no Intel macOS release binary; use a Linux
+environment for zkSync work on an Intel Mac. Standard Foundry remains supported on Intel macOS.
+
+For example, deploy and verify a zkSync contract with:
 
 ```shell
 yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv

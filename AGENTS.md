@@ -98,7 +98,8 @@ lib/                 # External dependencies (git submodules)
 ## Build & Test Commands
 
 ```bash
-yarn pin-foundry                      # Switch local Foundry to the version in .foundry-version (CI uses the same)
+yarn pin-foundry                     # Install the repo pin via mise without switching other repos
+yarn check-foundry                   # Verify the pinned forge/cast/anvil/chisel versions
 yarn build-evm-foundry                # Foundry build
 yarn test-evm-foundry                 # Foundry local tests (recommended)
 yarn test-evm-foundry -- --match-test testDeposit
@@ -107,8 +108,15 @@ yarn test-evm-foundry -- -vvv         # Verbose output
 ```
 
 Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=local-test`. `yarn build-evm-foundry` can take up to 5 minutes.
-Match CI's toolchain with `yarn pin-foundry` if `forge --version` differs from `.foundry-version`; newer forge releases can
-change compiler behavior (forge 1.8.x's dynamic test linking breaks the solc 0.8.30 build).
+Install mise, trust `mise.toml`, then run `yarn pin-foundry` to match CI's pin. Standard EVM Yarn commands use
+`mise exec` explicitly; use `yarn foundry forge ...` / `yarn foundry cast ...` for direct commands.
+Repo-owned shell scripts source `scripts/setupFoundryEnv.sh` to select the same pin for their child processes.
+Do not run `foundryup` to switch the shared installation. For zkSync, trust `mise.zksync.toml` and run
+`yarn pin-foundry-zksync`; `forge-*-zksync` commands select that fork through `mise -E zksync exec`.
+Use `yarn foundry-zksync forge ...` for direct fork commands. The pinned fork supports Linux and Apple Silicon
+macOS; no Intel macOS release binary is available. `yarn test-foundry-toolchain --zksync` tests both pins.
+Run `yarn test-foundry-toolchain` for the Linux/macOS install and isolation smoke test. Newer Forge releases can
+change compiler behavior (Forge 1.8.x's dynamic test linking breaks the solc 0.8.30 build).
 
 ## Naming Conventions
 
