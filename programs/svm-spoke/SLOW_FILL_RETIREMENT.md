@@ -1,6 +1,6 @@
-# SVM SpokePool behavior and upgrade compatibility
+# SVM slow-fill retirement
 
-## Slow-fill retirement (ACP-221)
+## Behavior and upgrade compatibility
 
 Solana does not support slow fills. `request_slow_fill` and `execute_slow_relay_leaf` are absent from the program's
 dispatch table, public IDL and generated clients. Their historical raw discriminators fail with Anchor's
@@ -28,13 +28,6 @@ HubPool forwards the same global slow-relay root to every destination. A nonzero
 other chains, so rejecting it on Solana would also block delivery of the accompanying refund root.
 No account or admin-message migration is required. Previously prepared slow-fill instruction-parameter buffers
 can still be closed by their creator through `close_instruction_params`, which does not require the retired type.
-
-## Shared SVM upgrade integration
-
-ACP-221 builds above the ACP-184 V5 stack (#1544). CCTP v2 and token-rebalance removal (#1548) remain a separate
-branch based on `master`; legacy callback retirement is tracked by ACP-222. The combined audit candidate must include
-both ACP-221 and #1548 and verify that refund leaves with nonzero `amount_to_return` are rejected. That refund guard
-belongs to #1548 and is not introduced by this branch. The full lite-chain invariant requires both changes.
 
 ## Regression coverage
 
