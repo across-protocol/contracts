@@ -1,11 +1,12 @@
-// This script bridges remote call to pause deposits on Solana Spoke Pool. Required environment:
+// This script bridges remote call to pause deposits on Solana Spoke Pool via the HubPool over CCTP V2. Required
+// environment:
 // - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
 // - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
-import { AccountMeta, PublicKey } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
 import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
@@ -13,14 +14,12 @@ import { hideBin } from "yargs/helpers";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
-  decodeMessageHeader,
-  getMessages,
-  getMessageTransmitterProgram,
   getSpokePoolProgram,
+  getV2Messages,
   isSolanaDevnet,
 } from "../../src/svm/web3-v1";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
-import { getHubPoolContract, requireEnv } from "./utils/helpers";
+import { getHubPoolContract, receiveCctpV2MessageOnSpoke, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -57,17 +56,6 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
-
-  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
-  const [messageTransmitterState] = PublicKey.findProgramAddressSync(
-    [Buffer.from("message_transmitter")],
-    messageTransmitterProgram.programId
-  );
-  const [authorityPda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("message_transmitter_authority"), svmSpokeProgram.programId.toBuffer()],
-    messageTransmitterProgram.programId
-  );
-  const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
   const [eventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("__event_authority")],
     svmSpokeProgram.programId
@@ -86,10 +74,6 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
     { Property: "svmSpokeProgramProgramId", Value: svmSpokeProgram.programId.toString() },
     { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },
     { Property: "statePda", Value: statePda.toString() },
-    { Property: "messageTransmitterProgramId", Value: messageTransmitterProgram.programId.toString() },
-    { Property: "messageTransmitterState", Value: messageTransmitterState.toString() },
-    { Property: "authorityPda", Value: authorityPda.toString() },
-    { Property: "selfAuthority", Value: selfAuthority.toString() },
     { Property: "eventAuthority", Value: eventAuthority.toString() },
     { Property: "remoteSender", Value: ethersSigner.address },
   ]);
@@ -106,84 +90,27 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   } else remoteTxHash = resumeRemoteTx;
 
   // Fetch attestation from CCTP attestation service.
-  const attestationResponse = await getMessages(remoteTxHash, remoteDomain, irisApiUrl);
-  const { attestation, message } = attestationResponse.messages[0];
-  console.log("CCTP attestation response:", attestationResponse.messages[0]);
-
-  // Accounts in CCTP message_transmitter receive_message instruction.
-  const nonce = decodeMessageHeader(Buffer.from(message.replace("0x", ""), "hex")).nonce;
-  const usedNonces = (await messageTransmitterProgram.methods
-    .getNoncePda({
-      nonce: new BN(nonce.toString()),
-      sourceDomain: remoteDomain,
-    })
-    .accounts({
-      messageTransmitter: messageTransmitterState,
-    })
-    .view()) as PublicKey;
-
-  const receiveMessageAccounts = {
-    payer: provider.wallet.publicKey,
-    caller: provider.wallet.publicKey,
-    authorityPda,
-    messageTransmitter: messageTransmitterState,
-    usedNonces,
-    receiver: svmSpokeProgram.programId,
-    systemProgram: web3.SystemProgram.programId,
-  };
-
-  // accountMetas list to pass to remaining accounts when receiving message via CCTP.
-  const remainingAccounts: AccountMeta[] = [];
-
-  // state in HandleReceiveMessage accounts (used for remote domain and sender authentication).
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: false,
-    pubkey: statePda,
-  });
-  // self_authority in HandleReceiveMessage accounts, also signer in self-invoked CPIs.
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: false,
-    pubkey: selfAuthority,
-  });
-  // program in HandleReceiveMessage accounts.
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: false,
-    pubkey: svmSpokeProgram.programId,
+  const [{ attestation, message }] = await getV2Messages(remoteTxHash, remoteDomain, irisApiUrl);
+  console.log("CCTP attestation response:", {
+    message: message.toString("hex"),
+    attestation: attestation.toString("hex"),
   });
 
-  // state
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: statePda,
-  });
-
-  // event_authority in self-invoked CPIs (appended by Anchor with event_cpi macro).
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: eventAuthority,
-  });
-  // program
-  remainingAccounts.push({
-    isSigner: false,
-    isWritable: true,
-    pubkey: svmSpokeProgram.programId,
-  });
-
-  // Receive remote message on Solana.
+  // Receive remote message on Solana. Remaining accounts are for the self-invoked pause_deposits instruction.
   console.log("Receiving message on Solana...");
-  const receiveMessageTx = await messageTransmitterProgram.methods
-    .receiveMessage({
-      message: Buffer.from(message.replace("0x", ""), "hex"),
-      attestation: Buffer.from(attestation.replace("0x", ""), "hex"),
-    })
-    .accounts(receiveMessageAccounts as any)
-    .remainingAccounts(remainingAccounts)
-    .rpc();
+  const receiveMessageTx = await receiveCctpV2MessageOnSpoke(
+    provider,
+    svmSpokeProgram,
+    statePda,
+    message,
+    attestation,
+    [
+      { isSigner: false, isWritable: true, pubkey: statePda },
+      // event_authority and program in self-invoked CPIs (appended by Anchor with event_cpi macro).
+      { isSigner: false, isWritable: false, pubkey: eventAuthority },
+      { isSigner: false, isWritable: false, pubkey: svmSpokeProgram.programId },
+    ]
+  );
   console.log("\nReceived remote message");
   console.log("Your transaction signature", receiveMessageTx);
 

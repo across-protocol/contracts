@@ -1,9 +1,8 @@
-import { BN } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { AnchorProvider } from "@coral-xyz/anchor";
+import { AccountMeta, PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "../../../utils/MerkleTree";
 import { BigNumber, ethers } from "ethers";
-import { relayerRefundHashFn } from "../../../src/svm/web3-v1";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";
+import { getMessageTransmitterV2Program, getSpokePoolProgram } from "../../../src/svm/web3-v1";
 import HubPoolArtifact from "../../../out/HubPool.sol/HubPool.json";
 import WETH9Artifact from "../../../out/WETH9.sol/WETH9.json";
 
@@ -44,21 +43,50 @@ export function constructEmptyPoolRebalanceTree(chainId: BigNumber, groupIndex: 
   return { poolRebalanceLeaf, poolRebalanceTree };
 }
 
-export const constructSimpleRebalanceTreeToHubPool = (
-  netSendAmount: BigNumber,
-  solanaChainId: BigNumber,
-  svmUsdc: PublicKey
-) => {
-  const relayerRefundLeaves: RelayerRefundLeafSolana[] = [];
-  relayerRefundLeaves.push({
-    isSolana: true,
-    leafId: new BN(0),
-    chainId: new BN(solanaChainId.toString()),
-    amountToReturn: new BN(netSendAmount.toString()),
-    mintPublicKey: new PublicKey(svmUsdc),
-    refundAddresses: [],
-    refundAmounts: [],
-  });
-  const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
-  return { merkleTree, leaves: relayerRefundLeaves };
-};
+/**
+ * Receives an attested CCTP V2 message on the SVM Spoke Pool via the CCTP V2 Message Transmitter. The spoke translates
+ * the message body into a self-invoked instruction, so `selfInvokedAccounts` must list that instruction's accounts
+ * (excluding the self_authority signer that the program prepends). See handle_receive_finalized_message in svm_spoke.
+ */
+export async function receiveCctpV2MessageOnSpoke(
+  provider: AnchorProvider,
+  svmSpokeProgram: ReturnType<typeof getSpokePoolProgram>,
+  statePda: PublicKey,
+  message: Buffer,
+  attestation: Buffer,
+  selfInvokedAccounts: AccountMeta[]
+): Promise<string> {
+  const messageTransmitterProgram = getMessageTransmitterV2Program(provider);
+  const [messageTransmitterState] = PublicKey.findProgramAddressSync(
+    [Buffer.from("message_transmitter")],
+    messageTransmitterProgram.programId
+  );
+  // CCTP V2 tracks each nonce in its own PDA seeded by the 32-byte nonce at header offset 12 of the attested message.
+  const [usedNonce] = PublicKey.findProgramAddressSync(
+    [Buffer.from("used_nonce"), message.subarray(12, 44)],
+    messageTransmitterProgram.programId
+  );
+  const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
+
+  const remainingAccounts: AccountMeta[] = [
+    // Accounts of handle_receive_finalized_message; state authenticates the remote domain and sender.
+    { pubkey: statePda, isSigner: false, isWritable: false },
+    { pubkey: selfAuthority, isSigner: false, isWritable: false },
+    { pubkey: svmSpokeProgram.programId, isSigner: false, isWritable: false },
+    ...selfInvokedAccounts,
+  ];
+
+  return messageTransmitterProgram.methods
+    .receiveMessage({ message, attestation })
+    .accounts({
+      payer: provider.wallet.publicKey,
+      caller: provider.wallet.publicKey,
+      // authority_pda, system_program and event_authority are resolved by Anchor from the IDL.
+      messageTransmitter: messageTransmitterState,
+      usedNonce,
+      receiver: svmSpokeProgram.programId,
+      program: messageTransmitterProgram.programId,
+    })
+    .remainingAccounts(remainingAccounts)
+    .rpc();
+}

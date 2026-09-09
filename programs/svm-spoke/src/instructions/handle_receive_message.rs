@@ -4,7 +4,7 @@ use anchor_lang::{
 };
 
 use crate::{
-    constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
+    constants::{FINALITY_THRESHOLD_FINALIZED, MESSAGE_TRANSMITTER_PROGRAM_ID},
     error::{CallDataError, SvmError},
     program::SvmSpoke,
     state::State,
@@ -13,8 +13,8 @@ use crate::{
 
 #[derive(Accounts)]
 #[instruction(params: HandleReceiveMessageParams)]
-pub struct HandleReceiveMessage<'info> {
-    // authority_pda is a Signer to ensure that this instruction can only be called by the Message Transmitter.
+pub struct HandleReceiveFinalizedMessage<'info> {
+    // authority_pda is a Signer to ensure that this instruction can only be called by the CCTP V2 Message Transmitter.
     #[account(
         seeds = [b"message_transmitter_authority", SvmSpoke::id().as_ref()],
         bump = params.authority_bump,
@@ -26,6 +26,9 @@ pub struct HandleReceiveMessage<'info> {
         bump,
         constraint = params.remote_domain == state.remote_domain @ SvmError::InvalidRemoteDomain,
         constraint = params.sender == state.cross_domain_admin @ SvmError::InvalidRemoteSender,
+        // The Message Transmitter only dispatches finalized messages here. Re-checking keeps this program's finality
+        // requirement explicit and independent of that dispatch logic.
+        constraint = params.finality_threshold_executed >= FINALITY_THRESHOLD_FINALIZED @ CallDataError::MessageNotFinalized,
     )]
     pub state: Account<'info, State>,
 
@@ -35,16 +38,19 @@ pub struct HandleReceiveMessage<'info> {
     pub program: Program<'info, SvmSpoke>,
 }
 
+// Mirrors HandleReceiveMessageParams from the CCTP V2 Message Transmitter. The same layout is used for both the
+// finalized and unfinalized handlers; this program implements only the finalized one.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct HandleReceiveMessageParams {
     pub remote_domain: u32,
     pub sender: Pubkey,
+    pub finality_threshold_executed: u32,
     pub message_body: Vec<u8>,
     pub authority_bump: u8,
 }
 
-pub fn handle_receive_message<'info>(
-    ctx: Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>,
+pub fn handle_receive_finalized_message<'info>(
+    ctx: Context<'_, '_, '_, 'info, HandleReceiveFinalizedMessage<'info>>,
     params: HandleReceiveMessageParams,
 ) -> Result<()> {
     let self_ix_data = translate_message(&params.message_body)?;
@@ -86,8 +92,12 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
 
 // Invokes self CPI for remote domain invoked message calls. We use low level invoke_signed with seeds corresponding to
 // the self_authority account and passing all remaining accounts from the context. Instruction data is obtained within
-// handle_receive_message by translating the received message body into a valid instruction data for the invoked CPI.
-fn invoke_self<'info>(ctx: &Context<'_, '_, '_, 'info, HandleReceiveMessage<'info>>, data: &Vec<u8>) -> Result<()> {
+// handle_receive_finalized_message by translating the received message body into a valid instruction data for the
+// invoked CPI.
+fn invoke_self<'info>(
+    ctx: &Context<'_, '_, '_, 'info, HandleReceiveFinalizedMessage<'info>>,
+    data: &Vec<u8>,
+) -> Result<()> {
     let self_authority_seeds: &[&[&[u8]]] = &[&[b"self_authority", &[ctx.bumps.self_authority]]];
 
     let mut accounts = Vec::with_capacity(1 + ctx.remaining_accounts.len());

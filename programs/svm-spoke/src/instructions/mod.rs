@@ -7,7 +7,6 @@ mod handle_receive_message;
 mod instruction_params;
 mod refund_claims;
 mod slow_fill;
-mod token_bridge;
 
 pub use admin::*;
 pub use bundle::*;
@@ -18,4 +17,3 @@ pub use handle_receive_message::*;
 pub use instruction_params::*;
 pub use refund_claims::*;
 pub use slow_fill::*;
-pub use token_bridge::*;

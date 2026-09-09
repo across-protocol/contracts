@@ -56,8 +56,8 @@ pub enum SvmError {
     InvalidRemoteSender,
     #[msg("Invalid mint!")]
     InvalidMint,
-    #[msg("Exceeded pending bridge amount to HubPool!")]
-    ExceededPendingBridgeAmount,
+    #[msg("Relayer refund leaf must not return tokens to HubPool!")]
+    NonZeroAmountToReturn,
     #[msg("Overflow writing to parameters account!")]
     ParamsWriteOverflow,
     #[msg("Invalid refund address!")]
@@ -97,6 +97,8 @@ pub enum CallDataError {
     InvalidUint64,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
+    #[msg("Message was not attested at the finalized threshold")]
+    MessageNotFinalized,
 }
 
 // Across+ specific errors.
