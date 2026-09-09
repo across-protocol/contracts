@@ -88,6 +88,7 @@ library HyperCoreLib {
     error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint64 erc20CoreIndex);
     error NativeTransferFailed();
+    error UnsupportedChain();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -386,11 +387,14 @@ library HyperCoreLib {
 
     /**
      * @notice The Core index of native HYPE on the current chain.
-     * @dev Differs between mainnet and testnet, so it cannot be a plain constant at the call site.
+     * @dev Differs between mainnet and testnet, so it cannot be a plain constant at the call site. Reverts off
+     *      HyperEVM rather than defaulting, since the index has no meaning there.
      * @return The HyperCore index id of native HYPE
      */
     function hypeCoreIndex() internal view returns (uint32) {
-        return block.chainid == HYPEREVM_TESTNET_CHAIN_ID ? HYPE_CORE_INDEX_TESTNET : HYPE_CORE_INDEX;
+        if (block.chainid == HYPEREVM_CHAIN_ID) return HYPE_CORE_INDEX;
+        if (block.chainid == HYPEREVM_TESTNET_CHAIN_ID) return HYPE_CORE_INDEX_TESTNET;
+        revert UnsupportedChain();
     }
 
     /**

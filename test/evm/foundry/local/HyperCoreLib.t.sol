@@ -178,6 +178,13 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
     }
 
+    // Off HyperEVM the index has no meaning, so resolving it should fail loudly, not default to mainnet
+    function testHypeCoreIndex_RevertsOffHyperEVM() public {
+        vm.chainId(1);
+        vm.expectRevert(HyperCoreLib.UnsupportedChain.selector);
+        wrapper.hypeCoreIndex();
+    }
+
     function testIsHype() public {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
         assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
