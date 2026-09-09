@@ -36,8 +36,8 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
     }
 
-    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) external {
-        HyperCoreLib.transferNativeEVMToSelfOnSpot(amountEVM);
+    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) external returns (uint256, uint64) {
+        return HyperCoreLib.transferNativeEVMToSelfOnSpot(amountEVM);
     }
 }
 
@@ -182,6 +182,13 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         assertEq(wrapper.hypeCoreIndex(), HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
     }
 
+    // Off HyperEVM the index has no meaning, so resolving it should fail loudly, not default to mainnet
+    function testHypeCoreIndex_RevertsOffHyperEVM() public {
+        vm.chainId(1);
+        vm.expectRevert(HyperCoreLib.UnsupportedChain.selector);
+        wrapper.hypeCoreIndex();
+    }
+
     // Circle deployed CoreDepositWallet at different addresses on mainnet and testnet; the mainnet one has no
     // code on testnet, so a single hardcoded address would revert every USDC deposit there
     function testUsdcCoreDepositWallet_DiffersOnTestnet() public {
@@ -259,10 +266,37 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
     function testTransferNativeEVMToSelfOnSpot_CreditsTheHypeSystemAddress() public {
         vm.deal(address(wrapper), 1 ether);
 
-        wrapper.transferNativeEVMToSelfOnSpot(0.4 ether);
+        (uint256 sent, uint64 credited) = wrapper.transferNativeEVMToSelfOnSpot(0.4 ether);
 
+        assertEq(sent, 0.4 ether);
+        assertEq(credited, 0.4e8); // 18 EVM decimals -> 8 Core decimals
         assertEq(HyperCoreLib.HYPE_SYSTEM_ADDRESS.balance, 0.4 ether);
         assertEq(address(wrapper).balance, 0.6 ether);
+    }
+
+    // Core credits amountEVM / 1e10 and drops the remainder, so unaligned wei must stay in the caller, not be lost
+    function testTransferNativeEVMToSelfOnSpot_RoundsDownAndKeepsDust() public {
+        uint256 dust = 1e10 - 1;
+        vm.deal(address(wrapper), 0.4 ether + dust);
+
+        (uint256 sent, uint64 credited) = wrapper.transferNativeEVMToSelfOnSpot(0.4 ether + dust);
+
+        assertEq(sent, 0.4 ether);
+        assertEq(credited, 0.4e8);
+        assertEq(HyperCoreLib.HYPE_SYSTEM_ADDRESS.balance, 0.4 ether);
+        assertEq(address(wrapper).balance, dust);
+    }
+
+    // Below 1e10 wei nothing is representable on Core, so nothing should leave the caller
+    function testTransferNativeEVMToSelfOnSpot_SendsNothingBelowOneCoreUnit() public {
+        vm.deal(address(wrapper), 1 ether);
+
+        (uint256 sent, uint64 credited) = wrapper.transferNativeEVMToSelfOnSpot(1e10 - 1);
+
+        assertEq(sent, 0);
+        assertEq(credited, 0);
+        assertEq(HyperCoreLib.HYPE_SYSTEM_ADDRESS.balance, 0);
+        assertEq(address(wrapper).balance, 1 ether);
     }
 
     function testTransferNativeEVMToSelfOnSpot_RevertsWhenTransferFails() public {

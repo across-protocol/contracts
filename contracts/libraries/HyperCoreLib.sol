@@ -63,6 +63,8 @@ library HyperCoreLib {
     address public constant HYPE_SYSTEM_ADDRESS = 0x2222222222222222222222222222222222222222;
     uint32 public constant HYPE_CORE_INDEX = 150;
     uint32 public constant HYPE_CORE_INDEX_TESTNET = 1105;
+    // HYPE has 18 decimals on HyperEVM and 8 on HyperCore, so only EVM amounts aligned to 1e10 wei are representable
+    int8 public constant HYPE_DECIMAL_DIFF = 10;
 
     // HyperEVM chain ids. The precompiles and CoreWriter below only exist on these chains.
     uint256 public constant HYPEREVM_CHAIN_ID = 999;
@@ -86,7 +88,6 @@ library HyperCoreLib {
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
-    error MaximumEVMSendAmountTooLarge();
     error TokenNotBridgeable(uint64 erc20CoreIndex);
     error NativeTransferFailed();
     error UnsupportedChain();
@@ -204,12 +205,21 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Bridges `amountEVM` of native HYPE from this address on HyperEVM to this address on HyperCore.
-     * @dev A native transfer to the HYPE system address credits the sender's spot HYPE on Core.
-     * @param amountEVM The amount of native HYPE to transfer, in EVM wei.
+     * @notice Bridges up to `amountEVM` of native HYPE from this address on HyperEVM to this address on HyperCore.
+     * @dev A native transfer to the HYPE system address credits the sender's spot HYPE on Core. Core only credits
+     *      whole multiples of 1e10 wei and silently drops the remainder, so, like the ERC20 path, this rounds the
+     *      amount down before sending and leaves the dust in the calling contract. Sends nothing if the aligned
+     *      amount is zero.
+     * @param amountEVM The maximum amount of native HYPE to transfer, in EVM wei.
+     * @return amountEVMSent The amount actually sent on HyperEVM, in wei
+     * @return amountCoreToReceive The amount credited on Core, in Core units
      */
-    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) internal {
-        (bool success, ) = HYPE_SYSTEM_ADDRESS.call{ value: amountEVM }("");
+    function transferNativeEVMToSelfOnSpot(
+        uint256 amountEVM
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+        (amountEVMSent, amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, HYPE_DECIMAL_DIFF);
+        if (amountEVMSent == 0) return (0, 0);
+        (bool success, ) = HYPE_SYSTEM_ADDRESS.call{ value: amountEVMSent }("");
         if (!success) revert NativeTransferFailed();
     }
 
@@ -386,11 +396,14 @@ library HyperCoreLib {
 
     /**
      * @notice The Core index of native HYPE on the current chain.
-     * @dev Differs between mainnet and testnet, so it cannot be a plain constant at the call site.
+     * @dev Differs between mainnet and testnet, so it cannot be a plain constant at the call site. Reverts off
+     *      HyperEVM rather than defaulting, since the index has no meaning there.
      * @return The HyperCore index id of native HYPE
      */
     function hypeCoreIndex() internal view returns (uint32) {
-        return block.chainid == HYPEREVM_TESTNET_CHAIN_ID ? HYPE_CORE_INDEX_TESTNET : HYPE_CORE_INDEX;
+        if (block.chainid == HYPEREVM_CHAIN_ID) return HYPE_CORE_INDEX;
+        if (block.chainid == HYPEREVM_TESTNET_CHAIN_ID) return HYPE_CORE_INDEX_TESTNET;
+        revert UnsupportedChain();
     }
 
     /**
@@ -436,11 +449,13 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Converts a core index id to the address that bridges it back to the same address on HyperEVM
+     * @notice Resolves a core index id to its system address, the bridge account shared by both chains. On HyperEVM,
+     *         a transfer to it credits the sender's spot balance on HyperCore; on HyperCore, a spot send to it
+     *         credits the sender's balance on HyperEVM.
      * @dev Native HYPE uses a fixed system address; every other token derives one from its Core index. An index
      *      with no linked HyperEVM contract has no EVM side to credit, so a send to it would strand the funds.
      * @param erc20CoreIndex The core token index id to convert
-     * @return The system address to send to on HyperCore
+     * @return The token's system address, valid as a destination on either chain
      */
     function toSystemAddress(uint64 erc20CoreIndex) internal view returns (address) {
         // Only linked tokens convert between Core and EVM (docs: "HyperCore <> HyperEVM transfers"), and
