@@ -136,7 +136,7 @@ from the supplied standard `RelayData` and the configured SVM chain ID. Adapter 
 message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. As on EVM, V5-tagged relays are quarantined
 from legacy fill handling, so their fill status can only transition directly from an uninitialized PDA to `Filled`.
 Slow-fill request and execution entrypoints are retired for all relays. Existing legacy requested accounts and
-historical event slots remain compatible as described in [SVM upgrade compatibility](README.md).
+historical event slots remain compatible as described in [slow-fill retirement](SLOW_FILL_RETIREMENT.md).
 
 Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
 or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,
