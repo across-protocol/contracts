@@ -2646,7 +2646,6 @@ dependencies = [
  "anchor-spl",
  "hex",
  "libsecp256k1 0.7.2",
- "multicall-handler",
  "serde_json",
  "solana-security-txt",
 ]
