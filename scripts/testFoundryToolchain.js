@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } = require("node:fs");
+const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
@@ -13,11 +13,12 @@ mkdirSync(ambient);
 mkdirSync(project);
 mkdirSync(otherRepo);
 
-function run(command, args, cwd = repo) {
+function run(command, args, cwd = repo, input) {
   const result = spawnSync(command, args, {
     cwd,
     env: { ...process.env, PATH: `${ambient}:${process.env.PATH}` },
     encoding: "utf8",
+    input,
   });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
@@ -38,6 +39,44 @@ try {
   run("yarn", ["check-foundry"]);
   run("yarn", ["foundry", "forge", "--version"]);
   assert.equal(run("yarn", ["foundry", "cast", "to-dec", "0x2a"]).trim().split("\n").includes("42"), true);
+
+  run(
+    "bash",
+    [
+      "-euc",
+      'source "$1"; test "$PWD" = "$3"; test "$4" = "argument with spaces"; read -r line; test "$line" = "preserved input"; "$5" "$2"',
+      "bash",
+      join(repo, "scripts/setupFoundryEnv.sh"),
+      join(repo, "scripts/checkFoundryVersion.js"),
+      otherRepo,
+      "argument with spaces",
+      process.execPath,
+    ],
+    otherRepo,
+    "preserved input\n"
+  );
+  run("bash", [join(repo, "script/mintburn/checkSponsoredPeripheryProdReadiness.sh"), "--help"], otherRepo);
+
+  // Pin lookup must handle an unrelated version first and the inline TOML form.
+  mkdirSync(join(project, "scripts"));
+  const checker = join(project, "scripts/checkFoundryVersion.js");
+  writeFileSync(checker, readFileSync(join(repo, "scripts/checkFoundryVersion.js")));
+  const pin = run("mise", ["current", "foundry"]).trim();
+  writeFileSync(join(project, "mise.toml"), `[tools.node]\nversion = "22.18.0"\n[tools]\nfoundry = "${pin}"\n`);
+  run("mise", ["trust", join(project, "mise.toml")]);
+  run("yarn", ["foundry", "node", checker]);
+
+  const missing = join(fixture, "missing-foundry");
+  mkdirSync(missing);
+  symlinkSync(run("bash", ["-c", "command -v mise"]).trim(), join(missing, "mise"));
+  const absent = spawnSync(process.execPath, [checker], {
+    cwd: project,
+    env: { ...process.env, PATH: missing },
+    encoding: "utf8",
+  });
+  assert.equal(absent.status, 1);
+  assert.match(absent.stderr, /forge ENOENT/);
+  assert.match(absent.stderr, /Run yarn pin-foundry/);
 
   mkdirSync(join(project, "src"));
   mkdirSync(join(project, "test"));
@@ -81,6 +120,12 @@ try {
       writeFileSync(
         join(project, dir, "EvmOnlyHelper.sol"),
         'pragma solidity ^0.8.30; import "../src/Counter.sol"; contract EvmOnlyHelper { function code() external pure returns (bytes memory) { return type(Counter).runtimeCode; } }\n'
+      );
+    }
+    for (const suffix of ["t", "s"]) {
+      writeFileSync(
+        join(project, `src/EvmOnly.${suffix}.sol`),
+        'pragma solidity ^0.8.30; import "./Counter.sol"; contract EvmOnly { function code() external pure returns (bytes memory) { return type(Counter).runtimeCode; } }\n'
       );
     }
     run("yarn", ["forge-build-zksync", ...args]);

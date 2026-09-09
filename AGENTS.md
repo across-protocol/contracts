@@ -108,9 +108,10 @@ yarn test-evm-foundry -- -vvv         # Verbose output
 ```
 
 Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=local-test`. `yarn build-evm-foundry` can take up to 5 minutes.
-Install mise, then run `yarn pin-foundry` to match CI's `mise.toml` pin. Standard EVM Yarn commands use
-`mise exec` explicitly; use `yarn foundry forge ...` / `yarn foundry cast ...` for direct commands. Do not run
-`foundryup` to switch the shared installation. For zkSync, trust `mise.zksync.toml` and run
+Install mise, trust `mise.toml`, then run `yarn pin-foundry` to match CI's pin. Standard EVM Yarn commands use
+`mise exec` explicitly; use `yarn foundry forge ...` / `yarn foundry cast ...` for direct commands.
+Repo-owned shell scripts source `scripts/setupFoundryEnv.sh` to select the same pin for their child processes.
+Do not run `foundryup` to switch the shared installation. For zkSync, trust `mise.zksync.toml` and run
 `yarn pin-foundry-zksync`; `forge-*-zksync` commands select that fork through `mise -E zksync exec`.
 Use `yarn foundry-zksync forge ...` for direct fork commands. The pinned fork supports Linux and Apple Silicon
 macOS; no Intel macOS release binary is available. `yarn test-foundry-toolchain --zksync` tests both pins.

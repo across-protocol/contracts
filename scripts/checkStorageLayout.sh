@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh"
 
 CONTRACTS=("Universal_SpokePool" "Arbitrum_SpokePool" "Polygon_SpokePool" "Linea_SpokePool" "ZkSync_SpokePool" "Ethereum_SpokePool" "OP_SpokePool")
 if [[ "$1" == "--overwrite" ]]; then

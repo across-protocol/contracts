@@ -216,8 +216,31 @@ jobs:
       - name: Test evm-foundry
         run: yarn test-evm-foundry
 
+  foundry-toolchain-changes:
+    name: Check toolchain paths
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.filter.outputs.toolchain }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            toolchain:
+              - 'mise*.toml'
+              - 'foundry.toml'
+              - 'foundry.lock'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/**'
+              - 'scripts/**'
+              - 'script/**/*.sh'
+
   test-foundry-toolchain:
     name: Foundry toolchain (${{ matrix.os }})
+    needs: foundry-toolchain-changes
+    if: needs.foundry-toolchain-changes.outputs.changed == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -235,6 +258,4 @@ jobs:
       - name: Install Foundry with mise
         uses: ./.github/actions/setup-foundry
       - name: Verify isolated install, build and test
-        run: |
-          mise trust mise.zksync.toml
-          yarn test-foundry-toolchain ${{ matrix.os != 'macos-15-intel' && '--zksync' || '' }}
+        run: yarn test-foundry-toolchain ${{ matrix.os != 'macos-15-intel' && '--zksync' || '' }}

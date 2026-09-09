@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh"
 
 # Read the current optimizer runs value from foundry.toml
 DEFAULT_RUNS=$(grep "optimizer_runs" foundry.toml | awk '{print $3}')

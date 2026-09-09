@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh"
 
 # Verifies a zkSync deployment tx by comparing its create(bytes32,bytes32,bytes)
 # calldata to the latest dry-run output at:
@@ -9,7 +10,7 @@ set -euo pipefail
 #   ./scripts/verifyBytecodeEraVM.sh <tx_hash> <rpc_url> <script_path_or_script_spec>
 #
 # Example (recommended two-step flow):
-# forge clean && forge cache clean && yarn forge-script-zksync script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url "$NODE_URL_324"
+# yarn foundry-zksync forge clean && yarn foundry-zksync forge cache clean && yarn forge-script-zksync script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url "$NODE_URL_324"
 # ./scripts/verifyBytecodeEraVM.sh 0x0ca83c1523292bcd5bdff9eb7aee5c17ec4ab2147d23e648384b14ed400a7317 "$NODE_URL_324" script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool
 
 ZKSYNC_CREATE_SELECTOR="0x9c4d535b" # create(bytes32,bytes32,bytes)
@@ -83,7 +84,7 @@ ONCHAIN_INPUT=$(sed -n '3p' <<< "$ONCHAIN_DECODED" | sed 's/^0x//' | tr '[:upper
 [[ -f "$RUN_JSON" ]] || {
     echo "run json not found: $RUN_JSON"
     echo "Run the script in dry-run mode first:"
-    echo "  FOUNDRY_PROFILE=zksync forge script --zksync --suppress-errors sendtransfer \"$SCRIPT_SPEC\" --rpc-url \"$RPC\""
+    echo "  yarn forge-script-zksync \"$SCRIPT_SPEC\" --rpc-url \"$RPC\""
     exit 1
 }
 

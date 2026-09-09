@@ -31,6 +31,7 @@ Then, from the repository root:
 
 ```shell
 yarn install --frozen-lockfile
+mise trust mise.toml
 yarn pin-foundry
 yarn check-foundry
 ```
@@ -42,6 +43,8 @@ CI uses the same file and mise (tested with mise 2026.9.3). Bump the version by 
 
 Use `yarn foundry forge ...`, `yarn foundry cast ...`, or `mise exec -- <command>` for other standard Foundry
 commands, including scripts that invoke Foundry internally. Bare `forge` still uses your shell's selected tool.
+Repo-owned shell scripts that invoke Foundry load the pin automatically, including storage-layout, bytecode
+verification, contract-size, and production-readiness checks.
 The `forge-*-zksync` commands select their own pin from `mise.zksync.toml`; see the zkSync setup below.
 
 To try this setup on Linux or macOS without building the full repo:
@@ -51,7 +54,8 @@ yarn test-foundry-toolchain
 ```
 
 This installs/checks the pin, builds and tests a small Solidity project, and verifies that tools supplied by
-another repo remain untouched. CI runs it on Linux, Apple Silicon macOS, and Intel macOS; full EVM CI runs on Linux.
+another repo remain untouched. CI runs it on Linux, Apple Silicon macOS, and Intel macOS when toolchain configuration
+or scripts change; full EVM CI runs on Linux.
 
 ## Build
 
@@ -117,6 +121,8 @@ The independent compiler pins remain in `foundry.toml`: `solc 0.8.30` and `zksol
 Run `yarn test-foundry-toolchain --zksync` to test both pins, compile a small EraVM contract, and check isolation.
 CI runs this on Linux and Apple Silicon macOS. The pinned fork has no Intel macOS release binary; use a Linux
 environment for zkSync work on an Intel Mac. Standard Foundry remains supported on Intel macOS.
+
+For example, deploy and verify a zkSync contract with:
 
 ```shell
 yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
