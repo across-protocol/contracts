@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{RelayData, RelayerRefundLeaf, SlowFill};
+use crate::{RelayData, RelayerRefundLeaf};
 
 #[account]
 pub struct ExecuteRelayerRefundLeafParams {
@@ -14,16 +14,4 @@ pub struct FillRelayParams {
     pub relay_data: RelayData,
     pub repayment_chain_id: u64,
     pub repayment_address: Pubkey,
-}
-
-#[account]
-pub struct RequestSlowFillParams {
-    pub relay_data: RelayData,
-}
-
-#[account]
-pub struct ExecuteSlowRelayLeafParams {
-    pub slow_fill_leaf: SlowFill,
-    pub root_bundle_id: u32,
-    pub proof: Vec<[u8; 32]>,
 }

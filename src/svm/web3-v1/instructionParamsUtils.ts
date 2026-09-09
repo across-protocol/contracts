@@ -1,6 +1,6 @@
 import { Keypair, TransactionInstruction, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
 import { Program, BN } from "@coral-xyz/anchor";
-import { RelayData, SlowFillLeaf, RelayerRefundLeafSolana } from "../../types/svm";
+import { RelayData, RelayerRefundLeafSolana } from "../../types/svm";
 import { SvmSpoke } from "../../../target/types/svm_spoke";
 import { LargeAccountsCoder } from "./coders";
 
@@ -115,82 +115,4 @@ export async function loadFillRelayParams(
   for (let i = 0; i < loadInstructions.length; i += 1) {
     await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(loadInstructions[i]), [signer]);
   }
-}
-
-/**
- * Loads request slow fill parameters.
- */
-export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, signer: Keypair, relayData: RelayData) {
-  // Close the instruction params account if the caller has used it before.
-  await closeInstructionParams(program, signer);
-
-  // Execute load instructions sequentially.
-  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
-
-  const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("requestSlowFillParams", { relayData });
-
-  const loadInstructions: TransactionInstruction[] = [];
-  loadInstructions.push(
-    await program.methods
-      .initializeInstructionParams(instructionParamsBytes.length)
-      .accounts({ signer: signer.publicKey })
-      .instruction()
-  );
-
-  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
-    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
-    loadInstructions.push(
-      await program.methods
-        .writeInstructionParamsFragment(i, fragment)
-        .accounts({ signer: signer.publicKey })
-        .instruction()
-    );
-  }
-
-  return loadInstructions;
-}
-
-/**
- * Loads execute slow relay leaf parameters.
- */
-export async function loadExecuteSlowRelayLeafParams(
-  program: Program<SvmSpoke>,
-  signer: Keypair,
-  slowFillLeaf: SlowFillLeaf,
-  rootBundleId: number,
-  proof: number[][]
-) {
-  // Close the instruction params account if the caller has used it before.
-  await closeInstructionParams(program, signer);
-
-  // Execute load instructions sequentially.
-  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
-
-  const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("executeSlowRelayLeafParams", {
-    slowFillLeaf,
-    rootBundleId,
-    proof,
-  });
-
-  const loadInstructions: TransactionInstruction[] = [];
-  loadInstructions.push(
-    await program.methods
-      .initializeInstructionParams(instructionParamsBytes.length)
-      .accounts({ signer: signer.publicKey })
-      .instruction()
-  );
-
-  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
-    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
-    loadInstructions.push(
-      await program.methods
-        .writeInstructionParamsFragment(i, fragment)
-        .accounts({ signer: signer.publicKey })
-        .instruction()
-    );
-  }
-
-  return loadInstructions;
 }
