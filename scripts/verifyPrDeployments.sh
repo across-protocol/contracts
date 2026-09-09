@@ -12,7 +12,7 @@ set -euo pipefail
 # Prerequisites:
 #   - PR branch checked out locally (broadcast files + build artifacts must exist)
 #   - gh CLI authenticated
-#   - Contracts built (forge build)
+#   - Contracts built (yarn build-evm-foundry)
 
 REPO="across-protocol/contracts"
 

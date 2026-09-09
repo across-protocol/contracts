@@ -7,6 +7,10 @@ _across_setup_foundry_env() {
         return 1
     }
     repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" || return 1
+    [[ -f "$repo_root/mise.toml" ]] || {
+        echo "mise.toml not found under $repo_root; use the helper from a repository checkout" >&2
+        return 1
+    }
     pinned_path="$(mise -C "$repo_root" exec -- sh -c 'printf "%s" "$PATH"')" || return 1
     export PATH="$pinned_path"
 }

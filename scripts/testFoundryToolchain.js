@@ -61,7 +61,15 @@ try {
   const failedMise = join(fixture, "failed-mise");
   mkdirSync(failedMise);
   writeFileSync(join(failedMise, "mise"), '#!/bin/sh\necho "invalid PATH"\nexit 42\n', { mode: 0o755 });
-  for (const toolPath of [ambient, `${failedMise}:${process.env.PATH}`]) {
+  const helper = join(repo, "scripts/setupFoundryEnv.sh");
+  mkdirSync(join(fixture, "links"));
+  const linkedHelper = join(fixture, "links/setupFoundryEnv.sh");
+  symlinkSync(helper, linkedHelper);
+  for (const [toolPath, source, hint] of [
+    [ambient, helper, /mise not found; see Requirements in README.md/],
+    [`${failedMise}:${process.env.PATH}`, helper, null],
+    [`${ambient}:${process.env.PATH}`, linkedHelper, /mise.toml not found under/],
+  ]) {
     const env = { ...process.env, PATH: toolPath };
     const recovered = spawnSync(
       "/bin/bash",
@@ -69,13 +77,13 @@ try {
         "-uc",
         'original="$PATH"; if source "$1"; then exit 11; fi; test "$PATH" = "$original" || exit 12; if declare -F _across_setup_foundry_env >/dev/null; then exit 13; fi; echo survived',
         "bash",
-        join(repo, "scripts/setupFoundryEnv.sh"),
+        source,
       ],
       { cwd: otherRepo, env, encoding: "utf8" }
     );
     assert.equal(recovered.status, 0, recovered.stderr);
     assert.match(recovered.stdout, /survived/);
-    if (toolPath === ambient) assert.match(recovered.stderr, /mise not found; see Requirements in README.md/);
+    if (hint) assert.match(recovered.stderr, hint);
   }
   const stopped = spawnSync("/bin/bash", [join(repo, "scripts/checkStorageLayout.sh")], {
     cwd: otherRepo,
