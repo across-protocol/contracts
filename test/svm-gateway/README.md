@@ -2,7 +2,7 @@
 
 Run `yarn test-svm-gateway`. It builds Gateway and PrefundedAdapter from the immutable `GATEWAY_COMMIT` in
 `reference.ts`, builds this checkout's SpokePool with `--features test`, generates only the target test IDL, and starts
-an isolated validator with all three real programs loaded as upgradeable programs. It does not clone mainnet state.
+an isolated validator with Gateway, PrefundedAdapter, SpokePool and Raydium CPMM loaded as upgradeable programs. It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
 after the run. Production package IDLs and clients are not regenerated.
@@ -75,3 +75,45 @@ to enable validated routes.
 Companion documentation belongs in `solana-v5/AGENTS.md` (SpokePool adapter relationship and shared-vault trust boundary),
 `contracts-v5/docs/SPOKE_V5_FILLS.md` (SVM continuing-tape/proportional-delivery counterpart), and each owning off-chain
 repository's route-enablement/runbook documentation. Those repositories are not edited by this step.
+
+## Across fill followed by a destination swap
+
+The destination fixture uses unmodified [Raydium CPMM 0.2.0 source](https://github.com/raydium-io/raydium-cp-swap/tree/244e1241f3c8d90eb93f176dfbc35f2605ec5a5c),
+commit `244e1241f3c8d90eb93f176dfbc35f2605ec5a5c`, program `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C`,
+Anchor crates 0.32.1, and Solana platform-tools v1.52. Gateway/PrefundedAdapter remain pinned to
+`457cf693d09765c8e7e9ab33d23f84cba0999afe`. `SVM_SWAP_CHECKOUT` can reuse a clean checkout at the exact swap pin;
+the runner still builds it with its committed Cargo.lock. This proves the pinned source fixture, not equivalence
+to a currently deployed mainnet binary or universal Jupiter/DEX compatibility.
+
+Genesis seeds only a local AmmConfig (0.25% trade fee, no other fees) and pool-fee receiver. The real program creates
+the pool, deposits equal reserves of two fresh six-decimal SPL mints, and executes `swap_base_input`.
+No swap mock, mainnet balances, production keys, or external liquidity is used. The fixture gives the swap signer
+SPL delegate authority while the token-account owner remains the distinct Gateway vault authority.
+
+The committed tape is `Spoke ADAPTER_CALL(Fill) → APPROVE → CALL(swap_base_input) → BALANCE_REQ(output) →
+TRANSFER(all output, committed recipient)`. `BalanceSub` patches the entire live input balance into the swap.
+Submitter funding occurs in the same Gateway execution. A lookup table carries the combined program accounts;
+the committed tape still uses the content-addressed parameter buffer.
+
+Tests verify actual pool reserve movement, recipient delivery, cleared input/output vaults and consumed allowance,
+plus replay rejection. Swap slippage and an unmet post-swap floor are separately submitted as actual failing
+transactions; pool state, reserves, user funding, fill status and payer float must all roll back. The existing
+payer reclaim/withdrawal and V5 witness tests remain in the suite.
+
+## Callback migration and consumer inventory
+
+Legacy Spoke fills reject nonempty callback payloads explicitly; V5 witnesses remain required by the adapter.
+The ordinary SVM suite covers malformed and encoded callbacks with both inline and buffered parameters, including
+actual failed receipts with no handler invocation. `fakeFillWithRandomDistribution.ts` now exits with a migration
+message before creating accounts or sending transactions.
+
+Standalone consumers retained in this repository are `programs/multicall-handler`, its Anchor deployment entries,
+`test/svm/MulticallHandler.ts`, public `MulticallHandlerCoder`/`AcrossPlusMessageCoder` exports, the program connector,
+and generated MulticallHandler IDLs/clients. Callback rejection tests use the encoders only to construct rejected
+inputs. Public package consumers outside this repository are not enumerable here; removing those exports or closing
+the deployed program is outside this change. Generated artifacts live in ignored `src/svm/assets` and
+`src/svm/clients`; regenerate production assets before test-only IDLs.
+
+Production cutover requires API and relayer support for the replacement path and validation of the exact supported
+swap instruction/version. Owner-bound venues need their own reviewed staging adapter. This fixture does not enable
+arbitrary JIT swaps, separate-auction prefunded chaining, or aggregate fills.

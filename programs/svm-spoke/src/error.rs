@@ -82,6 +82,8 @@ pub enum SvmError {
     InvalidDelegatePda,
     #[msg("Inconsistent optional parameters!")]
     InconsistentOptionalParameters,
+    #[msg("Legacy fill messages are unsupported; use a V5 Gateway destination path!")]
+    LegacyFillMessageUnsupported,
 }
 
 // Across V5 adapter specific errors.
@@ -142,25 +144,4 @@ pub enum CallDataError {
     InvalidUint64,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
-}
-
-// Across+ specific errors.
-#[error_code]
-pub enum AcrossPlusError {
-    #[msg("Message did not deserialize")]
-    MessageDidNotDeserialize,
-    #[msg("Invalid handle message key length")]
-    InvalidMessageKeyLength,
-    #[msg("Invalid handle message read-only key length")]
-    InvalidReadOnlyKeyLength,
-    #[msg("Invalid message handler key")]
-    InvalidMessageHandler,
-    #[msg("Invalid message account key")]
-    InvalidMessageAccountKey,
-    #[msg("Not read-only message account key")]
-    NotReadOnlyMessageAccountKey,
-    #[msg("Not writable message account key")]
-    NotWritableMessageAccountKey,
-    #[msg("Missing value recipient key")]
-    MissingValueRecipientKey,
 }

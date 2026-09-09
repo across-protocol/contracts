@@ -432,8 +432,7 @@ pub mod svm_spoke {
     ///     cancelled and the depositor will be refunded on the origin chain.
     ///   - exclusivity_deadline: The deadline for the exclusive relayer to fill the deposit. After this timestamp,
     ///     anyone can fill this deposit.
-    ///   - message: The message to send to the recipient if the recipient is a contract that implements a
-    ///     handle_across_message() public function.
+    ///   - message: Must be empty. Destination actions use the V5 Gateway adapter and subsequent tape commands.
     /// - repayment_chain_id: Chain of SpokePool where relayer wants to be refunded after the challenge window has
     ///   passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.

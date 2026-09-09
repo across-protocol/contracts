@@ -162,8 +162,8 @@ exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. The legacy and V5 entrypoints share the same internal `_fill` core for pause, exclusivity, deadline,
-replay protection and status transition, token delivery, fill-type and callback-mode event fields, and canonical event
-construction. Each handler retains only its branch-specific account loading, callback, and event-emission mechanics.
+replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
+construction. Each handler retains only its branch-specific account loading and event-emission mechanics.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
@@ -197,3 +197,32 @@ authenticate all JIT variants of an aggregate production route. The canonical re
 single-fill template. `fixtures/v5_gateway_path.json` additionally pins Borsh consumption-tape bytes, path hashes,
 sorted sibling roots and witnesses across TypeScript, Rust and Solidity. Its placeholder keys are hashing fixtures,
 not deployed token accounts. See [the lane guide](../../test/svm-gateway/README.md) for execution and companion docs.
+
+## Legacy callback retirement and destination actions
+
+Legacy `fill_relay` accepts only an empty `RelayData.message`. Callback-bearing messages fail with
+`LegacyFillMessageUnsupported` (6019) before token delivery, the filled-status transition, or event emission; rollback
+also undoes Anchor account initialization and preserves buffered parameters. V5-tagged messages still fail with
+`V5FillOnly` on this entrypoint. Slow-fill selectors have already been retired, including their callback path.
+Source deposits retain their message field for other destination chains.
+
+Anchor 0.31.1's existing multi-enum IDL error generation omits `SvmError`, including this new rejection. Consumers
+can identify it by its runtime log name or numeric code; generated error-name tables alone are insufficient.
+
+V5 keeps two distinct fields: the relay witness is exactly `V5_MAGIC_PREFIX || stepId`, while
+`V5FillInput.message` must be empty. The replacement destination flow is a single in-place Across fill followed by
+Gateway `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed output-mint `BALANCE_REQ`,
+and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the Gateway output vault.
+The vault owner signs only Gateway token operations; the swap receives its distinct SPL delegate as signer.
+A failed swap or output floor reverts the entire execution, including the fill and payer rent.
+
+The [real-Gateway suite](../../test/svm-gateway/README.md) pins and exercises a concrete compatible swap program.
+It covers one fill and one committed swap, not arbitrary JIT routes or aggregate fills. Production builders must
+bind the complete destination outcome to every matching relay, validate venue instruction/version compatibility,
+and retain any auction winner and bid requirements outside a JIT swap window. Separate relayer/swapper executions
+can use prefunded chaining; they are distinct from this atomic fill-and-swap fixture.
+
+Roll out callback rejection together with replacement route-building and relayer execution support. A legacy
+callback-bearing deposit must never be reported as successfully filled with its requested action silently omitted.
+The standalone MulticallHandler program and its package exports remain available to existing consumers; their
+retirement and any deployed-program closure require a separate decision.
