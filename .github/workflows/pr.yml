@@ -235,4 +235,6 @@ jobs:
       - name: Install Foundry with mise
         uses: ./.github/actions/setup-foundry
       - name: Verify isolated install, build and test
-        run: yarn test-foundry-toolchain
+        run: |
+          mise trust mise.zksync.toml
+          yarn test-foundry-toolchain ${{ matrix.os != 'macos-15-intel' && '--zksync' || '' }}

@@ -64,6 +64,27 @@ try {
     "Tests must use the local-test profile"
   );
 
+  if (process.argv.includes("--zksync")) {
+    run("yarn", ["pin-foundry-zksync"]);
+    run("yarn", ["pin-foundry-zksync"]);
+    run("yarn", ["check-foundry-zksync"]);
+    const repoConfig = readFileSync(join(repo, "foundry.toml"), "utf8");
+    const solc = repoConfig.match(/^solc = "([^"]+)"$/m)[1];
+    const zksolc = repoConfig.match(/^zksolc = "([^"]+)"$/m)[1];
+    writeFileSync(
+      config,
+      `[profile.default]\nsrc = "src"\ntest = "test"\nsolc = "${solc}"\n[profile.zksync.zksync]\ncompile = true\nzksolc = "${zksolc}"\n`
+    );
+    run("yarn", ["forge-build-zksync", ...args]);
+    assert(existsSync(join(project, "zkout/Counter.sol/Counter.json")), "zkSync must emit an EraVM artifact");
+    // Exercise deployment/verification command selection without sending any transactions.
+    run("yarn", ["forge-script-zksync", "--help"]);
+    run("yarn", ["forge-verify-zksync", "--help"]);
+    run("yarn", ["check-foundry"]);
+    run("yarn", ["foundry-zksync", "forge", "--version"]);
+    run("yarn", ["check-foundry"]);
+  }
+
   for (const [index, tool] of binaries.entries()) {
     assert.equal(readFileSync(join(ambient, tool), "utf8"), before[index], `${tool} was modified`);
   }

@@ -42,7 +42,7 @@ CI uses the same file and mise (tested with mise 2026.9.3). Bump the version by 
 
 Use `yarn foundry forge ...`, `yarn foundry cast ...`, or `mise exec -- <command>` for other standard Foundry
 commands, including scripts that invoke Foundry internally. Bare `forge` still uses your shell's selected tool.
-The `forge-*-zksync` commands intentionally use the separately installed zkSync fork instead of this pin.
+The `forge-*-zksync` commands select their own pin from `mise.zksync.toml`; see the zkSync setup below.
 
 To try this setup on Linux or macOS without building the full repo:
 
@@ -98,15 +98,24 @@ yarn foundry forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url 
 
 #### Foundry (ZKSync)
 
-To enable ZKSync support, the zksync fork of foundry must be installed (see [here](https://foundry-book.zksync.io/introduction/installation#using-foundryup-zksync) for instructions).
-
-Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
+Install the separately pinned Foundry fork with mise:
 
 ```shell
-FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+mise trust mise.zksync.toml
+yarn pin-foundry-zksync
+yarn forge-build-zksync
 ```
 
-Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
+`mise.zksync.toml` pins `foundry-zksync v0.1.9` in separate versioned storage. The build, script, and verification
+commands select it with `mise -E zksync exec` and set `FOUNDRY_PROFILE=zksync`. Use `yarn forge-script-zksync ...`
+to run deployment scripts, `yarn forge-verify-zksync ...` for verification, or `yarn foundry-zksync forge ...`
+for direct fork commands (set the Foundry profile/flags yourself for direct commands).
+
+Standard Foundry and other repositories keep their own tools; no `foundryup-zksync` or shell activation is needed.
+The independent compiler pins remain in `foundry.toml`: `solc 0.8.30` and `zksolc 1.5.15`.
+Run `yarn test-foundry-toolchain --zksync` to test both pins, compile a small EraVM contract, and check isolation.
+CI runs this on Linux and Apple Silicon macOS. The pinned fork has no Intel macOS release binary; use a Linux
+environment for zkSync work on an Intel Mac. Standard Foundry remains supported on Intel macOS.
 
 ```shell
 yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
