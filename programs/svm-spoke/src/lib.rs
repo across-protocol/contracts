@@ -45,7 +45,7 @@ use utils::*;
 use v5::codec::GatewayContextV1;
 
 #[cfg(test)]
-mod compatibility_tests;
+mod tests;
 
 #[program]
 pub mod svm_spoke {
