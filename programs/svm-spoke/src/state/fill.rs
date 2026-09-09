@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace, PartialEq)]
 pub enum FillStatus {
     Unfilled,
+    // Historical slot 1: existing requests may still be fast-filled. Never remove or reorder.
     RequestedSlowFill,
     Filled,
 }
@@ -10,7 +11,7 @@ pub enum FillStatus {
 #[account]
 #[derive(InitSpace)]
 pub struct FillStatusAccount {
-    pub status: FillStatus, // Tracks the status of the fill between Unfilled, requestedSlowFill, and Filled.
+    pub status: FillStatus, // Includes the historical RequestedSlowFill slot for pre-upgrade accounts.
     pub relayer: Pubkey,    // Rent recipient for closing this PDA; legacy fills store the submitting relayer.
     pub fill_deadline: u32, // Stores the fill deadline to control when this PDA can be safely closed.
 }
