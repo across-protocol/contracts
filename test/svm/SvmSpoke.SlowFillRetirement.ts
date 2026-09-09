@@ -16,7 +16,7 @@ import legacyAccount from "./accounts/legacy_requested_slow_fill.json";
 import { legacyMint, legacyRelay, legacyRequester } from "./fixtures/legacySlowFill";
 import { common } from "./SvmSpoke.common";
 
-describe("svm_spoke lite-chain compatibility", () => {
+describe("svm_spoke slow-fill retirement compatibility", () => {
   const { provider, connection, program, chainId } = common;
   anchor.setProvider(provider);
   const payer = (provider.wallet as anchor.Wallet).payer;
