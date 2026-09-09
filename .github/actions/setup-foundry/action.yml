@@ -1,0 +1,15 @@
+name: Set up Foundry
+description: Install the repository's Foundry version without activating it globally
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      with:
+        version: 2026.9.3
+        install_args: foundry
+        add_shims_to_path: false
+        export_path: false
+        env: false
+    - name: Verify Foundry version
+      shell: bash
+      run: mise exec -- node scripts/checkFoundryVersion.js

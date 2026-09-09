@@ -203,20 +203,36 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-optional
-      - name: Read pinned Foundry version
-        id: foundry
-        run: echo "version=$(cat .foundry-version)" >> "$GITHUB_OUTPUT"
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: ${{ steps.foundry.outputs.version }}
+      - name: Install Foundry with mise
+        uses: ./.github/actions/setup-foundry
       - name: Install forge dependencies
-        run: forge install
+        run: mise exec -- forge install
       - name: Inspect storage layouts
-        run: ./scripts/checkStorageLayout.sh
+        run: yarn check-storage-layouts
       - name: Download EVM artifacts
         uses: actions/download-artifact@v4
         with:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test evm-foundry
         run: yarn test-evm-foundry
+
+  test-foundry-toolchain:
+    name: Foundry toolchain (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, macos-15-intel]
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install Yarn
+        run: npm install --global yarn@1.22.22
+      - name: Install Foundry with mise
+        uses: ./.github/actions/setup-foundry
+      - name: Verify isolated install, build and test
+        run: yarn test-foundry-toolchain

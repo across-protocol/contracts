@@ -23,9 +23,35 @@ The latest contract deployments can be found in `/broadcast/deployed-addresses.j
 
 ## Requirements
 
-This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 16.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
+Use Node 22.18 or newer and Yarn 1.x. EVM commands require [mise](https://mise.jdx.dev/getting-started.html);
+SVM commands also require [Anchor](https://www.anchor-lang.com/docs/installation).
 
-Note if you get build issues on the initial `yarn` command try downgrading to node 20.17 (`nvm use 20.17`). If you've never used anchor before you might need to run `avm use latest` as well.
+On macOS, install mise with `brew install mise`. On Linux, follow the linked mise installation guide.
+Then, from the repository root:
+
+```shell
+yarn install --frozen-lockfile
+yarn pin-foundry
+yarn check-foundry
+```
+
+The Foundry version lives in `.tool-versions`. `yarn pin-foundry` installs it into mise's versioned storage and
+verifies all four binaries; it does not switch or overwrite `~/.foundry/bin`. Standard EVM build/test commands
+use `mise exec` explicitly, so shell activation is unnecessary and another repo's Foundry can remain on `PATH`.
+CI uses the same file and mise (tested with mise 2026.9.3). Bump the version by editing `.tool-versions`.
+
+Use `yarn foundry forge ...`, `yarn foundry cast ...`, or `mise exec -- <command>` for other standard Foundry
+commands, including scripts that invoke Foundry internally. Bare `forge` still uses your shell's selected tool.
+The `forge-*-zksync` commands intentionally use the separately installed zkSync fork instead of this pin.
+
+To try this setup on Linux or macOS without building the full repo:
+
+```shell
+yarn test-foundry-toolchain
+```
+
+This installs/checks the pin, builds and tests a small Solidity project, and verifies that tools supplied by
+another repo remain untouched. CI runs it on Linux, Apple Silicon macOS, and Intel macOS; full EVM CI runs on Linux.
 
 ## Build
 
@@ -34,10 +60,6 @@ yarn
 yarn build # Will build all code. Compile solidity & rust (local toolchain), generate ts outputs
 yarn build-verified # Will build all code. Compile solidity & rust (verified docker build), generate ts outputs
 ```
-
-EVM builds and tests use the Foundry version pinned in `.foundry-version`; CI installs exactly that version via
-`foundry-rs/foundry-toolchain`. Run `yarn pin-foundry` to switch your local toolchain to it (a no-op when it already
-matches). Bump the pin by editing that file.
 
 ## Test
 
@@ -68,9 +90,9 @@ yarn lint-fix
 #### Foundry
 
 ```shell
-forge build
+yarn build-evm-foundry
 
-forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+yarn foundry forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
 
 ```
 
