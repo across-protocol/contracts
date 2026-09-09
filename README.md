@@ -35,10 +35,10 @@ yarn pin-foundry
 yarn check-foundry
 ```
 
-The Foundry version lives in `.tool-versions`. `yarn pin-foundry` installs it into mise's versioned storage and
+The default Foundry version lives in `mise.toml`. `yarn pin-foundry` installs it into mise's versioned storage and
 verifies all four binaries; it does not switch or overwrite `~/.foundry/bin`. Standard EVM build/test commands
 use `mise exec` explicitly, so shell activation is unnecessary and another repo's Foundry can remain on `PATH`.
-CI uses the same file and mise (tested with mise 2026.9.3). Bump the version by editing `.tool-versions`.
+CI uses the same file and mise (tested with mise 2026.9.3). Bump the version by editing `mise.toml`.
 
 Use `yarn foundry forge ...`, `yarn foundry cast ...`, or `mise exec -- <command>` for other standard Foundry
 commands, including scripts that invoke Foundry internally. Bare `forge` still uses your shell's selected tool.
