@@ -53,9 +53,22 @@ library HyperCoreLib {
     address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
 
-    // USDC
+    // USDC. Circle's CoreDepositWallet is deployed at a different address on mainnet and testnet.
     address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS = 0x6B9E773128f453f5c2C60935Ee2DE2CBc5390A24;
+    address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET = 0x0B80659a4076E9E93C7DbE0f10675A16a3e5C206;
     uint64 public constant USDC_CORE_INDEX = 0;
+
+    // Native HYPE. Unlike every other token, HYPE bridges through a fixed system address rather than one
+    // derived from its Core index, and that index differs between mainnet and testnet.
+    address public constant HYPE_SYSTEM_ADDRESS = 0x2222222222222222222222222222222222222222;
+    uint32 public constant HYPE_CORE_INDEX = 150;
+    uint32 public constant HYPE_CORE_INDEX_TESTNET = 1105;
+    // HYPE has 18 decimals on HyperEVM and 8 on HyperCore, so only EVM amounts aligned to 1e10 wei are representable
+    int8 public constant HYPE_DECIMAL_DIFF = 10;
+
+    // HyperEVM chain ids. The precompiles and CoreWriter below only exist on these chains.
+    uint256 public constant HYPEREVM_CHAIN_ID = 999;
+    uint256 public constant HYPEREVM_TESTNET_CHAIN_ID = 998;
 
     // CoreWriter action headers
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
@@ -75,7 +88,9 @@ library HyperCoreLib {
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
-    error MaximumEVMSendAmountTooLarge();
+    error TokenNotBridgeable(uint64 erc20CoreIndex);
+    error NativeTransferFailed();
+    error UnsupportedChain();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -106,18 +121,15 @@ library HyperCoreLib {
         if (_amountEVMToSend != 0) {
             if (erc20CoreIndex == USDC_CORE_INDEX) {
                 // USDC flow takes care of account creation fee for us, we don't need to reduce `_amountEVMToSend`
-                IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, _amountEVMToSend);
+                ICoreDepositWallet depositWallet = usdcCoreDepositWallet();
+                IERC20(erc20EVMAddress).forceApprove(address(depositWallet), _amountEVMToSend);
                 if (to == address(this)) {
-                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(_amountEVMToSend, destinationDex);
+                    depositWallet.deposit(_amountEVMToSend, destinationDex);
                 } else {
-                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(
-                        to,
-                        _amountEVMToSend,
-                        destinationDex
-                    );
+                    depositWallet.depositFor(to, _amountEVMToSend, destinationDex);
                 }
             } else {
-                IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
+                IERC20(erc20EVMAddress).safeTransfer(toSystemAddress(erc20CoreIndex), _amountEVMToSend);
                 // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
                 if (to != address(this) || destinationDex != CORE_SPOT_DEX_ID) {
                     transferERC20CoreToCore(
@@ -193,6 +205,25 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Bridges up to `amountEVM` of native HYPE from this address on HyperEVM to this address on HyperCore.
+     * @dev A native transfer to the HYPE system address credits the sender's spot HYPE on Core. Core only credits
+     *      whole multiples of 1e10 wei and silently drops the remainder, so, like the ERC20 path, this rounds the
+     *      amount down before sending and leaves the dust in the calling contract. Sends nothing if the aligned
+     *      amount is zero.
+     * @param amountEVM The maximum amount of native HYPE to transfer, in EVM wei.
+     * @return amountEVMSent The amount actually sent on HyperEVM, in wei
+     * @return amountCoreToReceive The amount credited on Core, in Core units
+     */
+    function transferNativeEVMToSelfOnSpot(
+        uint256 amountEVM
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+        (amountEVMSent, amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, HYPE_DECIMAL_DIFF);
+        if (amountEVMSent == 0) return (0, 0);
+        (bool success, ) = HYPE_SYSTEM_ADDRESS.call{ value: amountEVMSent }("");
+        if (!success) revert NativeTransferFailed();
+    }
+
+    /**
      * @notice Transfers tokens from this contract on HyperCore to the `to` address on HyperCore on the Spot DEX.
      * @param erc20CoreIndex The HyperCore index id of the token
      * @param to The address to receive tokens on HyperCore
@@ -245,10 +276,11 @@ library HyperCoreLib {
         uint256 amountEVM
     ) internal {
         if (erc20CoreIndex == USDC_CORE_INDEX) {
-            IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, amountEVM);
-            ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(user, amountEVM, CORE_SPOT_DEX_ID);
+            ICoreDepositWallet depositWallet = usdcCoreDepositWallet();
+            IERC20(erc20EVMAddress).forceApprove(address(depositWallet), amountEVM);
+            depositWallet.depositFor(user, amountEVM, CORE_SPOT_DEX_ID);
         } else {
-            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amountEVM);
+            IERC20(erc20EVMAddress).safeTransfer(toSystemAddress(erc20CoreIndex), amountEVM);
             // Transfer 1 wei to user on HyperCore to activate account
             transferERC20CoreToCore(erc20CoreIndex, user, 1, CORE_SPOT_DEX_ID, CORE_SPOT_DEX_ID);
         }
@@ -354,6 +386,40 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Whether the current chain is HyperEVM (mainnet or testnet), and therefore whether the HyperCore
+     *         precompiles and CoreWriter this library reads and writes actually exist.
+     * @return True on HyperEVM mainnet or testnet, false otherwise
+     */
+    function isHyperEVMChain() internal view returns (bool) {
+        return block.chainid == HYPEREVM_CHAIN_ID || block.chainid == HYPEREVM_TESTNET_CHAIN_ID;
+    }
+
+    /**
+     * @notice The Core index of native HYPE on the current chain.
+     * @dev Differs between mainnet and testnet, so it cannot be a plain constant at the call site. Reverts off
+     *      HyperEVM rather than defaulting, since the index has no meaning there.
+     * @return The HyperCore index id of native HYPE
+     */
+    function hypeCoreIndex() internal view returns (uint32) {
+        if (block.chainid == HYPEREVM_CHAIN_ID) return HYPE_CORE_INDEX;
+        if (block.chainid == HYPEREVM_TESTNET_CHAIN_ID) return HYPE_CORE_INDEX_TESTNET;
+        revert UnsupportedChain();
+    }
+
+    /**
+     * @notice Circle's USDC CoreDepositWallet on the current chain.
+     * @dev Differs between mainnet and testnet; the mainnet address has no code on testnet, so using it there
+     *      would revert every USDC bridge and account activation. Reverts off HyperEVM rather than defaulting.
+     * @return The CoreDepositWallet to approve and deposit USDC through
+     */
+    function usdcCoreDepositWallet() internal view returns (ICoreDepositWallet) {
+        if (block.chainid == HYPEREVM_CHAIN_ID) return ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS);
+        if (block.chainid == HYPEREVM_TESTNET_CHAIN_ID)
+            return ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS_TESTNET);
+        revert UnsupportedChain();
+    }
+
+    /**
      * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
      * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
      * @param erc20CoreIndex The HyperCore index id of the token
@@ -366,20 +432,47 @@ library HyperCoreLib {
         uint64 coreAmount,
         uint64 coreBufferAmount
     ) internal view returns (bool) {
-        address bridgeAddress = toAssetBridgeAddress(erc20CoreIndex);
-        uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
+        // A predicate answers rather than reverts: an unbridgeable token is simply not safe to bridge, so the fill
+        // path keeps its HyperEVM fallback instead of failing.
+        (address systemAddress, bool bridgeable) = tryToSystemAddress(erc20CoreIndex);
+        if (!bridgeable) return false;
 
         // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
-        return currentBridgeBalance >= coreAmount + coreBufferAmount;
+        return spotBalance(systemAddress, erc20CoreIndex) >= coreAmount + coreBufferAmount;
     }
 
     /**
-     * @notice Converts a core index id to an asset bridge address
+     * @notice Resolves a core index id to its system address, the bridge account shared by both chains. On HyperEVM,
+     *         a transfer to it credits the sender's spot balance on HyperCore; on HyperCore, a spot send to it
+     *         credits the sender's balance on HyperEVM.
+     * @dev Reverts if the token is not bridgeable, since a send to such an address would strand the funds. For a
+     *      non-reverting answer, use `tryToSystemAddress`.
      * @param erc20CoreIndex The core token index id to convert
-     * @return assetBridgeAddress The asset bridge address
+     * @return The token's system address, valid as a destination on either chain
      */
-    function toAssetBridgeAddress(uint64 erc20CoreIndex) internal pure returns (address) {
-        return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
+    function toSystemAddress(uint64 erc20CoreIndex) internal view returns (address) {
+        (address systemAddress, bool bridgeable) = tryToSystemAddress(erc20CoreIndex);
+        if (!bridgeable) revert TokenNotBridgeable(erc20CoreIndex);
+        return systemAddress;
+    }
+
+    /**
+     * @notice `toSystemAddress` that reports bridgeability instead of reverting on it.
+     * @dev Native HYPE uses a fixed system address and is always bridgeable; every other token derives one from
+     *      its Core index and is bridgeable only if linked to a HyperEVM contract. Still reverts if the tokenInfo
+     *      precompile call itself fails, like every other precompile read in this library.
+     * @param erc20CoreIndex The core token index id to convert
+     * @return systemAddress The token's system address, valid as a destination on either chain
+     * @return bridgeable False if a send to `systemAddress` would not be credited on the other side
+     */
+    function tryToSystemAddress(uint64 erc20CoreIndex) internal view returns (address systemAddress, bool bridgeable) {
+        // A uint64 above the uint32 domain can never equal the uint32 HYPE index, so no range check is needed
+        if (erc20CoreIndex == hypeCoreIndex()) return (HYPE_SYSTEM_ADDRESS, true);
+        systemAddress = address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
+        // Only linked tokens convert between Core and EVM (docs: "HyperCore <> HyperEVM transfers"), and
+        // linkage resolves via tokenInfo, declared `tokenInfo(uint32)` in canonical L1Read.sol — an id
+        // beyond that domain (spotBalance's uint64 also carries encoded outcome asset ids) can't be resolved.
+        bridgeable = erc20CoreIndex <= type(uint32).max && tokenInfo(uint32(erc20CoreIndex)).evmContract != address(0);
     }
 
     /**
