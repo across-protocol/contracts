@@ -44,7 +44,7 @@ try {
     "bash",
     [
       "-euc",
-      'source "$1"; test "$PWD" = "$3"; test "$4" = "argument with spaces"; read -r line; test "$line" = "preserved input"; "$5" "$2"',
+      'source "$1"; test "$PWD" -ef "$3"; test "$4" = "argument with spaces"; read -r line; test "$line" = "preserved input"; "$5" "$2"',
       "bash",
       join(repo, "scripts/setupFoundryEnv.sh"),
       join(repo, "scripts/checkFoundryVersion.js"),
