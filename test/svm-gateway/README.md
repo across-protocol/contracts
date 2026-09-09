@@ -34,7 +34,7 @@ reviewed, pinned SHA-256 checksum (`sha256sum -c`) before execution; a versioned
 This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
 an oversized account-validation stack frame in the legacy `FillRelay` handler;
 this lane does not exercise or certify that handler. Slow-fill handlers have been removed (see
-[SVM upgrade compatibility](../../programs/svm-spoke/README.md)). The existing verified-build and ordinary SVM lanes remain
+[slow-fill retirement](../../programs/svm-spoke/SLOW_FILL_RETIREMENT.md)). The existing verified-build and ordinary SVM lanes remain
 separate requirements.
 
 `reference.ts` is a test-only wire encoder. It mirrors the Gateway Borsh tape/amount/meta/JIT/buffer transport without
