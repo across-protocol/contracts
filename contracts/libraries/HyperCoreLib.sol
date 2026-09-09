@@ -62,6 +62,8 @@ library HyperCoreLib {
     address public constant HYPE_SYSTEM_ADDRESS = 0x2222222222222222222222222222222222222222;
     uint32 public constant HYPE_CORE_INDEX = 150;
     uint32 public constant HYPE_CORE_INDEX_TESTNET = 1105;
+    // HYPE has 18 decimals on HyperEVM and 8 on HyperCore, so only EVM amounts aligned to 1e10 wei are representable
+    int8 public constant HYPE_DECIMAL_DIFF = 10;
 
     // HyperEVM chain ids. The precompiles and CoreWriter below only exist on these chains.
     uint256 public constant HYPEREVM_CHAIN_ID = 999;
@@ -205,12 +207,21 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Bridges `amountEVM` of native HYPE from this address on HyperEVM to this address on HyperCore.
-     * @dev A native transfer to the HYPE system address credits the sender's spot HYPE on Core.
-     * @param amountEVM The amount of native HYPE to transfer, in EVM wei.
+     * @notice Bridges up to `amountEVM` of native HYPE from this address on HyperEVM to this address on HyperCore.
+     * @dev A native transfer to the HYPE system address credits the sender's spot HYPE on Core. Core only credits
+     *      whole multiples of 1e10 wei and silently drops the remainder, so, like the ERC20 path, this rounds the
+     *      amount down before sending and leaves the dust in the calling contract. Sends nothing if the aligned
+     *      amount is zero.
+     * @param amountEVM The maximum amount of native HYPE to transfer, in EVM wei.
+     * @return amountEVMSent The amount actually sent on HyperEVM, in wei
+     * @return amountCoreToReceive The amount credited on Core, in Core units
      */
-    function transferNativeEVMToSelfOnSpot(uint256 amountEVM) internal {
-        (bool success, ) = HYPE_SYSTEM_ADDRESS.call{ value: amountEVM }("");
+    function transferNativeEVMToSelfOnSpot(
+        uint256 amountEVM
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+        (amountEVMSent, amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, HYPE_DECIMAL_DIFF);
+        if (amountEVMSent == 0) return (0, 0);
+        (bool success, ) = HYPE_SYSTEM_ADDRESS.call{ value: amountEVMSent }("");
         if (!success) revert NativeTransferFailed();
     }
 
