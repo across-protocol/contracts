@@ -98,6 +98,7 @@ lib/                 # External dependencies (git submodules)
 ## Build & Test Commands
 
 ```bash
+yarn pin-foundry                      # Switch local Foundry to the version in .foundry-version (CI uses the same)
 yarn build-evm-foundry                # Foundry build
 yarn test-evm-foundry                 # Foundry local tests (recommended)
 yarn test-evm-foundry -- --match-test testDeposit
@@ -106,6 +107,8 @@ yarn test-evm-foundry -- -vvv         # Verbose output
 ```
 
 Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=local-test`. `yarn build-evm-foundry` can take up to 5 minutes.
+Match CI's toolchain with `yarn pin-foundry` if `forge --version` differs from `.foundry-version`; newer forge releases can
+change compiler behavior (forge 1.8.x's dynamic test linking breaks the solc 0.8.30 build).
 
 ## Naming Conventions
 

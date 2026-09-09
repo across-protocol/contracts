@@ -5,7 +5,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
-import { ICounterfactualBeacon } from "../../interfaces/ICounterfactualBeacon.sol";
+import { ICounterfactualBeaconBase } from "../../interfaces/ICounterfactualBeaconBase.sol";
 
 /// @dev Minimal view used to verify a candidate beacon target is bound to this beacon — every
 ///      counterfactual implementation embeds its beacon as the immutable `BEACON` (for `updateRoot`).
@@ -18,18 +18,18 @@ interface IBeaconTarget {
  * @notice The **logic** of the counterfactual registry/beacon: the mutable `implementation` (beacon target)
  *         every proxy runs, the `upgradeRoot` authorizing per-proxy root updates, UUPS upgradeability and the
  *         `Ownable2Step` admin. The chain-specific configuration (endpoints, tokens, fee signer, fee caps)
- *         lives in the derived `CounterfactualBeacon` as immutables. Splitting it out keeps the audit
- *         boundary clean: this base is the reviewable logic; a config-only change is a new derived contract
- *         that touches no logic here (see `CounterfactualBeacon`).
- * @dev Abstract — the config getters declared in `ICounterfactualBeacon` are implemented by the derived
- *      contract's immutables. A UUPS proxy, so the registry address is permanent (anchoring every
- *      `BeaconProxy`) while logic/config evolve. `Ownable2Step` admin (no timelock) — it can retarget every
- *      proxy instantly, so use a trusted multisig. `implementation()` is the beacon target, not the
- *      registry's own UUPS implementation.
+ *         lives in a derived contract as immutables. Splitting it out keeps the audit boundary clean: this
+ *         base is the reviewable logic; a config-only change is a new derived contract that touches no logic
+ *         here (see `CounterfactualBeacon`).
+ * @dev Abstract — the config getters are declared by whichever config interface the derived contract
+ *      implements (`ICounterfactualBeacon` for this repo's beacon) and satisfied by its immutables. A UUPS
+ *      proxy, so the registry address is permanent (anchoring every `BeaconProxy`) while logic/config
+ *      evolve. `Ownable2Step` admin (no timelock) — it can retarget every proxy instantly, so use a trusted
+ *      multisig. `implementation()` is the beacon target, not the registry's own UUPS implementation.
  * @custom:security-contact bugs@across.to
  */
 abstract contract CounterfactualBeaconBase is
-    ICounterfactualBeacon,
+    ICounterfactualBeaconBase,
     Initializable,
     UUPSUpgradeable,
     Ownable2StepUpgradeable
@@ -72,7 +72,7 @@ abstract contract CounterfactualBeaconBase is
         return _getStorage().implementation;
     }
 
-    /// @inheritdoc ICounterfactualBeacon
+    /// @inheritdoc ICounterfactualBeaconBase
     function upgradeRoot() external view returns (bytes32) {
         return _getStorage().upgradeRoot;
     }

@@ -13,7 +13,7 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
 //        yarn forge-script-zksync script/spoke-pools/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync \
-//        --broadcast --verify --verifier blockscout --verifier-url https://explorer.zksync.io/contract_verification
+//        --broadcast --verify --verifier-url https://zksync2-mainnet-explorer.zksync.io/contract_verification
 
 contract DeployZkSyncSpokePool is Script, Test, DeploymentUtils {
     function run() external {

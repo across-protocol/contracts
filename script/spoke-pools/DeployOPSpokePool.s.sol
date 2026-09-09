@@ -72,6 +72,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
         console.log("WETH address:", weth);
+        console.log("USDC", l2Usdc);
         console.log("CCTP Domain ID:", cctpDomain);
         console.log("CCTP Token Messenger:", cctpTokenMessenger);
         console.log("OP_SpokePool proxy deployed to:", result.proxy);

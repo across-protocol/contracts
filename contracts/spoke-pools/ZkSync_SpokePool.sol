@@ -126,6 +126,9 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
      * likely be the hub pool.
+     * @dev The incorrect-initializer-order heuristic (upgrades-core 1.44) misfires on our standard pattern of
+     * delegating all parent setup to __SpokePool_init; each nested init is guarded by onlyInitializing.
+     * @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
      */
     function initialize(
         uint32 _initialDepositId,

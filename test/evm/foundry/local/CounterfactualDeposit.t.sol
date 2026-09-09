@@ -325,7 +325,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         bytes32[] memory proof = _setUpgradeTree(proxy, newRoot);
 
         vm.expectEmit(address(proxy));
-        emit CounterfactualDeposit.RootUpdated(newRoot);
+        emit ICounterfactualDeposit.RootUpdated(newRoot);
         CounterfactualDeposit(payable(proxy)).updateRoot(newRoot, proof);
         assertEq(CounterfactualDeposit(payable(proxy)).activeRoot(), newRoot);
     }
@@ -338,7 +338,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         // Prove a root other than the one committed for this proxy.
         bytes32[] memory bad = new bytes32[](1);
         bad[0] = keccak256("garbage");
-        vm.expectRevert(CounterfactualDeposit.InvalidUpgradeProof.selector);
+        vm.expectRevert(ICounterfactualDeposit.InvalidUpgradeProof.selector);
         CounterfactualDeposit(payable(proxy)).updateRoot(keccak256("attacker-root"), bad);
     }
 
@@ -349,7 +349,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         // Upgrade tree authorizes proxyA only; proxyB tries to use A's proof.
         bytes32[] memory proofA = _setUpgradeTree(proxyA, newRoot);
 
-        vm.expectRevert(CounterfactualDeposit.InvalidUpgradeProof.selector);
+        vm.expectRevert(ICounterfactualDeposit.InvalidUpgradeProof.selector);
         CounterfactualDeposit(payable(proxyB)).updateRoot(newRoot, proofA);
     }
 
@@ -361,7 +361,7 @@ contract CounterfactualDepositTest is CounterfactualTestBase {
         address proxy = factory.deploy(bytes32(0), root);
 
         bytes32[] memory proof = _setUpgradeTree(proxy, root); // same as activeRoot
-        vm.expectRevert(CounterfactualDeposit.RootUnchanged.selector);
+        vm.expectRevert(ICounterfactualDeposit.RootUnchanged.selector);
         CounterfactualDeposit(payable(proxy)).updateRoot(root, proof);
     }
 
