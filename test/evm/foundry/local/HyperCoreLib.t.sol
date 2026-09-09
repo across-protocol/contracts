@@ -28,12 +28,20 @@ contract HyperCoreLibWrapper {
         return address(HyperCoreLib.usdcCoreDepositWallet());
     }
 
-    function isHype(uint32 erc20CoreIndex) external view returns (bool) {
-        return HyperCoreLib.isHype(erc20CoreIndex);
-    }
-
     function toSystemAddress(uint64 erc20CoreIndex) external view returns (address) {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
+    }
+
+    function tryToSystemAddress(uint64 erc20CoreIndex) external view returns (address, bool) {
+        return HyperCoreLib.tryToSystemAddress(erc20CoreIndex);
+    }
+
+    function isCoreAmountSafeToBridge(
+        uint64 erc20CoreIndex,
+        uint64 coreAmount,
+        uint64 coreBufferAmount
+    ) external view returns (bool) {
+        return HyperCoreLib.isCoreAmountSafeToBridge(erc20CoreIndex, coreAmount, coreBufferAmount);
     }
 
     function transferNativeEVMToSelfOnSpot(uint256 amountEVM) external returns (uint256, uint64) {
@@ -206,17 +214,6 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         wrapper.usdcCoreDepositWallet();
     }
 
-    function testIsHype() public {
-        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
-        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
-        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
-        assertFalse(wrapper.isHype(uint32(HyperCoreLib.USDC_CORE_INDEX)));
-
-        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
-        assertTrue(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX_TESTNET));
-        assertFalse(wrapper.isHype(HyperCoreLib.HYPE_CORE_INDEX));
-    }
-
     // ============ toSystemAddress ============
 
     // HYPE reports no `evmContract`, so its branch has to be taken before the bridgeability check
@@ -259,6 +256,95 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
         vm.expectRevert(abi.encodeWithSelector(HyperCoreLib.TokenNotBridgeable.selector, outcomeAssetId));
         wrapper.toSystemAddress(outcomeAssetId);
+    }
+
+    // ============ tryToSystemAddress ============
+
+    function testTryToSystemAddress_LinkedTokenIsBridgeable() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(coreIndex);
+        assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex)));
+        assertTrue(bridgeable);
+    }
+
+    // Same derived address as the linked case, but reported unbridgeable instead of reverting
+    function testTryToSystemAddress_UnlinkedTokenIsNotBridgeable() public {
+        uint32 coreIndex = 42;
+        mockTokenInfoDefault(address(0), "TKN", 8);
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(coreIndex);
+        assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex)));
+        assertFalse(bridgeable);
+    }
+
+    // Out-of-domain ids are reported unbridgeable before any precompile call — note no tokenInfo mock is set here
+    function testTryToSystemAddress_IdBeyondTokenInfoDomainIsNotBridgeable() public {
+        uint64 outcomeAssetId = 100_000_000 + uint64(type(uint32).max) * 10 + 1;
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(outcomeAssetId);
+        assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + outcomeAssetId)));
+        assertFalse(bridgeable);
+    }
+
+    // HYPE has no evmContract yet is always bridgeable, via its fixed system address — no tokenInfo mock is set here
+    function testTryToSystemAddress_HypeIsAlwaysBridgeable() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(HyperCoreLib.HYPE_CORE_INDEX);
+        assertEq(systemAddress, HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+        assertTrue(bridgeable);
+
+        vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
+        (systemAddress, bridgeable) = wrapper.tryToSystemAddress(HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
+        assertEq(systemAddress, HyperCoreLib.HYPE_SYSTEM_ADDRESS);
+        assertTrue(bridgeable);
+    }
+
+    // ============ isCoreAmountSafeToBridge ============
+
+    // A predicate must answer, not revert: an unlinked token is reported unsafe even if its bridge address happens
+    // to hold balance, so the fill path keeps its HyperEVM fallback and never reaches the reverting send
+    function testIsCoreAmountSafeToBridge_ReturnsFalseForUnlinkedTokenInsteadOfReverting() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        mockSpotBalanceDefault(10e8, 0, 0);
+
+        mockTokenInfoDefault(address(0), "TKN", 8);
+        assertFalse(wrapper.isCoreAmountSafeToBridge(42, 1, 0));
+
+        mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
+        assertTrue(wrapper.isCoreAmountSafeToBridge(42, 9e8, 1e8));
+        assertFalse(wrapper.isCoreAmountSafeToBridge(42, 9e8, 1e8 + 1));
+    }
+
+    // Out-of-domain ids are unsafe without any precompile call — no tokenInfo or spotBalance mock is set here
+    function testIsCoreAmountSafeToBridge_ReturnsFalseForIdBeyondTokenInfoDomain() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        assertFalse(wrapper.isCoreAmountSafeToBridge(100_000_000 + uint64(type(uint32).max) * 10 + 1, 1, 0));
+    }
+
+    // HYPE's bridge balance lives at its fixed system address, not the index-derived one
+    function testIsCoreAmountSafeToBridge_ReadsHypeBalanceAtTheFixedSystemAddress() public {
+        vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
+        uint64 hypeIndex = HyperCoreLib.HYPE_CORE_INDEX;
+        HyperCoreLib.SpotBalance memory empty;
+        HyperCoreLib.SpotBalance memory funded = HyperCoreLib.SpotBalance({ total: 10e8, hold: 0, entryNtl: 0 });
+
+        vm.mockCall(
+            HyperCoreLib.SPOT_BALANCE_PRECOMPILE_ADDRESS,
+            abi.encode(address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + hypeIndex)), hypeIndex),
+            abi.encode(empty)
+        );
+        vm.mockCall(
+            HyperCoreLib.SPOT_BALANCE_PRECOMPILE_ADDRESS,
+            abi.encode(HyperCoreLib.HYPE_SYSTEM_ADDRESS, hypeIndex),
+            abi.encode(funded)
+        );
+
+        assertTrue(wrapper.isCoreAmountSafeToBridge(hypeIndex, 5e8, 1e8));
     }
 
     // ============ transferNativeEVMToSelfOnSpot ============
