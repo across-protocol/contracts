@@ -42,6 +42,7 @@
     "prepublishOnly": "yarn build-ts && yarn export-idl && yarn export-evm-artifacts",
     "build": "yarn build-evm-foundry && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
     "build-verified": "yarn build-evm-foundry && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
+    "pin-foundry": "sh scripts/foundry-version.sh pin",
     "build-evm-foundry": "forge build",
     "test-evm": "yarn test-evm-foundry",
     "test-evm-foundry": "FOUNDRY_PROFILE=local-test forge test",
