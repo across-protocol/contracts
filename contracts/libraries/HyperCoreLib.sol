@@ -408,7 +408,7 @@ library HyperCoreLib {
     ) internal view returns (bool) {
         // A predicate answers rather than reverts: an unbridgeable token is simply not safe to bridge, so the fill
         // path keeps its HyperEVM fallback instead of failing.
-        (address systemAddress, bool bridgeable) = toSystemAddressIfBridgeable(erc20CoreIndex);
+        (address systemAddress, bool bridgeable) = tryToSystemAddress(erc20CoreIndex);
         if (!bridgeable) return false;
 
         // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
@@ -420,12 +420,12 @@ library HyperCoreLib {
      *         a transfer to it credits the sender's spot balance on HyperCore; on HyperCore, a spot send to it
      *         credits the sender's balance on HyperEVM.
      * @dev Reverts if the token is not bridgeable, since a send to such an address would strand the funds. For a
-     *      non-reverting answer, use `toSystemAddressIfBridgeable`.
+     *      non-reverting answer, use `tryToSystemAddress`.
      * @param erc20CoreIndex The core token index id to convert
      * @return The token's system address, valid as a destination on either chain
      */
     function toSystemAddress(uint64 erc20CoreIndex) internal view returns (address) {
-        (address systemAddress, bool bridgeable) = toSystemAddressIfBridgeable(erc20CoreIndex);
+        (address systemAddress, bool bridgeable) = tryToSystemAddress(erc20CoreIndex);
         if (!bridgeable) revert TokenNotBridgeable(erc20CoreIndex);
         return systemAddress;
     }
@@ -439,9 +439,7 @@ library HyperCoreLib {
      * @return systemAddress The token's system address, valid as a destination on either chain
      * @return bridgeable False if a send to `systemAddress` would not be credited on the other side
      */
-    function toSystemAddressIfBridgeable(
-        uint64 erc20CoreIndex
-    ) internal view returns (address systemAddress, bool bridgeable) {
+    function tryToSystemAddress(uint64 erc20CoreIndex) internal view returns (address systemAddress, bool bridgeable) {
         // A uint64 above the uint32 domain can never equal the uint32 HYPE index, so no range check is needed
         if (erc20CoreIndex == hypeCoreIndex()) return (HYPE_SYSTEM_ADDRESS, true);
         systemAddress = address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));

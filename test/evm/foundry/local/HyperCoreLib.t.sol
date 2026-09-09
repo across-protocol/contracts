@@ -28,8 +28,8 @@ contract HyperCoreLibWrapper {
         return HyperCoreLib.toSystemAddress(erc20CoreIndex);
     }
 
-    function toSystemAddressIfBridgeable(uint64 erc20CoreIndex) external view returns (address, bool) {
-        return HyperCoreLib.toSystemAddressIfBridgeable(erc20CoreIndex);
+    function tryToSystemAddress(uint64 erc20CoreIndex) external view returns (address, bool) {
+        return HyperCoreLib.tryToSystemAddress(erc20CoreIndex);
     }
 
     function isCoreAmountSafeToBridge(
@@ -230,48 +230,48 @@ contract HyperCoreLibTest is HyperCoreMockHelper {
         wrapper.toSystemAddress(outcomeAssetId);
     }
 
-    // ============ toSystemAddressIfBridgeable ============
+    // ============ tryToSystemAddress ============
 
-    function testToSystemAddressIfBridgeable_LinkedTokenIsBridgeable() public {
+    function testTryToSystemAddress_LinkedTokenIsBridgeable() public {
         uint32 coreIndex = 42;
         mockTokenInfoDefault(makeAddr("erc20"), "TKN", 8);
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
 
-        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(coreIndex);
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(coreIndex);
         assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex)));
         assertTrue(bridgeable);
     }
 
     // Same derived address as the linked case, but reported unbridgeable instead of reverting
-    function testToSystemAddressIfBridgeable_UnlinkedTokenIsNotBridgeable() public {
+    function testTryToSystemAddress_UnlinkedTokenIsNotBridgeable() public {
         uint32 coreIndex = 42;
         mockTokenInfoDefault(address(0), "TKN", 8);
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
 
-        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(coreIndex);
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(coreIndex);
         assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + coreIndex)));
         assertFalse(bridgeable);
     }
 
     // Out-of-domain ids are reported unbridgeable before any precompile call — note no tokenInfo mock is set here
-    function testToSystemAddressIfBridgeable_IdBeyondTokenInfoDomainIsNotBridgeable() public {
+    function testTryToSystemAddress_IdBeyondTokenInfoDomainIsNotBridgeable() public {
         uint64 outcomeAssetId = 100_000_000 + uint64(type(uint32).max) * 10 + 1;
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
 
-        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(outcomeAssetId);
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(outcomeAssetId);
         assertEq(systemAddress, address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + outcomeAssetId)));
         assertFalse(bridgeable);
     }
 
     // HYPE has no evmContract yet is always bridgeable, via its fixed system address — no tokenInfo mock is set here
-    function testToSystemAddressIfBridgeable_HypeIsAlwaysBridgeable() public {
+    function testTryToSystemAddress_HypeIsAlwaysBridgeable() public {
         vm.chainId(HyperCoreLib.HYPEREVM_CHAIN_ID);
-        (address systemAddress, bool bridgeable) = wrapper.toSystemAddressIfBridgeable(HyperCoreLib.HYPE_CORE_INDEX);
+        (address systemAddress, bool bridgeable) = wrapper.tryToSystemAddress(HyperCoreLib.HYPE_CORE_INDEX);
         assertEq(systemAddress, HyperCoreLib.HYPE_SYSTEM_ADDRESS);
         assertTrue(bridgeable);
 
         vm.chainId(HyperCoreLib.HYPEREVM_TESTNET_CHAIN_ID);
-        (systemAddress, bridgeable) = wrapper.toSystemAddressIfBridgeable(HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
+        (systemAddress, bridgeable) = wrapper.tryToSystemAddress(HyperCoreLib.HYPE_CORE_INDEX_TESTNET);
         assertEq(systemAddress, HyperCoreLib.HYPE_SYSTEM_ADDRESS);
         assertTrue(bridgeable);
     }
