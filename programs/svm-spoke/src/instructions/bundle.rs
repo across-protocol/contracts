@@ -7,8 +7,8 @@ use anchor_spl::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::{CommonError, SvmError},
-    event::{ExecutedRelayerRefundRoot, TokensBridged},
-    state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
+    event::ExecutedRelayerRefundRoot,
+    state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
 
@@ -50,15 +50,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
         address = instruction_params.relayer_refund_leaf.mint_public_key @ SvmError::InvalidMint
     )]
     pub mint: InterfaceAccount<'info, Mint>,
-
-    #[account(
-        init_if_needed, // If first time creating, initialize the liability tracker, else re-use.
-        payer = signer,
-        space = DISCRIMINATOR_SIZE + TransferLiability::INIT_SPACE,
-        seeds = [b"transfer_liability", mint.key().as_ref()],
-        bump
-    )]
-    pub transfer_liability: Account<'info, TransferLiability>,
 
     pub token_program: Interface<'info, TokenInterface>,
 
@@ -121,6 +112,11 @@ where
         return err!(CommonError::InvalidChainId);
     }
 
+    // This Spoke pool never bridges tokens back to the HubPool, so no leaf may request an amount to return.
+    if relayer_refund_leaf.amount_to_return != 0 {
+        return err!(SvmError::NonZeroAmountToReturn);
+    }
+
     if is_claimed(&ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id) {
         return err!(CommonError::ClaimedMerkleLeaf);
     }
@@ -145,18 +141,6 @@ where
     match deferred_refunds {
         true => accrue_relayer_refunds(&ctx, &relayer_refund_leaf)?,
         false => distribute_relayer_refunds(&ctx, &relayer_refund_leaf)?,
-    }
-
-    if relayer_refund_leaf.amount_to_return > 0 {
-        ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
-
-        emit_cpi!(TokensBridged {
-            amount_to_return: relayer_refund_leaf.amount_to_return,
-            chain_id: relayer_refund_leaf.chain_id,
-            leaf_id: relayer_refund_leaf.leaf_id,
-            l2_token_address: ctx.accounts.mint.key(),
-            caller: ctx.accounts.signer.key(),
-        });
     }
 
     emit_cpi!(ExecutedRelayerRefundRoot {

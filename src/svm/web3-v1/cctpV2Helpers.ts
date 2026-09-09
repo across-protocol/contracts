@@ -107,6 +107,29 @@ export const decodeMessageHeaderV2 = (data: Buffer): MessageHeaderV2 => {
 };
 
 /**
+ * Encodes a CCTPv2 message header and body into a Buffer.
+ */
+export const encodeMessageHeaderV2 = (header: MessageHeaderV2): Buffer => {
+  const message = Buffer.alloc(MESSAGE_BODY_INDEX + header.messageBody.length);
+
+  message.writeUInt32BE(header.version, HEADER_VERSION_INDEX);
+  message.writeUInt32BE(header.sourceDomain, SOURCE_DOMAIN_INDEX);
+  message.writeUInt32BE(header.destinationDomain, DESTINATION_DOMAIN_INDEX);
+  Buffer.from(ethers.utils.zeroPad(ethers.BigNumber.from(header.nonce.toString()).toHexString(), 32)).copy(
+    message,
+    NONCE_INDEX
+  );
+  header.sender.toBuffer().copy(message, HEADER_SENDER_INDEX);
+  header.recipient.toBuffer().copy(message, HEADER_RECIPIENT_INDEX);
+  header.destinationCaller.toBuffer().copy(message, DESTINATION_CALLER_INDEX);
+  message.writeUInt32BE(header.minFinalityThreshold, MIN_FINALITY_THRESHOLD_INDEX);
+  message.writeUInt32BE(header.finalityThresholdExecuted, FINALITY_THRESHOLD_EXECUTED_INDEX);
+  header.messageBody.copy(message, MESSAGE_BODY_INDEX);
+
+  return message;
+};
+
+/**
  * Decodes a TokenMessenger message body.
  */
 export const decodeTokenMessengerV2MessageBody = (data: Buffer): TokenMessengerV2MessageBody => {
@@ -217,6 +240,33 @@ export async function getV2BurnAttestation(
     }
   }
   return null;
+}
+
+/**
+ * Fetches all attested CCTP V2 messages emitted by a source transaction, polling until every attestation is complete.
+ */
+export async function getV2Messages(
+  txHash: string,
+  srcDomain: number,
+  irisApiUrl: string
+): Promise<{ message: Buffer; attestation: Buffer }[]> {
+  console.log("Fetching V2 attestations and messages for tx...", txHash);
+  for (;;) {
+    const attestationResponse = await (
+      await fetch(`${irisApiUrl}/v2/messages/${srcDomain}/?transactionHash=${txHash}`)
+    ).json();
+    if (!attestationResponse.error && attestationResponse.messages?.length > 0) {
+      assert(attestationResponse, AttestationResponse);
+      if (attestationResponse.messages.every((message) => message.status === "complete")) {
+        return attestationResponse.messages.map((message) => ({
+          message: Buffer.from(ethers.utils.arrayify(message.message)),
+          attestation: Buffer.from(ethers.utils.arrayify(message.attestation)),
+        }));
+      }
+    }
+    // Wait 2 seconds to avoid getting rate limited while the attestation is pending.
+    await new Promise((r) => setTimeout(r, 2000));
+  }
 }
 
 function isMatchingV2BurnMessage(
