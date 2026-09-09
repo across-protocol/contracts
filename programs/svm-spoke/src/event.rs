@@ -55,7 +55,9 @@ pub struct FundsDeposited {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum FillType {
     FastFill,
+    // A fast fill replacing a pre-upgrade slow-fill request.
     ReplacedSlowFill,
+    // Historical event decoding only. Never remove or reorder these variants.
     SlowFill,
 }
 
@@ -92,7 +94,7 @@ pub struct V5FillFloatWithdrawn {
     pub amount: u64,
 }
 
-// Slow fill events
+// Historical event decoding only; no instruction emits new slow-fill requests.
 #[event]
 pub struct RequestedSlowFill {
     pub input_token: Pubkey,
