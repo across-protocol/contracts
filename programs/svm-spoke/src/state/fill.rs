@@ -11,7 +11,7 @@ pub enum FillStatus {
 #[account]
 #[derive(InitSpace)]
 pub struct FillStatusAccount {
-    pub status: FillStatus, // Includes the historical RequestedSlowFill slot for pre-upgrade accounts.
+    pub status: FillStatus, // Tracks fill completion to prevent replay.
     pub relayer: Pubkey,    // Rent recipient for closing this PDA; legacy fills store the submitting relayer.
     pub fill_deadline: u32, // Stores the fill deadline to control when this PDA can be safely closed.
 }
