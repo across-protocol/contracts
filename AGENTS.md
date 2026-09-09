@@ -64,7 +64,7 @@ Canonical deployed addresses are generated into `broadcast/deployed-addresses.js
 ```
 contracts/           # Smart contract source files
   spoke-pools/       # SpokePool contracts (base + all chain-specific variants, PolygonTokenBridger)
-  hub-pool/          # HubPool, BondToken, LpTokenFactory, AcrossConfigStore, PermissionSplitterProxy, AdapterStore
+  hub-pool/          # HubPool, BondToken, LpTokenFactory, AcrossConfigStore, AdapterStore
   chain-adapters/    # L1 chain adapters (intents system)
   periphery/         # Periphery contracts (SpokePoolPeriphery, SpokePoolVerifier, AcrossEventEmitter)
     mintburn/        # Mint-burn system (sponsored CCTP, OFT flows)

@@ -43,7 +43,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Optimism_Adapter                       | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionedMulticallHandler           | [0x64a43393866DBA0044879979fAa7AD3d000622e9](https://etherscan.io/address/0x64a43393866DBA0044879979fAa7AD3d000622e9) |
 | PermissionedMulticallHandler_CCTP_USDC | [0xDd52f8134f85f3979fbA24387Ce0CEC05937259E](https://etherscan.io/address/0xDd52f8134f85f3979fbA24387Ce0CEC05937259E) |
-| PermissionSplitterProxy                | [0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7](https://etherscan.io/address/0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7) |
 | Polygon_Adapter                        | [0x537abE038C223066B50312474409924487D2E655](https://etherscan.io/address/0x537abE038C223066B50312474409924487D2E655) |
 | PolygonTokenBridger                    | [0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57](https://etherscan.io/address/0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57) |
 | Safe                                   | [0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01](https://etherscan.io/address/0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01) |
