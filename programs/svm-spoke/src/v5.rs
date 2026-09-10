@@ -5,13 +5,13 @@
 
 use anchor_lang::{
     prelude::*,
-    solana_program::{hash::hash, keccak, secp256k1_recover::secp256k1_recover},
+    solana_program::{keccak, secp256k1_recover::secp256k1_recover},
 };
 
 use crate::{
     common::RelayData,
     constants::{
-        BIPS_DENOMINATOR, FILL_STATUS_SEED, GATEWAY_ADAPTER_EXECUTE_V5_PREIMAGE, GATEWAY_DISPATCH_AUTHORITY_SEED,
+        BIPS_DENOMINATOR, FILL_STATUS_SEED, GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, GATEWAY_DISPATCH_AUTHORITY_SEED,
         GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY_SEED, V5_ADAPTER_WIRE_VERSION, V5_FILL_DELEGATE_SEED,
         V5_FILL_PAYER_SEED, V5_SOURCE_DELEGATE_SEED,
     },
@@ -291,12 +291,6 @@ pub fn resolve_v5_deposit_modifications(
     Ok((output_amount, exclusive_relayer))
 }
 
-pub fn gateway_adapter_discriminator() -> [u8; 8] {
-    hash(GATEWAY_ADAPTER_EXECUTE_V5_PREIMAGE).to_bytes()[..8]
-        .try_into()
-        .unwrap()
-}
-
 pub fn derive_gateway_dispatch_authority() -> (Pubkey, u8) {
     Pubkey::find_program_address(&[GATEWAY_DISPATCH_AUTHORITY_SEED, ID.as_ref()], &GATEWAY_PROGRAM_ID)
 }
@@ -381,6 +375,10 @@ mod tests {
     #[test]
     fn v1_wire_and_gateway_dispatch_match_golden_fixture() {
         let fixture = fixture();
+        assert_eq!(
+            GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR,
+            anchor_lang::solana_program::hash::hash(b"global:adapter_execute_across_v5").to_bytes()[..8]
+        );
         let input_bytes = bytes(&fixture, "/wire/depositInput");
         let jit_bytes = bytes(&fixture, "/wire/depositJit");
         let input = decode_v5_adapter_input(&input_bytes).unwrap();
@@ -407,7 +405,7 @@ mod tests {
         assert_eq!(serialize(&ctx), bytes(&fixture, "/context/borsh"));
 
         // Local mirror of Gateway `encode_dispatch_data`: discriminator || context || two Borsh byte vectors.
-        let mut dispatch = gateway_adapter_discriminator().to_vec();
+        let mut dispatch = GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR.to_vec();
         dispatch.extend(serialize(&ctx));
         dispatch.extend((input_bytes.len() as u32).to_le_bytes());
         dispatch.extend(&input_bytes);
