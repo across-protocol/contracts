@@ -227,11 +227,6 @@
           "block_number": 24271862,
           "transaction_hash": "0xbd8b6ea8265f30e94927d081739407540d2d0d0e3df35abb1e17fe28e3f3c69c"
         },
-        "PermissionSplitterProxy": {
-          "address": "0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7",
-          "block_number": 19084679,
-          "transaction_hash": "0xa2a7b2c6812fb8ae34539fb04cd5f2a9112da1c7f6ffce0ddcf1fee7e43acf48"
-        },
         "PermissionedMulticallHandler": {
           "address": "0x64a43393866DBA0044879979fAa7AD3d000622e9",
           "block_number": 24021499,
