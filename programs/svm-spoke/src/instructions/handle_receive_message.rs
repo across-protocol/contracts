@@ -4,7 +4,7 @@ use anchor_lang::{
 };
 
 use crate::{
-    constants::{FINALITY_THRESHOLD_FINALIZED, MESSAGE_TRANSMITTER_PROGRAM_ID},
+    constants::MESSAGE_TRANSMITTER_PROGRAM_ID,
     error::{CallDataError, SvmError},
     program::SvmSpoke,
     state::State,
@@ -26,9 +26,6 @@ pub struct HandleReceiveFinalizedMessage<'info> {
         bump,
         constraint = params.remote_domain == state.remote_domain @ SvmError::InvalidRemoteDomain,
         constraint = params.sender == state.cross_domain_admin @ SvmError::InvalidRemoteSender,
-        // The Message Transmitter only dispatches finalized messages here. Re-checking keeps this program's finality
-        // requirement explicit and independent of that dispatch logic.
-        constraint = params.finality_threshold_executed >= FINALITY_THRESHOLD_FINALIZED @ CallDataError::MessageNotFinalized,
     )]
     pub state: Account<'info, State>,
 
@@ -39,7 +36,9 @@ pub struct HandleReceiveFinalizedMessage<'info> {
 }
 
 // Mirrors HandleReceiveMessageParams from the CCTP V2 Message Transmitter. The same layout is used for both the
-// finalized and unfinalized handlers; this program implements only the finalized one.
+// finalized and unfinalized handlers. This program implements only the finalized one, so finality_threshold_executed is
+// retained for layout compatibility and is not checked here: the Message Transmitter dispatches to this handler only
+// for finalized messages.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct HandleReceiveMessageParams {
     pub remote_domain: u32,
