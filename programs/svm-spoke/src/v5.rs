@@ -11,9 +11,7 @@ use anchor_lang::{
 use crate::{
     common::RelayData,
     constants::{
-        BIPS_DENOMINATOR, FILL_STATUS_SEED, GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, GATEWAY_DISPATCH_AUTHORITY_SEED,
-        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY_SEED, V5_ADAPTER_WIRE_VERSION, V5_FILL_DELEGATE_SEED,
-        V5_FILL_PAYER_SEED, V5_SOURCE_DELEGATE_SEED,
+        BIPS_DENOMINATOR, FILL_STATUS_SEED, GATEWAY_DISPATCH_AUTHORITY, V5_ADAPTER_WIRE_VERSION, V5_FILL_PAYER_SEED,
     },
     error::V5Error,
     ID,
@@ -291,22 +289,6 @@ pub fn resolve_v5_deposit_modifications(
     Ok((output_amount, exclusive_relayer))
 }
 
-pub fn derive_gateway_dispatch_authority() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[GATEWAY_DISPATCH_AUTHORITY_SEED, ID.as_ref()], &GATEWAY_PROGRAM_ID)
-}
-
-pub fn derive_gateway_vault_authority() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[GATEWAY_VAULT_AUTHORITY_SEED], &GATEWAY_PROGRAM_ID)
-}
-
-pub fn derive_v5_source_delegate() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[V5_SOURCE_DELEGATE_SEED], &ID)
-}
-
-pub fn derive_v5_fill_delegate() -> (Pubkey, u8) {
-    Pubkey::find_program_address(&[V5_FILL_DELEGATE_SEED], &ID)
-}
-
 pub fn derive_v5_fill_payer(submitter: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[V5_FILL_PAYER_SEED, submitter.as_ref()], &ID)
 }
@@ -316,8 +298,7 @@ pub fn derive_fill_status(relay_hash: &[u8; 32]) -> (Pubkey, u8) {
 }
 
 pub fn require_gateway_dispatch_authority(account: &AccountInfo) -> Result<()> {
-    let (expected, _) = derive_gateway_dispatch_authority();
-    require!(account.is_signer && *account.key == expected, V5Error::InvalidDispatchAuthority);
+    require!(account.is_signer && *account.key == GATEWAY_DISPATCH_AUTHORITY, V5Error::InvalidDispatchAuthority);
     Ok(())
 }
 
@@ -338,6 +319,12 @@ pub fn find_v5_account<'a, 'info>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::{
+        GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, GATEWAY_DISPATCH_AUTHORITY_BUMP, GATEWAY_DISPATCH_AUTHORITY_SEED,
+        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP, GATEWAY_VAULT_AUTHORITY_SEED,
+        V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP, V5_FILL_DELEGATE_SEED, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP,
+        V5_SOURCE_DELEGATE_SEED,
+    };
     use serde_json::Value;
     use std::str::FromStr;
 
@@ -483,10 +470,10 @@ mod tests {
         let submitter = Pubkey::new_from_array(array(&fixture, "/context/submitter"));
         let relay_hash = array(&fixture, "/deposit/depositId");
         let cases = [
-            (derive_gateway_dispatch_authority(), "/pdas/dispatchAuthority"),
-            (derive_gateway_vault_authority(), "/pdas/gatewayVaultAuthority"),
-            (derive_v5_source_delegate(), "/pdas/sourceDelegate"),
-            (derive_v5_fill_delegate(), "/pdas/fillDelegate"),
+            ((GATEWAY_DISPATCH_AUTHORITY, GATEWAY_DISPATCH_AUTHORITY_BUMP), "/pdas/dispatchAuthority"),
+            ((GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP), "/pdas/gatewayVaultAuthority"),
+            ((V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP), "/pdas/sourceDelegate"),
+            ((V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP), "/pdas/fillDelegate"),
             (derive_v5_fill_payer(&submitter), "/pdas/fillPayer"),
             (derive_fill_status(&relay_hash), "/pdas/fillStatus"),
         ];
@@ -494,6 +481,26 @@ mod tests {
             assert_eq!(key.to_string(), fixture.pointer(&format!("{path}/address")).unwrap().as_str().unwrap());
             assert_eq!(u64::from(bump), fixture.pointer(&format!("{path}/bump")).unwrap().as_u64().unwrap());
         }
+    }
+
+    #[test]
+    fn hardcoded_v5_authorities_match_canonical_pdas() {
+        assert_eq!(
+            Pubkey::find_program_address(&[GATEWAY_DISPATCH_AUTHORITY_SEED, ID.as_ref()], &GATEWAY_PROGRAM_ID),
+            (GATEWAY_DISPATCH_AUTHORITY, GATEWAY_DISPATCH_AUTHORITY_BUMP)
+        );
+        assert_eq!(
+            Pubkey::find_program_address(&[GATEWAY_VAULT_AUTHORITY_SEED], &GATEWAY_PROGRAM_ID),
+            (GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP)
+        );
+        assert_eq!(
+            Pubkey::find_program_address(&[V5_SOURCE_DELEGATE_SEED], &ID),
+            (V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP)
+        );
+        assert_eq!(
+            Pubkey::find_program_address(&[V5_FILL_DELEGATE_SEED], &ID),
+            (V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP)
+        );
     }
 
     #[test]
