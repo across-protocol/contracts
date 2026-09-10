@@ -97,8 +97,6 @@ pub enum CallDataError {
     InvalidUint64,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
-    #[msg("Message was not attested at the finalized threshold")]
-    MessageNotFinalized,
 }
 
 // Across+ specific errors.

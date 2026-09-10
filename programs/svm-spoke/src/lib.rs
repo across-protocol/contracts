@@ -718,7 +718,8 @@ pub mod svm_spoke {
     /// - params: Contains information to process the received message, containing the following fields:
     ///     - remote_domain: The remote domain of the message sender.
     ///     - sender: The sender of the message.
-    ///     - finality_threshold_executed: The finality threshold the message was attested at. Must be finalized.
+    ///     - finality_threshold_executed: The finality threshold the message was attested at. Not checked here, as the
+    ///       Message Transmitter dispatches only finalized messages to this instruction.
     ///     - message_body: The body of the message.
     ///     - authority_bump: The authority bump for the message transmitter.
     pub fn handle_receive_finalized_message<'info>(
