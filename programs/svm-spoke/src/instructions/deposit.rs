@@ -143,13 +143,7 @@ pub fn _deposit(
     }
 
     // Depositor must have delegated input_amount to the delegate PDA
-    transfer_from(
-        accounts.transfer,
-        accounts.token_program,
-        input_amount,
-        accounts.mint_decimals,
-        delegate_pda,
-    )?;
+    transfer_from(accounts.transfer, accounts.token_program, input_amount, accounts.mint_decimals, delegate_pda)?;
 
     let applied_deposit_id = match deposit_id {
         DepositId::Next(state) => {
