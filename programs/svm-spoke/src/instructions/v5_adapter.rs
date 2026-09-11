@@ -178,8 +178,11 @@ fn load_v5_fill_accounts<'a, 'info>(
     let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
     let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
 
-    let gateway_vault =
-        get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &fill_input.output_token, &token_program_id);
+    let gateway_vault = get_associated_token_address_with_program_id(
+        &GATEWAY_VAULT_AUTHORITY,
+        &fill_input.output_token,
+        &token_program_id,
+    );
     let recipient = get_associated_token_address_with_program_id(
         &fill_input.recipient,
         &fill_input.output_token,
@@ -187,12 +190,8 @@ fn load_v5_fill_accounts<'a, 'info>(
     );
     let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
     let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
-    let source = load_token_account(
-        gateway_vault_info,
-        &token_program_id,
-        &fill_input.output_token,
-        &GATEWAY_VAULT_AUTHORITY,
-    )?;
+    let source =
+        load_token_account(gateway_vault_info, &token_program_id, &fill_input.output_token, &GATEWAY_VAULT_AUTHORITY)?;
     load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
 
     let delivery = if gateway_vault == recipient {
