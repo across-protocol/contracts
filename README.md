@@ -88,6 +88,8 @@ yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpoke
 
 ### SVM
 
+For CCTP V2 root/admin finalization, pause recovery and light-chain intent examples, see the [Solana operational scripts guide](scripts/svm/README.md).
+
 Before deploying for the first time make sure all program IDs in `lib.rs` and `Anchor.toml` are the same as listed when running `anchor keys list`. If not, update them to match the deployment keypairs under `target/deploy/` and commit the changes.
 
 Make sure to use the verified docker binaries that can be built:

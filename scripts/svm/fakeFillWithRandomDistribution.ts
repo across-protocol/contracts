@@ -16,6 +16,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
   AcrossPlusMessageCoder,
+  evmAddressToPublicKey,
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
   getFillRelayDelegatePda,
@@ -47,10 +48,14 @@ const argv = yargs(hideBin(process.argv))
   .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" })
-  .option("repaymentChain", { type: "number", demandOption: false, description: "Repayment chain ID" })
-  .option("repaymentAddress", { type: "string", demandOption: false, description: "Repayment address" })
+  .option("repaymentAddress", {
+    type: "string",
+    demandOption: true,
+    description: "Repayment address on the origin chain (EVM hex or Solana base58)",
+  })
   .option("distributionCount", { type: "number", demandOption: false, describe: "Distribution count" })
-  .option("bufferParams", { type: "boolean", demandOption: false, describe: "Use buffer account for params" }).argv;
+  .option("bufferParams", { type: "boolean", demandOption: false, describe: "Use buffer account for params" })
+  .strict().argv;
 
 async function fillRelayToRandom(): Promise<void> {
   const resolvedArgv = await argv;
@@ -65,8 +70,10 @@ async function fillRelayToRandom(): Promise<void> {
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
   const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
-  const repaymentChain = new BN(resolvedArgv.repaymentChain || 1);
-  const repaymentAddress = new PublicKey(resolvedArgv.repaymentAddress || signer.publicKey.toString());
+  const repaymentChain = originChainId;
+  const repaymentAddress = resolvedArgv.repaymentAddress.startsWith("0x")
+    ? evmAddressToPublicKey(resolvedArgv.repaymentAddress)
+    : new PublicKey(resolvedArgv.repaymentAddress);
   const seed = new BN(0);
   const distributionCount = resolvedArgv.distributionCount || 1;
   const bufferParams = resolvedArgv.bufferParams || false;
