@@ -207,11 +207,13 @@ also undoes Anchor account initialization and preserves buffered parameters. V5-
 Source deposits retain their message field for other destination chains.
 
 Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
-`V5Error` at 9000. This preserves Common error numbers and renumbers SVM/CCTP errors from their overlapping legacy
-range; V5 errors are new in this release. Compatibility tests pin each range's first and last codes.
+`V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
+legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) lists every current
+variant's old and new code, distinguishing new errors from existing ones. Compatibility tests pin each range's
+first and last codes.
 Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`, including this
-new rejection. Consumers should use runtime log names or an explicit runtime-code mapping; generated error-name
-tables alone are insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
+new rejection. Consumers should use runtime log names or the version-appropriate runtime-code mapping; generated
+error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
 
 V5 keeps two distinct fields: the relay witness is exactly `V5_MAGIC_PREFIX || stepId`, while
 `V5FillInput.message` must be empty. The replacement destination flow is a single in-place Across fill followed by
@@ -233,7 +235,7 @@ can use prefunded chaining; they are distinct from this atomic fill-and-swap fix
 
 ### Deployment sequencing
 
-Before deploying callback rejection:
+Before deploying callback rejection and the error-code migration:
 
 1. Disable routes that create callback-bearing SVM deposits in API/builders and coordinate relayer cutover to the
    replacement V5 path. A route flag alone does not prevent direct deposits through permissionless entrypoints.
@@ -242,6 +244,12 @@ Before deploying callback rejection:
    expiry-refund handling. Include finality/indexing lag and confirm no new callback deposits entered the window.
 3. Verify no unexpired callback-bearing obligations remain before deploying, or handle them through a separately
    reviewed migration procedure. Verify replacement route-building and relayer execution support before enablement.
+4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
+   moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
+   Earlier undeployed V5 integrations must use the final 9000 range. Consumers matching runtime log names need no
+   renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
+   numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
+   an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
 
 After the upgrade, a remaining callback-bearing deposit cannot be filled on Solana. Slow fills are also retired;
 an unfilled expired deposit follows the normal origin-chain refund process, not a destination fallback. These are
