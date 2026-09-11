@@ -9,6 +9,29 @@ pub const MESSAGE_TRANSMITTER_PROGRAM_ID: Pubkey = pubkey!("CCTPmbSD7gX1bxKPAmg7
 pub const MAX_EXCLUSIVITY_PERIOD_SECONDS: u32 = 31_536_000;
 
 pub const ZERO_DEPOSIT_ID: [u8; 32] = [0u8; 32];
+pub const BIPS_DENOMINATOR: u16 = 10_000;
+
+pub const V5_ADAPTER_WIRE_VERSION: u8 = 1;
+pub const V5_SOURCE_DELEGATE_SEED: &[u8] = b"v5_source_delegate";
+pub const V5_SOURCE_DELEGATE: Pubkey = pubkey!("CVh7qLq3yviU8iGuBmmgipJpfy95p9B81e2YTWDaxCbb");
+pub const V5_SOURCE_DELEGATE_BUMP: u8 = 255;
+pub const V5_FILL_DELEGATE_SEED: &[u8] = b"v5_fill_delegate";
+pub const V5_FILL_DELEGATE: Pubkey = pubkey!("D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1");
+pub const V5_FILL_DELEGATE_BUMP: u8 = 252;
+pub const V5_FILL_PAYER_SEED: &[u8] = b"v5_fill_payer";
+pub const FILL_STATUS_SEED: &[u8] = b"fills";
+
+// Mirrored from the Gateway dispatch ABI. Keep these local: Gateway and svm-spoke intentionally use different
+// Anchor versions and must not acquire a cross-repository Rust dependency.
+pub const GATEWAY_PROGRAM_ID: Pubkey = pubkey!("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
+pub const GATEWAY_DISPATCH_AUTHORITY_SEED: &[u8] = b"dispatch_authority";
+pub const GATEWAY_DISPATCH_AUTHORITY: Pubkey = pubkey!("28uSGvM8TVkVkAq9LBZASDPEi5t6RFbVekXECbDMqrWs");
+pub const GATEWAY_DISPATCH_AUTHORITY_BUMP: u8 = 253;
+pub const GATEWAY_VAULT_AUTHORITY_SEED: &[u8] = b"vault_authority";
+pub const GATEWAY_VAULT_AUTHORITY: Pubkey = pubkey!("D3rtRbTdrBx8x8wp6xmQcUeS6seSt9nBB7DUG5S86HHb");
+pub const GATEWAY_VAULT_AUTHORITY_BUMP: u8 = 254;
+/// First eight SHA-256 bytes of `global:adapter_execute_across_v5`.
+pub const GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR: [u8; 8] = [23, 161, 69, 148, 150, 128, 173, 220];
 
 // Magic prefix tagging a deposit message as an Across V5 witness: `message = V5_MAGIC_PREFIX || stepId`, where
 // stepId is the Merkle root of the Gateway execution allowed to consume the deposit. V5-tagged deposits are only

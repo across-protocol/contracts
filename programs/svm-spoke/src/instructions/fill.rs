@@ -6,7 +6,7 @@ use anchor_spl::{
 
 use crate::{
     common::RelayData,
-    constants::DISCRIMINATOR_SIZE,
+    constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED},
     constraints::{has_valid_params_presence, is_relay_hash_valid},
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
@@ -72,7 +72,7 @@ pub struct FillRelay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [FILL_STATUS_SEED, relay_hash.as_ref()],
         bump,
         // Validate optional parameters before they are unwrapped in other constraints by Anchor.
         constraint = has_valid_params_presence(
