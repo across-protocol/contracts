@@ -15,8 +15,8 @@ use crate::{
     event::FundsDeposited,
     state::State,
     utils::{
-        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from_with_delegate, DelegatePda,
-        DepositNowSeedData, DepositSeedData,
+        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DelegatePda, DepositNowSeedData,
+        DepositSeedData,
     },
 };
 
@@ -144,7 +144,7 @@ pub fn _deposit(
     }
 
     // Depositor must have delegated input_amount to the delegate PDA
-    transfer_from_with_delegate(
+    transfer_from(
         TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.vault, authority: accounts.delegate },
         accounts.token_program,
         input_amount,

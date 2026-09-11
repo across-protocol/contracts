@@ -1,8 +1,7 @@
 # SVM SpokePool V5 adapter specification (wire version 1)
 
 This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. Wire version 1
-currently enables `Deposit`; the reserved `Fill` discriminant returns `UnsupportedMode` until destination behavior
-lands.
+enables both `Deposit` and `Fill`.
 
 ## Dispatch ABI and accounts
 
@@ -55,10 +54,10 @@ cross-VM uint256 values remain 32-byte big-endian EVM words. The leading version
 is decoded, so any unsupported version reports `UnsupportedVersion` even when its body is not compatible with v1.
 
 Gateway token vaults are shared per mint rather than isolated per execution. `InputVaultBalance` therefore resolves
-against shared live state, and the continuing tape must leave no residual balance. Gateway does not currently enforce
-this net-zero settlement invariant. The adapter binds the vault's delegate to `v5_source_delegate` and requires its
-allowance to cover the resolved amount, but deliberately does not require equality: this matches the EVM
-`transferFrom` behavior and accepts sufficient or maximum approvals. Any residual Gateway-vault balance is already
+against shared live state, so route builders must make the continuing tape leave no residual balance. Gateway does not
+currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to `v5_source_delegate`
+and requires its allowance to cover the resolved amount, but deliberately does not require equality: this matches the
+EVM `transferFrom` behavior and accepts sufficient or maximum approvals. Any residual Gateway-vault balance is already
 movable by a later committed Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The
 SpokePool never delegates its own vault.
 
@@ -108,7 +107,10 @@ hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v
 
 An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical
 Gateway-vault delivery validates that same live vault in place and its amount, records the fill, and performs no token
-self-transfer or approval. The continuing atomic tape must consume the output.
+self-transfer or approval. This asserts available balance rather than debiting it. A step root may be reused across
+source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor and
+full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
+consumption. A fixed minimum for one fill does not prove aggregate delivery.
 
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
@@ -137,6 +139,22 @@ only signed, committed JIT modifications, derives the final 32-byte deposit ID d
 identity and live context, and emits the standard `FundsDeposited` event with
 `message = V5_MAGIC_PREFIX || dst_step_id`. Any later failure in the same transaction rolls back the approval,
 transfer, and event atomically.
+
+## Enabled destination-fill behavior
+
+Fill mode strictly decodes the JIT relay and repayment data, binds the recipient, output mint, minimum amount, and
+exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
+Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
+submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
+message hash. The legacy and V5 entrypoints share the same internal `_fill` core for pause, exclusivity, deadline,
+replay protection and status transition, token delivery, fill-type and callback-mode event fields, and canonical event
+construction. Each handler retains only its branch-specific account loading, callback, and event-emission mechanics.
+
+External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
+from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
+vault itself, the adapter instead authenticates its live balance, records the fill in place, and performs no approval
+or self-transfer. Its safety therefore depends on the proportional or aggregate continuing-path rule above. Any later
+failure rolls back token, fill-status, and payer-float changes together.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation

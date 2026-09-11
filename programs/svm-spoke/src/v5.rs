@@ -1,5 +1,4 @@
-//! Wire, cryptographic, and PDA helpers for the Gateway-facing V5 adapter. Source deposits are live in wire version
-//! 1; the reserved fill branch remains closed until its destination behavior lands.
+//! Wire, cryptographic, and PDA helpers for the Gateway-facing V5 source-deposit and destination-fill adapter.
 
 use anchor_lang::{
     prelude::*,
@@ -348,6 +347,7 @@ mod tests {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
         assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
         assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 7_014);
+        assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 7_017);
     }
 
     #[test]
@@ -545,8 +545,13 @@ mod tests {
     #[test]
     fn fill_wire_is_branch_specific() {
         let fixture = fixture();
-        let input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
-        assert!(matches!(input.mode, V5AdapterMode::Fill(_)));
+        let mut input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
+        assert!(matches!(&input.mode, V5AdapterMode::Fill(_)));
+        if let V5AdapterMode::Fill(fill) = &mut input.mode {
+            fill.message.push(1);
+        }
+        assert_error_name(decode_v5_adapter_input(&serialize(&input)), "InvalidWireFormat");
+
         decode_v5_fill_jit(&bytes(&fixture, "/wire/fillJit")).unwrap();
         assert!(decode_v5_fill_jit(&bytes(&fixture, "/wire/depositJit")).is_err());
     }

@@ -346,7 +346,7 @@ describe("svm_spoke V5 source deposit", () => {
     assert.equal(event.depositor.toString(), deposit.depositor.toString());
   });
 
-  it("rejects direct callers, the reserved Fill branch, and malformed wire", async () => {
+  it("rejects direct callers and malformed wire", async () => {
     const input = encodeDeposit(deposit, { literal: true });
     const direct = new TransactionInstruction({
       programId: svmSpoke.programId,
@@ -361,14 +361,6 @@ describe("svm_spoke V5 source deposit", () => {
     });
     await expectError(provider.sendAndConfirm(new Transaction().add(direct)), "InvalidDispatchAuthority");
 
-    const fill = Buffer.concat([
-      Buffer.from([1, 1]),
-      deposit.recipient.toBuffer(),
-      deposit.outputToken.toBuffer(),
-      u64(1),
-      u32(0),
-    ]);
-    await expectError(execute(fill), "UnsupportedMode");
     await expectError(execute(Buffer.concat([input, Buffer.from([0])])), "InvalidWireFormat");
   });
 

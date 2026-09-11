@@ -11,19 +11,22 @@ use anchor_spl::{
 
 use crate::{
     constants::{
-        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_SEED,
+        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX,
+        V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_SEED,
     },
     error::{CommonError, V5Error},
     state::State,
-    utils::DelegatePda,
+    utils::{get_relay_hash, DelegatePda},
     v5::{
-        decode_v5_adapter_input, decode_v5_deposit_jit, derive_v5_deposit_id, find_v5_account,
+        decode_v5_adapter_input, decode_v5_deposit_jit, decode_v5_fill_jit, derive_v5_deposit_id, find_v5_account,
         require_gateway_dispatch_authority, require_v5_delegate_allowance, resolve_v5_deposit_modifications,
-        resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5GatewayContext,
+        resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5FillInput, V5GatewayContext,
     },
 };
 
-use super::{_deposit, DepositAccounts, DepositId};
+use super::{
+    _deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillDelivery, FillStatusInput, V5FillStatusPdas,
+};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -44,7 +47,7 @@ pub fn adapter_execute_across_v5<'info>(
     require_gateway_dispatch_authority(&ctx.accounts.dispatch_authority)?;
     match decode_v5_adapter_input(&input)?.mode {
         V5AdapterMode::Deposit(deposit) => execute_v5_deposit(ctx, ctx_values, deposit, &jit_data),
-        V5AdapterMode::Fill(_) => err!(V5Error::UnsupportedMode),
+        V5AdapterMode::Fill(fill_input) => execute_v5_fill(ctx, ctx_values, fill_input, &jit_data),
     }
 }
 
@@ -100,6 +103,127 @@ fn execute_v5_deposit<'info>(
     )?;
     emit_cpi!(event);
     Ok(())
+}
+
+fn execute_v5_fill<'info>(
+    ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+    ctx_values: V5GatewayContext,
+    fill_input: V5FillInput,
+    jit_data: &[u8],
+) -> Result<()> {
+    let jit = decode_v5_fill_jit(jit_data)?;
+    let relay = &jit.relay_data;
+    require!(
+        relay.recipient == fill_input.recipient
+            && relay.output_token == fill_input.output_token
+            && relay.message.len() == 64
+            && relay.message[..32] == V5_MAGIC_PREFIX
+            && relay.message[32..] == ctx_values.step_id,
+        V5Error::FillCommitmentMismatch
+    );
+    require!(relay.output_amount >= fill_input.min_output_amount, V5Error::FillOutputAmountTooLow);
+
+    let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
+    let accounts = load_v5_fill_accounts(
+        ctx.remaining_accounts,
+        &fill_input,
+        relay.output_amount,
+        &ctx_values.submitter,
+        &relay_hash,
+    )?;
+    let event = _fill(
+        accounts.fill,
+        &ctx.accounts.state,
+        relay,
+        &fill_input.message,
+        jit.repayment_chain_id,
+        jit.repayment_address,
+        ctx_values.submitter,
+        FillStatusInput::V5 {
+            payer: &accounts.payer,
+            fill_status: &accounts.fill_status,
+            system_program: &accounts.system_program,
+            pdas: &accounts.fill_status_pdas,
+        },
+        DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
+    )?;
+
+    emit_cpi!(event);
+    Ok(())
+}
+
+struct V5FillAccounts<'a, 'info> {
+    fill: FillAccounts<'info>,
+    payer: AccountInfo<'info>,
+    fill_status: AccountInfo<'info>,
+    system_program: AccountInfo<'info>,
+    fill_status_pdas: V5FillStatusPdas<'a>,
+}
+
+fn load_v5_fill_accounts<'a, 'info>(
+    remaining_accounts: &[AccountInfo<'info>],
+    fill_input: &V5FillInput,
+    output_amount: u64,
+    submitter: &'a Pubkey,
+    relay_hash: &'a [u8; 32],
+) -> Result<V5FillAccounts<'a, 'info>> {
+    let mint_info = find_v5_account(remaining_accounts, &fill_input.output_token, false)?;
+    let token_program_id = *mint_info.owner;
+    require!(
+        token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
+        V5Error::InvalidTokenAccount
+    );
+    let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
+    require!(token_program.executable, V5Error::InvalidTokenAccount);
+    reject_unsupported_mint_extensions(mint_info, &token_program_id)?;
+
+    let gateway_vault = get_associated_token_address_with_program_id(
+        &GATEWAY_VAULT_AUTHORITY,
+        &fill_input.output_token,
+        &token_program_id,
+    );
+    let recipient = get_associated_token_address_with_program_id(
+        &fill_input.recipient,
+        &fill_input.output_token,
+        &token_program_id,
+    );
+    let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
+    let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
+    let mint_decimals = load_mint(mint_info)?.decimals;
+    let source =
+        load_token_account(gateway_vault_info, &token_program_id, &fill_input.output_token, &GATEWAY_VAULT_AUTHORITY)?;
+    load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
+
+    let delivery = if gateway_vault == recipient {
+        // This check is not a debit. Builders must consume after one fill or enforce an aggregate floor covering
+        // every in-place fill recorded before full-balance consumption; step-root reuse alone is valid.
+        require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
+        FillDelivery::InPlace
+    } else {
+        require!(source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
+        require_v5_delegate_allowance(source.delegated_amount, output_amount)?;
+        FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
+    };
+
+    let fill_status_pdas = V5FillStatusPdas::derive(submitter, relay_hash);
+    let payer_info = find_v5_account(remaining_accounts, &fill_status_pdas.payer(), true)?;
+    let fill_status_info = find_v5_account(remaining_accounts, &fill_status_pdas.fill_status(), true)?;
+    let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
+
+    Ok(V5FillAccounts {
+        fill: FillAccounts {
+            from: gateway_vault_info.clone(),
+            recipient: recipient_info.clone(),
+            delivery,
+            mint: mint_info.clone(),
+            token_program: token_program.clone(),
+            mint_decimals,
+        },
+        payer: payer_info.clone(),
+        fill_status: fill_status_info.clone(),
+        system_program: system_program_info.clone(),
+        fill_status_pdas,
+    })
 }
 
 fn load_v5_deposit_accounts<'info>(

@@ -1,21 +1,23 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+    token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 use crate::{
     common::RelayData,
     constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED},
     constraints::{has_valid_params_presence, is_relay_hash_valid},
-    error::{CommonError, SvmError},
+    error::{CommonError, SvmError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
     utils::{
         derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, is_v5_message, transfer_from,
-        FillSeedData,
+        DelegatePda, FillSeedData,
     },
 };
+
+use super::{create_v5_fill_status_account, PendingV5FillStatus, V5FillStatusPdas};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -90,77 +92,134 @@ pub struct FillRelay<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn fill_relay<'info>(
-    ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
-    relay_hash: [u8; 32],
-    relay_data: Option<RelayData>,
-    repayment_chain_id: Option<u64>,
-    repayment_address: Option<Pubkey>,
-) -> Result<()> {
-    // This type of constraint normally would be checked in the context, but had to move it here in the handler to avoid
-    // exceeding maximum stack offset.
-    require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
+pub enum FillStatusInput<'a, 'info> {
+    Legacy(&'a mut FillStatusAccount),
+    V5 {
+        payer: &'a AccountInfo<'info>,
+        fill_status: &'a AccountInfo<'info>,
+        system_program: &'a AccountInfo<'info>,
+        pdas: &'a V5FillStatusPdas<'a>,
+    },
+}
 
-    let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
-        unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
+enum FillStatusStorage<'a, 'info> {
+    Legacy {
+        fill_status: &'a mut FillStatusAccount,
+        rent_recipient: Pubkey,
+    },
+    V5(PendingV5FillStatus<'a, 'info>),
+}
 
-    // V5 tagged deposits must be filled through new V5 entrypoints
-    if is_v5_message(&relay_data.message) {
-        return err!(CommonError::V5FillOnly);
+impl FillStatusStorage<'_, '_> {
+    fn write_filled(self, fill_deadline: u32) -> Result<()> {
+        match self {
+            Self::Legacy { fill_status, rent_recipient } => {
+                *fill_status = FillStatusAccount { status: FillStatus::Filled, relayer: rent_recipient, fill_deadline };
+                Ok(())
+            }
+            Self::V5(fill_status) => fill_status.write_filled(fill_deadline),
+        }
     }
+}
 
-    let state = &ctx.accounts.state;
+pub enum FillDelivery<'info> {
+    Delegated(AccountInfo<'info>),
+    /// Tokens are already in the recipient account; `_fill` verifies the source and recipient match.
+    InPlace,
+}
+
+pub struct FillAccounts<'info> {
+    pub from: AccountInfo<'info>,
+    pub recipient: AccountInfo<'info>,
+    pub delivery: FillDelivery<'info>,
+    pub mint: AccountInfo<'info>,
+    pub token_program: AccountInfo<'info>,
+    pub mint_decimals: u8,
+}
+
+impl<'info> From<&FillRelay<'info>> for FillAccounts<'info> {
+    fn from(accounts: &FillRelay<'info>) -> Self {
+        Self {
+            from: accounts.relayer_token_account.to_account_info(),
+            recipient: accounts.recipient_token_account.to_account_info(),
+            delivery: FillDelivery::Delegated(accounts.delegate.to_account_info()),
+            mint: accounts.mint.to_account_info(),
+            token_program: accounts.token_program.to_account_info(),
+            mint_decimals: accounts.mint.decimals,
+        }
+    }
+}
+
+/// Executes shared fill validation, token delivery, and status transition, then constructs the event.
+/// Instruction handlers retain only branch-specific account loading, callback handling, and event emission.
+// Preserve a separate SBF frame; inlining event construction can push stack-heavy fill handlers past the 4 KiB limit.
+#[inline(never)]
+pub fn _fill(
+    accounts: FillAccounts<'_>,
+    state: &State,
+    relay_data: &RelayData,
+    updated_message: &[u8],
+    repayment_chain_id: u64,
+    repayment_address: Pubkey,
+    submitter: Pubkey,
+    fill_status_input: FillStatusInput<'_, '_>,
+    delegate_pda: DelegatePda,
+) -> Result<FilledRelay> {
+    require!(!state.paused_fills, CommonError::FillsArePaused);
+
     let current_time = get_current_time(state)?;
 
-    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
-    if relay_data.exclusive_relayer != ctx.accounts.signer.key()
+    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer.
+    if relay_data.exclusive_relayer != submitter
         && relay_data.exclusivity_deadline >= current_time
         && relay_data.exclusive_relayer != Pubkey::default()
     {
         return err!(CommonError::NotExclusiveRelayer);
     }
 
-    // Check if the fill deadline has passed
+    // Check if the fill deadline has passed.
     if relay_data.fill_deadline < current_time {
         return err!(CommonError::ExpiredFillDeadline);
     }
 
-    // Check the fill status and set the fill type
-    let fill_status_account = &mut ctx.accounts.fill_status;
-    let fill_type = match fill_status_account.status {
-        FillStatus::Filled => {
-            return err!(CommonError::RelayFilled);
+    // Check the fill status and set the fill type.
+    let (fill_status, fill_type) = match fill_status_input {
+        FillStatusInput::Legacy(fill_status) => {
+            let fill_type = match fill_status.status {
+                FillStatus::Filled => return err!(CommonError::RelayFilled),
+                FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
+                FillStatus::Unfilled => FillType::FastFill,
+            };
+            (FillStatusStorage::Legacy { fill_status, rent_recipient: submitter }, fill_type)
         }
-        FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
-        _ => FillType::FastFill,
+        FillStatusInput::V5 { payer, fill_status, system_program, pdas } => {
+            // Account creation rejects existing program-owned state; V5 has no slow-fill lifecycle.
+            let fill_status = create_v5_fill_status_account(payer, fill_status, system_program, pdas)?;
+            (FillStatusStorage::V5(fill_status), FillType::FastFill)
+        }
     };
 
-    let seed_hash = derive_seed_hash(&(FillSeedData { relay_hash, repayment_chain_id, repayment_address }));
-
-    // Relayer must have delegated output_amount to the delegate PDA
-    transfer_from(
-        &ctx.accounts.relayer_token_account,
-        &ctx.accounts.recipient_token_account,
-        relay_data.output_amount,
-        &ctx.accounts.delegate,
-        &ctx.accounts.mint,
-        &ctx.accounts.token_program,
-        seed_hash,
-    )?;
-
-    // Update the fill status to Filled, set the relayer and fill deadline
-    fill_status_account.status = FillStatus::Filled;
-    fill_status_account.relayer = *ctx.accounts.signer.key;
-    fill_status_account.fill_deadline = relay_data.fill_deadline;
-
-    if !relay_data.message.is_empty() {
-        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
+    // Enforce the shared contract for explicitly selected in-place delivery.
+    match accounts.delivery {
+        FillDelivery::Delegated(delegate) => transfer_from(
+            TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
+            accounts.token_program,
+            relay_data.output_amount,
+            accounts.mint_decimals,
+            delegate_pda,
+        )?,
+        FillDelivery::InPlace => {
+            require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
+        }
     }
+
+    // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
+    fill_status.write_filled(relay_data.fill_deadline)?;
 
     // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
     let message_hash = hash_non_empty_message(&relay_data.message);
 
-    emit_cpi!(FilledRelay {
+    Ok(FilledRelay {
         input_token: relay_data.input_token,
         output_token: relay_data.output_token,
         input_amount: relay_data.input_amount,
@@ -177,11 +236,45 @@ pub fn fill_relay<'info>(
         message_hash,
         relay_execution_info: RelayExecutionEventInfo {
             updated_recipient: relay_data.recipient,
-            updated_message_hash: message_hash,
+            updated_message_hash: hash_non_empty_message(updated_message),
             updated_output_amount: relay_data.output_amount,
             fill_type,
         },
-    });
+    })
+}
+
+pub fn fill_relay<'info>(
+    ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
+    relay_hash: [u8; 32],
+    relay_data: Option<RelayData>,
+    repayment_chain_id: Option<u64>,
+    repayment_address: Option<Pubkey>,
+) -> Result<()> {
+    let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
+        unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
+
+    // V5 tagged deposits must be filled through new V5 entrypoints
+    if is_v5_message(&relay_data.message) {
+        return err!(CommonError::V5FillOnly);
+    }
+
+    let event = _fill(
+        FillAccounts::from(&*ctx.accounts),
+        &ctx.accounts.state,
+        &relay_data,
+        &relay_data.message,
+        repayment_chain_id,
+        repayment_address,
+        ctx.accounts.signer.key(),
+        FillStatusInput::Legacy(&mut ctx.accounts.fill_status),
+        DelegatePda::UniqueHash(derive_seed_hash(&FillSeedData { relay_hash, repayment_chain_id, repayment_address })),
+    )?;
+
+    if !relay_data.message.is_empty() {
+        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
+    }
+
+    emit_cpi!(event);
 
     Ok(())
 }
@@ -205,6 +298,191 @@ fn unwrap_fill_relay_params(
                 repayment_address: account.repayment_address,
             })
             .unwrap(), // We do not expect this to panic here as optional parameters are validated in context.
+    }
+}
+
+#[cfg(all(test, feature = "test"))]
+mod tests {
+    use super::*;
+
+    fn account_info() -> AccountInfo<'static> {
+        AccountInfo::new(
+            Box::leak(Box::new(Pubkey::new_unique())),
+            false,
+            false,
+            Box::leak(Box::new(0)),
+            Box::leak(Vec::new().into_boxed_slice()),
+            Box::leak(Box::new(Pubkey::new_unique())),
+            false,
+            0,
+        )
+    }
+
+    fn in_place_fill_accounts() -> FillAccounts<'static> {
+        let account = account_info();
+        FillAccounts {
+            from: account.clone(),
+            recipient: account.clone(),
+            delivery: FillDelivery::InPlace,
+            mint: account.clone(),
+            token_program: account,
+            mint_decimals: 0,
+        }
+    }
+
+    fn fill_without_transfer(
+        state: &State,
+        relay_data: &RelayData,
+        repayment_chain_id: u64,
+        repayment_address: Pubkey,
+        submitter: Pubkey,
+        fill_status: &mut FillStatusAccount,
+    ) -> Result<FilledRelay> {
+        _fill(
+            in_place_fill_accounts(),
+            state,
+            relay_data,
+            &[],
+            repayment_chain_id,
+            repayment_address,
+            submitter,
+            FillStatusInput::Legacy(fill_status),
+            DelegatePda::FunctionSeed(b"unused"),
+        )
+    }
+
+    fn fill_status(status: FillStatus) -> FillStatusAccount {
+        FillStatusAccount { status, relayer: Pubkey::default(), fill_deadline: 0 }
+    }
+
+    fn state() -> State {
+        State {
+            paused_deposits: false,
+            paused_fills: false,
+            owner: Pubkey::new_unique(),
+            seed: 0,
+            number_of_deposits: 0,
+            chain_id: 342_683_945_514_51,
+            current_time: 100,
+            remote_domain: 0,
+            cross_domain_admin: Pubkey::new_unique(),
+            root_bundle_id: 0,
+            deposit_quote_time_buffer: 0,
+            fill_deadline_buffer: 0,
+        }
+    }
+
+    fn relay_data() -> RelayData {
+        RelayData {
+            depositor: Pubkey::new_unique(),
+            recipient: Pubkey::new_unique(),
+            exclusive_relayer: Pubkey::default(),
+            input_token: Pubkey::new_unique(),
+            output_token: Pubkey::new_unique(),
+            input_amount: [1; 32],
+            output_amount: 42,
+            origin_chain_id: 1,
+            deposit_id: [2; 32],
+            fill_deadline: 101,
+            exclusivity_deadline: 99,
+            message: vec![3],
+        }
+    }
+
+    fn assert_error_name<T>(result: Result<T>, expected: &str) {
+        match result {
+            Err(anchor_lang::error::Error::AnchorError(error)) => assert_eq!(error.error_name, expected),
+            Err(_) => panic!("expected Anchor error"),
+            Ok(_) => panic!("expected error"),
+        }
+    }
+
+    #[test]
+    fn shared_fill_core_constructs_event_and_updates_status() {
+        let state = state();
+        let relay = relay_data();
+        let submitter = Pubkey::new_unique();
+        let repayment_address = Pubkey::new_unique();
+        let mut status = fill_status(FillStatus::Unfilled);
+        let event = fill_without_transfer(&state, &relay, 10, repayment_address, submitter, &mut status).unwrap();
+
+        assert_eq!(event.relayer, repayment_address);
+        assert_eq!(event.relay_execution_info.updated_recipient, relay.recipient);
+        assert_eq!(event.relay_execution_info.updated_output_amount, relay.output_amount);
+        assert_eq!(event.message_hash, hash_non_empty_message(&relay.message));
+        assert_eq!(event.relay_execution_info.updated_message_hash, [0u8; 32]);
+        assert!(matches!(event.relay_execution_info.fill_type, FillType::FastFill));
+        assert!(matches!(status.status, FillStatus::Filled));
+        assert_eq!(status.relayer, submitter);
+        assert_eq!(status.fill_deadline, relay.fill_deadline);
+    }
+
+    #[test]
+    fn shared_fill_core_keeps_legacy_replay_resolution() {
+        let state = state();
+        let relay = relay_data();
+        let submitter = Pubkey::new_unique();
+        let mut requested = fill_status(FillStatus::RequestedSlowFill);
+        let event = fill_without_transfer(&state, &relay, 10, Pubkey::new_unique(), submitter, &mut requested).unwrap();
+        assert!(matches!(event.relay_execution_info.fill_type, FillType::ReplacedSlowFill));
+
+        let mut filled = fill_status(FillStatus::Filled);
+        assert_error_name(
+            fill_without_transfer(&state, &relay, 10, Pubkey::new_unique(), submitter, &mut filled),
+            "RelayFilled",
+        );
+    }
+
+    #[test]
+    fn shared_fill_core_applies_common_guards_before_status_transition() {
+        let mut state = state();
+        let mut relay = relay_data();
+        let submitter = Pubkey::new_unique();
+        let mut status = fill_status(FillStatus::Unfilled);
+
+        state.paused_fills = true;
+        assert_error_name(
+            fill_without_transfer(&state, &relay, 10, Pubkey::new_unique(), submitter, &mut status),
+            "FillsArePaused",
+        );
+        state.paused_fills = false;
+
+        relay.exclusive_relayer = Pubkey::new_unique();
+        relay.exclusivity_deadline = state.current_time;
+        assert_error_name(
+            fill_without_transfer(&state, &relay, 10, Pubkey::new_unique(), submitter, &mut status),
+            "NotExclusiveRelayer",
+        );
+
+        relay.exclusive_relayer = Pubkey::default();
+        relay.fill_deadline = state.current_time - 1;
+        assert_error_name(
+            fill_without_transfer(&state, &relay, 10, Pubkey::new_unique(), submitter, &mut status),
+            "ExpiredFillDeadline",
+        );
+        assert!(matches!(status.status, FillStatus::Unfilled));
+    }
+
+    #[test]
+    fn shared_fill_core_only_skips_authenticated_in_place_delivery() {
+        let mut accounts = in_place_fill_accounts();
+        accounts.recipient = account_info();
+        let mut status = fill_status(FillStatus::Unfilled);
+        assert_error_name(
+            _fill(
+                accounts,
+                &state(),
+                &relay_data(),
+                &[],
+                10,
+                Pubkey::new_unique(),
+                Pubkey::new_unique(),
+                FillStatusInput::Legacy(&mut status),
+                DelegatePda::FunctionSeed(b"unused"),
+            ),
+            "InvalidTokenAccount",
+        );
+        assert!(matches!(status.status, FillStatus::Unfilled));
     }
 }
 
