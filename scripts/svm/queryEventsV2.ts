@@ -22,14 +22,12 @@ const argvPromise = yargs(hideBin(process.argv))
       "EnabledDepositRoute",
       "RelayedRootBundle",
       "ExecutedRelayerRefundRoot",
-      "BridgedToHubPool",
       "PausedDeposits",
       "PausedFills",
       "SetXDomainAdmin",
       "EmergencyDeletedRootBundle",
       "RequestedSlowFill",
       "ClaimedRelayerRefund",
-      "TokensBridged",
     ],
   })
   .option("programId", {
