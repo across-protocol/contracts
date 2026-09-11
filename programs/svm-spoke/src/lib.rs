@@ -44,6 +44,9 @@ use state::*;
 use utils::*;
 use v5::V5GatewayContext;
 
+#[cfg(test)]
+mod tests;
+
 #[program]
 pub mod svm_spoke {
     use super::*;
@@ -139,7 +142,7 @@ pub mod svm_spoke {
 
     /// Stores a new root bundle for later execution. Only callable by the owner.
     ///
-    /// Once stored, these roots are used to execute relayer refunds, slow fills, and pool rebalancing actions.
+    /// The refund root authorizes relayer refunds. The slow root is stored only for compatibility and cannot execute.
     /// This method initializes a root_bundle PDA to store the root bundle data. The caller
     /// of this method is responsible for paying the rent for this PDA.
     ///
@@ -153,7 +156,7 @@ pub mod svm_spoke {
     ///
     /// ### Parameters:
     /// - relayer_refund_root: Merkle root of the relayer refund tree.
-    /// - slow_relay_root: Merkle root of the slow relay tree.
+    /// - slow_relay_root: Inert legacy root retained for cross-chain admin ABI compatibility.
     pub fn relay_root_bundle(
         ctx: Context<RelayRootBundle>,
         relayer_refund_root: [u8; 32],
@@ -403,7 +406,7 @@ pub mod svm_spoke {
     /// - relayer_token_account (Writable): The relayer's ATA for the input token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
     /// - fill_status (Writable): The fill status PDA, created on this function call to track the fill status to prevent
-    ///   re-entrancy & double fills. Also used to track requested slow fills. Seed: ["fills",relay_hash].
+    ///   re-entrancy & double fills. May contain a pre-upgrade slow-fill request. Seed: ["fills",relay_hash].
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Interface): The associated token program.
     /// - system_program (Interface): The system program.
@@ -683,94 +686,6 @@ pub mod svm_spoke {
     /// - claim_account (Writable): The claim account PDA to be closed. Seed: ["claim_account",mint,refund_address].
     pub fn close_claim_account(ctx: Context<CloseClaimAccount>) -> Result<()> {
         instructions::close_claim_account(ctx)
-    }
-
-    // **************************************
-    //         SLOW FILL FUNCTIONS          *
-    // *************************************
-
-    /// Requests Across to send LP funds to this program to fulfill a slow fill.
-    ///
-    /// Slow fills are not possible unless the input and output tokens are "equivalent", i.e., they route to the same L1
-    /// token via PoolRebalanceRoutes. Slow fills are created by inserting slow fill objects into a Merkle tree that is
-    /// included in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool will
-    /// relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed, the slow fill can be
-    /// executed by anyone who calls executeSlowRelayLeaf(). Cant request a slow fill if the fill deadline has
-    /// passed. Cant request a slow fill if the relay has already been filled or a slow fill has already been requested.
-    ///
-    /// ### Required Accounts:
-    /// - signer (Signer): The account that authorizes the slow fill request.
-    /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
-    ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
-    ///   be derived from the signer's public key with seed ["instruction_params",signer].
-    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - fill_status (Writable): The fill status PDA, created on this function call. Updated to track slow fill status.
-    ///   Used to prevent double request and fill. Seed: ["fills",relay_hash].
-    /// - system_program (Interface): The system program.
-    ///
-    /// ### Parameters:
-    /// - _relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
-    ///   the flattened relay_data & destination_chain_id.
-    /// - relay_data: Struct containing all the data needed to identify the deposit that should be slow filled. If any
-    ///   of the params are missing or different from the origin chain deposit, then Across will not include a slow
-    ///   fill for the intended deposit. See fill_relay & RelayData struct for more details.
-    /// Note: relay_data is optional parameter. If None for it is passed, the caller must load it via the
-    /// instruction_params account.
-    pub fn request_slow_fill(
-        ctx: Context<RequestSlowFill>,
-        _relay_hash: [u8; 32],
-        relay_data: Option<RelayData>,
-    ) -> Result<()> {
-        instructions::request_slow_fill(ctx, relay_data)
-    }
-
-    /// Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
-    ///
-    /// Executing a slow fill leaf is equivalent to filling the relayData, so this function cannot be used to
-    /// double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-    /// like any other fill sent through fillRelay(). There is no relayer credited with filling this relay since funds
-    /// are sent directly out of this program's vault.
-    ///
-    /// ### Required Accounts:
-    /// - signer (Signer): The account that authorizes the execution. No permission requirements.
-    /// - instruction_params (Account): Optional account to load instruction parameters when they are not passed in the
-    ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
-    ///   be derived from the signer's public key with seed ["instruction_params",signer].
-    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - root_bundle (Account): Root bundle PDA with slowRelayRoot. Seed: ["root_bundle",state.seed,root_bundle_id].
-    /// - fill_status (Writable): The fill status PDA, created when slow request was made. Updated to track slow fill.
-    ///   Used to prevent double request and fill. Seed: ["fills",relay_hash].
-    /// - mint (Account): The mint account for the output token.
-    /// - recipient_token_account (Writable): The recipient's ATA for the output token.
-    /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
-    /// - token_program (Interface): The token program.
-    /// - system_program (Program): The system program.
-    ///
-    /// ### Parameters:
-    /// - _relay_hash: The hash identifying the deposit to be filled. Used to identify the deposit to be filled.
-    /// - slow_fill_leaf: Contains all data necessary to uniquely verify the slow fill. This struct contains:
-    ///     - relayData: Struct containing all the data needed to identify the original deposit to be slow filled. Same
-    ///       as the relay_data struct in fill_relay().
-    ///     - chainId: Chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
-    ///       chainId, then this function will revert.
-    ///     - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
-    ///       from relayData.outputAmount to charge a different fee because this deposit was "slow" filled. Usually,
-    ///       this will be set higher to reimburse the recipient for waiting for the slow fill.
-    /// - _root_bundle_id: Unique ID of root bundle containing slow relay root that this leaf is contained in.
-    /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
-    /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters, but their presence must be consistent.
-    /// If None for these parameters is passed, the caller must load them via the instruction_params account.
-    /// Note: When verifying the slow fill leaf, the relay data is hashed using AnchorSerialize::serialize that encodes
-    /// output token amounts to little-endian format while input token amount preserves its big-endian encoding as it
-    /// is passed as [u8; 32] array.
-    pub fn execute_slow_relay_leaf<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
-        _relay_hash: [u8; 32],
-        slow_fill_leaf: Option<SlowFill>,
-        _root_bundle_id: Option<u32>,
-        proof: Option<Vec<[u8; 32]>>,
-    ) -> Result<()> {
-        instructions::execute_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
 
     // **************************************

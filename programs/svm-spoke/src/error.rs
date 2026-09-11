@@ -9,10 +9,12 @@ pub enum CommonError {
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
+    // Historical slow-fill exclusivity error; no longer raised.
     #[msg("The Deposit is still within the exclusivity window!")]
     NoSlowFillsInExclusivityWindow,
     #[msg("The relay has already been filled!")]
     RelayFilled,
+    // Historical slow-fill request error; no longer raised.
     #[msg("Slow fill requires status of Unfilled!")]
     InvalidSlowFillRequest,
     #[msg("The fill deadline has passed!")]

@@ -28,15 +28,6 @@ export interface RelayerRefundLeafSolana {
 export type RelayerRefundLeafType = RelayerRefundLeaf | RelayerRefundLeafSolana;
 
 /**
- * Slow Fill Leaf Interface
- */
-export interface SlowFillLeaf {
-  relayData: RelayData;
-  chainId: BN;
-  updatedOutputAmount: BN;
-}
-
-/**
  * Relay Data Interface
  */
 export type RelayData = {
@@ -95,20 +86,6 @@ export type FillDataValues = [number[], RelayData, BN, PublicKey];
 export type FillDataParams = [number[], RelayData | null, BN | null, PublicKey | null];
 
 /**
- * Request Slow Fill Data Interfaces
- */
-export type RequestSlowFillDataValues = [number[], RelayData];
-
-export type RequestSlowFillDataParams = [number[], RelayData | null];
-
-/**
- * Execute Slow Relay Leaf Data Interfaces
- */
-export type ExecuteSlowRelayLeafDataValues = [number[], SlowFillLeaf, number, number[][]];
-
-export type ExecuteSlowRelayLeafDataParams = [number[], SlowFillLeaf | null, number | null, number[][] | null];
-
-/**
  * Across+ Message Interface
  */
 export type AcrossPlusMessage = {
@@ -151,35 +128,6 @@ export type FillAccounts = {
   fillStatus: PublicKey;
   tokenProgram: PublicKey;
   associatedTokenProgram: PublicKey;
-  systemProgram: PublicKey;
-  program: PublicKey;
-};
-
-/**
- * Request Slow Fill Accounts
- */
-export type RequestSlowFillAccounts = {
-  signer: PublicKey;
-  instructionParams: PublicKey;
-  state: PublicKey;
-  fillStatus: PublicKey;
-  systemProgram: PublicKey;
-  program: PublicKey;
-};
-
-/**
- * Execute Slow Relay Leaf Accounts
- */
-export type ExecuteSlowRelayLeafAccounts = {
-  signer: PublicKey;
-  instructionParams: PublicKey;
-  state: PublicKey;
-  rootBundle: PublicKey;
-  fillStatus: PublicKey;
-  mint: PublicKey;
-  recipientTokenAccount: PublicKey;
-  vault: PublicKey;
-  tokenProgram: PublicKey;
   systemProgram: PublicKey;
   program: PublicKey;
 };

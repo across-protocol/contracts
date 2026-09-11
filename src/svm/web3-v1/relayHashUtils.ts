@@ -1,6 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
 import { ethers } from "ethers";
-import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../../types/svm";
+import { RelayerRefundLeaf, RelayerRefundLeafSolana } from "../../types/svm";
 import { serialize } from "borsh";
 
 /**
@@ -154,69 +154,3 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
     return calculateRelayerRefundLeafHashUint8Array(input as RelayerRefundLeafSolana);
   }
 };
-
-/**
- * Class for slow fill data.
- */
-class SlowFillData {
-  constructor(properties: any) {
-    Object.assign(this, properties);
-  }
-}
-
-/**
- * Schema for slow fill data.
- */
-const slowFillDataSchema = new Map([
-  [
-    SlowFillData,
-    {
-      kind: "struct",
-      fields: [
-        ["depositor", [32]],
-        ["recipient", [32]],
-        ["exclusiveRelayer", [32]],
-        ["inputToken", [32]],
-        ["outputToken", [32]],
-        ["inputAmount", [32]],
-        ["outputAmount", "u64"],
-        ["originChainId", "u64"],
-        ["depositId", [32]],
-        ["fillDeadline", "u32"],
-        ["exclusivityDeadline", "u32"],
-        ["message", ["u8"]],
-        ["chainId", "u64"],
-        ["updatedOutputAmount", "u64"],
-      ],
-    },
-  ],
-]);
-
-/**
- * Hash function for slow fill leaves.
- */
-export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
-  const data = new SlowFillData({
-    depositor: Uint8Array.from(slowFillLeaf.relayData.depositor.toBuffer()),
-    recipient: Uint8Array.from(slowFillLeaf.relayData.recipient.toBuffer()),
-    exclusiveRelayer: Uint8Array.from(slowFillLeaf.relayData.exclusiveRelayer.toBuffer()),
-    inputToken: Uint8Array.from(slowFillLeaf.relayData.inputToken.toBuffer()),
-    outputToken: Uint8Array.from(slowFillLeaf.relayData.outputToken.toBuffer()),
-    inputAmount: slowFillLeaf.relayData.inputAmount,
-    outputAmount: slowFillLeaf.relayData.outputAmount,
-    originChainId: slowFillLeaf.relayData.originChainId,
-    depositId: Uint8Array.from(Buffer.from(slowFillLeaf.relayData.depositId)),
-    fillDeadline: slowFillLeaf.relayData.fillDeadline,
-    exclusivityDeadline: slowFillLeaf.relayData.exclusivityDeadline,
-    message: Uint8Array.from(slowFillLeaf.relayData.message),
-    chainId: slowFillLeaf.chainId,
-    updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
-  });
-
-  const serializedData = serialize(slowFillDataSchema, data);
-
-  // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves cannot be played on SVM and vice versa
-  const contentToHash = Buffer.concat([Buffer.alloc(64, 0), serializedData]);
-
-  return ethers.utils.keccak256(contentToHash);
-}
