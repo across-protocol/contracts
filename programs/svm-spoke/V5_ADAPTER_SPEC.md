@@ -112,6 +112,19 @@ source deposits, but canonical builders must either allow at most one in-place f
 full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
 consumption. A fixed minimum for one fill does not prove aggregate delivery.
 
+The obligation covers **actual JIT output amounts for all allowed executions**, not just the sum of committed
+`min_output_amount` values or the amounts in a sampled quote. Two fills can each accept output `2X` against a shared
+balance of `2X`; a later floor of `2X` and full drain still deliver only half the `4X` recorded obligation. Keep
+aggregate paths disabled unless their permitted relay/JIT choices and cumulative delivery are authenticated together.
+Swap/action/planner paths require an equivalent proportional or aggregate postcondition on the committed final
+outcome. A successful path with missing or short consumption retains its recorded fills; atomicity only rolls back a
+transaction that actually fails. Failed transaction logs may contain attempted fill events; consumers must check
+transaction success before accepting them.
+
+This delivery obligation is shared with EVM. API builders and relayers must port the existing policy and applicable
+conformance cases before enabling SVM routes. This test lane alone does not enable a production route or require
+new aggregation support.
+
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
@@ -160,3 +173,25 @@ Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation
 of the EVM adapter. The JIT digest layout matches `AcrossDepositDelegateAdapter`, while SVM deposit identity
 necessarily uses a 32-byte executor program ID instead of EVM's 20-byte caller address.
+
+## Real Gateway conformance
+
+`yarn test-svm-gateway` builds the actual Gateway and prefunded adapter at
+[`457cf693`](https://github.com/across-protocol/solana-v5/commit/457cf693d09765c8e7e9ab33d23f84cba0999afe)
+and runs a separate validator alongside this checkout's test-feature SpokePool. The normal Anchor suite retains its
+mock. The foreign programs have their own Anchor version; there is no cross-repository Rust dependency.
+
+At this pin, Gateway `remaining_accounts` is only an account lookup pool. Each `ADAPTER_CALL` must name its entire
+callee account list after the dispatch signer: the fixed state/event/program prefix and all branch accounts. A
+committed zero-key writable injected slot identifies each fill-status/payer account; its actual key prefixes that
+command's JIT payload and is independently authenticated by the SpokePool's PDA derivations. Prefunded calls similarly
+inject the witness-derived credit and its payer before the adapter's payer-claim payload. Supplying an account only in
+the outer pool does not forward it. Committed signer metas and duplicate dispatch metas are rejected.
+
+The integration suite derives relays from actual origin deposit events, binds `dst_step_id` to a destination root,
+exercises both siblings and separately funded root reuse, and distinguishes safe consumption from deliberately
+accepted unsafe primitives. Its aggregate examples prove or disprove delivery for concrete executions; they do not
+authenticate all JIT variants of an aggregate production route. The canonical reference constructor only emits the
+single-fill template. `fixtures/v5_gateway_path.json` additionally pins Borsh consumption-tape bytes, path hashes,
+sorted sibling roots and witnesses across TypeScript, Rust and Solidity. Its placeholder keys are hashing fixtures,
+not deployed token accounts. See [the lane guide](../../test/svm-gateway/README.md) for execution and companion docs.
