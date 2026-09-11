@@ -7,52 +7,39 @@ import * as path from "path";
 const RPC_URL = "https://api.devnet.solana.com";
 
 const main = async () => {
+  // Asset generation scans these directories; remove V1 leftovers before it can re-export them.
+  for (const name of ["message_transmitter", "token_messenger_minter"]) {
+    for (const [directory, extension] of [
+      ["target/idl", "json"],
+      ["target/types", "ts"],
+      ["src/svm/assets/idl", "json"],
+      ["src/svm/assets", "ts"],
+    ])
+      fs.rmSync(path.resolve(__dirname, "../../..", directory, `${name}.${extension}`), { force: true });
+  }
+
   const externalPrograms = [
-    { name: "message_transmitter", id: "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd", legacyIdl: true },
-    { name: "token_messenger_minter", id: "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3", legacyIdl: true },
-    { name: "message_transmitter_v2", id: "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC", legacyIdl: false },
-    { name: "token_messenger_minter_v2", id: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe", legacyIdl: false },
+    { name: "message_transmitter_v2", id: "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC" },
+    { name: "token_messenger_minter_v2", id: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe" },
   ];
 
   for (const program of externalPrograms) {
-    await fetchIdl(program.name, program.id, program.legacyIdl);
-    if (program.legacyIdl) await convertIdl(program.name);
+    await fetchIdl(program.name, program.id);
     await generateType(program.name);
     await copyIdls(program.name);
   }
 };
 
-const fetchIdl = async (programName: string, programId: string, legacyIdl: boolean) => {
+const fetchIdl = async (programName: string, programId: string) => {
   const provider = anchor.AnchorProvider.local(RPC_URL);
 
-  const idl = (await anchor.Program.fetchIdl(programId, provider)) as any;
-
-  // Legacy CCTP programs have missing metadata.address
-  if (legacyIdl) idl.metadata = { address: programId };
-
-  if (!legacyIdl) patchIdlV01(idl as IdlV01);
+  const idl = await anchor.Program.fetchIdl(programId, provider);
+  if (!idl) throw new Error(`Missing IDL for ${programName}`);
+  patchIdlV01(idl as IdlV01);
 
   const idlDir = path.resolve(__dirname, "../../../target/idl");
   const outputFilePath = path.join(idlDir, `${programName}.json`);
   fs.writeFileSync(outputFilePath, JSON.stringify(idl, null, 2));
-};
-
-const convertIdl = async (programName: string): Promise<void> => {
-  const idlDir = path.resolve(__dirname, "../../../target/idl");
-  const idlFilePath = path.join(idlDir, `${programName}.json`);
-
-  return new Promise((resolve, reject) => {
-    exec(`anchor idl convert --out ${idlFilePath} ${idlFilePath}`, (err, _stdout, stderr) => {
-      if (stderr) {
-        console.error(`${stderr}`);
-      }
-      if (err) {
-        reject(new Error(`Failed to convert ${programName} IDL`));
-      } else {
-        resolve();
-      }
-    });
-  });
 };
 
 const generateType = async (programName: string): Promise<void> => {
