@@ -10,8 +10,9 @@ Earlier undeployed revisions of this PR used `V5Error` 7000–7017; those codes 
 variant order. They also used 6019 for the new `LegacyFillMessageUnsupported`, now 7019. These earlier assignments
 were pre-release values.
 
-The tables cover every current variant in [error.rs](src/error.rs). Use the mapping for the program version being
-queried. Historical transaction errors retain the old codes; do not relabel them using the new table. Legacy
+The tables cover every current variant in [error.rs](src/error.rs) and the removed `AcrossPlusError` variants.
+Use the mapping for the program version being queried. Historical transaction errors retain the old codes;
+do not relabel them using the new table. Legacy
 numbers overlap across enums, so a number alone cannot identify a historical error. Runtime log names distinguish
 the enums. Anchor 0.31.1's generated IDL error table remains incomplete despite the distinct runtime ranges.
 
@@ -99,3 +100,21 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `FillCommitmentMismatch`            | —              | 9015         |
 | `FillOutputAmountTooLow`            | —              | 9016         |
 | `InsufficientVaultBalance`          | —              | 9017         |
+
+## Removed (AcrossPlusError)
+
+`svm_spoke` no longer emits these errors after callback retirement. Their numeric values remain in use by
+`CommonError`; those enums already overlapped before this release. Remove these names from active numeric maps
+while retaining them for historical decoding with the original program version and runtime log context. For
+example, a stale `6004 → InvalidMessageAccountKey` mapping would mislabel `CommonError::RelayFilled`.
+
+| Error                          | Before release | This release |
+| ------------------------------ | -------------- | ------------ |
+| `MessageDidNotDeserialize`     | 6000           | removed      |
+| `InvalidMessageKeyLength`      | 6001           | removed      |
+| `InvalidReadOnlyKeyLength`     | 6002           | removed      |
+| `InvalidMessageHandler`        | 6003           | removed      |
+| `InvalidMessageAccountKey`     | 6004           | removed      |
+| `NotReadOnlyMessageAccountKey` | 6005           | removed      |
+| `NotWritableMessageAccountKey` | 6006           | removed      |
+| `MissingValueRecipientKey`     | 6007           | removed      |
