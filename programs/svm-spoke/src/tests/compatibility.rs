@@ -2,6 +2,22 @@ use crate::*;
 use anchor_lang::{solana_program::program_error::ProgramError, Discriminator, InstructionData};
 
 #[test]
+fn custom_error_ranges_are_stable() {
+    use crate::error::{CallDataError, CommonError, SvmError, V5Error};
+
+    assert_eq!(u32::from(CommonError::InvalidQuoteTimestamp), 6_000);
+    assert_eq!(u32::from(CommonError::V5FillOnly), 6_016);
+    assert_eq!(u32::from(SvmError::NotOwner), 7_000);
+    assert_eq!(u32::from(SvmError::LegacyFillMessageUnsupported), 7_019);
+    assert_eq!(u32::from(CallDataError::InvalidSelector), 8_000);
+    assert_eq!(u32::from(CallDataError::UnsupportedSelector), 8_006);
+    assert_eq!(u32::from(V5Error::InvalidWireFormat), 9_000);
+    assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 9_009);
+    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 9_014);
+    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 9_017);
+}
+
+#[test]
 fn retired_slow_fill_discriminators_are_not_dispatchable() {
     for discriminator in [
         [39, 157, 165, 187, 88, 217, 207, 98],
