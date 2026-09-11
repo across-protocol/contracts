@@ -63,17 +63,8 @@ pub struct V5DepositModificationRules {
 }
 
 impl V5DepositModificationRules {
-    pub fn validate(&self) -> Result<()> {
-        let has_authority = self.authority != [0u8; 20];
-        let has_permission = self.allow_output_amount || self.allow_exclusive_relayer;
-        // SVM v1 intentionally requires an authority for any JIT permission. The EVM adapter permits authority-less
-        // JIT when permission bits are set, so route builders must not reuse that EVM-only shape for SVM.
-        require!(has_authority == has_permission, V5Error::InvalidParamModificationRules);
-        Ok(())
-    }
-
     pub fn jit_enabled(&self) -> bool {
-        self.authority != [0u8; 20]
+        self.authority != [0u8; 20] || self.allow_output_amount || self.allow_exclusive_relayer
     }
 }
 
@@ -145,7 +136,6 @@ pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
             if let V5InputAmountMode::InputVaultBalance { bips } = deposit.input_amount_mode {
                 require!(bips <= BIPS_DENOMINATOR, V5Error::InvalidWireFormat);
             }
-            deposit.modification_rules.validate()?;
         }
         V5AdapterMode::Fill(fill) => require!(fill.message.is_empty(), V5Error::InvalidWireFormat),
     }
@@ -153,7 +143,6 @@ pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
 }
 
 pub fn decode_v5_deposit_jit(deposit: &AcrossDepositInput, data: &[u8]) -> Result<Option<AcrossDepositJitParams>> {
-    deposit.modification_rules.validate()?;
     if deposit.modification_rules.jit_enabled() {
         Ok(Some(decode_strict(data)?))
     } else {
@@ -255,25 +244,27 @@ pub fn verify_v5_authority(
     Ok(())
 }
 
-/// Verify and apply only the committed JIT permissions. Output-amount changes are improvement-only; unpermitted
-/// proposed values remain signature-bound but are ignored, matching the EVM adapter.
+/// Verify and apply only the committed JIT permissions. Output-amount changes are improvement-only. When an authority
+/// is configured, all proposed values remain signature-bound even if unpermitted; otherwise the permitted changes are
+/// permissionless, matching the EVM adapter.
 pub fn resolve_v5_deposit_modifications(
     input: &AcrossDepositInput,
     jit: &AcrossDepositJitParams,
     gateway_program_id: &Pubkey,
     path_id: &[u8; 32],
 ) -> Result<([u8; 32], Pubkey)> {
-    input.modification_rules.validate()?;
     require!(input.modification_rules.jit_enabled(), V5Error::InvalidParamModificationRules);
     let deposit = &input.deposit_params;
-    let digest = v5_param_modification_digest(
-        gateway_program_id,
-        path_id,
-        deposit.deposit_nonce,
-        &jit.new_output_amount,
-        &jit.new_exclusive_relayer,
-    );
-    verify_v5_authority(&input.modification_rules.authority, &digest, &jit.signature)?;
+    if input.modification_rules.authority != [0u8; 20] {
+        let digest = v5_param_modification_digest(
+            gateway_program_id,
+            path_id,
+            deposit.deposit_nonce,
+            &jit.new_output_amount,
+            &jit.new_exclusive_relayer,
+        );
+        verify_v5_authority(&input.modification_rules.authority, &digest, &jit.signature)?;
+    }
 
     let output_amount = if input.modification_rules.allow_output_amount {
         require!(jit.new_output_amount >= deposit.output_amount, V5Error::ParamModificationNotAnImprovement);
@@ -504,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn decoding_is_strict_and_zero_authority_disables_jit() {
+    fn decoding_is_strict_and_zero_rules_disable_jit() {
         let fixture = fixture();
         let mut encoded = bytes(&fixture, "/wire/depositInput");
         encoded.push(0);
@@ -534,11 +525,16 @@ mod tests {
         assert!(decode_v5_deposit_jit(deposit, &[]).unwrap().is_none());
         assert!(decode_v5_deposit_jit(deposit, &[0]).is_err());
 
-        let mut invalid_rules = input;
-        if let V5AdapterMode::Deposit(deposit) = &mut invalid_rules.mode {
+        let mut permissionless_rules = input;
+        if let V5AdapterMode::Deposit(deposit) = &mut permissionless_rules.mode {
             deposit.modification_rules.allow_output_amount = true;
         }
-        assert!(decode_v5_adapter_input(&serialize(&invalid_rules)).is_err());
+        let permissionless_rules = decode_v5_adapter_input(&serialize(&permissionless_rules)).unwrap();
+        let deposit = match &permissionless_rules.mode {
+            V5AdapterMode::Deposit(deposit) => deposit,
+            _ => unreachable!(),
+        };
+        assert!(decode_v5_deposit_jit(deposit, &[]).is_err());
     }
 
     #[test]
@@ -592,7 +588,7 @@ mod tests {
             deposit.deposit_params.exclusive_relayer
         );
 
-        let mut worse = jit;
+        let mut worse = jit.clone();
         worse.new_output_amount = [0u8; 32];
         let digest = v5_param_modification_digest(
             &gateway,
@@ -610,5 +606,27 @@ mod tests {
         worse.signature[..64].copy_from_slice(&signature.serialize());
         worse.signature[64] = recovery_id.serialize() + 27;
         assert!(resolve_v5_deposit_modifications(&deposit, &worse, &gateway, &path_id).is_err());
+
+        deposit.modification_rules.allow_output_amount = false;
+        assert_eq!(
+            resolve_v5_deposit_modifications(&deposit, &jit, &gateway, &path_id).unwrap(),
+            (deposit.deposit_params.output_amount, deposit.deposit_params.exclusive_relayer)
+        );
+
+        deposit.modification_rules.authority = [0u8; 20];
+        deposit.modification_rules.allow_output_amount = true;
+        let mut unsigned_jit = jit;
+        unsigned_jit.signature = [0u8; V5_SIGNATURE_LEN];
+        assert_eq!(
+            resolve_v5_deposit_modifications(&deposit, &unsigned_jit, &gateway, &path_id).unwrap(),
+            (unsigned_jit.new_output_amount, deposit.deposit_params.exclusive_relayer)
+        );
+
+        deposit.modification_rules.allow_output_amount = false;
+        deposit.modification_rules.allow_exclusive_relayer = true;
+        assert_eq!(
+            resolve_v5_deposit_modifications(&deposit, &unsigned_jit, &gateway, &path_id).unwrap(),
+            (deposit.deposit_params.output_amount, unsigned_jit.new_exclusive_relayer)
+        );
     }
 }
