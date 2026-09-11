@@ -2,14 +2,10 @@ import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
 import { getDeployedAddress } from "../../DeploymentUtils";
 import { SupportedNetworks } from "../../types/svm";
 import {
-  MessageTransmitterAnchor,
-  MessageTransmitterIdl,
   MulticallHandlerAnchor,
   MulticallHandlerIdl,
   SvmSpokeAnchor,
   SvmSpokeIdl,
-  TokenMessengerMinterAnchor,
-  TokenMessengerMinterIdl,
   MessageTransmitterV2Anchor,
   MessageTransmitterV2Idl,
   TokenMessengerMinterV2Anchor,
@@ -49,16 +45,6 @@ function resolveProgramId(programName: string, provider: AnchorProvider, options
 export function getSpokePoolProgram(provider: AnchorProvider, options?: ProgramOptions) {
   const id = resolveProgramId("SvmSpoke", provider, options);
   return getConnectedProgram<SvmSpokeAnchor>(SvmSpokeIdl, provider, id);
-}
-
-export function getMessageTransmitterProgram(provider: AnchorProvider, options?: ProgramOptions) {
-  const id = resolveProgramId("MessageTransmitter", provider, options);
-  return getConnectedProgram<MessageTransmitterAnchor>(MessageTransmitterIdl, provider, id);
-}
-
-export function getTokenMessengerMinterProgram(provider: AnchorProvider, options?: ProgramOptions) {
-  const id = resolveProgramId("TokenMessengerMinter", provider, options);
-  return getConnectedProgram<TokenMessengerMinterAnchor>(TokenMessengerMinterIdl, provider, id);
 }
 
 export function getMulticallHandlerProgram(provider: AnchorProvider, options?: ProgramOptions) {

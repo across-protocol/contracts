@@ -14,7 +14,7 @@ The three steps have separate completion criteria. Step 2 depends on the new pro
 
 ## Current state
 
-`contracts` already generates and exports `MessageTransmitterV2Client` and `TokenMessengerMinterV2Client`, alongside the V1 clients and the spoke, multicall and sponsored-CCTP clients. See [client generation](scripts/svm/buildHelpers/generateSvmClients.ts) and [client exports](src/svm/clients/index.ts).
+`contracts` already generates and exports `MessageTransmitterV2Client` and `TokenMessengerMinterV2Client`, alongside the spoke, multicall and sponsored-CCTP clients. CCTP V1 clients, IDLs/types, connectors, message helpers and V1 address constants have been removed from the Solana package surface, including deep-import paths. See [client generation](scripts/svm/buildHelpers/generateSvmClients.ts) and [client exports](src/svm/clients/index.ts).
 
 The V2 clients provide generated instructions, account readers and codecs. They do not replace the integration logic that selects receiver accounts, fetches attestations, checks processing status and constructs complete transactions.
 
@@ -41,21 +41,25 @@ Adapt supported scripts to the new program and light-chain behavior using Anchor
 - Keep useful public-network and cross-chain proof-of-concept scripts in this repo, with internal helpers.
 - Distinguish discontinued HubPool/spoke liquidity rebalances from independent CCTP token transfers, including sponsored transfers and relayer inventory operations. Do not remove the latter solely because Solana becomes a light chain.
 
-Do not introduce new exported production TS helpers. Leave client-generation ownership, existing export cleanup and the broader Kit-test migration for step 3. Retaining legacy exports temporarily does not mean retaining V1 behavior in the updated scripts. Generated spoke interfaces will still reflect the underlying program upgrade; those compatibility changes are handled in step 2.
+Remove obsolete CCTP V1 exports now so consumer builds against the migration beta expose dependencies that need updating. This includes V1 client generation, IDLs/Anchor types, connectors, message codecs/attestation helpers and V1 address constants in the SVM utilities. Prune stale generated artifacts so deep imports also fail. Do not introduce new exported production TS helpers. Leave ownership of retained client generation, remaining export cleanup and the broader Kit-test migration for step 3. Generated spoke interfaces also reflect the underlying program upgrade; those compatibility changes are handled in step 2.
 
-**Completion criteria:** supported scripts use CCTP V2; obsolete rebalance entry points are removed or repurposed; relevant program/script checks pass; tokenless delivery and retry/already-processed behavior are covered. Document invocation, prerequisites and recovery usage, including any public-network validation still outstanding.
+**Completion criteria:** obsolete CCTP V1 package exports are absent, including deep imports; supported scripts use CCTP V2; obsolete rebalance entry points are removed or repurposed; relevant program/script checks pass; tokenless delivery and retry/already-processed behavior are covered. Document invocation, prerequisites and recovery usage, including any public-network validation still outstanding.
 
-**Implementation:** replaced the token-rebalance proposal/execution pair with `finalizeCctpV2Message` for all supported tokenless root/admin selectors; remote pause scripts share its internal V2 finalizer and support recovery without EVM credentials. Fill examples now request origin-chain repayment with an explicit repayment address. Existing client exports/generation and sponsored V2 token flows remain. See the [script guide](scripts/svm/README.md) for commands, tests and outstanding public-network validation. [ACP-226](https://linear.app/uma/issue/ACP-226) tracks this scope.
+**Implementation:** replaced the token-rebalance proposal/execution pair with `finalizeCctpV2Message` for all supported tokenless root/admin selectors; remote pause scripts share its internal V2 finalizer and support recovery without EVM credentials. Fill examples now request origin-chain repayment with an explicit repayment address. Retained V2 and non-CCTP client exports/generation and sponsored V2 token flows remain; obsolete CCTP V1 export paths are removed. See the [script guide](scripts/svm/README.md) for commands, tests and outstanding public-network validation. [ACP-226](https://linear.app/uma/issue/ACP-226) tracks this scope.
 
-The standalone finalizer also supports independent incoming token transfers through TokenMessengerMinterV2, using shared receive/nonce/retry logic and separate receiver account builders. Token delivery requires the spoke vault or an explicitly selected destination token account and supports both finalized and unfinalized attestations. Pause scripts remain Spoke-only. Script-local response parsing validates consumed fields and reads finality from message bytes, without changing exported attestation schemas or other production helpers. Follow-up validation passed all three focused suites together (29 tests), including token fees, recipient checks, retry/replay and finality boundaries.
+The standalone finalizer also supports independent incoming token transfers through TokenMessengerMinterV2, using shared receive/nonce/retry logic and separate receiver account builders. Token delivery requires the spoke vault or an explicitly selected destination token account and supports both finalized and unfinalized attestations. Pause scripts remain Spoke-only. Script-local response parsing validates consumed fields and reads finality from message bytes, without changing the exported V2 attestation schema or other retained production helpers. Follow-up validation passed all three focused suites together (29 tests), including token fees, recipient checks, retry/replay and finality boundaries.
 
 **Local validation (2026-09-11):** SVM test-feature build, IDL/client generation, EVM build, TypeScript package build, explicit changed-script/test type-checks and formatting passed. The broad SVM run had 143 passing tests and two new receiver-fixture failures caused by reading just-created state at confirmed commitment. After making the fixture wait for confirmation, the complete receiver suite passed (11 tests); the final attestation/selection suite also passed (10 tests). The entire broad suite was not repeated after the fixture-only fix. Validation used Anchor 0.31.1 and Solana 2.1.21. Public-network end-to-end checks and beta publication remain outstanding.
 
 **Handoff:** prepare a reviewed contracts beta (proposed `6.0.0-beta.0`) after validation, containing the regenerated Spoke IDL/client and matching test-binary artifacts. Generate the published IDLs with `IS_TEST` unset; publish test-feature binaries separately as release artifacts. The interface changes come from PR #1548, not from the script edits alone. A local packed build can unblock initial consumer work; a pinned beta provides the shared step-2 dependency. Publishing the beta and the coordinated on-chain cutover are separate follow-ups.
 
+**V1 export-removal validation:** external IDL/type generation, asset/client generation, a clean TS package build, changed-script/test type-checks, and 11 attestation/selection tests passed. Package-manifest inspection and consumer-style TypeScript/runtime checks confirmed V1 root exports and deep-import paths are absent while V2 and other clients remain available. The validator suite was not repeated for this removal of unused code. The breaking beta has not been published.
+
 ## Step 2: migrate consumer behavior using existing clients
 
 **Scope:** SDK first, followed by affected consumers. No new Codama generation pipeline is required in this step.
+
+Build consumers against the pinned migration beta first: removed V1 imports provide a migration checklist. Compilation does not detect every semantic change, so also review light-chain repayment rules and tokenless receiver behavior. Existing production deployments stay pinned until their migration is ready. Any required historical V1 decoding or pre-cutover recovery must have an explicit downstream implementation.
 
 Use `MessageTransmitterV2Client` and `TokenMessengerMinterV2Client` from `contracts`. Add or adapt production integration helpers in the SDK:
 
@@ -96,7 +100,7 @@ Expected scope:
 
 ## Why these steps stay separate
 
-Step 1 fixes the repo's operational scripts. Step 2 fixes external protocol behavior with clients that already exist. Step 3 moves ownership of those clients and remaining helpers.
+Step 1 fixes the repo's operational scripts and removes obsolete CCTP V1 exports to expose consumer dependencies. Step 2 fixes external protocol behavior with clients that already exist. Step 3 moves ownership of those clients and remaining helpers.
 
 Moving client generation into step 2 would introduce temporary duplicate generation without being required for CCTP V2 support. Keeping generation in place until step 3 avoids that work and allows protocol compatibility to be reviewed independently from package/export restructuring.
 
