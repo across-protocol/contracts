@@ -97,7 +97,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     } catch (error) {
       // Older Anchor clients can lose the logs when wrapping a failed receipt.
       const signature = tx instanceof VersionedTransaction ? tx.signatures[0] : tx.signature;
-      if (signature) {
+      if (signature?.some((byte) => byte !== 0)) {
         const receipt = await connection.getTransaction(anchor.utils.bytes.bs58.encode(signature), {
           commitment: "confirmed",
           maxSupportedTransactionVersion: 0,
@@ -516,9 +516,9 @@ describe("SVM V5 with the pinned real Gateway", () => {
         assert.isTrue(delivered >= minimum);
         assert.equal((await getAccount(connection, fixture.poolInput)).amount, 1_000_000_000n + amount);
         assert.equal((await getAccount(connection, fixture.poolOutput)).amount, 1_000_000_000n - delivered);
-        assert.equal((await getAccount(connection, vault)).amount, 0n);
         assert.equal((await getAccount(connection, fixture.outputVault)).amount, 0n);
         const inputAccount = await getAccount(connection, vault);
+        assert.equal(inputAccount.amount, 0n);
         assert.isTrue(inputAccount.owner.equals(vaultAuthority));
         assert.isNull(inputAccount.delegate, "full swap consumes the exact delegate allowance");
         const receipt = await connection.getTransaction(signature, {

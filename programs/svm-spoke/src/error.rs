@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 // Common Errors with EVM SpokePool.
-#[error_code]
+#[error_code(offset = 6000)]
 pub enum CommonError {
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
@@ -42,7 +42,7 @@ pub enum CommonError {
 }
 
 // SVM specific errors.
-#[error_code]
+#[error_code(offset = 7000)]
 pub enum SvmError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
@@ -87,7 +87,7 @@ pub enum SvmError {
 }
 
 // Across V5 adapter specific errors.
-#[error_code(offset = 7000)]
+#[error_code(offset = 9000)]
 pub enum V5Error {
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat,
@@ -128,7 +128,7 @@ pub enum V5Error {
 }
 
 // CCTP specific errors.
-#[error_code]
+#[error_code(offset = 8000)]
 pub enum CallDataError {
     #[msg("Invalid solidity selector")]
     InvalidSelector,

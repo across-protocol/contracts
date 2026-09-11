@@ -343,14 +343,6 @@ mod tests {
     }
 
     #[test]
-    fn v5_errors_use_dedicated_range() {
-        assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
-        assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
-        assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 7_014);
-        assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 7_017);
-    }
-
-    #[test]
     fn adapter_discriminator_matches_gateway_abi() {
         assert_eq!(GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,);
     }

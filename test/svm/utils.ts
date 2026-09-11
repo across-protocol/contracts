@@ -1,4 +1,4 @@
-import { BN, Program } from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 import {
   airdropFactory,
   createSolanaRpc,
@@ -6,7 +6,7 @@ import {
   generateKeyPairSigner,
   lamports,
 } from "@solana/kit";
-import { AccountMeta, Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
 import {

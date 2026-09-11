@@ -2,7 +2,8 @@
 
 Run `yarn test-svm-gateway`. It builds Gateway and PrefundedAdapter from the immutable `GATEWAY_COMMIT` in
 `reference.ts`, builds this checkout's SpokePool with `--features test`, generates only the target test IDL, and starts
-an isolated validator with Gateway, PrefundedAdapter, SpokePool and Raydium CPMM loaded as upgradeable programs. It does not clone mainnet state.
+an isolated validator with Gateway, PrefundedAdapter, SpokePool and Raydium CPMM loaded as upgradeable programs.
+It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
 after the run. Production package IDLs and clients are not regenerated.
@@ -95,6 +96,11 @@ TRANSFER(all output, committed recipient)`. `BalanceSub` patches the entire live
 Submitter funding occurs in the same Gateway execution. A lookup table carries the combined program accounts;
 the committed tape still uses the content-addressed parameter buffer.
 
+Full-balance approval, `BalanceSub`, and output transfer follow EVM V5 semantics and the same delivery policy:
+every recorded fill's actual output must be covered by proportional or authenticated aggregate delivery. This
+fixture exercises one funded fill with empty initial vaults; other routes must satisfy the same V5 policy.
+See the [adapter delivery requirements](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#legacy-callback-retirement-and-destination-actions).
+
 Tests verify actual pool reserve movement, recipient delivery, cleared input/output vaults and consumed allowance,
 plus replay rejection. Swap slippage and an unmet post-swap floor are separately submitted as actual failing
 transactions; pool state, reserves, user funding, fill status and payer float must all roll back. The existing
@@ -103,9 +109,10 @@ payer reclaim/withdrawal and V5 witness tests remain in the suite.
 ## Callback migration and consumer inventory
 
 Legacy Spoke fills reject nonempty callback payloads explicitly; V5 witnesses remain required by the adapter.
-The ordinary SVM suite covers malformed and encoded callbacks with both inline and buffered parameters, including
-actual failed receipts with no handler invocation. `fakeFillWithRandomDistribution.ts` now exits with a migration
-message before creating accounts or sending transactions.
+The ordinary SVM suite covers inline and buffered parameters, with malformed and well-formed payloads rejected
+identically before parsing. These are two parameter-loading paths, not distinct payload-parsing branches; actual
+failed receipts show no handler invocation. `SvmSpoke.Fill.ts` separately pins `V5FillOnly` for V5-prefixed messages.
+`fakeFillWithRandomDistribution.ts` now exits with a migration message before creating accounts or sending transactions.
 
 Standalone consumers retained in this repository are `programs/multicall-handler`, its Anchor deployment entries,
 `test/svm/MulticallHandler.ts`, public `MulticallHandlerCoder`/`AcrossPlusMessageCoder` exports, the program connector,
@@ -114,6 +121,8 @@ inputs. Public package consumers outside this repository are not enumerable here
 the deployed program is outside this change. Generated artifacts live in ignored `src/svm/assets` and
 `src/svm/clients`; regenerate production assets before test-only IDLs.
 
-Production cutover requires API and relayer support for the replacement path and validation of the exact supported
-swap instruction/version. Owner-bound venues need their own reviewed staging adapter. This fixture does not enable
+Follow the [deployment sequence](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#deployment-sequencing) to disable old
+routes and reconcile the in-flight window before upgrading. Production cutover requires API and relayer support
+for the replacement path and validation of the exact supported swap instruction/version. Owner-bound venues need
+their own reviewed staging adapter. This fixture does not enable
 arbitrary JIT swaps, separate-auction prefunded chaining, or aggregate fills.

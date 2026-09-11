@@ -14,6 +14,7 @@ import {
   Keypair,
   PublicKey,
   SystemProgram,
+  SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction,
@@ -135,11 +136,16 @@ export async function createSwapFixture(
       })
     )
   );
-  // initialize sets open_time to clock + 1. Wait for on-chain time, not wall time.
-  const initializedSlot = await connection.getSlot();
-  const initializedTime = (await connection.getBlockTime(initializedSlot))!;
+  // initialize sets open_time to clock + 1. Read the same Clock sysvar as the program;
+  // block-time RPC lookups can fail on skipped slots.
+  const clockTimestamp = async () => {
+    const clock = await connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY);
+    if (!clock || clock.data.length !== 40) throw new Error("Invalid Clock sysvar");
+    return clock.data.readBigInt64LE(32);
+  };
+  const initializedTime = await clockTimestamp();
   for (let n = 0; n < 100; n++) {
-    if (((await connection.getBlockTime(await connection.getSlot())) ?? 0) > initializedTime + 1) break;
+    if ((await clockTimestamp()) > initializedTime + 1n) break;
     if (n === 99) throw new Error("Raydium pool did not reach its open time");
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
