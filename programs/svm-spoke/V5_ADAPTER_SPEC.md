@@ -58,13 +58,13 @@ Unlike the EVM `inputAmountParam`, SVM wire v1 has no set-call-value flag. Nativ
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
 token path as any SPL input. Direct lamport deposit from this adapter is outside wire v1.
 
-Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams` and is present exactly when the committed 20-byte
-authority is nonzero and at least one modification is permitted. It is the fixed 129 bytes
-`new_output_amount[32] || new_exclusive_relayer[32] || signature[65]`. A zero authority requires both permission
-booleans false and empty `jit_data`; it never means permissionless modification. This intentionally diverges from
-the EVM `AcrossDepositDelegateAdapter`, which permits authority-less JIT when a permission flag is set. Route builders
-must not emit that EVM-only rule shape for SVM. Fill mode always decodes `jit_data` as `V5FillJit`. Malformed enum tags,
-invalid Borsh booleans or lengths, unsupported versions, missing required JIT, and trailing bytes fail closed.
+Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams` and is present when the committed authority or either
+permission bit is nonzero. It is the fixed 129 bytes
+`new_output_amount[32] || new_exclusive_relayer[32] || signature[65]`. A nonzero authority requires a valid signature;
+when authority is zero, enabled modifications are permissionless, matching the EVM `AcrossDepositDelegateAdapter`.
+Zero authority with both permission bits false requires empty `jit_data`. Fill mode always decodes `jit_data` as
+`V5FillJit`. Malformed enum tags, invalid Borsh booleans or lengths, unsupported versions, missing required JIT, and
+trailing bytes fail closed.
 
 ## Hashes and signatures
 
