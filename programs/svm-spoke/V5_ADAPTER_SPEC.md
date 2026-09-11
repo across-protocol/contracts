@@ -162,8 +162,8 @@ exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. The legacy and V5 entrypoints share the same internal `_fill` core for pause, exclusivity, deadline,
-replay protection and status transition, token delivery, fill-type and callback-mode event fields, and canonical event
-construction. Each handler retains only its branch-specific account loading, callback, and event-emission mechanics.
+replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
+construction. Each handler retains only its branch-specific account loading and event-emission mechanics.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
@@ -197,3 +197,63 @@ authenticate all JIT variants of an aggregate production route. The canonical re
 single-fill template. `fixtures/v5_gateway_path.json` additionally pins Borsh consumption-tape bytes, path hashes,
 sorted sibling roots and witnesses across TypeScript, Rust and Solidity. Its placeholder keys are hashing fixtures,
 not deployed token accounts. See [the lane guide](../../test/svm-gateway/README.md) for execution and companion docs.
+
+## Legacy callback retirement and destination actions
+
+Legacy `fill_relay` accepts only an empty `RelayData.message`. Callback-bearing messages fail with
+`LegacyFillMessageUnsupported` (7019) before token delivery, the filled-status transition, or event emission; rollback
+also undoes Anchor account initialization and preserves buffered parameters. V5-tagged messages still fail with
+`V5FillOnly` on this entrypoint. Slow-fill selectors have already been retired, including their callback path.
+Source deposits retain their message field for other destination chains.
+
+Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
+`V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
+legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) lists every current
+variant's old and new code plus the removed callback errors, distinguishing new errors from existing ones.
+Compatibility tests pin each range's first and last codes.
+Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`, including this
+new rejection. Consumers should use runtime log names or the version-appropriate runtime-code mapping; generated
+error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
+
+V5 keeps two distinct fields: the relay witness is exactly `V5_MAGIC_PREFIX || stepId`, while
+`V5FillInput.message` must be empty. The replacement destination flow is a single in-place Across fill followed by
+Gateway `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed output-mint `BALANCE_REQ`,
+and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the Gateway output vault.
+The vault owner signs only Gateway token operations; the swap receives its distinct SPL delegate as signer.
+A failed swap or output floor reverts the entire execution, including the fill and payer rent.
+
+Full-balance `APPROVE`, 100%-bps `BalanceSub`, and terminal `TRANSFER` follow EVM V5's full-balance semantics and
+delivery policy. Builders must bind proportional or authenticated aggregate delivery to every recorded fill's
+actual output amount, as described above. The fixture exercises the single-fill template with empty initial
+input/output vaults and complete consumption; other routes must satisfy the same V5 delivery policy.
+
+The [real-Gateway suite](../../test/svm-gateway/README.md) pins and exercises a concrete compatible swap program.
+It covers one fill and one committed swap, not arbitrary JIT routes or aggregate fills. Production builders must
+bind the complete destination outcome to every matching relay, validate venue instruction/version compatibility,
+and retain any auction winner and bid requirements outside a JIT swap window. Separate relayer/swapper executions
+can use prefunded chaining; they are distinct from this atomic fill-and-swap fixture.
+
+### Deployment sequencing
+
+Before deploying callback rejection and the error-code migration:
+
+1. Disable routes that create callback-bearing SVM deposits in API/builders and coordinate relayer cutover to the
+   replacement V5 path. A route flag alone does not prevent direct deposits through permissionless entrypoints.
+2. Reconcile finalized deposits and successful fills across supported origin chains. Allow outstanding callback
+   deposits to fill before their deadlines, or wait past the remaining `fillDeadline` values and verify origin-chain
+   expiry-refund handling. Include finality/indexing lag and confirm no new callback deposits entered the window.
+3. Verify no unexpired callback-bearing obligations remain before deploying, or handle them through a separately
+   reviewed migration procedure. Verify replacement route-building and relayer execution support before enablement.
+4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
+   moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
+   Earlier undeployed V5 integrations must use the final 9000 range. Consumers matching runtime log names need no
+   renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
+   numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
+   an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
+
+After the upgrade, a remaining callback-bearing deposit cannot be filled on Solana. Slow fills are also retired;
+an unfilled expired deposit follows the normal origin-chain refund process, not a destination fallback. These are
+deployment checks: the local fixtures do not establish that the live in-flight window is empty. A legacy
+callback-bearing deposit must never be reported as successfully filled with its requested action silently omitted.
+The standalone MulticallHandler program and its package exports remain available to existing consumers; their
+retirement and any deployed-program closure require a separate decision.

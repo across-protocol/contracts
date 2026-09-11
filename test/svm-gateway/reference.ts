@@ -9,7 +9,15 @@ export const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm
 export const PREFUNDED = new PublicKey("7S5DKhyg9BxzAofhkM1vRM13d767S4cj8X5yKUXuVBWS");
 export const GATEWAY_COMMIT = "457cf693d09765c8e7e9ab33d23f84cba0999afe";
 export const PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
-export const OP = { BALANCE_REQ: 0x00, ADAPTER_CALL: 0x0a, APPROVE: 0x10, TRANSFER: 0x11, JIT: 0x40, OPTIONAL: 0x80 };
+export const OP = {
+  BALANCE_REQ: 0x00,
+  CALL: 0x08,
+  ADAPTER_CALL: 0x0a,
+  APPROVE: 0x10,
+  TRANSFER: 0x11,
+  JIT: 0x40,
+  OPTIONAL: 0x80,
+};
 export const discriminator = (name: string) => createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
 export const u16 = (n: number) => {
   const b = Buffer.alloc(2);
@@ -39,12 +47,12 @@ export type Command = { op: number; input: Buffer };
 export const tape = (commands: Command[]) =>
   Buffer.concat([vec(Buffer.from(commands.map((c) => c.op))), list(commands.map((c) => vec(c.input)))]);
 export const jitQueue = (items: Buffer[]) => list(items.map(vec));
-export const call = (program: PublicKey, metas: Meta[], input: Buffer): Buffer =>
+export const call = (program: PublicKey, metas: Meta[], input: Buffer, balanceSubs: Buffer[] = []): Buffer =>
   Buffer.concat([
     program.toBuffer(),
     list(metas.map((m) => Buffer.concat([m.pubkey.toBuffer(), Buffer.from([m.flags])]))),
     vec(input),
-    u32(0),
+    list(balanceSubs),
   ]);
 export const approve = (mint: PublicKey, delegate: PublicKey): Command => ({
   op: OP.APPROVE,

@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, web3 } from "@coral-xyz/anchor";
 import { ethers } from "ethers";
+import { assert } from "chai";
 import { getApproveCheckedInstruction } from "@solana-program/token";
 import {
   AccountRole,
@@ -48,7 +49,7 @@ import {
 } from "../../src/svm/web3-v1";
 import { FillDataValues, RelayData, FillAccounts } from "../../src/types/svm";
 import { common } from "./SvmSpoke.common";
-import { createDefaultSolanaClient, testAcrossPlusMessage } from "./utils";
+import { createDefaultSolanaClient } from "./utils";
 const {
   provider,
   connection,
@@ -60,7 +61,6 @@ const {
   initializeState,
   setCurrentTime,
   assertSE,
-  assert,
 } = common;
 
 describe("svm_spoke.fill", () => {
@@ -68,7 +68,6 @@ describe("svm_spoke.fill", () => {
   const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
-  const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
   const tokenDecimals = 6;
 
   let state: PublicKey,
@@ -142,7 +141,6 @@ describe("svm_spoke.fill", () => {
     const fillIx = await program.methods
       .fillRelay(...fillDataValues)
       .accounts({ ...calledFillAccounts, delegate: delegatePda })
-      .remainingAccounts(fillRemainingAccounts)
       .instruction();
 
     return sendAndConfirmTransaction(connection, new Transaction().add(approveIx, fillIx), [payer, callingRelayer]);
@@ -182,7 +180,7 @@ describe("svm_spoke.fill", () => {
       depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
       fillDeadline: Math.floor(Date.now() / 1000) + 60, // 1 minute from now
       exclusivityDeadline: Math.floor(Date.now() / 1000) + 30, // 30 seconds from now
-      message: encodedMessage,
+      message: Buffer.alloc(0),
     };
 
     updateRelayData(initialRelayData);
@@ -531,7 +529,6 @@ describe("svm_spoke.fill", () => {
     const fillInstruction = await program.methods
       .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
       .accounts({ ...accounts, delegate: delegatePda })
-      .remainingAccounts(fillRemainingAccounts)
       .instruction();
 
     // Create and send the transaction
@@ -601,7 +598,6 @@ describe("svm_spoke.fill", () => {
       const fillInstruction = await program.methods
         .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
         .accounts({ ...accounts, delegate: delegatePda })
-        .remainingAccounts(fillRemainingAccounts)
         .instruction();
       approveAndfillInstructions.push(fillInstruction);
     }
@@ -788,11 +784,6 @@ describe("svm_spoke.fill", () => {
           account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
         ),
       };
-      const remainingAccounts = fillRemainingAccounts.map((account) => ({
-        address: address(account.pubkey.toString()),
-        role: AccountRole.WRITABLE,
-      }));
-      fillRelayIx.accounts.push(...remainingAccounts);
 
       const tx = await pipe(
         await createDefaultTransaction(rpcClient, signer),
@@ -893,11 +884,6 @@ describe("svm_spoke.fill", () => {
           account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
         ),
       };
-      const remainingAccounts = fillRemainingAccounts.map((account) => ({
-        address: address(account.pubkey.toString()),
-        role: AccountRole.WRITABLE,
-      }));
-      fillRelayIx.accounts.push(...remainingAccounts);
 
       const alt = await createLookupTable(rpcClient, signer);
 
@@ -914,7 +900,6 @@ describe("svm_spoke.fill", () => {
         formattedAccounts.systemProgram,
         formattedAccounts.program,
         formattedAccounts.eventAuthority,
-        ...remainingAccounts.map((account) => account.address),
       ];
       const lookupTableAddresses: AddressesByLookupTableAddress = {
         [alt]: ac,

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 // Common Errors with EVM SpokePool.
-#[error_code]
+#[error_code(offset = 6000)]
 pub enum CommonError {
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
@@ -42,7 +42,7 @@ pub enum CommonError {
 }
 
 // SVM specific errors.
-#[error_code]
+#[error_code(offset = 7000)]
 pub enum SvmError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
@@ -82,10 +82,12 @@ pub enum SvmError {
     InvalidDelegatePda,
     #[msg("Inconsistent optional parameters!")]
     InconsistentOptionalParameters,
+    #[msg("Legacy fill messages are unsupported; use a V5 Gateway destination path!")]
+    LegacyFillMessageUnsupported,
 }
 
 // Across V5 adapter specific errors.
-#[error_code(offset = 7000)]
+#[error_code(offset = 9000)]
 pub enum V5Error {
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat,
@@ -126,7 +128,7 @@ pub enum V5Error {
 }
 
 // CCTP specific errors.
-#[error_code]
+#[error_code(offset = 8000)]
 pub enum CallDataError {
     #[msg("Invalid solidity selector")]
     InvalidSelector,
@@ -142,25 +144,4 @@ pub enum CallDataError {
     InvalidUint64,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
-}
-
-// Across+ specific errors.
-#[error_code]
-pub enum AcrossPlusError {
-    #[msg("Message did not deserialize")]
-    MessageDidNotDeserialize,
-    #[msg("Invalid handle message key length")]
-    InvalidMessageKeyLength,
-    #[msg("Invalid handle message read-only key length")]
-    InvalidReadOnlyKeyLength,
-    #[msg("Invalid message handler key")]
-    InvalidMessageHandler,
-    #[msg("Invalid message account key")]
-    InvalidMessageAccountKey,
-    #[msg("Not read-only message account key")]
-    NotReadOnlyMessageAccountKey,
-    #[msg("Not writable message account key")]
-    NotWritableMessageAccountKey,
-    #[msg("Missing value recipient key")]
-    MissingValueRecipientKey,
 }

@@ -1,4 +1,4 @@
-import { BN, Program, workspace } from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 import {
   airdropFactory,
   createSolanaRpc,
@@ -6,20 +6,17 @@ import {
   generateKeyPairSigner,
   lamports,
 } from "@solana/kit";
-import { AccountMeta, Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
+import { Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
 import {
-  AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
   findProgramAddress,
-  MulticallHandlerCoder,
   readEvents,
   readProgramEvents,
   relayerRefundHashFn,
   RpcClient,
 } from "../../src/svm";
-import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import { MerkleTree } from "../../utils/MerkleTree";
 import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
@@ -131,26 +128,6 @@ export function buildRelayerRefundMerkleTree({
   const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
 
   return { relayerRefundLeaves, merkleTree };
-}
-
-// Encodes empty list of multicall handler instructions to be used as a test message field for fills.
-export function testAcrossPlusMessage() {
-  const handlerProgram = workspace.MulticallHandler as Program<MulticallHandler>;
-  const multicallHandlerCoder = new MulticallHandlerCoder([]);
-  const handlerMessage = multicallHandlerCoder.encode();
-  const message = new AcrossPlusMessageCoder({
-    handler: handlerProgram.programId,
-    readOnlyLen: multicallHandlerCoder.readOnlyLen,
-    valueAmount: new BN(0),
-    accounts: multicallHandlerCoder.compiledMessage.accountKeys,
-    handlerMessage,
-  });
-  const encodedMessage = message.encode();
-  const fillRemainingAccounts: AccountMeta[] = [
-    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-    ...multicallHandlerCoder.compiledKeyMetas,
-  ];
-  return { encodedMessage, fillRemainingAccounts };
 }
 
 export const createDefaultSolanaClient = () => {
