@@ -16,6 +16,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
   calculateRelayHashUint8Array,
+  evmAddressToPublicKey,
   getFillRelayDelegatePda,
   getSpokePoolProgram,
   intToU8Array32,
@@ -38,6 +39,11 @@ const argv = yargs(hideBin(process.argv))
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
   .option("inputAmount", { type: "string", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
+  .option("repaymentAddress", {
+    type: "string",
+    demandOption: true,
+    describe: "Relayer repayment address on the origin chain (EVM hex or Solana base58)",
+  })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
   .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
@@ -53,6 +59,9 @@ async function fillRelay(): Promise<void> {
   const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
+  const repaymentAddress = resolvedArgv.repaymentAddress.startsWith("0x")
+    ? evmAddressToPublicKey(resolvedArgv.repaymentAddress)
+    : new PublicKey(resolvedArgv.repaymentAddress);
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
   const exclusivityDeadline = resolvedArgv.exclusivityDeadline ?? 0; // default to 0
@@ -149,7 +158,7 @@ async function fillRelay(): Promise<void> {
     ])
     .instruction();
 
-  const delegate = getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda;
+  const delegate = getFillRelayDelegatePda(relayHashUint8Array, originChainId, repaymentAddress, program.programId).pda;
 
   // Delegate fill delegate PDA to pull relayer tokens.
   const approveIx = await createApproveCheckedInstruction(
@@ -163,7 +172,7 @@ async function fillRelay(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
 
-  const fillDataValues: FillDataValues = [Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey];
+  const fillDataValues: FillDataValues = [Array.from(relayHashUint8Array), relayData, originChainId, repaymentAddress];
 
   const fillAccounts = {
     state: statePda,

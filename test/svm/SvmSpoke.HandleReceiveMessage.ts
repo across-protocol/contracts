@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { rejects } from "assert";
 import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@coral-xyz/anchor";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
@@ -13,6 +14,7 @@ import {
 import { MessageTransmitterV2 } from "../../target/types/message_transmitter_v2";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";
+import { receiveCctpV2MessageOnSpoke } from "../../scripts/svm/utils/cctpV2";
 
 const { initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
@@ -117,6 +119,87 @@ describe("svm_spoke.handle_receive_finalized_message", () => {
     // program in self-invoked CPIs (appended by Anchor with event_cpi macro).
     remainingAccounts.push({ isSigner: false, isWritable: false, pubkey: program.programId });
   });
+
+  it("Script finalizer delivers all supported calls and safely resumes after delivery", async () => {
+    await waitForConfirmedState();
+    const deliver = (built: ReturnType<typeof buildMessage>) =>
+      receiveCctpV2MessageOnSpoke(provider, program, state, built.message, attestation, messageTransmitterProgram);
+    const pause = buildMessage(encodeCalldata("pauseDeposits", [true]));
+    assert.isString(await deliver(pause));
+    assert.isTrue((await program.account.state.fetch(state)).pausedDeposits);
+    assert.isNull(await deliver(pause));
+    await deliver(buildMessage(encodeCalldata("pauseFills", [true])));
+    assert.isTrue((await program.account.state.fetch(state)).pausedFills);
+
+    const rootId = (await program.account.state.fetch(state)).rootBundleId;
+    const refundRoot = crypto.randomBytes(32);
+    const slowRoot = crypto.randomBytes(32);
+    const roots = buildMessage(encodeCalldata("relayRootBundle", [refundRoot, slowRoot]));
+    await deliver(roots);
+    assert.isNull(await deliver(roots));
+    assert.equal((await program.account.state.fetch(state)).rootBundleId, rootId + 1);
+    const rootIdBytes = Buffer.alloc(4);
+    rootIdBytes.writeUInt32LE(rootId);
+    const [rootBundle] = web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootIdBytes],
+      program.programId
+    );
+    const rootData = await program.account.rootBundle.fetch(rootBundle);
+    assert.deepEqual(Buffer.from(rootData.relayerRefundRoot), refundRoot);
+    assert.deepEqual(Buffer.from(rootData.slowRelayRoot), slowRoot);
+    const deletion = buildMessage(encodeCalldata("emergencyDeleteRootBundle", [rootId]));
+    await deliver(deletion);
+    assert.isNull(await program.account.rootBundle.fetchNullable(rootBundle));
+    assert.isNull(await deliver(deletion));
+
+    const newAdmin = ethers.Wallet.createRandom().address;
+    const changeAdmin = buildMessage(encodeCalldata("setCrossDomainAdmin", [newAdmin]));
+    await deliver(changeAdmin);
+    assert.isTrue((await program.account.state.fetch(state)).crossDomainAdmin.equals(evmAddressToPublicKey(newAdmin)));
+    // The old sender no longer matches state, but its already-delivered message remains a successful no-op.
+    assert.isNull(await deliver(changeAdmin));
+  });
+
+  it("Script finalizer leaves a failed nonce retryable", async () => {
+    await waitForConfirmedState();
+    const built = buildMessage(encodeCalldata("pauseDeposits", [true]));
+    const deliver = (message: Buffer) =>
+      receiveCctpV2MessageOnSpoke(provider, program, state, message, attestation, messageTransmitterProgram);
+    const wrongSender = Buffer.from(built.message);
+    Keypair.generate().publicKey.toBuffer().copy(wrongSender, 44);
+    try {
+      await deliver(wrongSender);
+      assert.fail("Unauthorized message should fail");
+    } catch (error: any) {
+      assert.include(error.message, "remote domain and admin");
+    }
+    assert.isNull(await messageTransmitterProgram.account.usedNonce.fetchNullable(built.accounts.usedNonce));
+    assert.isString(await deliver(built.message));
+  });
+
+  it("Script finalizer uses the finalized threshold boundary from message bytes", async () => {
+    await waitForConfirmedState();
+    for (const threshold of [1000, 1500, 1999, 2000, 2500]) {
+      const built = buildMessage(encodeCalldata("pauseDeposits", [true]), { finalityThresholdExecuted: threshold });
+      const delivery = receiveCctpV2MessageOnSpoke(
+        provider,
+        program,
+        state,
+        built.message,
+        attestation,
+        messageTransmitterProgram
+      );
+      if (threshold < 2000) await rejects(delivery, /require finalized attestations/);
+      else assert.isString(await delivery);
+    }
+  });
+
+  async function waitForConfirmedState() {
+    // initializeState uses Anchor's processed commitment; operational finalization deliberately reads confirmed state.
+    const { context } = await provider.connection.getAccountInfoAndContext(state, "processed");
+    while ((await provider.connection.getSlot("confirmed")) < context.slot)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 
   it("Block Unauthorized Message", async () => {
     const unauthorizedSender = Keypair.generate().publicKey;
