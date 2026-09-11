@@ -209,8 +209,8 @@ Source deposits retain their message field for other destination chains.
 Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
 `V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
 legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) lists every current
-variant's old and new code, distinguishing new errors from existing ones. Compatibility tests pin each range's
-first and last codes.
+variant's old and new code plus the removed callback errors, distinguishing new errors from existing ones.
+Compatibility tests pin each range's first and last codes.
 Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`, including this
 new rejection. Consumers should use runtime log names or the version-appropriate runtime-code mapping; generated
 error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
