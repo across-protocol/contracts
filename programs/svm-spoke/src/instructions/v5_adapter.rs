@@ -10,14 +10,16 @@ use anchor_spl::{
 };
 
 use crate::{
-    constants::{GATEWAY_PROGRAM_ID, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE_SEED},
+    constants::{
+        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_SEED,
+    },
     error::{CommonError, V5Error},
     state::State,
     utils::DelegatePda,
     v5::{
-        decode_v5_adapter_input, decode_v5_deposit_jit, derive_gateway_vault_authority, derive_v5_deposit_id,
-        derive_v5_source_delegate, find_v5_account, require_gateway_dispatch_authority, require_v5_delegate_allowance,
-        resolve_v5_deposit_modifications, resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5GatewayContext,
+        decode_v5_adapter_input, decode_v5_deposit_jit, derive_v5_deposit_id, find_v5_account,
+        require_gateway_dispatch_authority, require_v5_delegate_allowance, resolve_v5_deposit_modifications,
+        resolve_v5_input_amount, AcrossDepositInput, V5AdapterMode, V5GatewayContext,
     },
 };
 
@@ -115,21 +117,19 @@ fn load_v5_deposit_accounts<'info>(
     let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
     reject_unsupported_mint_extensions(mint_info, &token_program_id)?;
 
-    let (gateway_vault_authority, _) = derive_gateway_vault_authority();
     let gateway_vault =
-        get_associated_token_address_with_program_id(&gateway_vault_authority, &input_token, &token_program_id);
+        get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &input_token, &token_program_id);
     let spoke_vault = get_associated_token_address_with_program_id(&state, &input_token, &token_program_id);
-    let (source_delegate, _) = derive_v5_source_delegate();
     let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
     let spoke_vault_info = find_v5_account(remaining_accounts, &spoke_vault, true)?;
-    let source_delegate_info = find_v5_account(remaining_accounts, &source_delegate, false)?;
+    let source_delegate_info = find_v5_account(remaining_accounts, &V5_SOURCE_DELEGATE, false)?;
 
     // Together with the canonical addresses above, these checks mirror the corresponding static mint and
     // associated-token constraints.
     let mint = load_mint(mint_info)?;
-    let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &gateway_vault_authority)?;
+    let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &GATEWAY_VAULT_AUTHORITY)?;
     load_token_account(spoke_vault_info, &token_program_id, &input_token, &state)?;
-    require!(source.delegate == COption::Some(source_delegate), V5Error::InvalidTokenAccount);
+    require!(source.delegate == COption::Some(V5_SOURCE_DELEGATE), V5Error::InvalidTokenAccount);
 
     Ok((
         DepositAccounts {

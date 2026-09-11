@@ -352,10 +352,7 @@ mod tests {
 
     #[test]
     fn adapter_discriminator_matches_gateway_abi() {
-        assert_eq!(
-            GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR,
-            crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,
-        );
+        assert_eq!(GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,);
     }
 
     #[test]
