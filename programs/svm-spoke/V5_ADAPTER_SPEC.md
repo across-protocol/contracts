@@ -111,10 +111,15 @@ Gateway-vault delivery validates that same live vault in place and its amount, r
 self-transfer or approval. The continuing atomic tape must consume the output.
 
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
-standing float. Only that submitter may withdraw the float to itself; a nonzero remainder must be rent-exempt, and
-`u64::MAX` means withdraw the live balance. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
+standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
+runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
+fill-status accounts: old clients may continue supplying the recorded relayer signature, but it is no longer required.
+The unchanged `FillStatusAccount.relayer` field stores the payer PDA for
+V5 fills (legacy fills continue to store their relayer), binding permissionless reclaim to the float that paid the
+rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode requires an empty callback
-message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
+message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. As on EVM, V5-tagged relays are quarantined
+from the slow-fill lifecycle, so their fill status can only transition directly from an uninitialized PDA to `Filled`.
 
 Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
 or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,

@@ -448,15 +448,30 @@ pub mod svm_spoke {
     /// Closes the FillStatusAccount PDA to reclaim relayer rent.
     ///
     /// This function is used to close the FillStatusAccount associated with a specific relay hash, effectively marking
-    /// the end of its lifecycle. This can only be done once the fill deadline has passed. Relayers should do this for
-    /// all fills once they expire to reclaim their rent.
+    /// the end of its lifecycle. This can only be done once the fill deadline has passed. Anyone can trigger closure,
+    /// but rent is always returned to the recorded relayer.
     ///
     /// ### Required Accounts:
-    /// - signer (Signer): The account that authorizes the closure. Must be the relayer in the fill_status PDA.
+    /// - signer (Writable): The recorded relayer that receives rent; no signature is required.
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - fill_status (Writable): The FillStatusAccount PDA to be closed.
     pub fn close_fill_pda(ctx: Context<CloseFillPda>) -> Result<()> {
         instructions::close_fill_pda(ctx)
+    }
+
+    /// Withdraws lamports from the signing submitter's V5 fill-status payer float back to that same submitter. Partial
+    /// withdrawals remain subject to the runtime's rent-state rules; `u64::MAX` withdraws the live balance.
+    pub fn withdraw_v5_fill_payer(ctx: Context<WithdrawV5FillPayer>, amount: u64) -> Result<()> {
+        instructions::withdraw_v5_fill_payer(ctx, amount)
+    }
+
+    #[cfg(feature = "test")]
+    pub fn test_create_v5_fill_status(
+        ctx: Context<TestCreateV5FillStatus>,
+        relay_hash: [u8; 32],
+        fill_deadline: u32,
+    ) -> Result<()> {
+        instructions::test_create_v5_fill_status(ctx, relay_hash, fill_deadline)
     }
 
     /// Claims a relayer refund for the caller.

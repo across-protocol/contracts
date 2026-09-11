@@ -86,6 +86,12 @@ pub struct FilledRelay {
     pub relay_execution_info: RelayExecutionEventInfo,
 }
 
+#[event]
+pub struct V5FillFloatWithdrawn {
+    pub submitter: Pubkey,
+    pub amount: u64,
+}
+
 // Slow fill events
 #[event]
 pub struct RequestedSlowFill {
