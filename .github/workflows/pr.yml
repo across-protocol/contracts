@@ -162,6 +162,9 @@ jobs:
       - name: Archive verified test build (for caching)
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-test-binaries.tar target/deploy
+      - name: Generate test-only mock IDL
+        if: steps.filter.outputs.svm == 'true'
+        run: anchor idl build --program-name mock_gateway --out target/idl/mock_gateway.json -- --features test
       - name: Test verified SVM build
         if: steps.filter.outputs.svm == 'true'
         run: anchor test --skip-build

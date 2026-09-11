@@ -970,6 +970,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mock-gateway"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "svm-spoke",
+]
+
+[[package]]
 name = "multicall-handler"
 version = "0.1.0"
 dependencies = [

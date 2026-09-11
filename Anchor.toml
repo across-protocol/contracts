@@ -6,6 +6,7 @@ skip-lint = false
 
 [programs.localnet]
 multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
+mock_gateway = "34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p"
 svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 sponsored_cctp_src_periphery = "FsD4uqAyXiAcQapVTokNvdz1ZC5hMHjY6a93nYmEqZQS"

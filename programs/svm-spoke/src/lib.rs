@@ -42,6 +42,7 @@ use common::*;
 use instructions::*;
 use state::*;
 use utils::*;
+use v5::V5GatewayContext;
 
 #[program]
 pub mod svm_spoke {
@@ -351,6 +352,31 @@ pub mod svm_spoke {
         deposit_nonce: u64,
     ) -> Result<[u8; 32]> {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
+    }
+
+    /// Executes one Gateway-authenticated Across V5 adapter branch. Wire version 1 enables source deposits; the
+    /// reserved Fill discriminant fails closed until its destination behavior is enabled.
+    ///
+    /// ### Required Accounts:
+    /// - dispatch_authority (Signer): Gateway PDA derived from ["dispatch_authority", svm_spoke::ID].
+    /// - state: Spoke state PDA derived from ["state", state.seed], where `state.seed` is 0 on mainnet.
+    /// - event_authority: Anchor event CPI authority derived from ["__event_authority"].
+    /// - program: The SVM Spoke program.
+    /// - remaining accounts: The input mint, its token program, writable canonical Gateway vault ATA, writable
+    ///   canonical SpokePool vault ATA, and source delegate PDA derived from ["v5_source_delegate"]. Account order
+    ///   is unrestricted because each account is resolved by its authenticated expected key.
+    ///
+    /// ### Parameters:
+    /// - ctx_values: Gateway-attested step ID, path ID, and submitter.
+    /// - input: Strictly encoded, versioned `Deposit | Fill` committed input.
+    /// - jit_data: Branch-specific JIT data; empty when no permitted source-deposit modification is applied.
+    pub fn adapter_execute_across_v5<'info>(
+        ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+        ctx_values: V5GatewayContext,
+        input: Vec<u8>,
+        jit_data: Vec<u8>,
+    ) -> Result<()> {
+        instructions::adapter_execute_across_v5(ctx, ctx_values, input, jit_data)
     }
 
     // **************************************

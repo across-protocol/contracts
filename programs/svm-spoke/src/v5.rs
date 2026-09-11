@@ -1,7 +1,5 @@
-//! Frozen wire, cryptographic, and PDA foundations for the Gateway-facing V5 adapter.
-//!
-//! This module deliberately contains no live deposit or fill entrypoint. The versioned types and helpers are the
-//! Step 1 compatibility boundary consumed by the later behavior steps.
+//! Wire, cryptographic, and PDA helpers for the Gateway-facing V5 adapter. Source deposits are live in wire version
+//! 1; the reserved fill branch remains closed until its destination behavior lands.
 
 use anchor_lang::{
     prelude::*,
@@ -316,6 +314,7 @@ mod tests {
         V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP, V5_FILL_DELEGATE_SEED, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP,
         V5_SOURCE_DELEGATE_SEED,
     };
+    use anchor_lang::Discriminator;
     use serde_json::Value;
     use std::str::FromStr;
 
@@ -348,6 +347,12 @@ mod tests {
     fn v5_errors_use_dedicated_range() {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
         assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
+        assert_eq!(u32::from(V5Error::UnsupportedTokenExtension), 7_012);
+    }
+
+    #[test]
+    fn adapter_discriminator_matches_gateway_abi() {
+        assert_eq!(GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,);
     }
 
     #[test]
