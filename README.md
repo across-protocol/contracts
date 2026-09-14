@@ -66,6 +66,10 @@ yarn build # Will build all code. Compile solidity & rust (local toolchain), gen
 yarn build-verified # Will build all code. Compile solidity & rust (verified docker build), generate ts outputs
 ```
 
+EVM builds and tests use the Foundry version pinned in `mise.toml`; CI installs the same version through mise.
+Run `yarn pin-foundry` to install it without changing other repositories' tools. Bump the standard pin in `mise.toml`
+and the optional zkSync fork pin in `mise.zksync.toml`.
+
 ## Test
 
 ```shell

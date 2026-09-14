@@ -5,9 +5,6 @@ import { Test } from "forge-std/Test.sol";
 import { MulticallHandler } from "../../../../contracts/handlers/MulticallHandler.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
-// Run this test to verify PermissionSplitter behavior when changing ownership of the HubPool
-// to it. Therefore this test should be run as a fork test via:
-// - source .env && forge test --fork-url $NODE_URL_1
 contract MulticallHandlerTest is Test {
     MulticallHandler handler;
     MulticallHandler.Instructions instructions;
