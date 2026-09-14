@@ -48,6 +48,10 @@ contract Tron_SpokePoolPeripheryTest is Test {
     uint32 constant FILL_DEADLINE_BUFFER = 7200;
 
     function setUp() public {
+        // Use a realistic block time so that absolute quoteTimestamp/fillDeadline values exceed the periphery's
+        // MAX_RELATIVE_TIME_SECONDS threshold and are not reinterpreted as relative offsets.
+        vm.warp(1_700_000_000);
+
         weth = new WETH9();
         usdt = new MockTronUSDT();
         vanilla = new MintableERC20("Vanilla", "VAN", 6);
