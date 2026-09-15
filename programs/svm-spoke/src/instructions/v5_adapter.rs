@@ -6,7 +6,7 @@ use anchor_spl::{
         extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
         state::Mint as SplMint,
     },
-    token_interface::TokenAccount,
+    token_interface::{TokenAccount, TransferChecked},
 };
 
 use crate::{
@@ -136,10 +136,12 @@ fn load_v5_deposit_accounts<'info>(
 
     Ok((
         DepositAccounts {
-            from: gateway_vault_info.clone(),
-            vault: spoke_vault_info.clone(),
-            delegate: source_delegate_info.clone(),
-            mint: mint_info.clone(),
+            transfer: TransferChecked {
+                from: gateway_vault_info.clone(),
+                mint: mint_info.clone(),
+                to: spoke_vault_info.clone(),
+                authority: source_delegate_info.clone(),
+            },
             token_program: token_program.clone(),
             mint_decimals,
         },
