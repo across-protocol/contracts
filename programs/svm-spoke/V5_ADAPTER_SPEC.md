@@ -50,6 +50,10 @@ The variant name encodes both the action and that action payload's wire-schema r
 be reordered. If one payload changes, append a new variant such as `DepositV2`; a safe old variant may remain accepted
 temporarily while already-committed inputs drain, or be rejected immediately if its format is unsafe.
 
+`V5FillInput` contains `recipient[32] || output_token[32] || min_output_amount:u64_le`. Unlike the EVM executor-mode
+input, the SVM adapter wire intentionally omits a callback message because adapter fills do not execute recipient
+callbacks.
+
 `AcrossDepositInput` nests the canonical deposit fields under `deposit_params: AcrossDepositParams`, matching the EVM
 adapter's type boundary. Borsh serializes that fixed struct inline, so the nesting adds no bytes. All Rust fields
 serialize in declaration order. Integers use Borsh little-endian encoding. Pubkeys and `[u8; 32]` are raw 32-byte
@@ -113,8 +117,8 @@ self-transfer or approval. The continuing atomic tape must consume the output.
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself; a nonzero remainder must be rent-exempt, and
 `u64::MAX` means withdraw the live balance. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
-from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode requires an empty callback
-message; the relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
+from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
+relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
 
 Transfer-fee mints are excluded until debit/delivery delta semantics are defined. Transfer hooks remain disabled
 unless validator tests prove the complete hook-account set and the Gateway-to-Spoke CPI depth for that mint.

@@ -114,7 +114,6 @@ describe("svm_spoke V5 foundations", () => {
       fromHex(fixture.deposit.recipient),
       fromHex(fixture.deposit.outputToken),
       u64(fixture.fill.minOutputAmount),
-      u32(0),
     ]);
     assert.equal(hex(fillInput), fixture.wire.fillInput);
 

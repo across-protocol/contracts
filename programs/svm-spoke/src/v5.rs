@@ -105,14 +105,13 @@ pub struct AcrossDepositJitParams {
     pub signature: [u8; V5_SIGNATURE_LEN],
 }
 
-/// Destination acceptance bounds. Adapter mode requires `message` to be empty; retaining the field keeps the
-/// semantic V5FillInput shape explicit and makes a non-empty callback fail closed.
+/// Destination acceptance bounds. Unlike the EVM executor-mode input, the SVM adapter omits a callback message
+/// because V5 adapter fills do not execute recipient callbacks.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V5FillInput {
     pub recipient: Pubkey,
     pub output_token: Pubkey,
     pub min_output_amount: u64,
-    pub message: Vec<u8>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -137,7 +136,7 @@ pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
                 require!(bips <= BIPS_DENOMINATOR, V5Error::InvalidWireFormat);
             }
         }
-        V5AdapterInput::FillV1(fill) => require!(fill.message.is_empty(), V5Error::InvalidWireFormat),
+        V5AdapterInput::FillV1(_) => {}
     }
     Ok(input)
 }
