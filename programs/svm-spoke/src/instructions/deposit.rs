@@ -69,10 +69,7 @@ pub struct Deposit<'info> {
 }
 
 pub struct DepositAccounts<'info> {
-    pub from: AccountInfo<'info>,
-    pub vault: AccountInfo<'info>,
-    pub delegate: AccountInfo<'info>,
-    pub mint: AccountInfo<'info>,
+    pub transfer: TransferChecked<'info>,
     pub token_program: AccountInfo<'info>,
     pub mint_decimals: u8,
 }
@@ -80,10 +77,12 @@ pub struct DepositAccounts<'info> {
 impl<'info> From<&Deposit<'info>> for DepositAccounts<'info> {
     fn from(accounts: &Deposit<'info>) -> Self {
         Self {
-            from: accounts.depositor_token_account.to_account_info(),
-            vault: accounts.vault.to_account_info(),
-            delegate: accounts.delegate.to_account_info(),
-            mint: accounts.mint.to_account_info(),
+            transfer: TransferChecked {
+                from: accounts.depositor_token_account.to_account_info(),
+                mint: accounts.mint.to_account_info(),
+                to: accounts.vault.to_account_info(),
+                authority: accounts.delegate.to_account_info(),
+            },
             token_program: accounts.token_program.to_account_info(),
             mint_decimals: accounts.mint.decimals,
         }
@@ -145,7 +144,7 @@ pub fn _deposit(
 
     // Depositor must have delegated input_amount to the delegate PDA
     transfer_from_with_delegate(
-        TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.vault, authority: accounts.delegate },
+        accounts.transfer,
         accounts.token_program,
         input_amount,
         accounts.mint_decimals,
