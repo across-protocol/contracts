@@ -1,8 +1,9 @@
-# SVM SpokePool V5 adapter specification (wire version 1)
+# SVM SpokePool V5 adapter specification
 
 This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. It intentionally
-describes foundations only: wire version 1 does not become callable until the source and destination behavior steps
-land.
+describes foundations only: these schemas do not become callable until the source and destination behavior steps land.
+`V5` identifies the Across protocol generation, while `V1` identifies the first SVM wire-schema revision of a context
+or input variant.
 
 ## Dispatch ABI and accounts
 
@@ -17,6 +18,9 @@ discriminator[8]
 || input_len:u32_le || input
 || jit_len:u32_le || jit_data
 ```
+
+The fixed 96-byte context is `GatewayContextV1`. Input-variant versions do not version this outer dispatch ABI. A
+context-layout change requires a new Gateway dispatch branch and adapter entrypoint using `GatewayContextV2`.
 
 The common fixed Anchor accounts, in order, are:
 
@@ -36,35 +40,37 @@ writable at the transaction level.
 `input` is strict Borsh with no trailing bytes:
 
 ```text
-V5AdapterInput {
-  version: u8 = 1,
-  mode: enum { Deposit = 0(AcrossDepositInput), Fill = 1(V5FillInput) }
+V5AdapterInput = enum {
+  DepositV1 = 0(AcrossDepositInput),
+  FillV1 = 1(V5FillInput)
 }
 ```
+
+The variant name encodes both the action and that action payload's wire-schema revision. Existing variants must never
+be reordered. If one payload changes, append a new variant such as `DepositV2`; a safe old variant may remain accepted
+temporarily while already-committed inputs drain, or be rejected immediately if its format is unsafe.
 
 `AcrossDepositInput` nests the canonical deposit fields under `deposit_params: AcrossDepositParams`, matching the EVM
 adapter's type boundary. Borsh serializes that fixed struct inline, so the nesting adds no bytes. All Rust fields
 serialize in declaration order. Integers use Borsh little-endian encoding. Pubkeys and `[u8; 32]` are raw 32-byte
 values. Vectors use a `u32_le` length. `input_amount_mode` is `Literal = 0` or
 `InputVaultBalance = 1 { bips: u16_le }`; `bips` must not exceed 10,000. The resolved SVM token amount is `u64`, while
-cross-VM uint256 values remain 32-byte big-endian EVM words. The leading version byte is checked before the mode body
-is decoded, so any unsupported version reports `UnsupportedVersion` even when its body is not compatible with v1.
+cross-VM uint256 values remain 32-byte big-endian EVM words.
 
 Gateway token vaults are shared per mint rather than isolated per execution. `InputVaultBalance` therefore resolves
 against shared live state, and the continuing tape must leave no residual balance or stale approval that a later
 permissionless execution could consume. Gateway does not currently enforce this net-zero settlement invariant.
 
-Unlike the EVM `inputAmountParam`, SVM wire v1 has no set-call-value flag. Native SOL must first be wrapped by the
+Unlike the EVM `inputAmountParam`, `DepositV1` has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
-token path as any SPL input. Direct lamport deposit from this adapter is outside wire v1.
+token path as any SPL input. Direct lamport deposit from this adapter is outside `DepositV1`.
 
 Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams` and is present when the committed authority or either
 permission bit is nonzero. It is the fixed 129 bytes
 `new_output_amount[32] || new_exclusive_relayer[32] || signature[65]`. A nonzero authority requires a valid signature;
 when authority is zero, enabled modifications are permissionless, matching the EVM `AcrossDepositDelegateAdapter`.
 Zero authority with both permission bits false requires empty `jit_data`. Fill mode always decodes `jit_data` as
-`V5FillJit`. Malformed enum tags, invalid Borsh booleans or lengths, unsupported versions, missing required JIT, and
-trailing bytes fail closed.
+`V5FillJit`. Unknown enum tags, invalid Borsh booleans or lengths, missing required JIT, and trailing bytes fail closed.
 
 ## Hashes and signatures
 
@@ -81,8 +87,10 @@ digest    = keccak256(
 )
 ```
 
-The configured executor is Gateway in version 1, but deposit identity deliberately takes `executor_program_id` while
-the signature domain always takes `gateway_program_id`. Signatures are secp256k1 `r[32] || s[32] || v[1]`, accept
+The `.V1` suffix in the name identifies the EVM-aligned JIT signature-domain revision; it is independent of the Across
+V5 protocol and SVM wire-schema versions. For `DepositV1`, Gateway is the configured executor. Deposit identity
+deliberately takes `executor_program_id`, while the signature domain always takes `gateway_program_id`. Signatures are
+secp256k1 `r[32] || s[32] || v[1]`, accept
 only `v` 27 or 28, require low `s`, recover an uncompressed public key, and compare the last 20 bytes of its Keccak
 hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v` 0/1 encodings are unsupported.
 

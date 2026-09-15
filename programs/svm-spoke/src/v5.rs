@@ -1,7 +1,8 @@
 //! Frozen wire, cryptographic, and PDA foundations for the Gateway-facing V5 adapter.
 //!
-//! This module deliberately contains no live deposit or fill entrypoint. The versioned types and helpers are the
-//! Step 1 compatibility boundary consumed by the later behavior steps.
+//! `V5` identifies the Across protocol generation, while `V1` on a context or input variant identifies that
+//! structure's SVM wire-schema revision. Those schemas evolve independently: append a new input variant for a changed
+//! Deposit or Fill payload, and use a new Gateway dispatch ABI and adapter entrypoint for a changed context.
 
 use anchor_lang::{
     prelude::*,
@@ -10,39 +11,40 @@ use anchor_lang::{
 
 use crate::{
     common::RelayData,
-    constants::{
-        BIPS_DENOMINATOR, FILL_STATUS_SEED, GATEWAY_DISPATCH_AUTHORITY, V5_ADAPTER_WIRE_VERSION, V5_FILL_PAYER_SEED,
-    },
+    constants::{BIPS_DENOMINATOR, FILL_STATUS_SEED, GATEWAY_DISPATCH_AUTHORITY, V5_FILL_PAYER_SEED},
     error::V5Error,
     ID,
 };
 
 pub const V5_SIGNATURE_LEN: usize = 65;
+/// EVM-aligned JIT signature-domain revision, independent of the Across V5 protocol and SVM wire-schema versions.
 pub const V5_PARAM_MODIFICATION_NAME: &[u8] = b"ACXV.AcrossDepositDelegateAdapter.V1";
 const SECP256K1_HALF_ORDER: [u8; 32] = [
     0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x5d, 0x57, 0x6e,
     0x73, 0x57, 0xa4, 0x50, 0x1d, 0xdf, 0xe9, 0x2f, 0x46, 0x68, 0x1b, 0x20, 0xa0,
 ];
 
-/// Gateway-attested values prepended to every adapter call. Field order and widths mirror Gateway `CtxValues`.
+/// Version 1 of the Gateway-attested context prepended to every adapter call.
+///
+/// Field order and widths are part of the Gateway dispatch ABI. A context-layout change requires a new Gateway
+/// dispatch ABI and adapter entrypoint rather than a new [`V5AdapterInput`] variant.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy)]
-pub struct V5GatewayContext {
+pub struct GatewayContextV1 {
     pub step_id: [u8; 32],
     pub path_id: [u8; 32],
     pub submitter: Pubkey,
 }
 
+/// Committed input for an Across V5 adapter call.
+///
+/// `V5` is the Across protocol generation; each variant's `V1` is its SVM wire-schema revision. Borsh discriminants
+/// are frozen as `DepositV1 = 0` and `FillV1 = 1`. Append a new versioned variant when one payload changes; never
+/// reorder existing variants. A safe old variant may remain accepted while in-flight inputs drain, while an unsafe
+/// variant can be rejected immediately.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V5AdapterInput {
-    pub version: u8,
-    pub mode: V5AdapterMode,
-}
-
-/// Borsh enum discriminants are frozen as Deposit=0 and Fill=1.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum V5AdapterMode {
-    Deposit(AcrossDepositInput),
-    Fill(V5FillInput),
+pub enum V5AdapterInput {
+    DepositV1(AcrossDepositInput),
+    FillV1(V5FillInput),
 }
 
 /// Literal uses the committed `input_amount`. Balance-relative mode resolves `bips` of the canonical Gateway input
@@ -128,16 +130,14 @@ fn decode_strict<T: AnchorDeserialize>(data: &[u8]) -> Result<T> {
 }
 
 pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
-    let (&version, body) = data.split_first().ok_or_else(|| error!(V5Error::InvalidWireFormat))?;
-    require_eq!(version, V5_ADAPTER_WIRE_VERSION, V5Error::UnsupportedVersion);
-    let input = V5AdapterInput { version, mode: decode_strict(body)? };
-    match &input.mode {
-        V5AdapterMode::Deposit(deposit) => {
+    let input = decode_strict(data)?;
+    match &input {
+        V5AdapterInput::DepositV1(deposit) => {
             if let V5InputAmountMode::InputVaultBalance { bips } = deposit.input_amount_mode {
                 require!(bips <= BIPS_DENOMINATOR, V5Error::InvalidWireFormat);
             }
         }
-        V5AdapterMode::Fill(fill) => require!(fill.message.is_empty(), V5Error::InvalidWireFormat),
+        V5AdapterInput::FillV1(fill) => require!(fill.message.is_empty(), V5Error::InvalidWireFormat),
     }
     Ok(input)
 }
@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn v5_errors_use_dedicated_range() {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
-        assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_009);
+        assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_008);
     }
 
     #[test]
@@ -362,8 +362,8 @@ mod tests {
         let input = decode_v5_adapter_input(&input_bytes).unwrap();
         assert_eq!(serialize(&input), input_bytes);
 
-        let deposit = match &input.mode {
-            V5AdapterMode::Deposit(deposit) => deposit,
+        let deposit = match &input {
+            V5AdapterInput::DepositV1(deposit) => deposit,
             _ => panic!("golden mode must be Deposit"),
         };
         assert_eq!(deposit.deposit_params.deposit_nonce, 72_623_859_790_382_856);
@@ -375,7 +375,7 @@ mod tests {
             .expect("golden JIT must be Deposit");
         assert_eq!(serialize(&jit), jit_bytes);
 
-        let ctx = V5GatewayContext {
+        let ctx = GatewayContextV1 {
             step_id: array(&fixture, "/context/stepId"),
             path_id: array(&fixture, "/context/pathId"),
             submitter: Pubkey::new_from_array(array(&fixture, "/context/submitter")),
@@ -501,15 +501,12 @@ mod tests {
         encoded.push(0);
         assert!(decode_v5_adapter_input(&encoded).is_err());
 
-        let mut wrong_version = bytes(&fixture, "/wire/depositInput");
-        wrong_version[0] = V5_ADAPTER_WIRE_VERSION + 1;
-        assert_error_name(decode_v5_adapter_input(&wrong_version), "UnsupportedVersion");
-        assert_error_name(decode_v5_adapter_input(&[V5_ADAPTER_WIRE_VERSION + 1]), "UnsupportedVersion");
+        assert_error_name(decode_v5_adapter_input(&[2]), "InvalidWireFormat");
         assert_error_name(decode_v5_adapter_input(&[]), "InvalidWireFormat");
 
         let mut input = decode_v5_adapter_input(&bytes(&fixture, "/wire/depositInput")).unwrap();
-        let deposit = match &mut input.mode {
-            V5AdapterMode::Deposit(deposit) => deposit,
+        let deposit = match &mut input {
+            V5AdapterInput::DepositV1(deposit) => deposit,
             _ => unreachable!(),
         };
         deposit.modification_rules = V5DepositModificationRules {
@@ -518,20 +515,20 @@ mod tests {
             allow_exclusive_relayer: false,
         };
         let input = decode_v5_adapter_input(&serialize(&input)).unwrap();
-        let deposit = match &input.mode {
-            V5AdapterMode::Deposit(deposit) => deposit,
+        let deposit = match &input {
+            V5AdapterInput::DepositV1(deposit) => deposit,
             _ => unreachable!(),
         };
         assert!(decode_v5_deposit_jit(deposit, &[]).unwrap().is_none());
         assert!(decode_v5_deposit_jit(deposit, &[0]).is_err());
 
         let mut permissionless_rules = input;
-        if let V5AdapterMode::Deposit(deposit) = &mut permissionless_rules.mode {
+        if let V5AdapterInput::DepositV1(deposit) = &mut permissionless_rules {
             deposit.modification_rules.allow_output_amount = true;
         }
         let permissionless_rules = decode_v5_adapter_input(&serialize(&permissionless_rules)).unwrap();
-        let deposit = match &permissionless_rules.mode {
-            V5AdapterMode::Deposit(deposit) => deposit,
+        let deposit = match &permissionless_rules {
+            V5AdapterInput::DepositV1(deposit) => deposit,
             _ => unreachable!(),
         };
         assert!(decode_v5_deposit_jit(deposit, &[]).is_err());
@@ -541,7 +538,7 @@ mod tests {
     fn fill_wire_is_branch_specific() {
         let fixture = fixture();
         let input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
-        assert!(matches!(input.mode, V5AdapterMode::Fill(_)));
+        assert!(matches!(input, V5AdapterInput::FillV1(_)));
         decode_v5_fill_jit(&bytes(&fixture, "/wire/fillJit")).unwrap();
         assert!(decode_v5_fill_jit(&bytes(&fixture, "/wire/depositJit")).is_err());
     }
@@ -567,8 +564,8 @@ mod tests {
     fn jit_permissions_and_improvement_rule_match_evm_behavior() {
         let fixture = fixture();
         let input = decode_v5_adapter_input(&bytes(&fixture, "/wire/depositInput")).unwrap();
-        let mut deposit = match input.mode {
-            V5AdapterMode::Deposit(deposit) => deposit,
+        let mut deposit = match input {
+            V5AdapterInput::DepositV1(deposit) => deposit,
             _ => unreachable!(),
         };
         let jit: AcrossDepositJitParams = decode_strict(&bytes(&fixture, "/wire/depositJit")).unwrap();
