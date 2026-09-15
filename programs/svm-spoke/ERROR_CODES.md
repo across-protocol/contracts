@@ -7,7 +7,7 @@ The callback rejection and V5 errors are new relative to
 the comparison used in the tables below. A dash means the error did not exist in that baseline.
 
 Earlier undeployed revisions of this stack used `V5Error` codes in the 7000 range. The finalized variants now use
-9000–9016; the pre-release list also changed before this migration was finalized. They also used 6019 for the new
+9000–9015; the pre-release list also changed before this migration was finalized. They also used 6019 for the new
 `LegacyFillMessageUnsupported`, now 7019. These earlier assignments were pre-release values.
 
 The tables cover every current variant in [error.rs](src/error.rs) and the removed `AcrossPlusError` variants.
@@ -88,17 +88,16 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InvalidDispatchAuthority`          | —              | 9003         |
 | `InvalidAccountMutability`          | —              | 9004         |
 | `ResolvedInputAmountBelowCommitted` | —              | 9005         |
-| `InsufficientDelegateAllowance`     | —              | 9006         |
-| `ParamModificationNotAnImprovement` | —              | 9007         |
-| `InvalidAmountBips`                 | —              | 9008         |
-| `UnsupportedMode`                   | —              | 9009         |
-| `InvalidTokenAccount`               | —              | 9010         |
-| `UnsupportedTokenExtension`         | —              | 9011         |
-| `InvalidFillPayer`                  | —              | 9012         |
-| `InvalidFillStatusAccount`          | —              | 9013         |
-| `FillCommitmentMismatch`            | —              | 9014         |
-| `FillOutputAmountTooLow`            | —              | 9015         |
-| `InsufficientVaultBalance`          | —              | 9016         |
+| `ParamModificationNotAnImprovement` | —              | 9006         |
+| `InvalidAmountBips`                 | —              | 9007         |
+| `UnsupportedMode`                   | —              | 9008         |
+| `InvalidTokenAccount`               | —              | 9009         |
+| `UnsupportedTokenExtension`         | —              | 9010         |
+| `InvalidFillPayer`                  | —              | 9011         |
+| `InvalidFillStatusAccount`          | —              | 9012         |
+| `FillCommitmentMismatch`            | —              | 9013         |
+| `FillOutputAmountTooLow`            | —              | 9014         |
+| `InsufficientVaultBalance`          | —              | 9015         |
 
 ## Removed (AcrossPlusError)
 
