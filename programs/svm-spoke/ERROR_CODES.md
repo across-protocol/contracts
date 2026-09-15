@@ -6,9 +6,9 @@ The callback rejection and V5 errors are new relative to
 [`master` at `75d968e4`](https://github.com/across-protocol/contracts/blob/75d968e4e86c37ef12c01277345ea8ed2f550901/programs/svm-spoke/src/error.rs),
 the comparison used in the tables below. A dash means the error did not exist in that baseline.
 
-Earlier undeployed revisions of this PR used `V5Error` 7000–7017; those codes are now 9000–9017, with the same
-variant order. They also used 6019 for the new `LegacyFillMessageUnsupported`, now 7019. These earlier assignments
-were pre-release values.
+Earlier undeployed revisions of this stack used `V5Error` codes in the 7000 range. The finalized variants now use
+9000–9016; the pre-release list also changed before this migration was finalized. They also used 6019 for the new
+`LegacyFillMessageUnsupported`, now 7019. These earlier assignments were pre-release values.
 
 The tables cover every current variant in [error.rs](src/error.rs) and the removed `AcrossPlusError` variants.
 Use the mapping for the program version being queried. Historical transaction errors retain the old codes;
@@ -83,23 +83,22 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | Error                               | Before release | This release |
 | ----------------------------------- | -------------- | ------------ |
 | `InvalidWireFormat`                 | —              | 9000         |
-| `UnsupportedVersion`                | —              | 9001         |
-| `InvalidParamModificationRules`     | —              | 9002         |
-| `InvalidParamModificationSignature` | —              | 9003         |
-| `MissingAccount`                    | —              | 9004         |
-| `InvalidDispatchAuthority`          | —              | 9005         |
-| `InvalidAccountMutability`          | —              | 9006         |
-| `ResolvedInputAmountBelowCommitted` | —              | 9007         |
-| `InsufficientDelegateAllowance`     | —              | 9008         |
-| `ParamModificationNotAnImprovement` | —              | 9009         |
-| `UnsupportedMode`                   | —              | 9010         |
-| `InvalidTokenAccount`               | —              | 9011         |
-| `UnsupportedTokenExtension`         | —              | 9012         |
-| `InvalidFillPayer`                  | —              | 9013         |
-| `InvalidFillStatusAccount`          | —              | 9014         |
-| `FillCommitmentMismatch`            | —              | 9015         |
-| `FillOutputAmountTooLow`            | —              | 9016         |
-| `InsufficientVaultBalance`          | —              | 9017         |
+| `InvalidParamModificationSignature` | —              | 9001         |
+| `MissingAccount`                    | —              | 9002         |
+| `InvalidDispatchAuthority`          | —              | 9003         |
+| `InvalidAccountMutability`          | —              | 9004         |
+| `ResolvedInputAmountBelowCommitted` | —              | 9005         |
+| `InsufficientDelegateAllowance`     | —              | 9006         |
+| `ParamModificationNotAnImprovement` | —              | 9007         |
+| `InvalidAmountBips`                 | —              | 9008         |
+| `UnsupportedMode`                   | —              | 9009         |
+| `InvalidTokenAccount`               | —              | 9010         |
+| `UnsupportedTokenExtension`         | —              | 9011         |
+| `InvalidFillPayer`                  | —              | 9012         |
+| `InvalidFillStatusAccount`          | —              | 9013         |
+| `FillCommitmentMismatch`            | —              | 9014         |
+| `FillOutputAmountTooLow`            | —              | 9015         |
+| `InsufficientVaultBalance`          | —              | 9016         |
 
 ## Removed (AcrossPlusError)
 
