@@ -378,8 +378,11 @@ describe("svm_spoke V5 source deposit", () => {
       execute(input, Buffer.alloc(0), 1_000_000n, false, sourceDelegate, gatewayVault),
       "MissingAccount"
     );
-    await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "insufficient funds");
-    await expectError(execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n), "insufficient funds");
+    await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "custom program error: 0x1");
+    await expectError(
+      execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n),
+      "custom program error: 0x1"
+    );
     assert.equal((await getAccount(connection, gatewayVault)).amount, 1_000_000n);
     assert.equal((await getAccount(connection, spokeVault)).amount, 0n);
   });
