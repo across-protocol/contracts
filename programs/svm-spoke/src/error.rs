@@ -87,8 +87,6 @@ pub enum SvmError {
 pub enum V5Error {
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat,
-    #[msg("Invalid Across V5 parameter modification rules!")]
-    InvalidParamModificationRules,
     #[msg("Invalid Across V5 parameter modification signature!")]
     InvalidParamModificationSignature,
     #[msg("Missing required Across V5 account!")]
