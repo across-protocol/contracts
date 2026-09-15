@@ -73,9 +73,7 @@ fn execute_v5_deposit<'info>(
     // input_amount.
     require_v5_delegate_allowance(source.delegated_amount, input_amount)?;
 
-    let mut message = Vec::with_capacity(64);
-    message.extend_from_slice(&V5_MAGIC_PREFIX);
-    message.extend_from_slice(&deposit.dst_step_id);
+    let message = [V5_MAGIC_PREFIX, deposit.dst_step_id].concat();
     let event = _deposit(
         accounts,
         params.depositor,
