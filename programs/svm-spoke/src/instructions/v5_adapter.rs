@@ -6,7 +6,7 @@ use anchor_spl::{
         extension::{BaseStateWithExtensions, ExtensionType, StateWithExtensions},
         state::Mint as SplMint,
     },
-    token_interface::{Mint, TokenAccount},
+    token_interface::TokenAccount,
 };
 
 use crate::{
@@ -119,7 +119,7 @@ fn load_v5_deposit_accounts<'info>(
         V5Error::InvalidTokenAccount
     );
     let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
-    reject_unsupported_mint_extensions(mint_info, &token_program_id)?;
+    let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
 
     let gateway_vault =
         get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &input_token, &token_program_id);
@@ -128,9 +128,8 @@ fn load_v5_deposit_accounts<'info>(
     let spoke_vault_info = find_v5_account(remaining_accounts, &spoke_vault, true)?;
     let source_delegate_info = find_v5_account(remaining_accounts, &V5_SOURCE_DELEGATE, false)?;
 
-    // Together with the canonical addresses above, these checks mirror the corresponding static mint and
-    // associated-token constraints.
-    let mint = load_mint(mint_info)?;
+    // Canonical ATA addresses plus these owner, mint, and authority checks mirror the static associated-token
+    // constraints.
     let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &GATEWAY_VAULT_AUTHORITY)?;
     load_token_account(spoke_vault_info, &token_program_id, &input_token, &state)?;
     require!(source.delegate == COption::Some(V5_SOURCE_DELEGATE), V5Error::InvalidTokenAccount);
@@ -142,14 +141,10 @@ fn load_v5_deposit_accounts<'info>(
             delegate: source_delegate_info.clone(),
             mint: mint_info.clone(),
             token_program: token_program.clone(),
-            mint_decimals: mint.decimals,
+            mint_decimals,
         },
         source,
     ))
-}
-
-fn load_mint(info: &AccountInfo) -> Result<Mint> {
-    Mint::try_deserialize(&mut &info.try_borrow_data()?[..]).map_err(|_| error!(V5Error::InvalidTokenAccount))
 }
 
 fn load_token_account(
@@ -166,17 +161,16 @@ fn load_token_account(
     Ok(account)
 }
 
-fn reject_unsupported_mint_extensions(info: &AccountInfo, token_program: &Pubkey) -> Result<()> {
-    if *token_program == anchor_spl::token::ID {
-        return Ok(());
-    }
+fn validate_v5_mint(info: &AccountInfo, token_program: &Pubkey) -> Result<u8> {
     let data = info.try_borrow_data()?;
     let mint = StateWithExtensions::<SplMint>::unpack(&data).map_err(|_| error!(V5Error::InvalidTokenAccount))?;
-    let extensions = mint
-        .get_extension_types()
-        .map_err(|_| error!(V5Error::InvalidTokenAccount))?;
-    require!(extensions.iter().all(is_supported_v5_mint_extension), V5Error::UnsupportedTokenExtension);
-    Ok(())
+    if *token_program == anchor_spl::token_2022::ID {
+        let extensions = mint
+            .get_extension_types()
+            .map_err(|_| error!(V5Error::InvalidTokenAccount))?;
+        require!(extensions.iter().all(is_supported_v5_mint_extension), V5Error::UnsupportedTokenExtension);
+    }
+    Ok(mint.base.decimals)
 }
 
 fn is_supported_v5_mint_extension(extension: &ExtensionType) -> bool {
