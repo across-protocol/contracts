@@ -241,7 +241,7 @@ describe("svm_spoke V5 destination fill", () => {
     await expectError(execute(), "FillsArePaused");
     await svmSpoke.methods.pauseFills(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
 
-    await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), "InsufficientDelegateAllowance");
+    await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), "custom program error: 0x1");
     await expectError(execute(undefined, undefined, { delegate: Keypair.generate().publicKey }), "InvalidTokenAccount");
     await expectError(execute(undefined, undefined, { payer: Keypair.generate().publicKey }), "MissingAccount");
     await expectError(execute(undefined, undefined, { status: Keypair.generate().publicKey }), "MissingAccount");
