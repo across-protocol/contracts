@@ -42,7 +42,7 @@ fn assert_error_name<T>(result: Result<T>, expected: &str) {
 #[test]
 fn v5_errors_use_dedicated_range() {
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
-    assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_007);
+    assert_eq!(u32::from(V5Error::InvalidAmountBips), 7_008);
 }
 
 #[test]
@@ -247,8 +247,10 @@ fn balance_resolution_floor_and_ordinary_delegate_allowance_are_strict() {
     assert_eq!(resolve_v5_input_amount(V5InputAmountMode::Literal, 99, 0).unwrap(), 99);
     assert_eq!(resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: 9_750 }, 97, 101).unwrap(), 98);
     assert!(resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: 9_750 }, 99, 101).is_err());
-    assert!(resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: BIPS_DENOMINATOR + 1 }, 0, u64::MAX)
-        .is_err());
+    assert_error_name(
+        resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: BIPS_DENOMINATOR + 1 }, 0, u64::MAX),
+        "InvalidAmountBips",
+    );
 
     require_v5_delegate_allowance(99, 99).unwrap();
     require_v5_delegate_allowance(u64::MAX, 99).unwrap();
