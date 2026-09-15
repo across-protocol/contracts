@@ -97,8 +97,6 @@ pub enum V5Error {
     InvalidAccountMutability,
     #[msg("Resolved Across V5 input amount is below the committed floor!")]
     ResolvedInputAmountBelowCommitted,
-    #[msg("Across V5 delegate allowance is insufficient!")]
-    InsufficientDelegateAllowance,
     #[msg("Across V5 parameter modification is not an improvement!")]
     ParamModificationNotAnImprovement,
     #[msg("Across V5 input amount bips exceed the denominator!")]
