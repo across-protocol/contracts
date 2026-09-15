@@ -23,7 +23,7 @@ use crate::{
             V5AdapterInput, V5FillInput, V5FillJit,
         },
         jit::{derive_v5_deposit_id, resolve_v5_deposit_modifications},
-        pda::{find_v5_account, require_gateway_dispatch_authority, require_v5_delegate_allowance},
+        pda::{find_v5_account, require_gateway_dispatch_authority},
     },
 };
 
@@ -201,7 +201,6 @@ fn load_v5_fill_accounts<'a, 'info>(
         FillDelivery::InPlace
     } else {
         require!(source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
-        require_v5_delegate_allowance(source.delegated_amount, output_amount)?;
         FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
     };
 
