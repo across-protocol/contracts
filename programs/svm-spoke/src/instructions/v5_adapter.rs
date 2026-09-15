@@ -22,7 +22,7 @@ use crate::{
             V5AdapterInput,
         },
         jit::{derive_v5_deposit_id, resolve_v5_deposit_modifications},
-        pda::{find_v5_account, require_gateway_dispatch_authority, require_v5_delegate_allowance},
+        pda::{find_v5_account, require_gateway_dispatch_authority},
     },
 };
 
@@ -69,9 +69,6 @@ fn execute_v5_deposit<'info>(
     let (accounts, source) =
         DepositAccounts::load_v5(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
     let input_amount = resolve_v5_input_amount(deposit.input_amount_mode, params.input_amount, source.amount)?;
-    // Match EVM transferFrom semantics: sufficient and max allowances are valid; the adapter pulls exactly
-    // input_amount.
-    require_v5_delegate_allowance(source.delegated_amount, input_amount)?;
 
     let message = [V5_MAGIC_PREFIX, deposit.dst_step_id].concat();
     let event = _deposit(

@@ -68,11 +68,10 @@ Amount resolution rejects `bips` greater than 10,000; the wire decoder does not.
 mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
 continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
 Gateway does not currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to
-`v5_source_delegate` and requires its allowance to cover the resolved amount, but deliberately does not require
-equality: this matches the EVM
-`transferFrom` behavior and accepts sufficient or maximum approvals. Any residual Gateway-vault balance is already
-movable by a later committed Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The
-SpokePool never delegates its own vault.
+`v5_source_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
+matching EVM `transferFrom` behavior. Any residual Gateway-vault balance is already movable by a later committed
+Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The SpokePool never delegates its own
+vault.
 
 Unlike the EVM `inputAmountParam`, `DepositV1` has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
