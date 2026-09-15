@@ -67,7 +67,7 @@ fn execute_v5_deposit<'info>(
         (params.output_amount, params.exclusive_relayer)
     };
     let (accounts, source) =
-        load_v5_deposit_accounts(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
+        DepositAccounts::load_v5(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
     let input_amount = resolve_v5_input_amount(deposit.input_amount_mode, params.input_amount, source.amount)?;
     // Match EVM transferFrom semantics: sufficient and max allowances are valid; the adapter pulls exactly
     // input_amount.
@@ -104,47 +104,49 @@ fn execute_v5_deposit<'info>(
     Ok(())
 }
 
-fn load_v5_deposit_accounts<'info>(
-    remaining_accounts: &[AccountInfo<'info>],
-    state: Pubkey,
-    input_token: Pubkey,
-) -> Result<(DepositAccounts<'info>, TokenAccount)> {
-    let mint_info = find_v5_account(remaining_accounts, &input_token, false)?;
-    let token_program_id = *mint_info.owner;
-    // Mirror Interface<TokenInterface>: accept only a supported executable token program.
-    require!(
-        token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
-        V5Error::InvalidTokenAccount
-    );
-    let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
-    let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
+impl<'info> DepositAccounts<'info> {
+    fn load_v5(
+        remaining_accounts: &[AccountInfo<'info>],
+        state: Pubkey,
+        input_token: Pubkey,
+    ) -> Result<(Self, TokenAccount)> {
+        let mint_info = find_v5_account(remaining_accounts, &input_token, false)?;
+        let token_program_id = *mint_info.owner;
+        // Mirror Interface<TokenInterface>: accept only a supported executable token program.
+        require!(
+            token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
+            V5Error::InvalidTokenAccount
+        );
+        let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
+        let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
 
-    let gateway_vault =
-        get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &input_token, &token_program_id);
-    let spoke_vault = get_associated_token_address_with_program_id(&state, &input_token, &token_program_id);
-    let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
-    let spoke_vault_info = find_v5_account(remaining_accounts, &spoke_vault, true)?;
-    let source_delegate_info = find_v5_account(remaining_accounts, &V5_SOURCE_DELEGATE, false)?;
+        let gateway_vault =
+            get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, &input_token, &token_program_id);
+        let spoke_vault = get_associated_token_address_with_program_id(&state, &input_token, &token_program_id);
+        let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
+        let spoke_vault_info = find_v5_account(remaining_accounts, &spoke_vault, true)?;
+        let source_delegate_info = find_v5_account(remaining_accounts, &V5_SOURCE_DELEGATE, false)?;
 
-    // Canonical ATA addresses plus these owner, mint, and authority checks mirror the static associated-token
-    // constraints.
-    let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &GATEWAY_VAULT_AUTHORITY)?;
-    load_token_account(spoke_vault_info, &token_program_id, &input_token, &state)?;
-    require!(source.delegate == COption::Some(V5_SOURCE_DELEGATE), V5Error::InvalidTokenAccount);
+        // Canonical ATA addresses plus these owner, mint, and authority checks mirror the static associated-token
+        // constraints.
+        let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &GATEWAY_VAULT_AUTHORITY)?;
+        load_token_account(spoke_vault_info, &token_program_id, &input_token, &state)?;
+        require!(source.delegate == COption::Some(V5_SOURCE_DELEGATE), V5Error::InvalidTokenAccount);
 
-    Ok((
-        DepositAccounts {
-            transfer: TransferChecked {
-                from: gateway_vault_info.clone(),
-                mint: mint_info.clone(),
-                to: spoke_vault_info.clone(),
-                authority: source_delegate_info.clone(),
+        Ok((
+            Self {
+                transfer: TransferChecked {
+                    from: gateway_vault_info.clone(),
+                    mint: mint_info.clone(),
+                    to: spoke_vault_info.clone(),
+                    authority: source_delegate_info.clone(),
+                },
+                token_program: token_program.clone(),
+                mint_decimals,
             },
-            token_program: token_program.clone(),
-            mint_decimals,
-        },
-        source,
-    ))
+            source,
+        ))
+    }
 }
 
 fn load_token_account(
