@@ -1,13 +1,13 @@
 # SVM SpokePool V5 adapter specification
 
-This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. It intentionally
-describes foundations only: these schemas do not become callable until the source and destination behavior steps land.
-`V5` identifies the Across protocol generation, while `V1` identifies the first SVM wire-schema revision of a context
-or input variant.
+This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. The schemas and
+helpers alone are not callable; a callable surface additionally requires source and destination handlers. `V5`
+identifies the Across protocol generation, while `V1` identifies the first SVM wire-schema revision of a context or
+input variant.
 
 ## Dispatch ABI and accounts
 
-The frozen dispatch target for the later behavior steps is the single
+The frozen dispatch target is the single
 `adapter_execute_across_v5(ctx_values, input, jit_data)` entrypoint, whose Anchor discriminator is the first eight
 bytes of `sha256("global:adapter_execute_across_v5")`. Gateway program
 `34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p` serializes:
@@ -58,24 +58,27 @@ callbacks.
 adapter's type boundary. Borsh serializes that fixed struct inline, so the nesting adds no bytes. All Rust fields
 serialize in declaration order. Integers use Borsh little-endian encoding. Pubkeys and `[u8; 32]` are raw 32-byte
 values. Vectors use a `u32_le` length. `input_amount_mode` is `Literal = 0` or
-`InputVaultBalance = 1 { bips: u16_le }`; `bips` must not exceed 10,000. The resolved SVM token amount is `u64`, while
-cross-VM uint256 values remain 32-byte big-endian EVM words.
+`InputVaultBalance = 1 { bips: u16_le }`. The resolved SVM token amount is `u64`, while cross-VM uint256 values remain
+32-byte big-endian EVM words.
 
-Gateway token vaults are shared per mint rather than isolated per execution. `InputVaultBalance` therefore resolves
-against shared live state, and the continuing tape must leave no residual balance or stale approval that a later
-permissionless execution could consume. Gateway does not currently enforce this net-zero settlement invariant.
+Amount resolution rejects `bips` greater than 10,000; the wire decoder does not. Gateway token vaults are shared per
+mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
+continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
+Gateway does not currently enforce this net-zero settlement invariant.
 
 Unlike the EVM `inputAmountParam`, `DepositV1` has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
 token path as any SPL input. Direct lamport deposit from this adapter is outside `DepositV1`.
 
-Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams`. It is decoded when the committed authority or either
-permission bit is nonzero and is the fixed 129 bytes
+Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams` and is the fixed 129 bytes
 `new_output_amount[32] || new_exclusive_relayer[32] || signature[65]`. A nonzero authority requires a valid signature;
 when authority is zero, enabled modifications are permissionless, matching the EVM `AcrossDepositDelegateAdapter`.
-When the authority and both permission bits are zero, `jit_data` is ignored rather than decoded. Fill mode always
-decodes `jit_data` as `V5FillJit`. Unknown enum tags, invalid Borsh booleans or lengths, missing required JIT, and
-trailing bytes in any decoded payload fail closed.
+These foundations decode strictly and expose `jit_enabled()` but gate nothing themselves: the deposit handler must
+decode `jit_data` only when the committed authority or either permission bit is nonzero, and must ignore it entirely
+when all three are zero. With zero authority, enabling `allow_exclusive_relayer` lets any permissionless execution
+choose an arbitrary exclusive relayer for the committed `exclusivity_parameter` window; path builders should enable
+that rule shape only intentionally. Fill mode always decodes `jit_data` as `V5FillJit`. Unknown enum tags, invalid
+Borsh booleans or lengths, missing required JIT, and trailing bytes in any decoded payload fail closed.
 
 ## Hashes and signatures
 
