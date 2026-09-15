@@ -101,6 +101,8 @@ pub enum V5Error {
     InsufficientDelegateAllowance,
     #[msg("Across V5 parameter modification is not an improvement!")]
     ParamModificationNotAnImprovement,
+    #[msg("Across V5 input amount bips exceed the denominator!")]
+    InvalidAmountBips,
 }
 
 // CCTP specific errors.

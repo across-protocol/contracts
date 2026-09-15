@@ -113,7 +113,7 @@ pub fn resolve_v5_input_amount(mode: V5InputAmountMode, committed_amount: u64, v
     let amount = match mode {
         V5InputAmountMode::Literal => committed_amount,
         V5InputAmountMode::InputVaultBalance { bips } => {
-            require!(bips <= BIPS_DENOMINATOR, V5Error::InvalidWireFormat);
+            require!(bips <= BIPS_DENOMINATOR, V5Error::InvalidAmountBips);
             (u128::from(vault_balance) * u128::from(bips) / u128::from(BIPS_DENOMINATOR)) as u64
         }
     };
