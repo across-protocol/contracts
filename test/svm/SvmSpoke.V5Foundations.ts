@@ -92,7 +92,7 @@ describe("svm_spoke V5 foundations", () => {
       u32(fixture.deposit.exclusivityParameter),
     ]);
     const depositInput = Buffer.concat([
-      Buffer.from([fixture.version, 0]),
+      Buffer.from([0]), // V5AdapterInput::DepositV1.
       depositParams,
       fromHex(fixture.deposit.dstStepId),
       Buffer.from([fixture.deposit.inputAmountMode.discriminant]),
@@ -110,7 +110,7 @@ describe("svm_spoke V5 foundations", () => {
     assert.equal(hex(depositJit), fixture.wire.depositJit);
 
     const fillInput = Buffer.concat([
-      Buffer.from([fixture.version, 1]),
+      Buffer.from([1]), // V5AdapterInput::FillV1.
       fromHex(fixture.deposit.recipient),
       fromHex(fixture.deposit.outputToken),
       u64(fixture.fill.minOutputAmount),

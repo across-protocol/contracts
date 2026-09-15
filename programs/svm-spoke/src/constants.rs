@@ -11,7 +11,6 @@ pub const MAX_EXCLUSIVITY_PERIOD_SECONDS: u32 = 31_536_000;
 pub const ZERO_DEPOSIT_ID: [u8; 32] = [0u8; 32];
 pub const BIPS_DENOMINATOR: u16 = 10_000;
 
-pub const V5_ADAPTER_WIRE_VERSION: u8 = 1;
 pub const V5_SOURCE_DELEGATE_SEED: &[u8] = b"v5_source_delegate";
 pub const V5_SOURCE_DELEGATE: Pubkey = pubkey!("CVh7qLq3yviU8iGuBmmgipJpfy95p9B81e2YTWDaxCbb");
 pub const V5_SOURCE_DELEGATE_BUMP: u8 = 255;
