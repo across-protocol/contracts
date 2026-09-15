@@ -19,6 +19,10 @@ use crate::{
 pub const V5_SIGNATURE_LEN: usize = 65;
 /// EVM-aligned JIT signature-domain revision, independent of the Across V5 protocol and SVM wire-schema versions.
 pub const V5_PARAM_MODIFICATION_NAME: &[u8] = b"ACXV.AcrossDepositDelegateAdapter.V1";
+const V5_PARAM_MODIFICATION_NAME_HASH: [u8; 32] = [
+    0x17, 0x5b, 0xcc, 0x73, 0x21, 0x1b, 0xd5, 0x12, 0xc1, 0x2e, 0xfd, 0xaa, 0xe2, 0xb1, 0x16, 0x2e, 0xc6, 0x59, 0xfc,
+    0x84, 0x23, 0x0d, 0xe0, 0xa1, 0xe2, 0x8f, 0x01, 0xef, 0x2a, 0x71, 0x82, 0x33,
+];
 const SECP256K1_HALF_ORDER: [u8; 32] = [
     0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x5d, 0x57, 0x6e,
     0x73, 0x57, 0xa4, 0x50, 0x1d, 0xdf, 0xe9, 0x2f, 0x46, 0x68, 0x1b, 0x20, 0xa0,
@@ -121,36 +125,11 @@ pub struct V5FillJit {
     pub repayment_address: Pubkey,
 }
 
-fn decode_strict<T: AnchorDeserialize>(data: &[u8]) -> Result<T> {
-    let mut remaining = data;
-    let decoded = T::deserialize(&mut remaining).map_err(|_| error!(V5Error::InvalidWireFormat))?;
-    require!(remaining.is_empty(), V5Error::InvalidWireFormat);
-    Ok(decoded)
+pub(crate) fn decode_strict<T: AnchorDeserialize>(data: &[u8]) -> Result<T> {
+    T::try_from_slice(data).map_err(|_| error!(V5Error::InvalidWireFormat))
 }
 
 pub fn decode_v5_adapter_input(data: &[u8]) -> Result<V5AdapterInput> {
-    let input = decode_strict(data)?;
-    match &input {
-        V5AdapterInput::DepositV1(deposit) => {
-            if let V5InputAmountMode::InputVaultBalance { bips } = deposit.input_amount_mode {
-                require!(bips <= BIPS_DENOMINATOR, V5Error::InvalidWireFormat);
-            }
-        }
-        V5AdapterInput::FillV1(_) => {}
-    }
-    Ok(input)
-}
-
-pub fn decode_v5_deposit_jit(deposit: &AcrossDepositInput, data: &[u8]) -> Result<Option<AcrossDepositJitParams>> {
-    if deposit.modification_rules.jit_enabled() {
-        Ok(Some(decode_strict(data)?))
-    } else {
-        require!(data.is_empty(), V5Error::InvalidWireFormat);
-        Ok(None)
-    }
-}
-
-pub fn decode_v5_fill_jit(data: &[u8]) -> Result<V5FillJit> {
     decode_strict(data)
 }
 
@@ -192,9 +171,8 @@ pub fn derive_v5_deposit_id(
 }
 
 pub fn v5_param_modification_domain(gateway_program_id: &Pubkey) -> [u8; 32] {
-    let name_hash = keccak::hash(V5_PARAM_MODIFICATION_NAME).to_bytes();
     // EVM `abi.encode(bytes32,address)` is two 32-byte words. The SVM Gateway identity is already one word.
-    keccak::hashv(&[&name_hash, gateway_program_id.as_ref()]).to_bytes()
+    keccak::hashv(&[&V5_PARAM_MODIFICATION_NAME_HASH, gateway_program_id.as_ref()]).to_bytes()
 }
 
 /// EVM-compatible packed digest over fixed 32-byte words. `new_output_amount` is already a uint256 big-endian word.
@@ -235,7 +213,6 @@ pub fn verify_v5_authority(
     digest: &[u8; 32],
     signature: &[u8; V5_SIGNATURE_LEN],
 ) -> Result<()> {
-    require!(*expected_authority != [0u8; 20], V5Error::InvalidParamModificationRules);
     require!(
         recover_v5_authority(digest, signature)? == *expected_authority,
         V5Error::InvalidParamModificationSignature
@@ -252,7 +229,6 @@ pub fn resolve_v5_deposit_modifications(
     gateway_program_id: &Pubkey,
     path_id: &[u8; 32],
 ) -> Result<([u8; 32], Pubkey)> {
-    require!(input.modification_rules.jit_enabled(), V5Error::InvalidParamModificationRules);
     let deposit = &input.deposit_params;
     if input.modification_rules.authority != [0u8; 20] {
         let digest = v5_param_modification_digest(
@@ -346,7 +322,7 @@ mod tests {
     #[test]
     fn v5_errors_use_dedicated_range() {
         assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
-        assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_008);
+        assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 7_007);
     }
 
     #[test]
@@ -369,9 +345,7 @@ mod tests {
         assert!(matches!(deposit.input_amount_mode, V5InputAmountMode::InputVaultBalance { bips: 9_750 }));
         assert_eq!(deposit.modification_rules.authority, array(&fixture, "/jit/authority"));
 
-        let jit = decode_v5_deposit_jit(deposit, &jit_bytes)
-            .unwrap()
-            .expect("golden JIT must be Deposit");
+        let jit: AcrossDepositJitParams = decode_strict(&jit_bytes).unwrap();
         assert_eq!(serialize(&jit), jit_bytes);
 
         let ctx = GatewayContextV1 {
@@ -410,6 +384,8 @@ mod tests {
             array(&fixture, "/deposit/depositId")
         );
 
+        assert_eq!(keccak::hash(V5_PARAM_MODIFICATION_NAME).to_bytes(), V5_PARAM_MODIFICATION_NAME_HASH);
+        assert_eq!(V5_PARAM_MODIFICATION_NAME_HASH, array(&fixture, "/jit/nameHash"));
         assert_eq!(v5_param_modification_domain(&gateway), array(&fixture, "/jit/domain"));
         let digest = v5_param_modification_digest(
             &gateway,
@@ -447,6 +423,7 @@ mod tests {
         let mut other_authority = authority;
         other_authority[0] ^= 1;
         assert!(verify_v5_authority(&other_authority, &digest, &signature).is_err());
+        assert_error_name(verify_v5_authority(&[0u8; 20], &digest, &signature), "InvalidParamModificationSignature");
 
         assert!(recover_v5_authority(&digest, &array(&fixture, "/jit/highSSignature")).is_err());
         let mut invalid_v = signature;
@@ -494,7 +471,7 @@ mod tests {
     }
 
     #[test]
-    fn decoding_is_strict_and_zero_rules_disable_jit() {
+    fn strict_decoding_and_jit_gating_are_explicit() {
         let fixture = fixture();
         let mut encoded = bytes(&fixture, "/wire/depositInput");
         encoded.push(0);
@@ -518,8 +495,7 @@ mod tests {
             V5AdapterInput::DepositV1(deposit) => deposit,
             _ => unreachable!(),
         };
-        assert!(decode_v5_deposit_jit(deposit, &[]).unwrap().is_none());
-        assert!(decode_v5_deposit_jit(deposit, &[0]).is_err());
+        assert!(!deposit.modification_rules.jit_enabled());
 
         let mut permissionless_rules = input;
         if let V5AdapterInput::DepositV1(deposit) = &mut permissionless_rules {
@@ -530,20 +506,30 @@ mod tests {
             V5AdapterInput::DepositV1(deposit) => deposit,
             _ => unreachable!(),
         };
-        assert!(decode_v5_deposit_jit(deposit, &[]).is_err());
+        assert!(deposit.modification_rules.jit_enabled());
+        assert!(decode_strict::<AcrossDepositJitParams>(&[]).is_err());
     }
 
     #[test]
     fn fill_wire_is_branch_specific() {
         let fixture = fixture();
-        let input = decode_v5_adapter_input(&bytes(&fixture, "/wire/fillInput")).unwrap();
+        let input_bytes = bytes(&fixture, "/wire/fillInput");
+        let input = decode_v5_adapter_input(&input_bytes).unwrap();
         assert!(matches!(input, V5AdapterInput::FillV1(_)));
-        decode_v5_fill_jit(&bytes(&fixture, "/wire/fillJit")).unwrap();
-        assert!(decode_v5_fill_jit(&bytes(&fixture, "/wire/depositJit")).is_err());
+        assert_eq!(serialize(&input), input_bytes);
+        decode_strict::<V5FillJit>(&bytes(&fixture, "/wire/fillJit")).unwrap();
+        assert!(decode_strict::<V5FillJit>(&bytes(&fixture, "/wire/depositJit")).is_err());
     }
 
     #[test]
     fn balance_resolution_floor_and_ordinary_delegate_allowance_are_strict() {
+        let fixture = fixture();
+        let mut input = decode_v5_adapter_input(&bytes(&fixture, "/wire/depositInput")).unwrap();
+        if let V5AdapterInput::DepositV1(deposit) = &mut input {
+            deposit.input_amount_mode = V5InputAmountMode::InputVaultBalance { bips: BIPS_DENOMINATOR + 1 };
+        }
+        decode_v5_adapter_input(&serialize(&input)).unwrap();
+
         assert_eq!(resolve_v5_input_amount(V5InputAmountMode::Literal, 99, 0).unwrap(), 99);
         assert_eq!(resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: 9_750 }, 97, 101).unwrap(), 98);
         assert!(resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: 9_750 }, 99, 101).is_err());
@@ -623,6 +609,13 @@ mod tests {
         assert_eq!(
             resolve_v5_deposit_modifications(&deposit, &unsigned_jit, &gateway, &path_id).unwrap(),
             (deposit.deposit_params.output_amount, unsigned_jit.new_exclusive_relayer)
+        );
+
+        deposit.modification_rules.allow_exclusive_relayer = false;
+        assert!(!deposit.modification_rules.jit_enabled());
+        assert_eq!(
+            resolve_v5_deposit_modifications(&deposit, &unsigned_jit, &gateway, &path_id).unwrap(),
+            (deposit.deposit_params.output_amount, deposit.deposit_params.exclusive_relayer)
         );
     }
 }
