@@ -41,6 +41,10 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
     // Error thrown when the burn token is invalid.
     error InvalidBurnToken();
 
+    // Error thrown when a direct-flow call arrives without the baseToken funding
+    // the quote requires.
+    error InsufficientFunding();
+
     event SponsoredDepositForBurn(
         bytes32 indexed quoteNonce,
         address indexed originSender,

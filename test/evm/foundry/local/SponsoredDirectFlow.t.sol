@@ -52,6 +52,8 @@ contract MockDirectDstOFTHandler {
     uint256 public callCount;
 
     function executeDirect(address tokenSent, uint256 amountLD, bytes calldata composeMsg) external {
+        // Mirror production pull-fund: caller must have approved this handler.
+        IERC20(tokenSent).transferFrom(msg.sender, address(this), amountLD);
         lastTokenSent = tokenSent;
         lastAmountLD = amountLD;
         lastComposeMsg = composeMsg;
@@ -478,13 +480,51 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
         dstPeriphery.directReceiveMessage(quote);
     }
 
+    function testDirectReceiveMessage_RevertsOnInsufficientFunding() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = _createDirectQuote(keccak256("cctp-unfunded"));
+
+        // Role granted but caller holds nothing: must not execute. Orphaned balance on
+        // dst alone must not satisfy the guard (that was the balanceOf residual).
+        dstPeriphery.grantRole(dstPeriphery.DIRECT_CALLER_ROLE(), address(this));
+        deal(address(usdc), address(dstPeriphery), DEFAULT_AMOUNT);
+
+        vm.expectRevert(SponsoredCCTPInterface.InsufficientFunding.selector);
+        dstPeriphery.directReceiveMessage(quote);
+
+        // Partial caller funding below quote.amount must also revert
+        deal(address(usdc), address(this), DEFAULT_AMOUNT - 1);
+        usdc.approve(address(dstPeriphery), type(uint256).max);
+        vm.expectRevert(SponsoredCCTPInterface.InsufficientFunding.selector);
+        dstPeriphery.directReceiveMessage(quote);
+    }
+
+    function testDirectReceiveMessage_PullFundsFromCaller() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = _createDirectQuote(keccak256("cctp-pull"));
+        dstPeriphery.grantRole(dstPeriphery.DIRECT_CALLER_ROLE(), address(this));
+
+        // Orphaned dst balance must not be spendable; caller must pull-fund.
+        uint256 orphaned = DEFAULT_AMOUNT;
+        deal(address(usdc), address(dstPeriphery), orphaned);
+        deal(address(usdc), address(this), DEFAULT_AMOUNT);
+        usdc.approve(address(dstPeriphery), DEFAULT_AMOUNT);
+
+        uint256 callerBefore = usdc.balanceOf(address(this));
+        dstPeriphery.directReceiveMessage(quote);
+
+        assertEq(usdc.balanceOf(address(this)), callerBefore - DEFAULT_AMOUNT, "caller pulled");
+        assertTrue(dstPeriphery.usedNonces(quote.nonce), "nonce used");
+        // Orphaned funds remain; execution consumed the pulled amount, not the orphan.
+        assertGe(usdc.balanceOf(address(dstPeriphery)) + usdc.balanceOf(finalRecipient), orphaned, "orphan preserved or routed");
+    }
+
     function testDirectReceiveMessage_RevertsOnInvalidBurnToken() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = _createDirectQuote(keccak256("cctp-bad-token"));
         quote.burnToken = makeAddr("wrongToken").toBytes32();
         bytes memory sig = _signQuote(quote, signerPk);
 
-        // Fund and grant role
-        deal(address(usdc), address(dstPeriphery), DEFAULT_AMOUNT);
+        // Fund caller (pull path) and grant role
+        deal(address(usdc), address(this), DEFAULT_AMOUNT);
+        usdc.approve(address(dstPeriphery), type(uint256).max);
         dstPeriphery.grantRole(dstPeriphery.DIRECT_CALLER_ROLE(), address(this));
 
         vm.expectRevert(SponsoredCCTPInterface.InvalidBurnToken.selector);
