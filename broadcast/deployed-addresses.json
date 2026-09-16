@@ -1299,6 +1299,10 @@
     "5042": {
       "chain_name": "ARC",
       "contracts": {
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "block_number": 21155012
+        },
         "AcrossEventEmitter": {
           "address": "0x446Fe2Be6a8D90fA89F30f3d0A686aAFfe621237",
           "block_number": 20298840,
