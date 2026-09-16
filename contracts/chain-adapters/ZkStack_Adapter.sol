@@ -198,8 +198,8 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
             }
         } else {
             // An standard bridged ERC20, separate from WETH and Circle Bridged/Native USDC.
-            address sharedBridge = BRIDGE_HUB.sharedBridge();
-            IERC20(l1Token).forceApprove(sharedBridge, amount);
+            address assetRouter = BRIDGE_HUB.assetRouter();
+            IERC20(l1Token).forceApprove(assetRouter, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -208,7 +208,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: sharedBridge,
+                    secondBridgeAddress: assetRouter,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
