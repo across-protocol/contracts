@@ -50,11 +50,13 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
      * @param _cctpTokenMessenger The address of the CCTP token messenger contract.
      * @param _sourceDomain The source domain ID for the chain that this contract is deployed on.
      * @param _signer The signer address that is used to validate the signatures of the quotes.
+     * @param _owner The address that will own this contract.
      */
-    constructor(address _cctpTokenMessenger, uint32 _sourceDomain, address _signer) {
+    constructor(address _cctpTokenMessenger, uint32 _sourceDomain, address _signer, address _owner) {
         cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
         sourceDomain = _sourceDomain;
         _getMainStorage().signer = _signer;
+        _transferOwnership(_owner);
     }
 
     /**

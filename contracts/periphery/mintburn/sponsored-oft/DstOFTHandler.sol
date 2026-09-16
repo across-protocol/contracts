@@ -86,7 +86,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
         address _ioft,
         address _donationBox,
         address _baseToken,
-        address _multicallHandler
+        address _multicallHandler,
+        address _admin
     )
         BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
         ArbitraryEVMFlowExecutor(_multicallHandler)
@@ -104,7 +105,7 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
             revert IOFTEndpointMismatch();
         }
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**

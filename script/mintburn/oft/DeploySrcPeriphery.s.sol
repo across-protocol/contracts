@@ -110,7 +110,7 @@ contract DepoySrcOFTPeriphery is Script, Test, DeploymentUtils {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        srcOftPeriphery = new SponsoredOFTSrcPeriphery(token, oftMessenger, srcEid, signer);
+        srcOftPeriphery = new SponsoredOFTSrcPeriphery(token, oftMessenger, srcEid, signer, deployer);
 
         console.log("SponsoredOFTSrcPeriphery deployed to:", address(srcOftPeriphery));
 

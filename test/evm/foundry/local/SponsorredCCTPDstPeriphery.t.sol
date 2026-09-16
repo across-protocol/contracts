@@ -210,7 +210,9 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             signer,
             address(donationBox),
             address(usdc),
-            multicallHandler
+            multicallHandler,
+            admin,
+            30 minutes
         );
 
         IHyperCoreFlowExecutor(address(periphery)).setCoreTokenInfo(address(usdc), CORE_INDEX, true, 1e6, 1e6);

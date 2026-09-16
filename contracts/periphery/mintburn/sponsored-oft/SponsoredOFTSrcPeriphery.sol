@@ -57,7 +57,8 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
         address _token,
         address _oftMessenger,
         uint32 _srcEid,
-        address _signer
+        address _signer,
+        address _owner
     ) OFTCoreMath(IERC20Metadata(_token).decimals(), IOFT(_oftMessenger).sharedDecimals()) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
@@ -69,6 +70,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
             revert TokenIOFTMismatch();
         }
         _getMainStorage().signer = _signer;
+        _transferOwnership(_owner);
     }
 
     /**
