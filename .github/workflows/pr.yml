@@ -99,6 +99,8 @@ jobs:
       - name: Lint rust
         shell: bash
         run: yarn lint-rust
+      - name: Test rust
+        run: cargo test -p svm-spoke --lib
       - name: Regenerate constants.json
         run: yarn generate-constants-json && yarn prettier --write generated/constants.json
       - name: Regenerate deployed-addresses

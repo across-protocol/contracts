@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInt
 use crate::event::{FillType, FilledRelay, RelayExecutionEventInfo, RequestedSlowFill};
 use crate::{
     common::RelayData,
-    constants::DISCRIMINATOR_SIZE,
+    constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED},
     constraints::{has_valid_params_presence, is_relay_hash_valid},
     error::{CommonError, SvmError},
     state::{ExecuteSlowRelayLeafParams, FillStatus, FillStatusAccount, RequestSlowFillParams, RootBundle, State},
@@ -33,7 +33,7 @@ pub struct RequestSlowFill<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", _relay_hash.as_ref()],
+        seeds = [FILL_STATUS_SEED, _relay_hash.as_ref()],
         bump,
         // Validate optional parameters before they are unwrapped in other constraints by Anchor.
         constraint = has_valid_params_presence(
@@ -181,7 +181,7 @@ pub struct ExecuteSlowRelayLeaf<'info> {
 
     #[account(
         mut,
-        seeds = [b"fills", _relay_hash.as_ref()],
+        seeds = [FILL_STATUS_SEED, _relay_hash.as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(

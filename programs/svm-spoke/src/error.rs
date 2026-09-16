@@ -82,6 +82,29 @@ pub enum SvmError {
     InconsistentOptionalParameters,
 }
 
+// Across V5 adapter specific errors.
+#[error_code(offset = 7000)]
+pub enum V5Error {
+    #[msg("Malformed Across V5 wire data!")]
+    InvalidWireFormat,
+    #[msg("Invalid Across V5 parameter modification signature!")]
+    InvalidParamModificationSignature,
+    #[msg("Missing required Across V5 account!")]
+    MissingAccount,
+    #[msg("Invalid Across V5 Gateway dispatch authority!")]
+    InvalidDispatchAuthority,
+    #[msg("Across V5 account must be writable!")]
+    InvalidAccountMutability,
+    #[msg("Resolved Across V5 input amount is below the committed floor!")]
+    ResolvedInputAmountBelowCommitted,
+    #[msg("Across V5 delegate allowance is insufficient!")]
+    InsufficientDelegateAllowance,
+    #[msg("Across V5 parameter modification is not an improvement!")]
+    ParamModificationNotAnImprovement,
+    #[msg("Across V5 input amount bips exceed the denominator!")]
+    InvalidAmountBips,
+}
+
 // CCTP specific errors.
 #[error_code]
 pub enum CallDataError {
