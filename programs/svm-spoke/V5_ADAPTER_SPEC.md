@@ -73,7 +73,7 @@ token path as any SPL input. Direct lamport deposit from this adapter is outside
 Deposit JIT uses the EVM-aligned name `AcrossDepositJitParams` and is the fixed 129 bytes
 `new_output_amount[32] || new_exclusive_relayer[32] || signature[65]`. A nonzero authority requires a valid signature;
 when authority is zero, enabled modifications are permissionless, matching the EVM `AcrossDepositDelegateAdapter`.
-These foundations decode strictly and expose `jit_enabled()` but gate nothing themselves: the deposit handler must
+These foundations decode strictly and expose `requires_jit()` but gate nothing themselves: the deposit handler must
 decode `jit_data` only when the committed authority or either permission bit is nonzero, and must ignore it entirely
 when all three are zero. With zero authority, enabling `allow_exclusive_relayer` lets any permissionless execution
 choose an arbitrary exclusive relayer for the committed `exclusivity_parameter` window; path builders should enable

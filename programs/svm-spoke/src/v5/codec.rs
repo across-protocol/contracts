@@ -45,7 +45,7 @@ pub struct V5DepositModificationRules {
 }
 
 impl V5DepositModificationRules {
-    pub fn jit_enabled(&self) -> bool {
+    pub fn requires_jit(&self) -> bool {
         self.authority != [0u8; 20] || self.allow_output_amount || self.allow_exclusive_relayer
     }
 }

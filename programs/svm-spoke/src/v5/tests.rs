@@ -209,7 +209,7 @@ fn strict_decoding_and_jit_gating_are_explicit() {
         V5AdapterInput::DepositV1(deposit) => deposit,
         _ => unreachable!(),
     };
-    assert!(!deposit.modification_rules.jit_enabled());
+    assert!(!deposit.modification_rules.requires_jit());
 
     let mut permissionless_rules = input;
     if let V5AdapterInput::DepositV1(deposit) = &mut permissionless_rules {
@@ -220,7 +220,7 @@ fn strict_decoding_and_jit_gating_are_explicit() {
         V5AdapterInput::DepositV1(deposit) => deposit,
         _ => unreachable!(),
     };
-    assert!(deposit.modification_rules.jit_enabled());
+    assert!(deposit.modification_rules.requires_jit());
     assert!(decode_strict::<AcrossDepositJitParams>(&[]).is_err());
 }
 
@@ -324,7 +324,7 @@ fn jit_permissions_and_improvement_rule_match_evm_behavior() {
     );
 
     deposit.modification_rules.allow_exclusive_relayer = false;
-    assert!(!deposit.modification_rules.jit_enabled());
+    assert!(!deposit.modification_rules.requires_jit());
     assert_eq!(
         resolve_v5_deposit_modifications(&deposit, &unsigned_jit, &gateway, &path_id).unwrap(),
         (deposit.deposit_params.output_amount, deposit.deposit_params.exclusive_relayer)
