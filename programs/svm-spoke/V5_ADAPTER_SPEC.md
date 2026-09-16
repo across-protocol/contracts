@@ -1,9 +1,8 @@
 # SVM SpokePool V5 adapter specification
 
-This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. The schemas and
-helpers alone are not callable; a callable surface additionally requires source and destination handlers. `V5`
-identifies the Across protocol generation, while `V1` identifies the first SVM wire-schema revision of a context or
-input variant.
+This document freezes the compatibility surface for the Gateway-facing `svm_spoke` V5 adapter. `V5` identifies the
+Across protocol generation, while `V1` identifies the first SVM wire-schema revision of a context or input variant.
+`DepositV1` is callable; the reserved `FillV1` variant returns `UnsupportedMode` until destination behavior lands.
 
 ## Dispatch ABI and accounts
 
@@ -35,6 +34,10 @@ branch-specific remaining accounts. The implementation derives every expected ke
 does not authenticate an account. Accounts that can lose lamports or whose data/token amount can change must also be
 writable at the transaction level.
 
+Deposit mode resolves the following remaining accounts by key: the committed input mint, its executable token
+program, the canonical Gateway vault ATA, the pre-created canonical SpokePool vault ATA, and
+`["v5_source_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
+
 ## Committed input and JIT wire
 
 `input` is strict Borsh with no trailing bytes:
@@ -64,7 +67,11 @@ values. Vectors use a `u32_le` length. `input_amount_mode` is `Literal = 0` or
 Amount resolution rejects `bips` greater than 10,000; the wire decoder does not. Gateway token vaults are shared per
 mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
 continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
-Gateway does not currently enforce this net-zero settlement invariant.
+Gateway does not currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to
+`v5_source_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
+matching EVM `transferFrom` behavior. Any residual Gateway-vault balance is already movable by a later committed
+Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The SpokePool never delegates its own
+vault.
 
 Unlike the EVM `inputAmountParam`, `DepositV1` has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
@@ -124,8 +131,22 @@ standing float. Only that submitter may withdraw the float to itself; a nonzero 
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
 relay witness remains exactly `V5_MAGIC_PREFIX || step_id`.
 
-Transfer-fee mints are excluded until debit/delivery delta semantics are defined. Transfer hooks remain disabled
-unless validator tests prove the complete hook-account set and the Gateway-to-Spoke CPI depth for that mint.
+Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
+or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,
+permanent delegates, default-frozen accounts, and all other extensions remain disabled unless their custody and CPI
+semantics are explicitly reviewed and validator-tested. This gate covers mint extensions only. Account-side guards
+relevant to this path, such as source CPI guard or destination memo requirements, fail the token transfer rather than
+altering accounting.
+
+## Enabled source-deposit behavior
+
+After authenticating the live Gateway dispatch PDA, Deposit mode strictly decodes branch-specific JIT data, resolves
+the input amount against the canonical Gateway vault, and pulls exactly the resolved amount into the pre-created
+SpokePool vault. The token transfer enforces the static source delegate and sufficient allowance. The adapter applies
+only signed, committed JIT modifications, derives the final 32-byte deposit ID directly from the Gateway executor
+identity and live context, and emits the standard `FundsDeposited` event with
+`message = V5_MAGIC_PREFIX || dst_step_id`. Any later failure in the same transaction rolls back the approval,
+transfer, and event atomically.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation
