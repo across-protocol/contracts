@@ -65,18 +65,18 @@ This requires `MNEMONIC` and the matching `NODE_URL_*`. Both scripts print the s
 
 ## Intent examples and retained token transfers
 
-`simpleFill` and `fakeFillWithRandomDistribution` use `originChainId` as the repayment chain, including when deriving the fill delegate PDA. Both require `--repaymentAddress` for that origin chain (EVM hex or Solana base58); it is separate from the Solana transaction signer. The arbitrary `--repaymentChain` option has been removed from the random-distribution example.
+`simpleFill` and `fakeFillWithRandomDistribution` use `originChainId` as the repayment chain, including when deriving the fill delegate PDA. Both require `--repaymentAddress` for that origin chain (EVM hex or Solana base58); it is separate from the Solana transaction signer.
 
-`simpleFakeRelayerRepayment` remains a test fixture: it deposits local tokens, creates a synthetic refund root and repays on Solana with `amountToReturn = 0`. It needs local spoke admin authority and is not a production bundle-construction script.
+`simpleFakeRelayerRepayment` is a test fixture: it deposits local tokens, creates a synthetic refund root and repays on Solana with `amountToReturn = 0`. It needs local spoke admin authority and is not a production bundle-construction script.
 
-The old `proposeRebalanceToSpokePool` / `executeRebalanceToSpokePool` commands and their token-rebalance tree helper are removed. Independent token transfers remain supported: `SponsoredCctpSrc/*` already uses V2 and still provides deposit-for-burn, EVM receive, event-account reclamation and nonce/rent operations. This migration does not replace those flows with tokenless finalization.
+There are no HubPool-to-spoke rebalance scripts because Solana is a light chain. Independent token transfers are supported: `SponsoredCctpSrc/*` uses CCTP V2 and provides deposit-for-burn, EVM receive, event-account reclamation and nonce/rent operations.
 
-## Validation and release handoff
+## Tests
 
-`test/svm/Scripts.CctpV2.ts` covers attestation polling and error handling without public transactions. `test/svm/SvmSpoke.HandleReceiveMessage.ts` exercises the shared script finalizer against the local validator and CCTP V2 program, including root/admin calls, already-delivered messages and failed-message recovery. Run these with the repository's SVM suite (`yarn test-svm`); the attestation tests can also run alone with `yarn ts-mocha -p tsconfig.json -t 10000 test/svm/Scripts.CctpV2.ts`.
+`test/svm/Scripts.CctpV2.ts` covers attestation polling and error handling without public transactions. `test/svm/SvmSpoke.HandleReceiveMessage.ts` exercises the shared script finalizer against the local validator and CCTP V2 program, including root/admin calls, already-delivered messages and failed-message recovery. `test/svm/Scripts.CctpV2Tokens.ts` covers the token receiver against Circle's local programs: fee deductions, finalized/unfinalized thresholds, expected recipient enforcement, used-nonce recovery and retry after on-chain rejection.
 
-`test/svm/Scripts.CctpV2Tokens.ts` covers the token receiver against Circle's local programs: fee deductions, finalized/unfinalized thresholds, expected recipient enforcement, used-nonce recovery and retry after on-chain rejection. The three focused suites passed together (29 tests) after adding token delivery and finality-boundary coverage.
+Run these with the repository's SVM suite (`yarn test-svm`); the attestation tests can also run alone with `yarn ts-mocha -p tsconfig.json -t 10000 test/svm/Scripts.CctpV2.ts`. Local fixtures bypass Circle signature verification; they do not validate production attestations or deployed configuration.
 
-Public-network end-to-end validation is still outstanding: send and finalize a tokenless pause and root message against an upgraded test deployment, interrupt and resume delivery, confirm the HubPool/adapter route, and finalize an independent token transfer. Local fixtures bypass Circle signature verification; they do not validate production attestations or deployed configuration.
+## Package boundary
 
-See [SVM_TS_PLAN.md](../../SVM_TS_PLAN.md) for the consumer migration and later export removal. Publish a reviewed contracts beta with the regenerated Spoke IDL/client and matching test artifacts for step 2. The beta removes CCTP V1 clients, IDLs/types, connectors and message helpers, including deep imports, so consumer builds reveal remaining V1 dependencies. V2 and other retained clients remain exported; no new production helpers are exported from these scripts. Historical V1 decoding/recovery, if needed, must be implemented downstream.
+`contracts` exports the generated CCTP V2 clients (`MessageTransmitterV2Client`, `TokenMessengerMinterV2Client`) alongside the spoke and other program clients. CCTP V1 clients, IDLs/types, connectors and message helpers are not exported, including via deep imports. The scripts in this directory do not export production helpers; integration logic such as attestation handling, receiver account selection and transaction construction belongs downstream (principally in `sdk`). Historical V1 decoding/recovery, if needed, must be implemented downstream.
