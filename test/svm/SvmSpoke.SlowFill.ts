@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as crypto from "crypto";
 import { BN } from "@coral-xyz/anchor";
+import { ethers } from "ethers";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -416,6 +417,26 @@ describe("svm_spoke.slow_fill", () => {
     // These props below are not part of relayData.
     assertSE(event.repaymentChainId, new BN(0), "Repayment chain id should be 0");
     assertSE(event.relayer, PublicKey.default, "Repayment address should be 0");
+  });
+
+  it("Fails to request a slow fill for a V5-tagged message", async () => {
+    // V5 deposits are quarantined from all V3 settlement paths; rejecting the request also keeps unexecutable V5
+    // leaves out of slow-relay root bundles. (The matching guard in executeSlowRelayLeaf is defense in depth only —
+    // a leaf cannot be requested, so it is unreachable here.) The prefix is derived, not hardcoded, so this also
+    // asserts the on-chain constant equals keccak256("AcrossV5MessagePrefix.V1").
+    const v5MagicPrefix = Buffer.from(
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes("AcrossV5MessagePrefix.V1")).slice(2),
+      "hex"
+    );
+    await updateRelayData({ ...relayData, message: Buffer.concat([v5MagicPrefix, Buffer.alloc(32, 7)]) });
+
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    try {
+      await program.methods.requestSlowFill(relayHash, relayData).accounts(requestAccounts).signers([relayer]).rpc();
+      assert.fail("Request should have failed due to V5-tagged message");
+    } catch (err: any) {
+      assert.include(err.toString(), "V5FillOnly", "Expected V5FillOnly error");
+    }
   });
 
   it("Fails to request a slow fill when fills are paused", async () => {
