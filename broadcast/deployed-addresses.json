@@ -1354,6 +1354,11 @@
           "block_number": 4828640,
           "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
         },
+        "SpokePoolPeriphery": {
+          "address": "0xE791A2669bef779Ff7A4A9CF789F8Ee2CA20a32c",
+          "block_number": 21152202,
+          "transaction_hash": "0xafd59e25211536dba5b5099e1dcb3f62ffab07441e1053f0993e0d7059db5a68"
+        },
         "SpokePool": {
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",
           "block_number": 4694834,

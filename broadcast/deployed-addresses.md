@@ -350,6 +350,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Safe                             | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                        | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePool                        | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePoolPeriphery               | [0xE791A2669bef779Ff7A4A9CF789F8Ee2CA20a32c](https://explorer.arc.io/address/0xE791A2669bef779Ff7A4A9CF789F8Ee2CA20a32c) |
 | WithdrawImplementation           | [0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9](https://explorer.arc.io/address/0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9) |
 
 ## Base (8453)
