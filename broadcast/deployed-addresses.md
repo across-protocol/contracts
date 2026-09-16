@@ -338,6 +338,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| AcrossEventEmitter               | [0x446Fe2Be6a8D90fA89F30f3d0A686aAFfe621237](https://explorer.arc.io/address/0x446Fe2Be6a8D90fA89F30f3d0A686aAFfe621237) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://explorer.arc.io/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.arc.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.arc.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -345,6 +346,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactory     | [0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1](https://explorer.arc.io/address/0x9F62dcc4B939485911C4f9b24BdCa4324D6b97d1) |
 | CounterfactualDepositSpokePool   | [0xcD73a05979a1Ff8Ca444558BDA60E54161117EE2](https://explorer.arc.io/address/0xcD73a05979a1Ff8Ca444558BDA60E54161117EE2) |
 | CounterfactualDepositVanillaCCTP | [0x7c91B9D7A20135C597D2c394C9Aaf7667f39272E](https://explorer.arc.io/address/0x7c91B9D7A20135C597D2c394C9Aaf7667f39272E) |
+| MulticallHandler                 | [0xA07480456C4EbaD7626e4FdF4a180709E238547b](https://explorer.arc.io/address/0xA07480456C4EbaD7626e4FdF4a180709E238547b) |
 | Safe                             | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://explorer.arc.io/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                        | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.arc.io/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePool                        | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://explorer.arc.io/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |

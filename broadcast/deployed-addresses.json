@@ -1299,6 +1299,11 @@
     "5042": {
       "chain_name": "ARC",
       "contracts": {
+        "AcrossEventEmitter": {
+          "address": "0x446Fe2Be6a8D90fA89F30f3d0A686aAFfe621237",
+          "block_number": 20298840,
+          "transaction_hash": "0xe97628b813d70a4cb7db9b73080bd7dcbb32cbf76bcf2129605aaf7af9b72453"
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 11171675,
@@ -1333,6 +1338,11 @@
           "address": "0x7c91B9D7A20135C597D2c394C9Aaf7667f39272E",
           "block_number": 11171550,
           "transaction_hash": "0xd9e3473a8387cb4e9ca8507557d2489dc601748852de3a900d9425e6c189a149"
+        },
+        "MulticallHandler": {
+          "address": "0xA07480456C4EbaD7626e4FdF4a180709E238547b",
+          "block_number": 20298820,
+          "transaction_hash": "0xfb97ce0af15b100208ebeb38d462186a6e585fb03038f0667577203b105659bf"
         },
         "SP1Helios": {
           "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
