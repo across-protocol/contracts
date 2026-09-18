@@ -101,6 +101,8 @@ jobs:
         run: yarn lint-rust
       - name: Test rust
         run: cargo test -p svm-spoke --lib
+      - name: Test Gateway hash vectors (no private dependency)
+        run: yarn test-svm-gateway-vectors
       - name: Regenerate constants.json
         run: yarn generate-constants-json && yarn prettier --write generated/constants.json
       - name: Regenerate deployed-addresses
@@ -142,6 +144,7 @@ jobs:
               - 'scripts/svm/**'
               - 'src/svm/**'
               - 'test/svm/**'
+              - 'test/svm-gateway/**'
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
