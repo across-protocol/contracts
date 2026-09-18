@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "${BASH_SOURCE[0]}")/setupFoundryEnv.sh" || exit $?
 
 CONTRACT=$1
 if [ -z "$CONTRACT" ]
@@ -14,4 +15,3 @@ echo "✅ Done!"
 vim -d ./storage-layouts/proposed.$CONTRACT.json ./storage-layouts/$CONTRACT.json
 
 exit 0
-

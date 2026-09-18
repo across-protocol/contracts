@@ -1,0 +1,8 @@
+# Loaded only by `mise -E zksync`; keep the standard Foundry pin out of this PATH.
+[settings]
+disable_tools = ["foundry"]
+
+[tools."github:matter-labs/foundry-zksync"]
+version = "0.1.9"
+version_prefix = "foundry-zksync-v"
+asset_pattern = "foundry_zksync_v{{ version }}_{{ os(macos='darwin') }}_{{ arch(x64='amd64') }}.tar.gz"
