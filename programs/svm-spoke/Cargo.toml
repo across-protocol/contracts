@@ -21,7 +21,6 @@ test = []
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed","event-cpi"]}
 anchor-spl = "0.31.1"
-multicall-handler = { path = "../multicall-handler" }
 solana-security-txt = "1.1.1"
 
 [dev-dependencies]
