@@ -79,7 +79,6 @@ pub fn create_v5_fill_status_account<'a, 'info>(
     require_keys_eq!(*payer.key, pdas.payer(), V5Error::InvalidFillPayer);
     require_keys_eq!(*fill_status.key, pdas.fill_status(), V5Error::InvalidFillStatusAccount);
     require_keys_eq!(*system_program_info.key, system_program::ID, V5Error::MissingAccount);
-    require!(system_program_info.executable, V5Error::MissingAccount);
     require!(payer.is_writable && fill_status.is_writable, V5Error::InvalidAccountMutability);
     require_keys_eq!(*payer.owner, system_program::ID, V5Error::InvalidFillPayer);
     require!(payer.data_is_empty(), V5Error::InvalidFillPayer);
