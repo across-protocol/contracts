@@ -53,7 +53,8 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InvalidRemoteDomain`                           | 6005           | 7005         |
 | `InvalidRemoteSender`                           | 6006           | 7006         |
 | `InvalidMint`                                   | 6007           | 7007         |
-| `ExceededPendingBridgeAmount`                   | 6008           | 7008         |
+| `ExceededPendingBridgeAmount`                   | 6008           | removed      |
+| `NonZeroAmountToReturn`                         | —              | 7008         |
 | `ParamsWriteOverflow`                           | 6009           | 7009         |
 | `InvalidRefund`                                 | 6010           | 7010         |
 | `ZeroRefundClaim`                               | 6011           | 7011         |
@@ -65,6 +66,9 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InvalidDelegatePda`                            | 6017           | 7017         |
 | `InconsistentOptionalParameters`                | 6018           | 7018         |
 | `LegacyFillMessageUnsupported`                  | —              | 7019         |
+
+The CCTP V2 migration removes `ExceededPendingBridgeAmount` and uses that enum slot for
+`NonZeroAmountToReturn`, which rejects relayer refund leaves that return tokens to the HubPool.
 
 ## CallDataError
 
