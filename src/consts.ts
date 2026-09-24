@@ -44,6 +44,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
@@ -59,7 +60,9 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1ArbitrumInbox: "0xaAe29B0366299461418F5324a79Afc425BE5ae21",
     l1ERC20GatewayRouter: "0xcE18836b233C83325Cc8848CA4487e94C6288264",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
+    cctpV2TokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+    cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F", // No sepolia deploy address
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319", // No sepolia deploy address
