@@ -154,6 +154,9 @@ pub fn _fill(
 
 #[cfg(all(test, feature = "test"))]
 mod tests {
+    // These tests retain the unreachable Legacy branch as a regression fence until the V5 simplification.
+    // Remove legacy-only fixtures/assertions with that branch; keep shared guard/event coverage through V5.
+    // Historical account decoding and rent-reclaim coverage must survive that cleanup.
     use super::*;
 
     fn account_info() -> AccountInfo<'static> {
