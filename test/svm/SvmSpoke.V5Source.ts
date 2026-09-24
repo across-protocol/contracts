@@ -280,7 +280,14 @@ describe("svm_spoke V5 source deposit", () => {
   };
 
   beforeEach(async () => {
-    ({ state } = await initializeState());
+    ({ state } = await initializeState(undefined, {
+      initialNumberOfDeposits: new BN(42),
+      chainId: common.chainId,
+      remoteDomain: common.remoteDomain,
+      crossDomainAdmin: common.crossDomainAdmin,
+      depositQuoteTimeBuffer: common.depositQuoteTimeBuffer,
+      fillDeadlineBuffer: common.fillDeadlineBuffer,
+    }));
     await setInputMint(await createMint(connection, payer, owner, owner, 6), TOKEN_PROGRAM_ID);
     const now = (await svmSpoke.account.state.fetch(state)).currentTime;
     context = {
@@ -318,8 +325,11 @@ describe("svm_spoke V5 source deposit", () => {
       }
     );
     const jit = signJit(jitSigner, context, deposit.depositNonce, improvedOutput, newRelayer);
+    const depositsBefore = (await svmSpoke.account.state.fetch(state)).numberOfDeposits;
+    assert.equal(depositsBefore, 42);
     const signature = await execute(input, jit, 900_000n);
 
+    assert.equal((await svmSpoke.account.state.fetch(state)).numberOfDeposits, depositsBefore);
     assert.equal((await getAccount(connection, gatewayVault)).amount, 250_000n);
     assert.equal((await getAccount(connection, spokeVault)).amount, 750_000n);
     const event = (await readEventsUntilFound(connection, signature, [svmSpoke]))[0].data;

@@ -223,6 +223,12 @@ with Anchor's `InstructionFallbackNotFound` (101) before argument decoding or ac
 empty-message fills and fills using instruction-parameter buffers. Slow-fill entrypoints are also retired.
 All source deposits and destination fills must use the authenticated Gateway adapter.
 
+The legacy `State.number_of_deposits` counter retains its value at upgrade and no longer advances on deposits.
+V5 derives deposit IDs from the Gateway context and deposit nonce; it does not use the sequential counter.
+Consumers must track successful `FundsDeposited` events and their V5 deposit IDs instead of using
+`numberOfDeposits` as a deposit-progress signal. V5 deposits access the state account read-only; admin
+instructions can still update state. The counter field and serialized state layout remain unchanged.
+
 The read-only legacy `get_unsafe_deposit_id` utility remains available. Admin/root messaging, relayer refund execution
 and claims, token-account creation, instruction-buffer management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
