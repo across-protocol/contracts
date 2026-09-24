@@ -5,8 +5,9 @@ import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  createApproveCheckedInstruction,
+  createTransferCheckedInstruction,
   createAssociatedTokenAccount,
+  createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
   getMint,
 } from "@solana/spl-token";
@@ -24,14 +25,7 @@ import {
 import { MerkleTree } from "../../utils/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import {
-  getDepositPda,
-  getDepositSeedHash,
-  getSpokePoolProgram,
-  intToU8Array32,
-  loadExecuteRelayerRefundLeafParams,
-  relayerRefundHashFn,
-} from "../../src/svm/web3-v1";
+import { getSpokePoolProgram, loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
 // Set up the provider
@@ -83,68 +77,25 @@ async function testBundleLogic(): Promise<void> {
 
   const tokenDecimals = (await getMint(provider.connection, inputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
 
-  // Use program.methods.deposit to send tokens to the spoke. note this is NOT a valid deposit, we just want to
-  // seed tokens into the spoke to test repayment.
-
+  // Seed the vault directly: this synthetic refund fixture does not create an Across deposit.
   const inputAmount = amounts.reduce((acc, amount) => acc.add(amount), new BN(0));
-
-  const depositData: Parameters<typeof getDepositSeedHash>[0] = {
-    depositor: signer.publicKey,
-    recipient: signer.publicKey, // recipient is the signer for this example
-    inputToken,
-    outputToken: inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
-    inputAmount,
-    outputAmount: intToU8Array32(inputAmount),
-    destinationChainId: new BN(11155111),
-    exclusiveRelayer: PublicKey.default,
-    quoteTimestamp: new BN(Math.floor(Date.now() / 1000) - 1),
-    fillDeadline: new BN(Math.floor(Date.now() / 1000) + 3600),
-    exclusivityParameter: new BN(0),
-    message: Buffer.from([]),
-  };
-  const delegatePda = getDepositPda(depositData, program.programId);
-
-  const approveIx = await createApproveCheckedInstruction(
+  const transferIx = createTransferCheckedInstruction(
     userTokenAccount,
     inputToken,
-    delegatePda,
+    vault,
     signer.publicKey,
     BigInt(inputAmount.toString()),
-    tokenDecimals,
-    undefined,
-    TOKEN_PROGRAM_ID
+    tokenDecimals
   );
-  const depositIx = await (
-    program.methods.deposit(
-      depositData.depositor,
-      depositData.recipient,
-      depositData.inputToken,
-      depositData.outputToken,
-      depositData.inputAmount,
-      depositData.outputAmount,
-      depositData.destinationChainId,
-      depositData.exclusiveRelayer,
-      depositData.quoteTimestamp.toNumber(),
-      depositData.fillDeadline.toNumber(),
-      depositData.exclusivityParameter.toNumber(),
-      Buffer.from([])
-    ) as any
-  )
-    .accounts({
-      state: statePda,
-      delegate: delegatePda,
-      signer: signer.publicKey,
-      userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer.publicKey),
-      vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      mint: inputToken,
-    })
-    .instruction();
-  const depositTx = await sendAndConfirmTransaction(provider.connection, new Transaction().add(approveIx, depositIx), [
-    signer,
-  ]);
-
-  console.log(`Deposit transaction sent: ${depositTx}`);
+  const fundingTx = await sendAndConfirmTransaction(
+    provider.connection,
+    new Transaction().add(
+      createAssociatedTokenAccountIdempotentInstruction(signer.publicKey, vault, statePda, inputToken),
+      transferIx
+    ),
+    [signer]
+  );
+  console.log(`Vault funding transaction sent: ${fundingTx}`);
 
   // Create a single repayment leaf with the array of amounts and corresponding refund addresses
   const refundAddresses: PublicKey[] = [];

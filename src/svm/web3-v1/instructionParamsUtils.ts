@@ -1,6 +1,6 @@
-import { Keypair, TransactionInstruction, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
-import { Program, BN } from "@coral-xyz/anchor";
-import { RelayData, RelayerRefundLeafSolana } from "../../types/svm";
+import { Keypair, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
+import { Program } from "@coral-xyz/anchor";
+import { RelayerRefundLeafSolana } from "../../types/svm";
 import { SvmSpoke } from "../../../target/types/svm_spoke";
 import { LargeAccountsCoder } from "./coders";
 
@@ -52,67 +52,5 @@ export async function closeInstructionParams(program: Program<SvmSpoke>, signer:
   if (accountInfo !== null) {
     const closeIx = await program.methods.closeInstructionParams().accounts({ signer: signer.publicKey }).instruction();
     await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(closeIx), [signer]);
-  }
-}
-
-/**
- * Creates instructions to load fill relay parameters.
- */
-export async function createFillRelayParamsInstructions(
-  program: Program<SvmSpoke>,
-  signer: PublicKey,
-  relayData: RelayData,
-  repaymentChainId: BN,
-  repaymentAddress: PublicKey
-) {
-  const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
-
-  const accountCoder = new LargeAccountsCoder(program.idl);
-  const instructionParamsBytes = await accountCoder.encode("fillRelayParams", {
-    relayData,
-    repaymentChainId,
-    repaymentAddress,
-  });
-
-  const loadInstructions: TransactionInstruction[] = [];
-  loadInstructions.push(
-    await program.methods.initializeInstructionParams(instructionParamsBytes.length).accounts({ signer }).instruction()
-  );
-
-  for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
-    const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
-    loadInstructions.push(
-      await program.methods.writeInstructionParamsFragment(i, fragment).accounts({ signer }).instruction()
-    );
-  }
-
-  const closeInstruction = await program.methods.closeInstructionParams().accounts({ signer }).instruction();
-
-  return { loadInstructions, closeInstruction };
-}
-
-/**
- * Loads fill relay parameters.
- */
-export async function loadFillRelayParams(
-  program: Program<SvmSpoke>,
-  signer: Keypair,
-  relayData: RelayData,
-  repaymentChainId: BN,
-  repaymentAddress: PublicKey
-) {
-  // Close the instruction params account if the caller has used it before.
-  await closeInstructionParams(program, signer);
-
-  // Execute load instructions sequentially.
-  const { loadInstructions } = await createFillRelayParamsInstructions(
-    program,
-    signer.publicKey,
-    relayData,
-    repaymentChainId,
-    repaymentAddress
-  );
-  for (let i = 0; i < loadInstructions.length; i += 1) {
-    await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(loadInstructions[i]), [signer]);
   }
 }

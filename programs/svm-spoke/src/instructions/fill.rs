@@ -1,96 +1,15 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked},
-};
+use anchor_spl::token_interface::TransferChecked;
 
 use crate::{
     common::RelayData,
-    constants::{DISCRIMINATOR_SIZE, FILL_STATUS_SEED},
-    constraints::{has_valid_params_presence, is_relay_hash_valid},
     error::{CommonError, SvmError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
-    state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{
-        derive_seed_hash, get_current_time, hash_non_empty_message, transfer_from, validate_legacy_fill_message,
-        DelegatePda, FillSeedData,
-    },
+    state::{FillStatus, FillStatusAccount, State},
+    utils::{get_current_time, hash_non_empty_message, transfer_from, DelegatePda},
 };
 
 use super::{create_v5_fill_status_account, PendingV5FillStatus, V5FillStatusPdas};
-
-#[event_cpi]
-#[derive(Accounts)]
-#[instruction(
-    relay_hash: [u8; 32],
-    relay_data: Option<RelayData>,
-    repayment_chain_id: Option<u64>,
-    repayment_address: Option<Pubkey>
-)]
-pub struct FillRelay<'info> {
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    // This is required as fallback when None instruction params are passed in arguments.
-    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
-    pub instruction_params: Option<Account<'info, FillRelayParams>>,
-
-    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
-    pub state: Account<'info, State>,
-
-    /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
-    pub delegate: UncheckedAccount<'info>,
-
-    #[account(
-        mint::token_program = token_program,
-        address = relay_data
-            .clone()
-            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
-            .output_token @ SvmError::InvalidMint
-    )]
-    pub mint: InterfaceAccount<'info, Mint>,
-
-    #[account(
-        mut,
-        token::mint = mint,
-        token::authority = signer,
-        token::token_program = token_program
-    )]
-    pub relayer_token_account: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        // Ensures tokens go to ATA owned by the recipient.
-        associated_token::authority = relay_data
-            .clone()
-            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
-            .recipient,
-        associated_token::token_program = token_program
-    )]
-    pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        init_if_needed,
-        payer = signer,
-        space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [FILL_STATUS_SEED, relay_hash.as_ref()],
-        bump,
-        // Validate optional parameters before they are unwrapped in other constraints by Anchor.
-        constraint = has_valid_params_presence(
-            &[relay_data.is_some(), repayment_chain_id.is_some(), repayment_address.is_some()],
-            instruction_params.is_some()) @ SvmError::InconsistentOptionalParameters,
-        constraint = is_relay_hash_valid(
-            &relay_hash,
-            &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
-            &state) @ SvmError::InvalidRelayHash
-    )]
-    pub fill_status: Account<'info, FillStatusAccount>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-}
 
 pub enum FillStatusInput<'a, 'info> {
     Legacy(&'a mut FillStatusAccount),
@@ -135,19 +54,6 @@ pub struct FillAccounts<'info> {
     pub mint: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
     pub mint_decimals: u8,
-}
-
-impl<'info> From<&FillRelay<'info>> for FillAccounts<'info> {
-    fn from(accounts: &FillRelay<'info>) -> Self {
-        Self {
-            from: accounts.relayer_token_account.to_account_info(),
-            recipient: accounts.recipient_token_account.to_account_info(),
-            delivery: FillDelivery::Delegated(accounts.delegate.to_account_info()),
-            mint: accounts.mint.to_account_info(),
-            token_program: accounts.token_program.to_account_info(),
-            mint_decimals: accounts.mint.decimals,
-        }
-    }
 }
 
 /// Executes shared fill validation, token delivery, and status transition, then constructs the event.
@@ -241,57 +147,6 @@ pub fn _fill(
             fill_type,
         },
     })
-}
-
-pub fn fill_relay<'info>(
-    ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
-    relay_hash: [u8; 32],
-    relay_data: Option<RelayData>,
-    repayment_chain_id: Option<u64>,
-    repayment_address: Option<Pubkey>,
-) -> Result<()> {
-    let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
-        unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
-
-    validate_legacy_fill_message(&relay_data.message)?;
-
-    let event = _fill(
-        FillAccounts::from(&*ctx.accounts),
-        &ctx.accounts.state,
-        &relay_data,
-        &relay_data.message,
-        repayment_chain_id,
-        repayment_address,
-        ctx.accounts.signer.key(),
-        FillStatusInput::Legacy(&mut ctx.accounts.fill_status),
-        DelegatePda::UniqueHash(derive_seed_hash(&FillSeedData { relay_hash, repayment_chain_id, repayment_address })),
-    )?;
-
-    emit_cpi!(event);
-
-    Ok(())
-}
-
-// Helper to unwrap optional instruction params with fallback loading from buffer account.
-fn unwrap_fill_relay_params(
-    relay_data: Option<RelayData>,
-    repayment_chain_id: Option<u64>,
-    repayment_address: Option<Pubkey>,
-    account: &Option<Account<FillRelayParams>>,
-) -> FillRelayParams {
-    match (relay_data, repayment_chain_id, repayment_address) {
-        (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
-            FillRelayParams { relay_data, repayment_chain_id, repayment_address }
-        }
-        _ => account
-            .as_ref()
-            .map(|account| FillRelayParams {
-                relay_data: account.relay_data.clone(),
-                repayment_chain_id: account.repayment_chain_id,
-                repayment_address: account.repayment_address,
-            })
-            .unwrap(), // We do not expect this to panic here as optional parameters are validated in context.
-    }
 }
 
 #[cfg(all(test, feature = "test"))]

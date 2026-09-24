@@ -4,89 +4,20 @@
 // implemented. For more details, refer to the documentation: https://docs.across.to
 
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface, TransferChecked},
-};
+use anchor_spl::token_interface::TransferChecked;
 
 use crate::{
     constants::MAX_EXCLUSIVITY_PERIOD_SECONDS,
-    error::{CommonError, SvmError},
+    error::CommonError,
     event::FundsDeposited,
     state::State,
-    utils::{
-        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DelegatePda, DepositNowSeedData,
-        DepositSeedData,
-    },
+    utils::{get_current_time, transfer_from, DelegatePda},
 };
-
-#[event_cpi]
-#[derive(Accounts)]
-#[instruction(depositor: Pubkey, recipient: Pubkey, input_token: Pubkey)]
-pub struct Deposit<'info> {
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
-        bump,
-        constraint = !state.paused_deposits @ CommonError::DepositsArePaused
-    )]
-    pub state: Account<'info, State>,
-
-    /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
-    pub delegate: UncheckedAccount<'info>,
-
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = depositor,
-        associated_token::token_program = token_program
-    )]
-    pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        init_if_needed,
-        payer = signer,
-        associated_token::mint = mint,
-        associated_token::authority = state, // Ensure owner is the state as tokens are sent here on deposit.
-        associated_token::token_program = token_program
-    )]
-    pub vault: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        mint::token_program = token_program,
-        constraint = mint.key() == input_token @ SvmError::InvalidMint
-    )]
-    pub mint: InterfaceAccount<'info, Mint>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-
-    pub associated_token_program: Program<'info, AssociatedToken>,
-
-    pub system_program: Program<'info, System>,
-}
 
 pub struct DepositAccounts<'info> {
     pub transfer: TransferChecked<'info>,
     pub token_program: AccountInfo<'info>,
     pub mint_decimals: u8,
-}
-
-impl<'info> From<&Deposit<'info>> for DepositAccounts<'info> {
-    fn from(accounts: &Deposit<'info>) -> Self {
-        Self {
-            transfer: TransferChecked {
-                from: accounts.depositor_token_account.to_account_info(),
-                mint: accounts.mint.to_account_info(),
-                to: accounts.vault.to_account_info(),
-                authority: accounts.delegate.to_account_info(),
-            },
-            token_program: accounts.token_program.to_account_info(),
-            mint_decimals: accounts.mint.decimals,
-        }
-    }
 }
 
 pub enum DepositId<'a> {
@@ -171,166 +102,4 @@ pub fn _deposit(
         exclusive_relayer,
         message,
     })
-}
-
-pub fn deposit(
-    ctx: Context<Deposit>,
-    depositor: Pubkey,
-    recipient: Pubkey,
-    input_token: Pubkey,
-    output_token: Pubkey,
-    input_amount: u64,
-    output_amount: [u8; 32],
-    destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_parameter: u32,
-    message: Vec<u8>,
-) -> Result<()> {
-    let seed_hash = derive_seed_hash(
-        &(DepositSeedData {
-            depositor,
-            recipient,
-            input_token,
-            output_token,
-            input_amount,
-            output_amount,
-            destination_chain_id,
-            exclusive_relayer,
-            quote_timestamp,
-            fill_deadline,
-            exclusivity_parameter,
-            message: &message,
-        }),
-    );
-    let accounts = DepositAccounts::from(&*ctx.accounts);
-    let event = _deposit(
-        accounts,
-        depositor,
-        recipient,
-        input_token,
-        output_token,
-        input_amount,
-        output_amount,
-        destination_chain_id,
-        exclusive_relayer,
-        DepositId::Next(&mut ctx.accounts.state),
-        quote_timestamp,
-        fill_deadline,
-        exclusivity_parameter,
-        message,
-        DelegatePda::UniqueHash(seed_hash),
-    )?;
-    emit_cpi!(event);
-    Ok(())
-}
-
-pub fn deposit_now(
-    ctx: Context<Deposit>,
-    depositor: Pubkey,
-    recipient: Pubkey,
-    input_token: Pubkey,
-    output_token: Pubkey,
-    input_amount: u64,
-    output_amount: [u8; 32],
-    destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    fill_deadline_offset: u32,
-    exclusivity_period: u32,
-    message: Vec<u8>,
-) -> Result<()> {
-    let state = &mut ctx.accounts.state;
-    let current_time = get_current_time(state)?;
-    let seed_hash = derive_seed_hash(
-        &(DepositNowSeedData {
-            depositor,
-            recipient,
-            input_token,
-            output_token,
-            input_amount,
-            output_amount,
-            destination_chain_id,
-            exclusive_relayer,
-            fill_deadline_offset,
-            exclusivity_period,
-            message: &message,
-        }),
-    );
-    let accounts = DepositAccounts::from(&*ctx.accounts);
-    let event = _deposit(
-        accounts,
-        depositor,
-        recipient,
-        input_token,
-        output_token,
-        input_amount,
-        output_amount,
-        destination_chain_id,
-        exclusive_relayer,
-        DepositId::Next(&mut ctx.accounts.state),
-        current_time,
-        current_time + fill_deadline_offset,
-        exclusivity_period,
-        message,
-        DelegatePda::UniqueHash(seed_hash),
-    )?;
-    emit_cpi!(event);
-    Ok(())
-}
-
-pub fn unsafe_deposit(
-    ctx: Context<Deposit>,
-    depositor: Pubkey,
-    recipient: Pubkey,
-    input_token: Pubkey,
-    output_token: Pubkey,
-    input_amount: u64,
-    output_amount: [u8; 32],
-    destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    deposit_nonce: u64,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_parameter: u32,
-    message: Vec<u8>,
-) -> Result<()> {
-    // Calculate the unsafe deposit ID as a [u8; 32]
-    let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
-    let seed_hash = derive_seed_hash(
-        &(DepositSeedData {
-            depositor,
-            recipient,
-            input_token,
-            output_token,
-            input_amount,
-            output_amount,
-            destination_chain_id,
-            exclusive_relayer,
-            quote_timestamp,
-            fill_deadline,
-            exclusivity_parameter,
-            message: &message,
-        }),
-    );
-    let accounts = DepositAccounts::from(&*ctx.accounts);
-    let event = _deposit(
-        accounts,
-        depositor,
-        recipient,
-        input_token,
-        output_token,
-        input_amount,
-        output_amount,
-        destination_chain_id,
-        exclusive_relayer,
-        DepositId::Fixed { state: &ctx.accounts.state, value: deposit_id },
-        quote_timestamp,
-        fill_deadline,
-        exclusivity_parameter,
-        message,
-        DelegatePda::UniqueHash(seed_hash),
-    )?;
-    emit_cpi!(event);
-    Ok(())
 }

@@ -33,6 +33,22 @@ fn retired_slow_fill_discriminators_are_not_dispatchable() {
 }
 
 #[test]
+fn retired_v4_discriminators_are_not_dispatchable() {
+    for discriminator in [
+        [242, 35, 198, 137, 82, 225, 242, 182], // deposit
+        [75, 228, 135, 221, 200, 25, 148, 26],  // deposit_now
+        [196, 187, 166, 179, 3, 146, 150, 246], // unsafe_deposit
+        [100, 84, 222, 90, 106, 209, 58, 222],  // fill_relay
+    ] {
+        // Old clients fail at dispatch even when they supply historical arguments or parameter buffers.
+        for payload in [vec![], vec![0; 512]] {
+            let data = [discriminator.as_slice(), payload.as_slice()].concat();
+            assert_eq!(entry(&ID, &[], &data), Err(ProgramError::Custom(101)));
+        }
+    }
+}
+
+#[test]
 fn historical_status_and_event_slots_remain_readable() {
     assert_eq!(FillStatusAccount::DISCRIMINATOR, &[105, 89, 88, 35, 24, 147, 178, 137]);
     for (slot, status) in [

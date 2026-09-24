@@ -382,11 +382,52 @@ describe("svm_spoke V5 source deposit", () => {
 
   it("enforces paused deposits and the committed dynamic-amount floor", async () => {
     const input = encodeDeposit(deposit, { literal: true });
-    await svmSpoke.methods.pauseDeposits(true).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseDeposits(true)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(input), "DepositsArePaused");
-    await svmSpoke.methods.pauseDeposits(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseDeposits(false)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(encodeDeposit(deposit, { bips: 4000 })), "ResolvedInputAmountBelowCommitted");
   });
+
+  it("preserves quote, deadline, output-token, and exclusivity validation through Gateway", async () => {
+    const currentTime = (await svmSpoke.account.state.fetch(state)).currentTime;
+    const cases: [Partial<DepositFields>, string][] = [
+      [{ quoteTimestamp: currentTime + 1 }, "InvalidQuoteTimestamp"],
+      [{ quoteTimestamp: currentTime - common.depositQuoteTimeBuffer.toNumber() - 1 }, "InvalidQuoteTimestamp"],
+      [{ fillDeadline: currentTime + common.fillDeadlineBuffer.toNumber() + 1 }, "InvalidFillDeadline"],
+      [{ outputToken: PublicKey.default }, "InvalidOutputToken"],
+      [{ exclusiveRelayer: PublicKey.default, exclusivityParameter: 1 }, "InvalidExclusiveRelayer"],
+    ];
+    for (const [fields, error] of cases) {
+      await expectError(execute(encodeDeposit({ ...deposit, ...fields }, { literal: true })), error);
+      assert.equal((await getAccount(connection, gatewayVault)).amount, 1_000_000n);
+      assert.equal((await getAccount(connection, spokeVault)).amount, 0n);
+    }
+  });
+
+  for (const [name, exclusivityParameter, expectedDeadline] of [
+    ["none", 0, 0],
+    ["relative", 60, 1060],
+    ["absolute", 31536001, 31536001],
+  ] as const) {
+    it(`preserves ${name} exclusivity and permits an already expired V5 source deposit`, async () => {
+      await common.setCurrentTime(svmSpoke, state, payer, new BN(1000));
+      const tx = await execute(
+        encodeDeposit({ ...deposit, quoteTimestamp: 1000, fillDeadline: 999, exclusivityParameter }, { literal: true })
+      );
+      const events = await readEventsUntilFound(connection, tx, [svmSpoke]);
+      const event = events.find((event) => event.name === "fundsDeposited")!.data;
+      assert.equal(event.exclusivityDeadline, expectedDeadline);
+      assert.equal(event.fillDeadline, 999);
+      assert.equal((await getAccount(connection, gatewayVault)).amount, 500_000n);
+      assert.equal((await getAccount(connection, spokeVault)).amount, 500_000n);
+    });
+  }
 
   it("supports plain Token-2022 mints and rejects unsupported mint extensions", async () => {
     for (const extension of [ExtensionType.TransferFeeConfig, ExtensionType.TransferHook]) {

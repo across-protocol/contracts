@@ -1,45 +1,30 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import {
-  createApproveCheckedInstruction,
-  createMint,
-  getAccount,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
-import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
-import { calculateRelayHashUint8Array, getFillRelayDelegatePda, readEventsUntilFound } from "../../src/svm/web3-v1";
+import { SvmSpokeClient } from "../../src/svm/clients";
+import { calculateRelayHashUint8Array } from "../../src/svm/web3-v1";
 import { SvmSpokeIdl } from "../../src/svm/assets";
 import legacyAccount from "./accounts/legacy_requested_slow_fill.json";
 import { legacyMint, legacyRelay, legacyRequester } from "./fixtures/legacySlowFill";
 import { common } from "./SvmSpoke.common";
 
-describe("svm_spoke slow-fill retirement compatibility", () => {
+describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
   const { provider, connection, program, chainId } = common;
   anchor.setProvider(provider);
   const payer = (provider.wallet as anchor.Wallet).payer;
-  const relayer = Keypair.generate();
   const fillStatus = new PublicKey(legacyAccount.pubkey);
   const relayHash = calculateRelayHashUint8Array(legacyRelay, chainId);
-  let state: PublicKey, source: PublicKey, recipient: PublicKey, vault: PublicKey;
+  let state: PublicKey, recipient: PublicKey, vault: PublicKey;
 
   before(async () => {
     ({ state } = await common.initializeState());
-    await provider.sendAndConfirm(
-      new Transaction().add(
-        SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: relayer.publicKey, lamports: 100000000 })
-      )
-    );
     await createMint(connection, payer, payer.publicKey, null, 6, legacyMint);
-    source = (await getOrCreateAssociatedTokenAccount(connection, payer, legacyMint.publicKey, relayer.publicKey))
-      .address;
     recipient = (
       await getOrCreateAssociatedTokenAccount(connection, payer, legacyMint.publicKey, legacyRelay.recipient)
     ).address;
     vault = (await getOrCreateAssociatedTokenAccount(connection, payer, legacyMint.publicKey, state, true)).address;
-    await mintTo(connection, payer, legacyMint.publicKey, source, payer, 1000000);
     await mintTo(connection, payer, legacyMint.publicKey, vault, payer, 1000000);
     assert.equal(
       PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash], program.programId)[0].toBase58(),
@@ -48,8 +33,17 @@ describe("svm_spoke slow-fill retirement compatibility", () => {
   });
 
   it("removes client entrypoints while retaining historical event decoding", () => {
+    for (const name of ["Deposit", "DepositNow", "UnsafeDeposit", "FillRelay"]) {
+      assert.notProperty(SvmSpokeClient, `get${name}Instruction`);
+      assert.notProperty(SvmSpokeClient, `get${name}InstructionAsync`);
+    }
+    assert.property(SvmSpokeClient, "getAdapterExecuteAcrossV5Instruction");
     for (const idl of [program.idl, SvmSpokeIdl]) {
       const names = idl.instructions.map((ix: { name: string }) => ix.name.replace(/_/g, "").toLowerCase());
+      for (const name of ["deposit", "depositnow", "unsafedeposit", "fillrelay"]) assert.notInclude(names, name);
+      assert.include(names, "adapterexecuteacrossv5");
+      assert.include(names, "executerelayerrefundleaf");
+      assert.include(names, "closefillpda");
       assert.notInclude(names, "requestslowfill");
       assert.notInclude(names, "executeslowrelayleaf");
       const coder = new anchor.BorshCoder(new anchor.Program(idl, provider).idl);
@@ -68,9 +62,13 @@ describe("svm_spoke slow-fill retirement compatibility", () => {
     }
   });
 
-  it("rejects both retired raw selectors before account validation, with no state or token changes", async () => {
+  it("rejects all retired raw selectors before account validation, with no state or token changes", async () => {
     const before = (await connection.getAccountInfo(fillStatus))!;
     for (const discriminator of [
+      [242, 35, 198, 137, 82, 225, 242, 182], // deposit
+      [75, 228, 135, 221, 200, 25, 148, 26], // deposit_now
+      [196, 187, 166, 179, 3, 146, 150, 246], // unsafe_deposit
+      [100, 84, 222, 90, 106, 209, 58, 222], // fill_relay
       [39, 157, 165, 187, 88, 217, 207, 98],
       [26, 207, 3, 168, 193, 252, 59, 127],
     ]) {
@@ -93,79 +91,29 @@ describe("svm_spoke slow-fill retirement compatibility", () => {
     assert.equal((await getAccount(connection, recipient)).amount, 0n);
   });
 
-  const fillTransaction = async () => {
-    const { pda: delegate } = getFillRelayDelegatePda(relayHash, chainId, relayer.publicKey, program.programId);
-    return new Transaction().add(
-      createApproveCheckedInstruction(source, legacyMint.publicKey, delegate, relayer.publicKey, 500000, 6),
-      await program.methods
-        .fillRelay([...relayHash], legacyRelay, chainId, relayer.publicKey)
-        .accountsPartial({
-          signer: relayer.publicKey,
-          instructionParams: null,
-          state,
-          delegate,
-          mint: legacyMint.publicKey,
-          relayerTokenAccount: source,
-          recipientTokenAccount: recipient,
-          fillStatus,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .instruction()
-    );
-  };
-
-  it("rolls back a fast fill of a pre-upgrade request, then fills once with ReplacedSlowFill", async () => {
+  it("retains historical requested status and permissionless expiry reclaim to the recorded requester", async () => {
     const before = (await connection.getAccountInfo(fillStatus))!;
-    assert.equal(before.data[8], 1);
     assert.deepEqual(before.data, Buffer.from(legacyAccount.account.data[0], "base64"));
     const requested = await program.account.fillStatusAccount.fetch(fillStatus);
     assert.deepEqual(requested.status, { requestedSlowFill: {} });
     assert.equal(requested.relayer.toBase58(), legacyRequester.toBase58());
 
-    // Submit an actual failed transaction: fill succeeds, then an impossible SOL transfer forces rollback.
-    const tx = (await fillTransaction()).add(
-      SystemProgram.transfer({
-        fromPubkey: relayer.publicKey,
-        toPubkey: payer.publicKey,
-        lamports: 100000000000,
-      })
-    );
-    const blockhash = await connection.getLatestBlockhash();
-    tx.recentBlockhash = blockhash.blockhash;
-    tx.feePayer = payer.publicKey;
-    tx.sign(payer, relayer);
-    const signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
-    const failed = await connection.confirmTransaction({ signature, ...blockhash }, "confirmed");
-    assert.deepEqual((failed.value.err as any)?.InstructionError?.[0], 2);
-    assert.deepEqual((await connection.getAccountInfo(fillStatus))!.data, before.data);
-    assert.equal((await getAccount(connection, source)).amount, 1000000n);
-    assert.equal((await getAccount(connection, recipient)).amount, 0n);
-
-    const successful = await provider.sendAndConfirm(await fillTransaction(), [relayer]);
-    const events = await readEventsUntilFound(connection, successful, [program]);
-    const event = events.find((event) => event.name === "filledRelay")?.data;
-    assert.deepEqual(event.relayExecutionInfo.fillType, { replacedSlowFill: {} });
-    assert.equal(event.relayExecutionInfo.updatedOutputAmount.toString(), "500000");
-    const filled = await program.account.fillStatusAccount.fetch(fillStatus);
-    assert.deepEqual(filled.status, { filled: {} });
-    assert.equal(filled.relayer.toBase58(), relayer.publicKey.toBase58());
-    assert.equal(filled.fillDeadline, legacyRelay.fillDeadline);
-    assert.equal((await connection.getAccountInfo(fillStatus))!.data[8], 2);
-    assert.equal((await getAccount(connection, source)).amount, 500000n);
-    assert.equal((await getAccount(connection, recipient)).amount, 500000n);
-    assert.equal((await getAccount(connection, vault)).amount, 1000000n);
-
+    await common.setCurrentTime(program, state, payer, new BN(legacyRelay.fillDeadline));
     try {
-      await provider.sendAndConfirm(await fillTransaction(), [relayer]);
-      assert.fail("Replay must fail");
+      await program.methods.closeFillPda().accountsPartial({ state, signer: legacyRequester, fillStatus }).rpc();
+      assert.fail("Must wait until after the recorded deadline");
     } catch (error: any) {
-      assert.include(error.toString(), "RelayFilled");
+      assert.include(error.toString(), "CanOnlyCloseFillStatusPdaIfFillDeadlinePassed");
     }
-    assert.equal((await getAccount(connection, recipient)).amount, 500000n);
+    assert.deepEqual((await connection.getAccountInfo(fillStatus))!.data, before.data);
 
-    // The successful fast filler becomes the rent recipient; ordinary expiry reclaim remains available.
     await common.setCurrentTime(program, state, payer, new BN(legacyRelay.fillDeadline + 1));
-    await program.methods.closeFillPda().accountsPartial({ state, signer: relayer.publicKey, fillStatus }).rpc();
+    const rentBefore = await connection.getBalance(legacyRequester);
+    // The provider pays transaction fees; the recorded requester need not sign.
+    await program.methods.closeFillPda().accountsPartial({ state, signer: legacyRequester, fillStatus }).rpc();
     assert.isNull(await connection.getAccountInfo(fillStatus));
+    assert.equal(await connection.getBalance(legacyRequester), rentBefore + before.lamports);
+    assert.equal((await getAccount(connection, vault)).amount, 1000000n);
+    assert.equal((await getAccount(connection, recipient)).amount, 0n);
   });
 });
