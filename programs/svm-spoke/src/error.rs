@@ -37,8 +37,6 @@ pub enum CommonError {
     InvalidExclusiveRelayer,
     #[msg("Invalid output token!")]
     InvalidOutputToken,
-    #[msg("V5 deposits are only consumable via the V5 fill entrypoints!")]
-    V5FillOnly,
 }
 
 // SVM specific errors.
@@ -46,8 +44,6 @@ pub enum CommonError {
 pub enum SvmError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
-    #[msg("Invalid relay hash!")]
-    InvalidRelayHash,
     #[msg("The fill deadline has not passed!")]
     CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
     #[msg("The caller is not the relayer!")]
@@ -80,10 +76,6 @@ pub enum SvmError {
     InvalidATACreationAccounts,
     #[msg("Invalid delegate PDA!")]
     InvalidDelegatePda,
-    #[msg("Inconsistent optional parameters!")]
-    InconsistentOptionalParameters,
-    #[msg("Legacy fill messages are unsupported; use a V5 Gateway destination path!")]
-    LegacyFillMessageUnsupported,
 }
 
 // Across V5 adapter specific errors.

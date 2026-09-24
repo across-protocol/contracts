@@ -9,9 +9,14 @@ fn custom_error_ranges_are_stable() {
     use crate::error::{CallDataError, CommonError, SvmError, V5Error};
 
     assert_eq!(u32::from(CommonError::InvalidQuoteTimestamp), 6_000);
-    assert_eq!(u32::from(CommonError::V5FillOnly), 6_016);
+    // Keep the deployed slow-fill slots so later live CommonError assignments do not shift.
+    assert_eq!(u32::from(CommonError::NoSlowFillsInExclusivityWindow), 6_003);
+    assert_eq!(u32::from(CommonError::RelayFilled), 6_004);
+    assert_eq!(u32::from(CommonError::InvalidSlowFillRequest), 6_005);
+    assert_eq!(u32::from(CommonError::InvalidOutputToken), 6_015);
     assert_eq!(u32::from(SvmError::NotOwner), 7_000);
-    assert_eq!(u32::from(SvmError::LegacyFillMessageUnsupported), 7_019);
+    assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
+    assert_eq!(u32::from(SvmError::InvalidDelegatePda), 7_016);
     assert_eq!(u32::from(CallDataError::InvalidSelector), 8_000);
     assert_eq!(u32::from(CallDataError::UnsupportedSelector), 8_006);
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 9_000);
