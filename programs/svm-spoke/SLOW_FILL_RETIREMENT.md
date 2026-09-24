@@ -55,9 +55,10 @@ do not establish that the live in-flight window is empty.
 
 `cargo test -p svm-spoke --lib --features test` checks raw dispatch rejection, serialized status/event compatibility,
 the two-root layout and instruction payload, and the shared fill core. CI builds with
-`IS_TEST=true yarn build-svm-solana-verify`, generates test IDLs, and runs `anchor test --skip-build`. This exercises the validator
-tests in `SvmSpoke.SlowFillRetirement.ts`, retired V4 selectors, historical rent reclaim, V5 fills, refund execution,
-and replay/rollback cases. Use the Node version in `.github/workflows/pr.yml` and the Anchor/Solana versions resolved from `Cargo.lock`, as CI does.
+`IS_TEST=true yarn build-svm-solana-verify`, generates test IDLs, and runs `anchor test --skip-build`. This exercises
+the validator tests in `SvmSpoke.SlowFillRetirement.ts`, retired V4 selectors, historical rent reclaim, V5 fills,
+refund execution, and replay/rollback cases. Use the Node version in `.github/workflows/pr.yml` and the Anchor/Solana
+versions resolved from `Cargo.lock`, as CI does.
 The genesis fixture `test/svm/accounts/legacy_requested_slow_fill.json` freezes a 45-byte pre-upgrade status account
 encoded with the pre-retirement IDL; `test/svm/fixtures/legacySlowFill.ts` defines its deterministic relay and test keys.
 This fixture must be loaded when running the slow-fill retirement suite against a manually started validator.

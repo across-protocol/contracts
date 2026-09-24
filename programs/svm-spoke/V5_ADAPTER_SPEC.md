@@ -298,7 +298,8 @@ Before deploying V4 entrypoint retirement and the error-code migration:
 
 After the upgrade, a remaining V4 deposit cannot be filled on Solana. Slow fills are also retired;
 an unfilled expired deposit follows the normal origin-chain refund process, not a destination fallback. These are
-deployment checks: the local fixtures do not establish that the live in-flight window is empty. HubPool chain enablement does not guarantee that an arbitrary V4 deposit to Solana is fillable. API/builders and
-relayers must require the supported V5 path, including for empty-message transfers.
+deployment checks: the local fixtures do not establish that the live in-flight window is empty. HubPool chain
+enablement does not guarantee that an arbitrary V4 deposit to Solana is fillable. API/builders and relayers must
+require the supported V5 path, including for empty-message transfers.
 The standalone MulticallHandler program and its package exports remain available to existing consumers; their
 retirement and any deployed-program closure require a separate decision.
