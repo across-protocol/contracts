@@ -13,7 +13,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 if [ ! -d "$OUT_DIR" ]; then
-  echo "Error: $OUT_DIR not found. Run 'forge build' first." >&2
+  echo "Error: $OUT_DIR not found. Run 'yarn build-evm-foundry' first." >&2
   exit 1
 fi
 
