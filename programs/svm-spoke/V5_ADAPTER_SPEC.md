@@ -242,6 +242,17 @@ without an account discriminator. The retired `FillRelayParams` account/type and
 removed; its account encoding is not the V5 JIT format. Existing instruction buffers remain closable without
 deserializing that retired account type.
 
+The `web3-v1` package subpath and its `helpers` module also remove these V4-only exports:
+
+- `getDepositSeedHash`, `getDepositPda`, `getDepositNowSeedHash`, and `getDepositNowPda`;
+- `getFillRelayDelegateSeedHash` and `getFillRelayDelegatePda`;
+- `DepositSeedData` and `DepositNowSeedData`.
+
+These helpers derived delegates for the removed instructions. Consumers must migrate to the authenticated V5
+adapter and its source/fill delegate rules above. The V4 buffer builders `loadFillRelayParams` and
+`createFillRelayParamsInstructions` are also removed. `getSolanaChainId`, `isSolanaDevnet`, relay hashing, refund and
+generic instruction-buffer helpers remain available; the read-only `get_unsafe_deposit_id` is retained.
+
 Anchor cannot discover these schemas through the adapter's `Vec<u8>` argument. The standard production/test
 IDL generation scripts include `V5FillJit` and its `RelayData` dependency using their Rust `IdlBuild` derives,
 then regenerate Anchor types and Codama clients. Use `yarn generate-svm-artifacts` for public assets and
