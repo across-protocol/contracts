@@ -1,8 +1,10 @@
 // Shared test-only Spoke wire layouts; golden-vector derivations stay independent.
 import { BN } from "@coral-xyz/anchor";
+import { address } from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import { RelayData } from "../../src/types/svm";
+import { SvmSpokeClient } from "../../src/svm/clients";
 
 export const u16 = (n: number) => {
   const b = Buffer.alloc(2);
@@ -86,4 +88,21 @@ export const encodeRelay = (relay: RelayData) =>
     vec(relay.message),
   ]);
 export const encodeJit = (relay: RelayData, repaymentChainId: bigint | number | BN, repaymentAddress: PublicKey) =>
-  Buffer.concat([encodeRelay(relay), u64(repaymentChainId), repaymentAddress.toBuffer()]);
+  Buffer.from(
+    SvmSpokeClient.getV5FillJitEncoder().encode({
+      relayData: {
+        ...relay,
+        depositor: address(relay.depositor.toBase58()),
+        recipient: address(relay.recipient.toBase58()),
+        exclusiveRelayer: address(relay.exclusiveRelayer.toBase58()),
+        inputToken: address(relay.inputToken.toBase58()),
+        outputToken: address(relay.outputToken.toBase58()),
+        inputAmount: Uint8Array.from(relay.inputAmount),
+        outputAmount: BigInt(relay.outputAmount.toString()),
+        originChainId: BigInt(relay.originChainId.toString()),
+        depositId: Uint8Array.from(relay.depositId),
+      },
+      repaymentChainId: BigInt(repaymentChainId.toString()),
+      repaymentAddress: address(repaymentAddress.toBase58()),
+    }) as Uint8Array
+  );
