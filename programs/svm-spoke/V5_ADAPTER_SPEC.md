@@ -233,7 +233,7 @@ The read-only legacy `get_unsafe_deposit_id` utility remains available. Admin/ro
 and claims, token-account creation, instruction-buffer management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
-Removing shared legacy branches, helpers, and reserved errors is deferred to a separate change.
+Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
 
 Public clients retain the `RelayData` type and `SvmSpokeClient.getRelayDataEncoder/Decoder/Codec` exports.
 Use `SvmSpokeClient.getV5FillJitEncoder()` to encode `{ relayData, repaymentChainId, repaymentAddress }` into
@@ -250,9 +250,12 @@ wire schemas; run `yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts` a
 
 Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
 `V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
-legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) lists every current
-variant's old and new code plus the removed callback errors, distinguishing new errors from existing ones.
-Compatibility tests pin each range's first and last codes.
+legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) compares this
+release with deployed `v5.0.12-beta.1`, including removed variants and reserved slow-fill slots. V4 retirement removes
+`InvalidRelayHash`, `InconsistentOptionalParameters`, `V5FillOnly`, and `LegacyFillMessageUnsupported`, plus their
+orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
+7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
+and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
 Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`. Consumers should
 use runtime log names or the version-appropriate runtime-code mapping; generated error-name tables alone are
 insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
