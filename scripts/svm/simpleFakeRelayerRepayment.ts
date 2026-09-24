@@ -148,8 +148,9 @@ async function testBundleLogic(): Promise<void> {
     { property: "Signer", value: signer.publicKey.toString() },
   ]);
 
-  const relayRootBundleTx = await (program.methods.relayRootBundle(Array.from(root), Array.from(root)) as any)
-    .accounts({
+  const relayRootBundleTx = await program.methods
+    .relayRootBundle(Array.from(root), Array.from(root))
+    .accountsPartial({
       state: statePda,
       rootBundle: rootBundle,
       signer: signer.publicKey,
@@ -258,8 +259,9 @@ async function testBundleLogic(): Promise<void> {
   // Close the instruction parameters account
   console.log("Closing instruction params...");
   await new Promise((resolve) => setTimeout(resolve, 15000)); // Wait for the previous transaction to be processed.
-  const closeInstructionParamsTx = await (program.methods.closeInstructionParams() as any)
-    .accounts({ signer: signer.publicKey, instructionParams: instructionParams })
+  const closeInstructionParamsTx = await program.methods
+    .closeInstructionParams()
+    .accountsPartial({ signer: signer.publicKey, instructionParams: instructionParams })
     .rpc();
   console.log(`Close instruction params transaction sent: ${closeInstructionParamsTx}`);
   // Note we cant close the lookup table account as it needs to be both deactivated and expired at to do this.
