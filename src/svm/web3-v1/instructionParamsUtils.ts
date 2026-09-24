@@ -1,14 +1,17 @@
 import { Keypair, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
-import { Program } from "@coral-xyz/anchor";
+import { Idl, Program } from "@coral-xyz/anchor";
 import { RelayerRefundLeafSolana } from "../../types/svm";
-import { SvmSpoke } from "../../../target/types/svm_spoke";
+import { SvmSpokeAnchor } from "../assets";
 import { LargeAccountsCoder } from "./coders";
+
+// Production and test clients share the methods below, but test IDLs contain extra instructions.
+type InstructionParamsProgram = Pick<Program<SvmSpokeAnchor>, "programId" | "provider" | "methods"> & { idl: Idl };
 
 /**
  * Loads execute relayer refund leaf parameters.
  */
 export async function loadExecuteRelayerRefundLeafParams(
-  program: Program<SvmSpoke>,
+  program: InstructionParamsProgram,
   caller: PublicKey,
   rootBundleId: number,
   relayerRefundLeaf: RelayerRefundLeafSolana,
@@ -43,7 +46,7 @@ export async function loadExecuteRelayerRefundLeafParams(
 /**
  * Closes the instruction parameters account.
  */
-export async function closeInstructionParams(program: Program<SvmSpoke>, signer: Keypair) {
+export async function closeInstructionParams(program: InstructionParamsProgram, signer: Keypair) {
   const [instructionParams] = PublicKey.findProgramAddressSync(
     [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
     program.programId
