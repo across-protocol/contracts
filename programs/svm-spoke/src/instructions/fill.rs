@@ -12,6 +12,9 @@ use crate::{
 use super::{create_v5_fill_status_account, PendingV5FillStatus, V5FillStatusPdas};
 
 pub enum FillStatusInput<'a, 'info> {
+    // Only shared-core unit tests construct this variant; no production entrypoint does.
+    // TODO(V5 simplification): Remove this variant and its dead_code allowance when collapsing the shared core.
+    #[allow(dead_code)]
     Legacy(&'a mut FillStatusAccount),
     V5 {
         payer: &'a AccountInfo<'info>,
