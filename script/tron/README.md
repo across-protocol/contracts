@@ -47,8 +47,11 @@ NODE_URL_728126428=https://api.trongrid.io        # Tron mainnet
 NODE_URL_3448148188=https://nile.trongrid.io       # Tron Nile testnet
 
 # Optional
-TRON_FEE_LIMIT=100000000  # Fee limit in sun (default: 100 TRX)
+TRON_FEE_LIMIT=100000000    # Fee limit in sun (default: 100 TRX)
+TRON_SKIP_ENERGY_CHECK=1    # Skip the pre-flight energy/balance check (not recommended)
 ```
+
+> **Pre-flight energy check:** Before broadcasting, `deploy.ts` simulates the deployment (`triggerconstantcontract`) to estimate energy, then aborts — spending nothing — if the fee limit or deployer balance can't cover it. Note that Tron's `fee_limit` must cover the **total** energy priced in TRX, even the portion served by staked energy; an `OUT_OF_ENERGY` failure burns the entire fee limit without deploying. Large contracts (e.g. `Tron_SpokePool`) need a fee limit well above the 100 TRX default — the check prints the required value.
 
 > **Important:** Use the base TronGrid URL (`https://api.trongrid.io`), NOT the `/jsonrpc` endpoint. TronWeb needs the native Tron API, not the Ethereum-compatible JSON-RPC endpoint.
 
