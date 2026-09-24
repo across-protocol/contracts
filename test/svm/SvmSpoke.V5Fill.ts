@@ -2,12 +2,14 @@ import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { AccountMeta, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { address } from "@solana/kit";
 import { assert } from "chai";
 import { createHash, randomBytes } from "crypto";
 import { ethers } from "ethers";
 import { calculateRelayHashUint8Array, hashNonEmptyMessage, readEventsUntilFound } from "../../src/svm/web3-v1";
 import { RelayData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
+import { SvmSpokeClient } from "../../src/svm/clients";
 import { common } from "./SvmSpoke.common";
 
 const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
@@ -28,23 +30,25 @@ const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
 const encodeFill = (recipient: PublicKey, outputToken: PublicKey, minOutputAmount: bigint) =>
   Buffer.concat([Buffer.from([1]), recipient.toBuffer(), outputToken.toBuffer(), u64(minOutputAmount)]);
-const encodeRelay = (relay: RelayData) =>
-  Buffer.concat([
-    relay.depositor.toBuffer(),
-    relay.recipient.toBuffer(),
-    relay.exclusiveRelayer.toBuffer(),
-    relay.inputToken.toBuffer(),
-    relay.outputToken.toBuffer(),
-    Buffer.from(relay.inputAmount),
-    u64(relay.outputAmount),
-    u64(relay.originChainId),
-    Buffer.from(relay.depositId),
-    u32(relay.fillDeadline),
-    u32(relay.exclusivityDeadline),
-    vec(relay.message),
-  ]);
 const encodeJit = (relay: RelayData, repaymentChainId: BN, repaymentAddress: PublicKey) =>
-  Buffer.concat([encodeRelay(relay), u64(repaymentChainId), repaymentAddress.toBuffer()]);
+  Buffer.from(
+    SvmSpokeClient.getV5FillJitEncoder().encode({
+      relayData: {
+        ...relay,
+        depositor: address(relay.depositor.toBase58()),
+        recipient: address(relay.recipient.toBase58()),
+        exclusiveRelayer: address(relay.exclusiveRelayer.toBase58()),
+        inputToken: address(relay.inputToken.toBase58()),
+        outputToken: address(relay.outputToken.toBase58()),
+        inputAmount: Uint8Array.from(relay.inputAmount),
+        outputAmount: BigInt(relay.outputAmount.toString()),
+        originChainId: BigInt(relay.originChainId.toString()),
+        depositId: Uint8Array.from(relay.depositId),
+      },
+      repaymentChainId: BigInt(repaymentChainId.toString()),
+      repaymentAddress: address(repaymentAddress.toBase58()),
+    }) as Uint8Array
+  );
 
 describe("svm_spoke V5 destination fill", () => {
   anchor.setProvider(common.provider);
@@ -206,7 +210,7 @@ describe("svm_spoke V5 destination fill", () => {
     assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
 
     await setCurrentTime(svmSpoke, state, Keypair.generate(), new BN(relay.fillDeadline + 1));
-    await svmSpoke.methods.closeFillPda().accounts({ state, signer: fillPayer, fillStatus: fillStatus() }).rpc();
+    await svmSpoke.methods.closeFillPda().accountsPartial({ state, signer: fillPayer, fillStatus: fillStatus() }).rpc();
     assert.isNull(await connection.getAccountInfo(fillStatus()));
     assert.equal(await connection.getBalance(fillPayer), await connection.getMinimumBalanceForRentExemption(45));
   });
@@ -237,9 +241,15 @@ describe("svm_spoke V5 destination fill", () => {
   });
 
   it("rejects paused fills, wrong branch accounts, and insufficient allowance", async () => {
-    await svmSpoke.methods.pauseFills(true).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseFills(true)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(), "FillsArePaused");
-    await svmSpoke.methods.pauseFills(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseFills(false)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
 
     await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), "custom program error: 0x1");
     await expectError(execute(undefined, undefined, { delegate: Keypair.generate().publicKey }), "InvalidTokenAccount");

@@ -262,7 +262,11 @@ fn fill_wire_is_branch_specific() {
     let input = decode_v5_adapter_input(&input_bytes).unwrap();
     assert!(matches!(input, V5AdapterInput::FillV1(_)));
     assert_eq!(serialize(&input), input_bytes);
-    decode_strict::<V5FillJit>(&bytes(&fixture, "/wire/fillJit")).unwrap();
+    let jit_bytes = bytes(&fixture, "/wire/fillJit");
+    let jit = decode_strict::<V5FillJit>(&jit_bytes).unwrap();
+    assert_eq!(jit.relay_data.message, bytes(&fixture, "/fill/witness"));
+    assert_eq!(serialize(&jit), jit_bytes);
+    assert_eq!(serialize(&jit.relay_data), jit_bytes[..jit_bytes.len() - 40]);
     assert!(decode_strict::<V5FillJit>(&bytes(&fixture, "/wire/depositJit")).is_err());
 }
 

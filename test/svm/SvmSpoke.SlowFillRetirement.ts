@@ -38,6 +38,11 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
       assert.notProperty(SvmSpokeClient, `get${name}InstructionAsync`);
     }
     assert.property(SvmSpokeClient, "getAdapterExecuteAcrossV5Instruction");
+    for (const suffix of ["Encoder", "Decoder", "Codec"]) {
+      assert.notProperty(SvmSpokeClient, `getFillRelayParams${suffix}`);
+      assert.property(SvmSpokeClient, `getRelayData${suffix}`);
+      assert.property(SvmSpokeClient, `getV5FillJit${suffix}`);
+    }
     for (const idl of [program.idl, SvmSpokeIdl]) {
       const names = idl.instructions.map((ix: { name: string }) => ix.name.replace(/_/g, "").toLowerCase());
       for (const name of ["deposit", "depositnow", "unsafedeposit", "fillrelay"]) assert.notInclude(names, name);
@@ -46,6 +51,14 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
       assert.include(names, "closefillpda");
       assert.notInclude(names, "requestslowfill");
       assert.notInclude(names, "executeslowrelayleaf");
+      const typeNames = idl.types.map((type: { name: string }) => type.name.replace(/_/g, "").toLowerCase());
+      const accountNames = idl.accounts.map((account: { name: string }) =>
+        account.name.replace(/_/g, "").toLowerCase()
+      );
+      assert.notInclude(accountNames, "fillrelayparams");
+      assert.notInclude(typeNames, "fillrelayparams");
+      assert.include(typeNames, "relaydata");
+      assert.include(typeNames, "v5filljit");
       const coder = new anchor.BorshCoder(new anchor.Program(idl, provider).idl);
       const request = Buffer.concat([Buffer.from([221, 123, 11, 14, 71, 37, 178, 167]), Buffer.alloc(280)]);
       assert.equal(coder.events.decode(request.toString("base64"))?.name, "requestedSlowFill");

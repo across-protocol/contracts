@@ -7,6 +7,7 @@ anchor idl build \
   --out target/idl/svm_spoke.json \
   --out-ts target/types/svm_spoke.ts \
   -- --features test
+yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts
 anchor idl build \
   --program-name mock_gateway \
   --out target/idl/mock_gateway.json \

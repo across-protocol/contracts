@@ -235,6 +235,19 @@ Existing account layouts and event schemas are unchanged; legacy fill-status acc
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
 Removing shared legacy branches, helpers, and reserved errors is deferred to a separate change.
 
+Public clients retain the `RelayData` type and `SvmSpokeClient.getRelayDataEncoder/Decoder/Codec` exports.
+Use `SvmSpokeClient.getV5FillJitEncoder()` to encode `{ relayData, repaymentChainId, repaymentAddress }` into
+the adapter's fill `jit_data`; matching decoder and codec exports are also available. This is a Borsh payload
+without an account discriminator. The retired `FillRelayParams` account/type and its generated codecs are
+removed; its account encoding is not the V5 JIT format. Existing instruction buffers remain closable without
+deserializing that retired account type.
+
+Anchor cannot discover these schemas through the adapter's `Vec<u8>` argument. The standard production/test
+IDL generation scripts include `V5FillJit` and its `RelayData` dependency using their Rust `IdlBuild` derives,
+then regenerate Anchor types and Codama clients. Use `yarn generate-svm-artifacts` for public assets and
+`yarn generate-svm-test-idls` for target-only test IDLs. A bare `anchor idl build` does not include these extra
+wire schemas; run `yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts` after a manual Spoke IDL build.
+
 Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
 `V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
 legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) lists every current
