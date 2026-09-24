@@ -31,5 +31,8 @@ for program in programs/*; do
     -- $CARGO_OPTIONS
 done
 
+# Include schemas carried inside opaque V5 adapter arguments before publishing IDLs and clients.
+yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts
+
 echo "Generating external program types"
 anchor run generateExternalTypes
