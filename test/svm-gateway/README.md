@@ -43,6 +43,10 @@ because their addresses depend on the relay/root or submitter; the adapter deriv
 Large committed tapes use the Gateway's content-addressed parameter buffer because lookup tables cannot compress
 instruction data. Failed executions leave the buffer available for explicit cleanup.
 
+The [V4-to-V5 coverage inventory](V4_COVERAGE.md) maps every deleted deposit/fill suite guarantee to its replacement,
+including guarded Token-2022 funding, native SOL wrapping, vault/ATA provisioning and two external fills in one
+transaction. Retired selector, sequential-ID and callback semantics are identified separately.
+
 The suite covers StepDelegate and prefunded source deposits, standard deposit identities and witnesses, external and
 in-place destination delivery, first-fill-wins siblings, root mismatch and reuse, account/dispatch rejection, payer
 funding/reclaim/withdrawal, and downstream rollback. Root reuse examples fund and fully deliver each execution.

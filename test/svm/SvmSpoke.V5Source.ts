@@ -23,7 +23,9 @@ import {
   TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
+import { address } from "@solana/kit";
 import { assert } from "chai";
+import { SvmSpokeClient } from "../../src/svm/clients";
 import { createHash } from "crypto";
 import { ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
@@ -32,7 +34,6 @@ import { common } from "./SvmSpoke.common";
 
 const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
 const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
-const adapterDiscriminator = createHash("sha256").update("global:adapter_execute_across_v5").digest().subarray(0, 8);
 const mockDiscriminator = createHash("sha256").update("global:execute_adapter").digest().subarray(0, 8);
 const u16 = (value: number) => {
   const data = Buffer.alloc(2);
@@ -358,16 +359,28 @@ describe("svm_spoke V5 source deposit", () => {
 
   it("rejects direct callers and malformed wire", async () => {
     const input = encodeDeposit(deposit, { literal: true });
+    const generated = SvmSpokeClient.getAdapterExecuteAcrossV5Instruction({
+      dispatchAuthority: address(owner.toBase58()),
+      state: address(state.toBase58()),
+      eventAuthority: address(eventAuthority.toBase58()),
+      program: address(svmSpoke.programId.toBase58()),
+      stepId: context.stepId,
+      pathId: context.pathId,
+      submitter: address(context.submitter.toBase58()),
+      input,
+      jitData: Buffer.alloc(0),
+    });
     const direct = new TransactionInstruction({
-      programId: svmSpoke.programId,
+      programId: new PublicKey(generated.programAddress),
       keys: [
-        { pubkey: owner, isSigner: true, isWritable: false },
-        { pubkey: state, isSigner: false, isWritable: false },
-        { pubkey: eventAuthority, isSigner: false, isWritable: false },
-        { pubkey: svmSpoke.programId, isSigner: false, isWritable: false },
+        ...generated.accounts.map((a) => ({
+          pubkey: new PublicKey(a.address),
+          isSigner: a.role >= 2,
+          isWritable: a.role % 2 === 1,
+        })),
         ...remaining(),
       ],
-      data: Buffer.concat([adapterDiscriminator, encodeContext(context), vec(input), vec(Buffer.alloc(0))]),
+      data: Buffer.from(generated.data as Uint8Array),
     });
     await expectError(provider.sendAndConfirm(new Transaction().add(direct)), "InvalidDispatchAuthority");
 
@@ -381,6 +394,11 @@ describe("svm_spoke V5 source deposit", () => {
       execute(input, Buffer.alloc(0), 1_000_000n, false, sourceDelegate, gatewayVault),
       "MissingAccount"
     );
+    await expectError(
+      execute(encodeDeposit({ ...deposit, inputToken: Keypair.generate().publicKey }, { literal: true })),
+      "MissingAccount"
+    );
+    await expectError(execute(input, Buffer.alloc(0), 0n), "custom program error: 0x1");
     await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "custom program error: 0x1");
     await expectError(
       execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n),

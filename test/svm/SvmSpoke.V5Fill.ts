@@ -1,6 +1,14 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID, createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import {
+  TOKEN_PROGRAM_ID,
+  AuthorityType,
+  setAuthority,
+  createMint,
+  getAccount,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+} from "@solana/spl-token";
 import { AccountMeta, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { address } from "@solana/kit";
 import { assert } from "chai";
@@ -255,6 +263,36 @@ describe("svm_spoke V5 destination fill", () => {
     await expectError(execute(undefined, undefined, { delegate: Keypair.generate().publicKey }), "InvalidTokenAccount");
     await expectError(execute(undefined, undefined, { payer: Keypair.generate().publicKey }), "MissingAccount");
     await expectError(execute(undefined, undefined, { status: Keypair.generate().publicKey }), "MissingAccount");
+  });
+
+  it("permits a non-exclusive submitter after exclusivity expires", async () => {
+    relay = { ...relay, exclusiveRelayer: Keypair.generate().publicKey };
+    await setCurrentTime(svmSpoke, state, wallet, new BN(relay.exclusivityDeadline + 1));
+    await execute();
+    assert.equal((await getAccount(connection, recipientToken)).amount, outputAmount);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+  });
+
+  it("rejects missing approval, wrong recipient accounts, mint mismatch, and reassigned ATA authority", async () => {
+    const payerBefore = await connection.getBalance(fillPayer);
+    await expectError(execute(undefined, undefined, { approval: null }), "InvalidTokenAccount");
+    await expectError(execute(undefined, undefined, { recipientAccount: consumptionAccount }), "MissingAccount");
+    const otherMint = await createMint(connection, wallet, owner, null, 6);
+    const original = relay;
+    relay = { ...relay, outputToken: otherMint };
+    await expectError(execute(encodeFill(recipient, otherMint, outputAmount)), "MissingAccount");
+    relay = original;
+    const recipientSigner = Keypair.generate();
+    recipient = recipientSigner.publicKey;
+    recipientToken = (await getOrCreateAssociatedTokenAccount(connection, wallet, mint, recipient)).address;
+    relay = { ...relay, recipient };
+    await setAuthority(connection, wallet, recipientToken, recipientSigner, AuthorityType.AccountOwner, owner);
+    await expectError(execute(), "InvalidTokenAccount");
+    assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
+    assert.isNull((await getAccount(connection, gatewayVault)).delegate);
+    assert.equal((await getAccount(connection, recipientToken)).amount, 0n);
+    assert.isNull(await connection.getAccountInfo(fillStatus()));
+    assert.equal(await connection.getBalance(fillPayer), payerBefore);
   });
 
   it("rolls approval, transfer, fill status, and payer debit back after a downstream failure", async () => {
