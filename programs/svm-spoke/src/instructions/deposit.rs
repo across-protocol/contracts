@@ -21,8 +21,14 @@ pub struct DepositAccounts<'info> {
 }
 
 pub enum DepositId<'a> {
+    // No production entrypoint constructs this variant.
+    // TODO(V5 simplification): Remove this variant and its dead_code allowance when collapsing the shared core.
+    #[allow(dead_code)]
     Next(&'a mut State),
-    Fixed { state: &'a State, value: [u8; 32] },
+    Fixed {
+        state: &'a State,
+        value: [u8; 32],
+    },
 }
 
 /// Executes shared deposit validation and the vault transfer, resolves the deposit ID, and constructs the canonical
