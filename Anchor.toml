@@ -38,10 +38,8 @@ initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"
 queryState = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryState.ts"
 createVault = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/createVault.ts"
 queryVault = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryVault.ts"
-simpleDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleDeposit.ts"
 queryDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryDeposits.ts"
 queryFills = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryFills.ts"
-simpleFill = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFill.ts"
 simpleFakeRelayerRepayment = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleFakeRelayerRepayment.ts"
 closeRelayerPdas = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeRelayerPdas.ts"
 closeDataWorkerLookUpTables = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/closeDataWorkerLookUpTables.ts"
@@ -54,7 +52,6 @@ addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressT
 publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
 findFillStatusPdaFromEvent = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusPdaFromEvent.ts"
 findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusFromFillStatusPda.ts"
-nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
 squadsIdlUpgrade = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/squadsIdlUpgrade.ts"
 
 ### SponsoredCctpSrc scripts:
@@ -77,7 +74,7 @@ upgradeable = true
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
 
-# Pre-upgrade RequestedSlowFill account; used to verify fast-fill compatibility after slow-fill retirement.
+# Pre-upgrade RequestedSlowFill account; used to verify historical decoding and expiry rent reclaim.
 [[test.validator.account]]
 address = "Gd2seG3bKUfb7R1CJYFrjxVNVMLAwrX4euc9bvmLAGea"
 filename = "test/svm/accounts/legacy_requested_slow_fill.json"
