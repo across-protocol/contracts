@@ -9,7 +9,7 @@ Both `DepositV1` and `FillV1` are callable.
 The frozen dispatch target is the single
 `adapter_execute_across_v5(ctx_values, input, jit_data)` entrypoint, whose Anchor discriminator is the first eight
 bytes of `sha256("global:adapter_execute_across_v5")`. Gateway program
-`34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p` serializes:
+`pVs6PJ3ofdqPyDhCXXdVW7waG6oNnwKQBKtuM6Mi6JP` serializes:
 
 ```text
 discriminator[8]
@@ -209,7 +209,7 @@ necessarily uses a 32-byte executor program ID instead of EVM's 20-byte caller a
 ## Real Gateway conformance
 
 `yarn test-svm-gateway` builds the actual Gateway and prefunded adapter at
-[`457cf693`](https://github.com/across-protocol/solana-v5/commit/457cf693d09765c8e7e9ab33d23f84cba0999afe)
+[`e2b91eb0`](https://github.com/across-protocol/solana-v5/commit/e2b91eb0454136773728f941b33163346e039aa4)
 and runs a separate validator alongside this checkout's test-feature SpokePool. The normal Anchor suite retains its
 mock. The foreign programs have their own Anchor version; there is no cross-repository Rust dependency.
 
@@ -217,8 +217,17 @@ At this pin, Gateway `remaining_accounts` is only an account lookup pool. Each `
 callee account list after the dispatch signer: the fixed state/event/program prefix and all branch accounts. A
 committed zero-key writable injected slot identifies each fill-status/payer account; its actual key prefixes that
 command's JIT payload and is independently authenticated by the SpokePool's PDA derivations. Prefunded calls similarly
-inject the witness-derived credit and its payer before the adapter's payer-claim payload. Supplying an account only in
+inject the witness-derived credit and `PDA(["rent_refund", payer], PrefundedAdapter)` before the adapter's 32-byte
+payer JIT payload. Credit closure parks rent in that system-owned PDA; a separate permissionless `claim_rent`
+returns it only to the original payer. The payer account is not forwarded during settlement. Supplying an account only in
 the outer pool does not forward it. Committed signer metas and duplicate dispatch metas are rejected.
+
+This pin also includes Gateway's remainder amount form: `bips == 0xB6F2` resolves to
+`max(balance - raw, 0)`, preserving `raw` as a reserve. This is separate from SpokePool's `V5InputAmountMode`.
+A Gateway `TRANSFER` resolving to zero succeeds before recipient lookup, even without a recipient ATA.
+The positive post-fill `BALANCE_REQ` in `canonicalInPlace` rejects an empty vault before its full-balance transfer;
+a zero floor provides no positive-delivery guarantee. Conformance tests cover balances above/at/below
+the reserve, zero-transfer recipient omission, and rejection by the canonical positive floor.
 
 The integration suite derives relays from actual origin deposit events, binds `dst_step_id` to a destination root,
 exercises both siblings and separately funded root reuse, and distinguishes safe consumption from deliberately

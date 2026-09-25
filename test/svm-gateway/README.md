@@ -50,6 +50,11 @@ transaction. Retired selector, sequential-ID and callback semantics are identifi
 The suite covers StepDelegate and prefunded source deposits, standard deposit identities and witnesses, external and
 in-place destination delivery, first-fill-wins siblings, root mismatch and reuse, account/dispatch rejection, payer
 funding/reclaim/withdrawal, and downstream rollback. Root reuse examples fund and fully deliver each execution.
+Prefunded delivery injects the credit and `PDA(["rent_refund", payer], PrefundedAdapter)`, followed by the payer's
+32-byte JIT payload. Tests verify that closing the credit parks its rent in that system-owned PDA and a separate
+`claim_rent` transaction signed and paid for by an unrelated claimer refunds the original payer without their signature.
+This covers the delivery rent path; PrefundedAdapter's admin `rescue` path has no SpokePool involvement and remains
+covered by the upstream suite.
 
 Delivery tests deliberately separate two results:
 
@@ -66,6 +71,11 @@ Delivery tests deliberately separate two results:
 submits an actual failing transaction after the fill and transfer, checks `meta.err`, and proves that fill status,
 tokens and payer rent were rolled back. It decodes the attempted `FilledRelay` event from that failed receipt's inner
 instructions and matches its deposit ID; such events never count as successful settlement.
+
+The pin includes Gateway's remainder amount form (`bips == 0xB6F2`, resolving to `max(balance - raw, 0)`) and
+zero-resolved transfers that skip recipient lookup. Tests cover remainder saturation and a zero full-balance transfer
+without a recipient ATA. The positive canonical post-fill floor still rejects an empty vault before that no-op;
+a zero floor does not guarantee positive delivery.
 
 The additional `v5_gateway_path.json` vector is a deterministic consumption-tape/hash fixture with placeholder keys,
 independently checked by Rust and Solidity as well as TypeScript. Existing `v5_adapter_v1.json` vectors continue to
@@ -84,7 +94,7 @@ repository's route-enablement/runbook documentation. Those repositories are not 
 The destination fixture uses unmodified [Raydium CPMM 0.2.0 source](https://github.com/raydium-io/raydium-cp-swap/tree/244e1241f3c8d90eb93f176dfbc35f2605ec5a5c),
 commit `244e1241f3c8d90eb93f176dfbc35f2605ec5a5c`, program `CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C`,
 Anchor crates 0.32.1, and Solana platform-tools v1.52. Gateway/PrefundedAdapter remain pinned to
-`457cf693d09765c8e7e9ab33d23f84cba0999afe`. `SVM_SWAP_CHECKOUT` can reuse a clean checkout at the exact swap pin;
+`e2b91eb0454136773728f941b33163346e039aa4`. `SVM_SWAP_CHECKOUT` can reuse a clean checkout at the exact swap pin;
 the runner still builds it with its committed Cargo.lock. This proves the pinned source fixture, not equivalence
 to a currently deployed mainnet binary or universal Jupiter/DEX compatibility.
 

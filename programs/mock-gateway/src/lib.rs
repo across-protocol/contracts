@@ -9,7 +9,7 @@ use anchor_lang::{
 use anchor_spl::token_interface::{self, ApproveChecked, Mint, TokenAccount, TokenInterface};
 use svm_spoke::program::SvmSpoke;
 
-declare_id!("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
+declare_id!("pVs6PJ3ofdqPyDhCXXdVW7waG6oNnwKQBKtuM6Mi6JP");
 
 const DISPATCH_AUTHORITY_SEED: &[u8] = b"dispatch_authority";
 const VAULT_AUTHORITY_SEED: &[u8] = b"vault_authority";
