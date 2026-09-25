@@ -1,8 +1,18 @@
 # V4 to V5 regression coverage
 
-The baseline is the deleted suites at PR #1562's base
-`0d776a08ff7a79387af3732818f5e23b4bcc473c`. The mapping distinguishes shared behavioral guarantees from retired
-interfaces. This is test coverage, not production route enablement or a claim about maximum transaction throughput.
+The baseline is a fixed pre-retirement snapshot at `0d776a08ff7a79387af3732818f5e23b4bcc473c` of these suites:
+
+- [SvmSpoke.Deposit.ts](https://github.com/across-protocol/contracts/blob/0d776a08ff7a79387af3732818f5e23b4bcc473c/test/svm/SvmSpoke.Deposit.ts)
+- [SvmSpoke.Fill.ts](https://github.com/across-protocol/contracts/blob/0d776a08ff7a79387af3732818f5e23b4bcc473c/test/svm/SvmSpoke.Fill.ts)
+- [SvmSpoke.OptionalParams.ts](https://github.com/across-protocol/contracts/blob/0d776a08ff7a79387af3732818f5e23b4bcc473c/test/svm/SvmSpoke.OptionalParams.ts)
+- [SvmSpoke.Fill.AcrossPlus.ts](https://github.com/across-protocol/contracts/blob/0d776a08ff7a79387af3732818f5e23b4bcc473c/test/svm/SvmSpoke.Fill.AcrossPlus.ts)
+
+Their contents match the files deleted in [the retirement commit](https://github.com/across-protocol/contracts/commit/cb5a25fe0fb981f7dfecc89e69d35f41d544d63e).
+This snapshot remains the baseline when the PR base moves or the stack is rebased. If the retired test contents
+change, update the snapshot and mapping together and record why.
+
+The mapping distinguishes shared behavioral guarantees from retired interfaces. This is test coverage, not
+production route enablement or a claim about maximum transaction throughput.
 
 Test names below are in [V5Source](../svm/SvmSpoke.V5Source.ts), [V5Fill](../svm/SvmSpoke.V5Fill.ts),
 [RealGateway](RealGateway.ts), [V5Codecs](../svm/SvmSpoke.V5Codecs.ts), and
