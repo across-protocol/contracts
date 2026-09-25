@@ -19,7 +19,7 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import { encodeFill, encodeJit, u64, vec } from "./v5Encoding";
 import { common } from "./SvmSpoke.common";
 
-const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
+const GATEWAY = new PublicKey("pVs6PJ3ofdqPyDhCXXdVW7waG6oNnwKQBKtuM6Mi6JP");
 const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
 const mockDiscriminator = createHash("sha256").update("global:execute_fill_adapter").digest().subarray(0, 8);
 const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
