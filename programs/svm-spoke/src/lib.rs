@@ -240,7 +240,7 @@ pub mod svm_spoke {
         relay_hash: [u8; 32],
         fill_deadline: u32,
     ) -> Result<()> {
-        instructions::test_create_v5_fill_status(ctx, relay_hash, fill_deadline)
+        utils::test_create_v5_fill_status(ctx, relay_hash, fill_deadline)
     }
 
     /// Claims a relayer refund for the caller.
