@@ -11,12 +11,13 @@ use anchor_spl::{
 
 use crate::{
     constants::{
-        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX,
-        V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_SEED,
+        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_FILL_DELEGATE,
+        V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_SEED,
     },
     error::{CommonError, V5Error},
+    event::{FillType, FilledRelay, FundsDeposited, RelayExecutionEventInfo},
     state::State,
-    utils::{get_relay_hash, DelegatePda},
+    utils::{get_current_time, get_relay_hash, hash_non_empty_message, transfer_from},
     v5::{
         codec::{
             decode_strict, decode_v5_adapter_input, resolve_v5_input_amount, AcrossDepositInput, GatewayContextV1,
@@ -27,9 +28,7 @@ use crate::{
     },
 };
 
-use super::{
-    _deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillDelivery, FillStatusInput, V5FillStatusPdas,
-};
+use super::{create_v5_fill_status_account, V5FillStatusPdas};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -70,37 +69,55 @@ fn execute_v5_deposit<'info>(
         (params.output_amount, params.exclusive_relayer)
     };
     let (accounts, source) =
-        DepositAccounts::load_v5(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
+        V5DepositAccounts::load(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
     let input_amount = resolve_v5_input_amount(deposit.input_amount_mode, params.input_amount, source.amount)?;
 
-    let message = [V5_MAGIC_PREFIX, deposit.dst_step_id].concat();
-    let event = _deposit(
-        accounts,
-        params.depositor,
-        params.recipient,
-        params.input_token,
-        params.output_token,
+    let state = &ctx.accounts.state;
+    let current_time = get_current_time(state)?;
+    require!(params.output_token != Pubkey::default(), CommonError::InvalidOutputToken);
+    require!(
+        current_time.checked_sub(params.quote_timestamp).unwrap_or(u32::MAX) <= state.deposit_quote_time_buffer,
+        CommonError::InvalidQuoteTimestamp
+    );
+    require!(params.fill_deadline <= current_time + state.fill_deadline_buffer, CommonError::InvalidFillDeadline);
+
+    let mut exclusivity_deadline = params.exclusivity_parameter;
+    if exclusivity_deadline > 0 {
+        if exclusivity_deadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS {
+            exclusivity_deadline += current_time;
+        }
+        require!(exclusive_relayer != Pubkey::default(), CommonError::InvalidExclusiveRelayer);
+    }
+
+    transfer_from(
+        accounts.transfer,
+        accounts.token_program,
+        input_amount,
+        accounts.mint_decimals,
+        V5_SOURCE_DELEGATE_SEED,
+    )?;
+
+    emit_cpi!(FundsDeposited {
+        input_token: params.input_token,
+        output_token: params.output_token,
         input_amount,
         output_amount,
-        params.destination_chain_id,
+        destination_chain_id: params.destination_chain_id,
+        deposit_id: derive_v5_deposit_id(
+            &GATEWAY_PROGRAM_ID,
+            &ctx_values.submitter,
+            &ctx_values.path_id,
+            &params.depositor,
+            params.deposit_nonce,
+        ),
+        quote_timestamp: params.quote_timestamp,
+        fill_deadline: params.fill_deadline,
+        exclusivity_deadline,
+        depositor: params.depositor,
+        recipient: params.recipient,
         exclusive_relayer,
-        DepositId::Fixed {
-            state: &ctx.accounts.state,
-            value: derive_v5_deposit_id(
-                &GATEWAY_PROGRAM_ID,
-                &ctx_values.submitter,
-                &ctx_values.path_id,
-                &params.depositor,
-                params.deposit_nonce,
-            ),
-        },
-        params.quote_timestamp,
-        params.fill_deadline,
-        params.exclusivity_parameter,
-        message,
-        DelegatePda::FunctionSeed(V5_SOURCE_DELEGATE_SEED),
-    )?;
-    emit_cpi!(event);
+        message: [V5_MAGIC_PREFIX, deposit.dst_step_id].concat(),
+    });
     Ok(())
 }
 
@@ -110,7 +127,7 @@ fn execute_v5_fill<'info>(
     fill_input: V5FillInput,
     jit_data: &[u8],
 ) -> Result<()> {
-    // Fail fast before decoding branch-specific JIT data; `_fill` repeats the invariant for both entrypoints.
+    // Fail fast before decoding fill JIT data.
     require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
 
     let jit: V5FillJit = decode_strict(jit_data)?;
@@ -133,33 +150,104 @@ fn execute_v5_fill<'info>(
         &ctx_values.submitter,
         &relay_hash,
     )?;
-    let event = _fill(
-        accounts.fill,
-        &ctx.accounts.state,
-        relay,
-        &[],
-        jit.repayment_chain_id,
-        jit.repayment_address,
-        ctx_values.submitter,
-        FillStatusInput::V5 {
-            payer: &accounts.payer,
-            fill_status: &accounts.fill_status,
-            system_program: &accounts.system_program,
-            pdas: &accounts.fill_status_pdas,
-        },
-        DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
-    )?;
+    let event = complete_v5_fill(accounts, &ctx.accounts.state, &jit, ctx_values.submitter)?;
 
     emit_cpi!(event);
     Ok(())
 }
 
+enum FillDelivery<'info> {
+    Delegated(AccountInfo<'info>),
+    InPlace,
+}
+
 struct V5FillAccounts<'a, 'info> {
-    fill: FillAccounts<'info>,
+    from: AccountInfo<'info>,
+    recipient: AccountInfo<'info>,
+    delivery: FillDelivery<'info>,
+    mint: AccountInfo<'info>,
+    token_program: AccountInfo<'info>,
+    mint_decimals: u8,
     payer: AccountInfo<'info>,
     fill_status: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
     fill_status_pdas: V5FillStatusPdas<'a>,
+}
+
+// Preserve a separate SBF frame; inlining event construction can push the fill handler past the 4 KiB limit.
+#[inline(never)]
+fn complete_v5_fill(
+    accounts: V5FillAccounts<'_, '_>,
+    state: &State,
+    jit: &V5FillJit,
+    submitter: Pubkey,
+) -> Result<FilledRelay> {
+    let relay_data = &jit.relay_data;
+    let current_time = get_current_time(state)?;
+
+    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer.
+    if relay_data.exclusive_relayer != submitter
+        && relay_data.exclusivity_deadline >= current_time
+        && relay_data.exclusive_relayer != Pubkey::default()
+    {
+        return err!(CommonError::NotExclusiveRelayer);
+    }
+
+    // Check if the fill deadline has passed.
+    if relay_data.fill_deadline < current_time {
+        return err!(CommonError::ExpiredFillDeadline);
+    }
+
+    // Account creation rejects existing program-owned state; V5 has no slow-fill lifecycle.
+    let fill_status = create_v5_fill_status_account(
+        &accounts.payer,
+        &accounts.fill_status,
+        &accounts.system_program,
+        &accounts.fill_status_pdas,
+    )?;
+
+    // Only authenticated in-place delivery skips the token transfer.
+    match accounts.delivery {
+        FillDelivery::Delegated(delegate) => transfer_from(
+            TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
+            accounts.token_program,
+            relay_data.output_amount,
+            accounts.mint_decimals,
+            V5_FILL_DELEGATE_SEED,
+        )?,
+        FillDelivery::InPlace => {
+            require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
+        }
+    }
+
+    // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
+    fill_status.write_filled(relay_data.fill_deadline)?;
+
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay_data.message);
+
+    Ok(FilledRelay {
+        input_token: relay_data.input_token,
+        output_token: relay_data.output_token,
+        input_amount: relay_data.input_amount,
+        output_amount: relay_data.output_amount,
+        repayment_chain_id: jit.repayment_chain_id,
+        origin_chain_id: relay_data.origin_chain_id,
+        deposit_id: relay_data.deposit_id,
+        fill_deadline: relay_data.fill_deadline,
+        exclusivity_deadline: relay_data.exclusivity_deadline,
+        exclusive_relayer: relay_data.exclusive_relayer,
+        relayer: jit.repayment_address,
+        depositor: relay_data.depositor,
+        recipient: relay_data.recipient,
+        message_hash,
+        relay_execution_info: RelayExecutionEventInfo {
+            updated_recipient: relay_data.recipient,
+            updated_message_hash: [0; 32],
+            updated_output_amount: relay_data.output_amount,
+            fill_type: FillType::FastFill,
+        },
+    })
 }
 
 fn load_v5_fill_accounts<'a, 'info>(
@@ -210,14 +298,12 @@ fn load_v5_fill_accounts<'a, 'info>(
     let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
 
     Ok(V5FillAccounts {
-        fill: FillAccounts {
-            from: gateway_vault_info.clone(),
-            recipient: recipient_info.clone(),
-            delivery,
-            mint: mint_info.clone(),
-            token_program: token_program.clone(),
-            mint_decimals,
-        },
+        from: gateway_vault_info.clone(),
+        recipient: recipient_info.clone(),
+        delivery,
+        mint: mint_info.clone(),
+        token_program: token_program.clone(),
+        mint_decimals,
         payer: payer_info.clone(),
         fill_status: fill_status_info.clone(),
         system_program: system_program_info.clone(),
@@ -225,8 +311,14 @@ fn load_v5_fill_accounts<'a, 'info>(
     })
 }
 
-impl<'info> DepositAccounts<'info> {
-    fn load_v5(
+struct V5DepositAccounts<'info> {
+    transfer: TransferChecked<'info>,
+    token_program: AccountInfo<'info>,
+    mint_decimals: u8,
+}
+
+impl<'info> V5DepositAccounts<'info> {
+    fn load(
         remaining_accounts: &[AccountInfo<'info>],
         state: Pubkey,
         input_token: Pubkey,

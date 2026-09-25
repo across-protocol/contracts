@@ -177,10 +177,10 @@ Fill mode strictly decodes the JIT relay and repayment data, binds the recipient
 exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
-message hash. The adapter retains the internal `_fill` core for pause, exclusivity, deadline,
-replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
-construction. The adapter retains its branch-specific account loading and event-emission mechanics. Internal
-legacy branches are left for a follow-up simplification; they have no dispatchable legacy deposit/fill entrypoint.
+message hash. Deposit and fill execution are V5-only: the adapter validates accounts and relay semantics, delivers
+tokens, finalizes V5 fill status, and constructs the canonical events. Every successful fill emits `FastFill` with
+the original recipient and output amount in its execution info. A private fill helper retains a separate SBF stack
+frame for token delivery, status finalization, and event construction.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
@@ -236,7 +236,8 @@ the removed utility. Admin/root messaging, relayer refunds and claims, token-acc
 management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
-Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
+Sequential deposit-ID allocation, legacy fill-status transitions, and V4 delegate-seed helpers are removed from
+the execution code; their historical account fields and event enum slots remain available for decoding.
 
 Public clients expose encoder, decoder, and codec factories for all three V5 payload roots:
 
