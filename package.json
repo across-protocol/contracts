@@ -38,6 +38,7 @@
     "build-svm": "bash ./scripts/svm/buildHelpers/buildSvmLocalToolchain.sh",
     "build-svm-solana-verify": "bash ./scripts/svm/buildHelpers/buildSolanaVerify.sh",
     "build-ts": "rm -rf ./dist && tsc",
+    "typecheck-tests": "tsc -p tsconfig.test.json",
     "export-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
     "export-evm-artifacts": "sh scripts/exportEvmArtifacts.sh",
     "prepublishOnly": "yarn build-ts && yarn export-idl && yarn export-evm-artifacts",

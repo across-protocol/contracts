@@ -49,7 +49,12 @@ yarn test:report-gas # Run unit tests with gas reporting enabled
 yarn test-evm # Only test EVM code
 yarn test-svm # Only test SVM code (local toolchain build)
 yarn test-svm-solana-verify # Only test SVM code (verified docker build)
+yarn typecheck-tests # Typecheck all TypeScript tests without emitting files
 ```
+
+The test typecheck uses `tsconfig.test.json` and requires generated clients and test-feature IDLs. Run
+`yarn generate-svm-artifacts && yarn generate-svm-test-idls` first. CI runs this check after preparing these artifacts,
+before the verified SVM build and runtime tests. The package build continues to use `tsconfig.json`.
 
 ## Lint
 

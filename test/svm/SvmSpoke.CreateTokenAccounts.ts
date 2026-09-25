@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorError, AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { Keypair, PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
+import { assert } from "chai";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -11,7 +12,7 @@ import {
 } from "@solana/spl-token";
 import { common } from "./SvmSpoke.common";
 
-const { provider, program, connection, assertSE, assert, owner } = common;
+const { provider, program, connection, assertSE, owner } = common;
 
 describe("svm_spoke.create_token_accounts", () => {
   anchor.setProvider(provider);
