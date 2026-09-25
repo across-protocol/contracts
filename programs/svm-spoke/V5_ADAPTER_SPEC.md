@@ -178,7 +178,9 @@ exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. Deposit and fill execution are V5-only: the adapter validates accounts and relay semantics, delivers
-tokens, finalizes V5 fill status, and constructs the canonical events. Every successful fill emits `FastFill` with
+tokens, finalizes V5 fill status, and constructs the canonical events. The entrypoint dispatches to separate deposit
+and fill modules, each owning its execution and account loading; token-account and mint validation remain shared.
+Every successful fill emits `FastFill` with
 the original recipient and output amount in its execution info. A private fill helper retains a separate SBF stack
 frame for token delivery, status finalization, and event construction.
 
