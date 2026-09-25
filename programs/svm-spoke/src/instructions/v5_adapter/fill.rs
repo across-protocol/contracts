@@ -37,7 +37,7 @@ pub(super) fn execute_v5_fill<'info>(
     require!(relay.output_amount >= fill_input.min_output_amount, V5Error::FillOutputAmountTooLow);
 
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
-    let accounts = load_v5_fill_accounts(
+    let accounts = V5FillAccounts::load(
         ctx.remaining_accounts,
         &fill_input,
         relay.output_amount,
@@ -69,14 +69,14 @@ pub(super) fn execute_v5_fill<'info>(
 
     // Only authenticated in-place delivery skips the token transfer.
     match accounts.delivery {
-        FillDelivery::Delegated(delegate) => transfer_from(
+        V5FillDelivery::Delegated(delegate) => transfer_from(
             TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
             accounts.token_program,
             relay.output_amount,
             accounts.mint_decimals,
             V5_FILL_DELEGATE_SEED,
         )?,
-        FillDelivery::InPlace => {
+        V5FillDelivery::InPlace => {
             require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
         }
     }
@@ -112,7 +112,7 @@ pub(super) fn execute_v5_fill<'info>(
     Ok(())
 }
 
-enum FillDelivery<'info> {
+enum V5FillDelivery<'info> {
     Delegated(AccountInfo<'info>),
     InPlace,
 }
@@ -120,7 +120,7 @@ enum FillDelivery<'info> {
 struct V5FillAccounts<'a, 'info> {
     from: AccountInfo<'info>,
     recipient: AccountInfo<'info>,
-    delivery: FillDelivery<'info>,
+    delivery: V5FillDelivery<'info>,
     mint: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
     mint_decimals: u8,
@@ -130,63 +130,69 @@ struct V5FillAccounts<'a, 'info> {
     fill_status_pdas: V5FillStatusPdas<'a>,
 }
 
-fn load_v5_fill_accounts<'a, 'info>(
-    remaining_accounts: &[AccountInfo<'info>],
-    fill_input: &V5FillInput,
-    output_amount: u64,
-    submitter: &'a Pubkey,
-    relay_hash: &'a [u8; 32],
-) -> Result<V5FillAccounts<'a, 'info>> {
-    let mint_info = find_v5_account(remaining_accounts, &fill_input.output_token, false)?;
-    let token_program_id = *mint_info.owner;
-    require!(
-        token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
-        V5Error::InvalidTokenAccount
-    );
-    let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
-    let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
+impl<'a, 'info> V5FillAccounts<'a, 'info> {
+    fn load(
+        remaining_accounts: &[AccountInfo<'info>],
+        fill_input: &V5FillInput,
+        output_amount: u64,
+        submitter: &'a Pubkey,
+        relay_hash: &'a [u8; 32],
+    ) -> Result<Self> {
+        let mint_info = find_v5_account(remaining_accounts, &fill_input.output_token, false)?;
+        let token_program_id = *mint_info.owner;
+        require!(
+            token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
+            V5Error::InvalidTokenAccount
+        );
+        let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
+        let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
 
-    let gateway_vault = get_associated_token_address_with_program_id(
-        &GATEWAY_VAULT_AUTHORITY,
-        &fill_input.output_token,
-        &token_program_id,
-    );
-    let recipient = get_associated_token_address_with_program_id(
-        &fill_input.recipient,
-        &fill_input.output_token,
-        &token_program_id,
-    );
-    let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
-    let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
-    let source =
-        load_token_account(gateway_vault_info, &token_program_id, &fill_input.output_token, &GATEWAY_VAULT_AUTHORITY)?;
-    load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
+        let gateway_vault = get_associated_token_address_with_program_id(
+            &GATEWAY_VAULT_AUTHORITY,
+            &fill_input.output_token,
+            &token_program_id,
+        );
+        let recipient = get_associated_token_address_with_program_id(
+            &fill_input.recipient,
+            &fill_input.output_token,
+            &token_program_id,
+        );
+        let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
+        let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
+        let source = load_token_account(
+            gateway_vault_info,
+            &token_program_id,
+            &fill_input.output_token,
+            &GATEWAY_VAULT_AUTHORITY,
+        )?;
+        load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
 
-    let delivery = if gateway_vault == recipient {
-        // This check is not a debit. Builders must consume after one fill or enforce an aggregate floor covering
-        // every in-place fill recorded before full-balance consumption; step-root reuse alone is valid.
-        require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
-        FillDelivery::InPlace
-    } else {
-        require!(source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
-        FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
-    };
+        let delivery = if gateway_vault == recipient {
+            // This check is not a debit. Builders must consume after one fill or enforce an aggregate floor covering
+            // every in-place fill recorded before full-balance consumption; step-root reuse alone is valid.
+            require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
+            V5FillDelivery::InPlace
+        } else {
+            require!(source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
+            V5FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
+        };
 
-    let fill_status_pdas = V5FillStatusPdas::derive(submitter, relay_hash);
-    let payer_info = find_v5_account(remaining_accounts, &fill_status_pdas.payer(), true)?;
-    let fill_status_info = find_v5_account(remaining_accounts, &fill_status_pdas.fill_status(), true)?;
-    let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
+        let fill_status_pdas = V5FillStatusPdas::derive(submitter, relay_hash);
+        let payer_info = find_v5_account(remaining_accounts, &fill_status_pdas.payer(), true)?;
+        let fill_status_info = find_v5_account(remaining_accounts, &fill_status_pdas.fill_status(), true)?;
+        let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
 
-    Ok(V5FillAccounts {
-        from: gateway_vault_info.clone(),
-        recipient: recipient_info.clone(),
-        delivery,
-        mint: mint_info.clone(),
-        token_program: token_program.clone(),
-        mint_decimals,
-        payer: payer_info.clone(),
-        fill_status: fill_status_info.clone(),
-        system_program: system_program_info.clone(),
-        fill_status_pdas,
-    })
+        Ok(Self {
+            from: gateway_vault_info.clone(),
+            recipient: recipient_info.clone(),
+            delivery,
+            mint: mint_info.clone(),
+            token_program: token_program.clone(),
+            mint_decimals,
+            payer: payer_info.clone(),
+            fill_status: fill_status_info.clone(),
+            system_program: system_program_info.clone(),
+            fill_status_pdas,
+        })
+    }
 }
