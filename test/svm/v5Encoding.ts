@@ -42,7 +42,7 @@ export type DepositFields = {
 };
 
 export const encodeDeposit = (
-  deposit: DepositFields,
+  { dstStepId, ...deposit }: DepositFields,
   amountMode: { literal: true } | { bips: number },
   rules: { authority: Buffer; output: boolean; relayer: boolean } = {
     authority: Buffer.alloc(20),
@@ -63,7 +63,7 @@ export const encodeDeposit = (
             outputToken: address(deposit.outputToken.toBase58()),
             exclusiveRelayer: address(deposit.exclusiveRelayer.toBase58()),
           },
-          dstStepId: deposit.dstStepId,
+          dstStepId,
           inputAmountMode:
             "literal" in amountMode ? { __kind: "Literal" } : { __kind: "InputVaultBalance", bips: amountMode.bips },
           modificationRules: {
