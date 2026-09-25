@@ -22,8 +22,10 @@ V5-tagged relays still require the V5 adapter and transition from an uninitializ
 Retiring slow fills does not change the V5 delivery or payer rules.
 
 Historical `RequestedSlowFill` events remain decodable. `FillType` keeps `FastFill = 0`, `ReplacedSlowFill = 1`,
-and `SlowFill = 2`; the latter two variants are historical only. Reserved slow-fill slots 6003 and 6005 in
-`CommonError` preserve subsequent `CommonError` assignments. SVM/CCTP errors are renumbered in this release;
+and `SlowFill = 2`; the latter two variants are historical only. `CommonError` keeps slots 6003 and 6005 as
+`RetiredNoSlowFillsInExclusivityWindow` and `RetiredInvalidSlowFillRequest`, preserving later numeric assignments.
+These placeholders must never be emitted or reused. The `Retired` prefix changes their symbolic names only.
+SVM/CCTP errors are renumbered in this release;
 see the [runtime-code mapping](ERROR_CODES.md) against deployed `v5.0.12-beta.1`.
 Indexers must continue checking transaction success before accepting any event.
 

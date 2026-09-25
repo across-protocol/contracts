@@ -29,9 +29,9 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InvalidQuoteTimestamp`                     | 6000           | 6000         |
 | `InvalidFillDeadline`                       | 6001           | 6001         |
 | `NotExclusiveRelayer`                       | 6002           | 6002         |
-| `NoSlowFillsInExclusivityWindow`            | 6003           | 6003         |
+| `RetiredNoSlowFillsInExclusivityWindow`     | 6003           | 6003         |
 | `RelayFilled`                               | 6004           | 6004         |
-| `InvalidSlowFillRequest`                    | 6005           | 6005         |
+| `RetiredInvalidSlowFillRequest`             | 6005           | 6005         |
 | `ExpiredFillDeadline`                       | 6006           | 6006         |
 | `InvalidMerkleProof`                        | 6007           | 6007         |
 | `InvalidChainId`                            | 6008           | 6008         |
@@ -42,6 +42,12 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InsufficientSpokePoolBalanceToExecuteLeaf` | 6013           | 6013         |
 | `InvalidExclusiveRelayer`                   | 6014           | 6014         |
 | `InvalidOutputToken`                        | 6015           | 6015         |
+
+The two `Retired` placeholders were named `NoSlowFillsInExclusivityWindow` (6003) and `InvalidSlowFillRequest`
+(6005) in the deployed release. Their numeric codes and messages are unchanged; the prefix explicitly marks
+the Rust symbols, and generated names wherever exposed, as retired. Historical transaction logs keep the old names.
+These slots must never be emitted, removed, or reused. Keeping them in place preserves every later live
+`CommonError` assignment.
 
 ## SvmError
 
@@ -72,11 +78,6 @@ The CCTP V2 migration replaces `ExceededPendingBridgeAmount` with `NonZeroAmount
 relayer refund leaves that return tokens to the HubPool. V4 entrypoint retirement removes `InvalidRelayHash`
 and `InconsistentOptionalParameters`; neither has a remaining construction site. The final 7000–7016 mapping
 includes these removals. Intermediate stack assignments were never deployed and are not compatibility constraints.
-
-The deployed `CommonError` range remains unchanged. Its retired slow-fill slots `NoSlowFillsInExclusivityWindow`
-(6003) and `InvalidSlowFillRequest` (6005) are unreachable but reserved to preserve later live error assignments.
-Deleting either interior variant would shift subsequent sequential discriminants; removing their declarations
-while keeping this compatibility promise requires explicit numbering that preserves the deployed assignments.
 
 ## CallDataError
 

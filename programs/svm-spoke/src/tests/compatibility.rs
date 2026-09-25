@@ -10,9 +10,10 @@ fn custom_error_ranges_are_stable() {
 
     assert_eq!(u32::from(CommonError::InvalidQuoteTimestamp), 6_000);
     // Keep the deployed slow-fill slots so later live CommonError assignments do not shift.
-    assert_eq!(u32::from(CommonError::NoSlowFillsInExclusivityWindow), 6_003);
+    assert_eq!(u32::from(CommonError::RetiredNoSlowFillsInExclusivityWindow), 6_003);
     assert_eq!(u32::from(CommonError::RelayFilled), 6_004);
-    assert_eq!(u32::from(CommonError::InvalidSlowFillRequest), 6_005);
+    assert_eq!(u32::from(CommonError::RetiredInvalidSlowFillRequest), 6_005);
+    assert_eq!(u32::from(CommonError::ExpiredFillDeadline), 6_006);
     assert_eq!(u32::from(CommonError::InvalidOutputToken), 6_015);
     assert_eq!(u32::from(SvmError::NotOwner), 7_000);
     assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
