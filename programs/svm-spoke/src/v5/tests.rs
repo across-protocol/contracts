@@ -47,6 +47,7 @@ fn adapter_discriminator_matches_gateway_abi() {
 #[test]
 fn gateway_path_root_and_witness_match_cross_vm_fixture() {
     let fixture: Value = serde_json::from_str(include_str!("../../fixtures/v5_gateway_path.json")).unwrap();
+    assert_eq!(GATEWAY_PROGRAM_ID.to_bytes(), array::<32>(&fixture, "/executor"));
     let mut chain_word = [0u8; 32];
     chain_word[24..].copy_from_slice(&fixture["chainId"].as_u64().unwrap().to_be_bytes());
     let message_hash = keccak::hash(&bytes(&fixture, "/message")).to_bytes();
