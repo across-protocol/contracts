@@ -79,7 +79,7 @@ pub enum SvmError {
 }
 
 // Across V5 adapter specific errors.
-#[error_code(offset = 9000)]
+#[error_code(offset = 8000)]
 pub enum V5Error {
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat,
@@ -116,7 +116,7 @@ pub enum V5Error {
 }
 
 // CCTP specific errors.
-#[error_code(offset = 8000)]
+#[error_code(offset = 9000)]
 pub enum CallDataError {
     #[msg("Invalid solidity selector")]
     InvalidSelector,

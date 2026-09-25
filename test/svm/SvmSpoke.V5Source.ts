@@ -151,7 +151,7 @@ describe("svm_spoke V5 source deposit", () => {
     [Buffer.from("dispatch_authority"), svmSpoke.programId.toBuffer()],
     GATEWAY
   );
-  const [sourceDelegate] = PublicKey.findProgramAddressSync([Buffer.from("v5_source_delegate")], svmSpoke.programId);
+  const [depositDelegate] = PublicKey.findProgramAddressSync([Buffer.from("v5_deposit_delegate")], svmSpoke.programId);
   const [eventAuthority] = PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], svmSpoke.programId);
 
   let state: PublicKey;
@@ -162,7 +162,7 @@ describe("svm_spoke V5 source deposit", () => {
   let context: ContextValues;
   let deposit: DepositFields;
 
-  const remaining = (delegate = sourceDelegate, destination = spokeVault): AccountMeta[] => [
+  const remaining = (delegate = depositDelegate, destination = spokeVault): AccountMeta[] => [
     { pubkey: gatewayVault, isSigner: false, isWritable: true },
     { pubkey: destination, isSigner: false, isWritable: true },
     { pubkey: mint, isSigner: false, isWritable: false },
@@ -175,7 +175,7 @@ describe("svm_spoke V5 source deposit", () => {
     jitData: Buffer,
     approval: bigint,
     failAfter = false,
-    delegate = sourceDelegate,
+    delegate = depositDelegate,
     destination = spokeVault
   ) =>
     new TransactionInstruction({
@@ -208,7 +208,7 @@ describe("svm_spoke V5 source deposit", () => {
     jitData = Buffer.alloc(0),
     approval = 1_000_000n,
     failAfter = false,
-    delegate = sourceDelegate,
+    delegate = depositDelegate,
     destination = spokeVault
   ) =>
     provider.sendAndConfirm(
@@ -394,7 +394,7 @@ describe("svm_spoke V5 source deposit", () => {
     const input = encodeDeposit(deposit, { literal: true });
     await expectError(execute(input, Buffer.alloc(0), 1_000_000n, false, owner), "MissingAccount");
     await expectError(
-      execute(input, Buffer.alloc(0), 1_000_000n, false, sourceDelegate, gatewayVault),
+      execute(input, Buffer.alloc(0), 1_000_000n, false, depositDelegate, gatewayVault),
       "MissingAccount"
     );
     await expectError(

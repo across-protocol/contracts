@@ -36,7 +36,7 @@ writable at the transaction level.
 
 Deposit mode resolves the following remaining accounts by key: the committed input mint, its executable token
 program, the canonical Gateway vault ATA, the pre-created canonical SpokePool vault ATA, and
-`["v5_source_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
+`["v5_deposit_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
 
 ## Committed input and JIT wire
 
@@ -68,7 +68,7 @@ Amount resolution rejects `bips` greater than 10,000; the wire decoder does not.
 mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
 continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
 Gateway does not currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to
-`v5_source_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
+`v5_deposit_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
 matching EVM `transferFrom` behavior. Any residual Gateway-vault balance is already movable by a later committed
 Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The SpokePool never delegates its own
 vault.
@@ -111,7 +111,7 @@ hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v
 
 ## PDA and token invariants
 
-- Source delegate: `["v5_source_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
+- Deposit delegate: `["v5_deposit_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
   allowance at least the resolved amount, including `u64::MAX`. `svm_spoke` later pulls exactly the resolved amount.
 - External fill delegate: `["v5_fill_delegate"]` under `svm_spoke`; sufficient allowance is accepted and the exact
   JIT `output_amount` is pulled.
@@ -120,6 +120,10 @@ hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v
 - Fill status: the existing `["fills", relay_hash]` PDA under `svm_spoke`, preserving the standard replay namespace.
 - Fill payer float: `["v5_fill_payer", submitter]` under `svm_spoke`. The data-less, system-owned PDA manually pays
   fill-status rent with `invoke_signed`; it is not a forwarded transaction signer.
+
+For the configured Spoke program, `v5_deposit_delegate` derives
+`8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
+target and the supplied deposit delegate account.
 
 An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical
 Gateway-vault delivery validates that same live vault in place and its amount, records the fill, and performs no token
@@ -165,7 +169,7 @@ altering accounting.
 
 After authenticating the live Gateway dispatch PDA, Deposit mode strictly decodes branch-specific JIT data, resolves
 the input amount against the canonical Gateway vault, and pulls exactly the resolved amount into the pre-created
-SpokePool vault. The token transfer enforces the static source delegate and sufficient allowance. The adapter applies
+SpokePool vault. The token transfer enforces the static deposit delegate and sufficient allowance. The adapter applies
 only signed, committed JIT modifications, derives the final 32-byte deposit ID directly from the Gateway executor
 identity and live context, and emits the standard `FundsDeposited` event with
 `message = V5_MAGIC_PREFIX || dst_step_id`. Any later failure in the same transaction rolls back the approval,
@@ -177,10 +181,19 @@ Fill mode strictly decodes the JIT relay and repayment data, binds the recipient
 exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
-message hash. The adapter retains the internal `_fill` core for pause, exclusivity, deadline,
-replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
-construction. The adapter retains its branch-specific account loading and event-emission mechanics. Internal
-legacy branches are left for a follow-up simplification; they have no dispatchable legacy deposit/fill entrypoint.
+message hash. Deposit and fill execution are V5-only: the adapter validates accounts and relay semantics, delivers
+tokens, finalizes V5 fill status, and constructs the canonical events. The entrypoint dispatches to separate deposit
+and fill modules, each owning its execution and account loading; shared token-account and mint validation live in
+`instructions/v5_adapter/token.rs`.
+Every successful fill emits `FastFill` with the original recipient and output amount in its execution info.
+Each execution handler performs validation, delivery, and event emission directly; fills also create and finalize
+their V5 fill status in that handler.
+
+Account resolution, dispatch authentication, and PDA derivation live in `v5/accounts.rs`. Fill-status creation and
+finalization live in `v5/fill_status.rs`, while the persisted account layout lives in `state/fill_status.rs`.
+The `close_fill_pda` and `withdraw_v5_fill_payer` instructions have matching files under `instructions/`; the
+test-only status-creation entrypoint lives with the other test-support handlers in `utils/testable_utils.rs`.
+V5 deposit identity is derived in `v5/jit.rs`. File organization does not change instruction names or persisted layouts.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
@@ -236,7 +249,8 @@ the removed utility. Admin/root messaging, relayer refunds and claims, token-acc
 management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
-Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
+Sequential deposit-ID allocation, legacy fill-status transitions, and V4 delegate-seed helpers are removed from
+the execution code; their historical account fields and event enum slots remain available for decoding.
 
 Public clients expose encoder, decoder, and codec factories for all three V5 payload roots:
 
@@ -274,17 +288,18 @@ Use `yarn generate-svm-artifacts` for public assets and `yarn generate-svm-test-
 A bare `anchor idl build` does not include these extra wire schemas; after a manual Spoke IDL build, run
 `yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts`.
 
-Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
-`V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
+Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `V5Error` at 8000, and
+`CallDataError` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
 legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) compares this
 release with deployed `v5.0.12-beta.1`, including removed variants and reserved slow-fill slots. V4 retirement removes
 `InvalidRelayHash`, `InconsistentOptionalParameters`, `V5FillOnly`, and `LegacyFillMessageUnsupported`, plus their
 orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
 7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
-Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`. Consumers should
-use runtime log names or the version-appropriate runtime-code mapping; generated error-name tables alone are
-insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
+Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete, omits `SvmError`, and does not reflect
+the explicit runtime offsets. Consumers should use runtime log names or the version-appropriate runtime-code
+mapping; generated error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the
+generated IDL table.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
 separate callback message. The replacement destination flow is a single in-place Across fill followed by
@@ -316,8 +331,8 @@ Before deploying V4 entrypoint retirement and the error-code migration:
 3. Verify no unexpired V4 obligations remain before deploying, or handle them through a separately
    reviewed migration procedure. Verify replacement route-building and relayer execution support before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
-   moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
-   Earlier undeployed V5 integrations must use the final 9000 range. Consumers matching runtime log names need no
+   moves from 6000 to 7000 and `CallDataError` from 6000 to 9000; existing `CommonError` codes are unchanged.
+   Earlier undeployed V5 integrations must use the final 8000 range. Consumers matching runtime log names need no
    renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.

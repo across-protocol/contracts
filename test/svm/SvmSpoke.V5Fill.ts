@@ -221,6 +221,8 @@ describe("svm_spoke V5 destination fill", () => {
     assert.equal(event.repaymentChainId.toString(), "777");
     assert.equal(event.relayer.toBase58(), repaymentAddress.toBase58());
     assert.deepEqual([...event.messageHash], [...hashNonEmptyMessage(relay.message)]);
+    assert.equal(event.relayExecutionInfo.updatedRecipient.toBase58(), recipient.toBase58());
+    assert.equal(event.relayExecutionInfo.updatedOutputAmount.toString(), outputAmount.toString());
     assert.deepEqual([...event.relayExecutionInfo.updatedMessageHash], [...Buffer.alloc(32)]);
     assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
 
@@ -330,7 +332,7 @@ describe("svm_spoke V5 destination fill", () => {
 
   it("records an in-place fill without consuming the Gateway-vault balance", async () => {
     relay = { ...relay, recipient: vaultAuthority };
-    await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+    const signature = await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
       approval: null,
       consume: 0n,
       recipientAccount: gatewayVault,
@@ -339,6 +341,18 @@ describe("svm_spoke V5 destination fill", () => {
     assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
     assert.equal((await getAccount(connection, consumptionAccount)).amount, 0n);
     assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+
+    const event = (await readEventsUntilFound(connection, signature, [svmSpoke])).find(
+      (value) => value.name === "filledRelay"
+    )?.data;
+    assert.isDefined(event);
+    assert.equal(event.recipient.toBase58(), vaultAuthority.toBase58());
+    assert.equal(event.outputAmount.toString(), outputAmount.toString());
+    assert.equal(event.relayExecutionInfo.updatedRecipient.toBase58(), vaultAuthority.toBase58());
+    assert.equal(event.relayExecutionInfo.updatedOutputAmount.toString(), outputAmount.toString());
+    assert.deepEqual([...event.messageHash], [...hashNonEmptyMessage(relay.message)]);
+    assert.deepEqual([...event.relayExecutionInfo.updatedMessageHash], [...Buffer.alloc(32)]);
+    assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
   });
 
   // Pins accepted low-level behavior; off-chain route builders must prevent aggregate underdelivery.

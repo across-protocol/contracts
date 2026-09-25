@@ -58,7 +58,8 @@ do not establish that the live in-flight window is empty.
 ## Regression coverage
 
 `cargo test -p svm-spoke --lib --features test` checks raw dispatch rejection, serialized status/event compatibility,
-the two-root layout and instruction payload, and the shared fill core. CI builds with
+and the two-root layout and instruction payload. V5 validator tests cover fill guards, canonical events, delivery,
+and status transitions through the Gateway adapter; unreachable legacy fill-core tests have been removed. CI builds with
 `IS_TEST=true yarn build-svm-solana-verify`, generates test IDLs, and runs `anchor test --skip-build`. This exercises
 the validator tests in `SvmSpoke.SlowFillRetirement.ts`, retired V4 selectors, historical rent reclaim, V5 fills,
 refund execution, and replay/rollback cases. Use the Node version in `.github/workflows/pr.yml` and the Anchor/Solana
