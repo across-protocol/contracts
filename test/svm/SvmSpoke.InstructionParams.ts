@@ -1,9 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as crypto from "crypto";
 import { Keypair, PublicKey } from "@solana/web3.js";
+import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 
-const { provider, program, connection, assertSE, assert } = common;
+const { provider, program, connection, assertSE } = common;
 
 describe("svm_spoke.instruction_params", () => {
   anchor.setProvider(provider);
