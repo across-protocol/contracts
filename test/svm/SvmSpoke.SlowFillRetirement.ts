@@ -33,7 +33,7 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
   });
 
   it("removes client entrypoints while retaining historical event decoding", () => {
-    for (const name of ["Deposit", "DepositNow", "UnsafeDeposit", "FillRelay"]) {
+    for (const name of ["Deposit", "DepositNow", "UnsafeDeposit", "FillRelay", "GetUnsafeDepositId"]) {
       assert.notProperty(SvmSpokeClient, `get${name}Instruction`);
       assert.notProperty(SvmSpokeClient, `get${name}InstructionAsync`);
     }
@@ -45,7 +45,8 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
     }
     for (const idl of [program.idl, SvmSpokeIdl]) {
       const names = idl.instructions.map((ix: { name: string }) => ix.name.replace(/_/g, "").toLowerCase());
-      for (const name of ["deposit", "depositnow", "unsafedeposit", "fillrelay"]) assert.notInclude(names, name);
+      for (const name of ["deposit", "depositnow", "unsafedeposit", "fillrelay", "getunsafedepositid"])
+        assert.notInclude(names, name);
       assert.include(names, "adapterexecuteacrossv5");
       assert.include(names, "executerelayerrefundleaf");
       assert.include(names, "closefillpda");
@@ -82,6 +83,7 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
       [75, 228, 135, 221, 200, 25, 148, 26], // deposit_now
       [196, 187, 166, 179, 3, 146, 150, 246], // unsafe_deposit
       [100, 84, 222, 90, 106, 209, 58, 222], // fill_relay
+      [118, 10, 135, 0, 168, 243, 223, 117], // get_unsafe_deposit_id
       [39, 157, 165, 187, 88, 217, 207, 98],
       [26, 207, 3, 168, 193, 252, 59, 127],
     ]) {

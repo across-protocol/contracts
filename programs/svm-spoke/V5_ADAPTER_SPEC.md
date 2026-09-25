@@ -217,9 +217,10 @@ not deployed token accounts. See [the lane guide](../../test/svm-gateway/README.
 
 ## V4 entrypoint retirement and destination actions
 
-`adapter_execute_across_v5` is the only deposit/fill entrypoint. `deposit`, `deposit_now`, `unsafe_deposit`, and
-`fill_relay` are absent from the dispatch table, IDL, and generated clients. Historical raw discriminators fail
-with Anchor's `InstructionFallbackNotFound` (101) before argument decoding or account validation, including
+`adapter_execute_across_v5` is the only deposit/fill entrypoint. `deposit`, `deposit_now`, `unsafe_deposit`,
+`fill_relay`, and the legacy read-only `get_unsafe_deposit_id` utility are absent from the dispatch table, IDL, and
+generated clients. Historical raw discriminators fail with Anchor's `InstructionFallbackNotFound` (101) before
+argument decoding or account validation, including
 empty-message fills and fills using instruction-parameter buffers. Slow-fill entrypoints are also retired.
 All source deposits and destination fills must use the authenticated Gateway adapter.
 
@@ -229,8 +230,10 @@ Consumers must track successful `FundsDeposited` events and their V5 deposit IDs
 `numberOfDeposits` as a deposit-progress signal. V5 deposits access the state account read-only; admin
 instructions can still update state. The counter field and serialized state layout remain unchanged.
 
-The read-only legacy `get_unsafe_deposit_id` utility remains available. Admin/root messaging, relayer refund execution
-and claims, token-account creation, instruction-buffer management, and fill-status rent reclaim remain available.
+Legacy deposit IDs can still be computed off-chain as `keccak256(signer[32] || depositor[32] || nonce:u64_le)`.
+V5 uses its separate Gateway/submitter/path-bound derivation; no live execution or historical cleanup depends on
+the removed utility. Admin/root messaging, relayer refunds and claims, token-account creation, instruction-buffer
+management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
 Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
@@ -258,7 +261,8 @@ The `web3-v1` package subpath and its `helpers` module also remove these V4-only
 These helpers derived delegates for the removed instructions. Consumers must migrate to the authenticated V5
 adapter and its source/fill delegate rules above. The V4 buffer builders `loadFillRelayParams` and
 `createFillRelayParamsInstructions` are also removed. `getSolanaChainId`, `isSolanaDevnet`, relay hashing, refund and
-generic instruction-buffer helpers remain available; the read-only `get_unsafe_deposit_id` is retained.
+generic instruction-buffer helpers remain available. Generated `get_unsafe_deposit_id` instruction builders and
+codecs are removed with the endpoint.
 
 Anchor cannot discover these schemas through the adapter's `Vec<u8>` argument. The standard production/test
 IDL generation scripts include `V5AdapterInput`, `AcrossDepositJitParams`, `V5FillJit`, and their dependencies

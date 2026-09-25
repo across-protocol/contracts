@@ -14,6 +14,10 @@ change, update the snapshot and mapping together and record why.
 The mapping distinguishes shared behavioral guarantees from retired interfaces. This is test coverage, not
 production route enablement or a claim about maximum transaction throughput.
 
+Retirement compatibility also checks that the legacy `get_unsafe_deposit_id` selector is rejected and its IDL/client
+entrypoints are absent. Historical IDs remain computable off-chain; V5 identity uses its separate Gateway-bound
+derivation and does not depend on that retired view helper.
+
 Test names below are in [V5Source](../svm/SvmSpoke.V5Source.ts), [V5Fill](../svm/SvmSpoke.V5Fill.ts),
 [RealGateway](RealGateway.ts), [V5Codecs](../svm/SvmSpoke.V5Codecs.ts), and
 [retirement compatibility](../svm/SvmSpoke.SlowFillRetirement.ts).

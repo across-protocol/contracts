@@ -180,24 +180,8 @@ pub mod svm_spoke {
     }
 
     // **************************************
-    //       V5 ADAPTER AND ID HELPER        *
+    //              V5 ADAPTER              *
     // *************************************
-
-    /// Computes the deposit ID for the depositor using the provided deposit_nonce. This acts like a "view" function for
-    /// off-chain actors to compute what the expected deposit ID is for a given depositor and deposit nonce will be.
-    ///
-    /// ### Parameters:
-    /// - signer: The public key of the depositor sender.
-    /// - depositor: The public key of the depositor.
-    /// - deposit_nonce: The nonce used to derive the deposit ID.
-    pub fn get_unsafe_deposit_id(
-        _ctx: Context<Null>,
-        signer: Pubkey,
-        depositor: Pubkey,
-        deposit_nonce: u64,
-    ) -> Result<[u8; 32]> {
-        Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
-    }
 
     /// Executes one Gateway-authenticated Across V5 source-deposit or destination-fill adapter branch.
     ///
