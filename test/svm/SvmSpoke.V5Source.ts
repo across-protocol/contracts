@@ -23,7 +23,9 @@ import {
   TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
+import { address } from "@solana/kit";
 import { assert } from "chai";
+import { SvmSpokeClient } from "../../src/svm/clients";
 import { createHash } from "crypto";
 import { ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
@@ -32,13 +34,7 @@ import { common } from "./SvmSpoke.common";
 
 const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
 const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
-const adapterDiscriminator = createHash("sha256").update("global:adapter_execute_across_v5").digest().subarray(0, 8);
 const mockDiscriminator = createHash("sha256").update("global:execute_adapter").digest().subarray(0, 8);
-const u16 = (value: number) => {
-  const data = Buffer.alloc(2);
-  data.writeUInt16LE(value);
-  return data;
-};
 const u32 = (value: number) => {
   const data = Buffer.alloc(4);
   data.writeUInt32LE(value);
@@ -74,7 +70,7 @@ const encodeContext = ({ stepId, pathId, submitter }: ContextValues) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
 
 const encodeDeposit = (
-  deposit: DepositFields,
+  { dstStepId, ...deposit }: DepositFields,
   amountMode: { literal: true } | { bips: number },
   rules: { authority: Buffer; output: boolean; relayer: boolean } = {
     authority: Buffer.alloc(20),
@@ -82,25 +78,31 @@ const encodeDeposit = (
     relayer: false,
   }
 ) =>
-  Buffer.concat([
-    Buffer.from([0]),
-    deposit.depositor.toBuffer(),
-    deposit.recipient.toBuffer(),
-    deposit.inputToken.toBuffer(),
-    deposit.outputToken.toBuffer(),
-    u64(deposit.inputAmount),
-    deposit.outputAmount,
-    u64(deposit.destinationChainId),
-    deposit.exclusiveRelayer.toBuffer(),
-    u64(deposit.depositNonce),
-    u32(deposit.quoteTimestamp),
-    u32(deposit.fillDeadline),
-    u32(deposit.exclusivityParameter),
-    deposit.dstStepId,
-    "literal" in amountMode ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), u16(amountMode.bips)]),
-    rules.authority,
-    Buffer.from([Number(rules.output), Number(rules.relayer)]),
-  ]);
+  Buffer.from(
+    SvmSpokeClient.getV5AdapterInputEncoder().encode({
+      __kind: "DepositV1",
+      fields: [
+        {
+          depositParams: {
+            ...deposit,
+            depositor: address(deposit.depositor.toBase58()),
+            recipient: address(deposit.recipient.toBase58()),
+            inputToken: address(deposit.inputToken.toBase58()),
+            outputToken: address(deposit.outputToken.toBase58()),
+            exclusiveRelayer: address(deposit.exclusiveRelayer.toBase58()),
+          },
+          dstStepId,
+          inputAmountMode:
+            "literal" in amountMode ? { __kind: "Literal" } : { __kind: "InputVaultBalance", bips: amountMode.bips },
+          modificationRules: {
+            authority: rules.authority,
+            allowOutputAmount: rules.output,
+            allowExclusiveRelayer: rules.relayer,
+          },
+        },
+      ],
+    }) as Uint8Array
+  );
 
 const signJit = (
   signer: ethers.Wallet,
@@ -129,11 +131,13 @@ const signJit = (
       ]
     )
   );
-  return Buffer.concat([
-    outputAmount,
-    exclusiveRelayer.toBuffer(),
-    Buffer.from(ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest)))),
-  ]);
+  return Buffer.from(
+    SvmSpokeClient.getAcrossDepositJitParamsEncoder().encode({
+      newOutputAmount: outputAmount,
+      newExclusiveRelayer: address(exclusiveRelayer.toBase58()),
+      signature: ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest))),
+    }) as Uint8Array
+  );
 };
 
 describe("svm_spoke V5 source deposit", () => {
@@ -280,7 +284,14 @@ describe("svm_spoke V5 source deposit", () => {
   };
 
   beforeEach(async () => {
-    ({ state } = await initializeState());
+    ({ state } = await initializeState(undefined, {
+      initialNumberOfDeposits: new BN(42),
+      chainId: common.chainId,
+      remoteDomain: common.remoteDomain,
+      crossDomainAdmin: common.crossDomainAdmin,
+      depositQuoteTimeBuffer: common.depositQuoteTimeBuffer,
+      fillDeadlineBuffer: common.fillDeadlineBuffer,
+    }));
     await setInputMint(await createMint(connection, payer, owner, owner, 6), TOKEN_PROGRAM_ID);
     const now = (await svmSpoke.account.state.fetch(state)).currentTime;
     context = {
@@ -318,8 +329,11 @@ describe("svm_spoke V5 source deposit", () => {
       }
     );
     const jit = signJit(jitSigner, context, deposit.depositNonce, improvedOutput, newRelayer);
+    const depositsBefore = (await svmSpoke.account.state.fetch(state)).numberOfDeposits;
+    assert.equal(depositsBefore, 42);
     const signature = await execute(input, jit, 900_000n);
 
+    assert.equal((await svmSpoke.account.state.fetch(state)).numberOfDeposits, depositsBefore);
     assert.equal((await getAccount(connection, gatewayVault)).amount, 250_000n);
     assert.equal((await getAccount(connection, spokeVault)).amount, 750_000n);
     const event = (await readEventsUntilFound(connection, signature, [svmSpoke]))[0].data;
@@ -348,16 +362,28 @@ describe("svm_spoke V5 source deposit", () => {
 
   it("rejects direct callers and malformed wire", async () => {
     const input = encodeDeposit(deposit, { literal: true });
+    const generated = SvmSpokeClient.getAdapterExecuteAcrossV5Instruction({
+      dispatchAuthority: address(owner.toBase58()),
+      state: address(state.toBase58()),
+      eventAuthority: address(eventAuthority.toBase58()),
+      program: address(svmSpoke.programId.toBase58()),
+      stepId: context.stepId,
+      pathId: context.pathId,
+      submitter: address(context.submitter.toBase58()),
+      input,
+      jitData: Buffer.alloc(0),
+    });
     const direct = new TransactionInstruction({
-      programId: svmSpoke.programId,
+      programId: new PublicKey(generated.programAddress),
       keys: [
-        { pubkey: owner, isSigner: true, isWritable: false },
-        { pubkey: state, isSigner: false, isWritable: false },
-        { pubkey: eventAuthority, isSigner: false, isWritable: false },
-        { pubkey: svmSpoke.programId, isSigner: false, isWritable: false },
+        ...generated.accounts.map((a) => ({
+          pubkey: new PublicKey(a.address),
+          isSigner: a.role >= 2,
+          isWritable: a.role % 2 === 1,
+        })),
         ...remaining(),
       ],
-      data: Buffer.concat([adapterDiscriminator, encodeContext(context), vec(input), vec(Buffer.alloc(0))]),
+      data: Buffer.from(generated.data as Uint8Array),
     });
     await expectError(provider.sendAndConfirm(new Transaction().add(direct)), "InvalidDispatchAuthority");
 
@@ -371,6 +397,11 @@ describe("svm_spoke V5 source deposit", () => {
       execute(input, Buffer.alloc(0), 1_000_000n, false, sourceDelegate, gatewayVault),
       "MissingAccount"
     );
+    await expectError(
+      execute(encodeDeposit({ ...deposit, inputToken: Keypair.generate().publicKey }, { literal: true })),
+      "MissingAccount"
+    );
+    await expectError(execute(input, Buffer.alloc(0), 0n), "custom program error: 0x1");
     await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "custom program error: 0x1");
     await expectError(
       execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n),
@@ -382,11 +413,52 @@ describe("svm_spoke V5 source deposit", () => {
 
   it("enforces paused deposits and the committed dynamic-amount floor", async () => {
     const input = encodeDeposit(deposit, { literal: true });
-    await svmSpoke.methods.pauseDeposits(true).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseDeposits(true)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(input), "DepositsArePaused");
-    await svmSpoke.methods.pauseDeposits(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseDeposits(false)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(encodeDeposit(deposit, { bips: 4000 })), "ResolvedInputAmountBelowCommitted");
   });
+
+  it("preserves quote, deadline, output-token, and exclusivity validation through Gateway", async () => {
+    const currentTime = (await svmSpoke.account.state.fetch(state)).currentTime;
+    const cases: [Partial<DepositFields>, string][] = [
+      [{ quoteTimestamp: currentTime + 1 }, "InvalidQuoteTimestamp"],
+      [{ quoteTimestamp: currentTime - common.depositQuoteTimeBuffer.toNumber() - 1 }, "InvalidQuoteTimestamp"],
+      [{ fillDeadline: currentTime + common.fillDeadlineBuffer.toNumber() + 1 }, "InvalidFillDeadline"],
+      [{ outputToken: PublicKey.default }, "InvalidOutputToken"],
+      [{ exclusiveRelayer: PublicKey.default, exclusivityParameter: 1 }, "InvalidExclusiveRelayer"],
+    ];
+    for (const [fields, error] of cases) {
+      await expectError(execute(encodeDeposit({ ...deposit, ...fields }, { literal: true })), error);
+      assert.equal((await getAccount(connection, gatewayVault)).amount, 1_000_000n);
+      assert.equal((await getAccount(connection, spokeVault)).amount, 0n);
+    }
+  });
+
+  for (const [name, exclusivityParameter, expectedDeadline] of [
+    ["none", 0, 0],
+    ["relative", 60, 1060],
+    ["absolute", 31536001, 31536001],
+  ] as const) {
+    it(`preserves ${name} exclusivity and permits an already expired V5 source deposit`, async () => {
+      await common.setCurrentTime(svmSpoke, state, payer, new BN(1000));
+      const tx = await execute(
+        encodeDeposit({ ...deposit, quoteTimestamp: 1000, fillDeadline: 999, exclusivityParameter }, { literal: true })
+      );
+      const events = await readEventsUntilFound(connection, tx, [svmSpoke]);
+      const event = events.find((event) => event.name === "fundsDeposited")!.data;
+      assert.equal(event.exclusivityDeadline, expectedDeadline);
+      assert.equal(event.fillDeadline, 999);
+      assert.equal((await getAccount(connection, gatewayVault)).amount, 500_000n);
+      assert.equal((await getAccount(connection, spokeVault)).amount, 500_000n);
+    });
+  }
 
   it("supports plain Token-2022 mints and rejects unsupported mint extensions", async () => {
     for (const extension of [ExtensionType.TransferFeeConfig, ExtensionType.TransferHook]) {

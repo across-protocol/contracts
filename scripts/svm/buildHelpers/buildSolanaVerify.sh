@@ -22,7 +22,7 @@ for program in programs/*; do
   fi
 
   echo "Running verified build for $program_name"
-  solana-verify build --library-name "$program_name" --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" -- $CARGO_OPTIONS
+  bash scripts/svm/buildHelpers/runSbfBuild.sh solana-verify build --library-name "$program_name" --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" -- $CARGO_OPTIONS
 
   # We don't need keypair files from the verified build and they cause permission issues on CI when Swatinem/rust-cache
   # tries to delete them.

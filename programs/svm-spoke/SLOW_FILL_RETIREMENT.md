@@ -5,28 +5,29 @@
 Solana does not support slow fills. `request_slow_fill` and `execute_slow_relay_leaf` are absent from the program's
 dispatch table, public IDL and generated clients. Their historical raw discriminators fail with Anchor's
 `InstructionFallbackNotFound` (101), before account validation. A relayed slow root cannot authorize token delivery.
-Legacy fast fills, relayer refunds and [V5 deposits/fills](V5_ADAPTER_SPEC.md) retain their existing behavior.
+Legacy fast-fill entrypoints are also retired; relayer refunds and [V5 deposits/fills](V5_ADAPTER_SPEC.md) remain available.
 
 The serialized `FillStatus` slots remain `Unfilled = 0`, `RequestedSlowFill = 1`, `Filled = 2`. Slot 1 is retained
-for pre-upgrade accounts; no supported instruction creates that status. An existing requested relay may receive a
-normal legacy fast fill before its fill deadline, subject to the usual pause, exclusivity, relay-hash and token
-checks. Success transfers the original output amount, writes `Filled`, records the submitting relayer as rent
-recipient, and emits `FilledRelay` with `ReplacedSlowFill`. Replay fails with `RelayFilled`. Any transaction failure
-rolls back the token transfer and status change. Expired requests remain eligible for ordinary `close_fill_pda`
-cleanup to their recorded rent recipient; they cannot be filled after expiry.
+for pre-upgrade accounts; no supported instruction creates that status. Existing requested relays cannot receive
+legacy fast fills after V4 retirement. Expired requests remain eligible for ordinary `close_fill_pda` cleanup to
+their recorded rent recipient. This only returns rent and does not deliver the requested output tokens.
 
 An unfilled expired deposit is handled by the normal dataworker-driven refund process on its origin chain;
 there is no destination slow-fill fallback. Closing the fill-status PDA only reclaims rent and does not refund
 the deposit. `scripts/svm/closeRelayerPdas.ts` discovers accounts from `FilledRelay` events only, so it does not
 find requests that were never filled. Those accounts require separate discovery and a `close_fill_pda` call
-by their recorded rent recipient after expiry.
+after expiry; anyone may submit it, and rent goes only to the recorded recipient.
 
 V5-tagged relays still require the V5 adapter and transition from an uninitialized PDA directly to `Filled`.
 Retiring slow fills does not change the V5 delivery or payer rules.
 
 Historical `RequestedSlowFill` events remain decodable. `FillType` keeps `FastFill = 0`, `ReplacedSlowFill = 1`,
-and `SlowFill = 2`; the last variant is historical only. Old slow-fill error slots are retained so subsequent
-error numbers do not shift. Indexers must continue checking transaction success before accepting any event.
+and `SlowFill = 2`; the latter two variants are historical only. `CommonError` keeps slots 6003 and 6005 as
+`RetiredNoSlowFillsInExclusivityWindow` and `RetiredInvalidSlowFillRequest`, preserving later numeric assignments.
+These placeholders must never be emitted or reused. The `Retired` prefix changes their symbolic names only.
+SVM/CCTP errors are renumbered in this release;
+see the [runtime-code mapping](ERROR_CODES.md) against deployed `v5.0.12-beta.1`.
+Indexers must continue checking transaction success before accepting any event.
 
 `RootBundle` retains both roots and its refund-claim bitmap. `relay_root_bundle` and its cross-chain admin payload
 still accept both `relayer_refund_root` and `slow_relay_root`; the latter is stored and emitted but cannot be executed.
@@ -58,13 +59,14 @@ do not establish that the live in-flight window is empty.
 
 `cargo test -p svm-spoke --lib --features test` checks raw dispatch rejection, serialized status/event compatibility,
 the two-root layout and instruction payload, and the shared fill core. CI builds with
-`IS_TEST=true yarn build-svm-solana-verify`, generates test IDLs, and runs `anchor test --skip-build`. This exercises the validator
-tests in `SvmSpoke.SlowFillRetirement.ts`, ordinary legacy and V5 fills, refund execution, and replay/rollback cases. Use the
-Node version in `.github/workflows/pr.yml` and the Anchor/Solana versions resolved from `Cargo.lock`, as CI does.
+`IS_TEST=true yarn build-svm-solana-verify`, generates test IDLs, and runs `anchor test --skip-build`. This exercises
+the validator tests in `SvmSpoke.SlowFillRetirement.ts`, retired V4 selectors, historical rent reclaim, V5 fills,
+refund execution, and replay/rollback cases. Use the Node version in `.github/workflows/pr.yml` and the Anchor/Solana
+versions resolved from `Cargo.lock`, as CI does.
 The genesis fixture `test/svm/accounts/legacy_requested_slow_fill.json` freezes a 45-byte pre-upgrade status account
 encoded with the pre-retirement IDL; `test/svm/fixtures/legacySlowFill.ts` defines its deterministic relay and test keys.
 This fixture must be loaded when running the slow-fill retirement suite against a manually started validator.
-The suite fills and closes the fixture account, so each run requires a fresh validator ledger with the fixture loaded.
+The suite closes the fixture account, so each run requires a fresh validator ledger with the fixture loaded.
 
 Regenerate production IDLs and clients with `yarn generate-svm-artifacts`, then generate target-only test IDLs with
 `yarn generate-svm-test-idls`. Keep test instructions out of the package assets. The separate

@@ -145,12 +145,12 @@ Fill-status expiry reclaim is permissionless and closes back to the submitter-sc
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
 fill-status accounts: old clients may continue supplying the recorded relayer signature, but it is no longer required.
-The unchanged `FillStatusAccount.relayer` field stores the payer PDA for
-V5 fills (legacy fills continue to store their relayer), binding permissionless reclaim to the float that paid the
-rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
+The unchanged `FillStatusAccount.relayer` field stores the payer PDA for V5 fills (historical legacy accounts
+retain their recorded relayer), binding permissionless reclaim to the float that paid the rent without an
+account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
-relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. As on EVM, V5-tagged relays are quarantined
-from legacy fill handling, so their fill status can only transition directly from an uninitialized PDA to `Filled`.
+relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. V5 fill status can only transition directly from an
+uninitialized PDA to `Filled`.
 Slow-fill request and execution entrypoints are retired for all relays. Existing legacy requested accounts and
 historical event slots remain compatible as described in [slow-fill retirement](SLOW_FILL_RETIREMENT.md).
 
@@ -177,9 +177,10 @@ Fill mode strictly decodes the JIT relay and repayment data, binds the recipient
 exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
-message hash. The legacy and V5 entrypoints share the same internal `_fill` core for pause, exclusivity, deadline,
+message hash. The adapter retains the internal `_fill` core for pause, exclusivity, deadline,
 replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
-construction. Each handler retains only its branch-specific account loading and event-emission mechanics.
+construction. The adapter retains its branch-specific account loading and event-emission mechanics. Internal
+legacy branches are left for a follow-up simplification; they have no dispatchable legacy deposit/fill entrypoint.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
@@ -214,22 +215,76 @@ single-fill template. `fixtures/v5_gateway_path.json` additionally pins Borsh co
 sorted sibling roots and witnesses across TypeScript, Rust and Solidity. Its placeholder keys are hashing fixtures,
 not deployed token accounts. See [the lane guide](../../test/svm-gateway/README.md) for execution and companion docs.
 
-## Legacy callback retirement and destination actions
+## V4 entrypoint retirement and destination actions
 
-Legacy `fill_relay` accepts only an empty `RelayData.message`. Callback-bearing messages fail with
-`LegacyFillMessageUnsupported` (7019) before token delivery, the filled-status transition, or event emission; rollback
-also undoes Anchor account initialization and preserves buffered parameters. V5-tagged messages still fail with
-`V5FillOnly` on this entrypoint. Slow-fill selectors have already been retired, including their callback path.
-Source deposits retain their message field for other destination chains.
+`adapter_execute_across_v5` is the only deposit/fill entrypoint. `deposit`, `deposit_now`, `unsafe_deposit`,
+`fill_relay`, and the legacy read-only `get_unsafe_deposit_id` utility are absent from the dispatch table, IDL, and
+generated clients. Historical raw discriminators fail with Anchor's `InstructionFallbackNotFound` (101) before
+argument decoding or account validation, including
+empty-message fills and fills using instruction-parameter buffers. Slow-fill entrypoints are also retired.
+All source deposits and destination fills must use the authenticated Gateway adapter.
+
+The legacy `State.number_of_deposits` counter retains its value at upgrade and no longer advances on deposits.
+V5 derives deposit IDs from the Gateway context and deposit nonce; it does not use the sequential counter.
+Consumers must track successful `FundsDeposited` events and their V5 deposit IDs instead of using
+`numberOfDeposits` as a deposit-progress signal. V5 deposits access the state account read-only; admin
+instructions can still update state. The counter field and serialized state layout remain unchanged.
+
+Legacy deposit IDs can still be computed off-chain as `keccak256(signer[32] || depositor[32] || nonce:u64_le)`.
+V5 uses its separate Gateway/submitter/path-bound derivation; no live execution or historical cleanup depends on
+the removed utility. Admin/root messaging, relayer refunds and claims, token-account creation, instruction-buffer
+management, and fill-status rent reclaim remain available.
+Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
+expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
+Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
+
+Public clients expose encoder, decoder, and codec factories for all three V5 payload roots:
+
+- `SvmSpokeClient.getV5AdapterInputEncoder()` encodes the committed `input`, including the `DepositV1` or `FillV1`
+  enum tag and the selected variant's fields.
+- `SvmSpokeClient.getAcrossDepositJitParamsEncoder()` encodes deposit `jit_data`: modified output amount,
+  exclusive relayer, and a fixed 65-byte signature (129 bytes total). Deposits without modification rules can
+  supply empty JIT bytes because that path does not decode them.
+- `SvmSpokeClient.getV5FillJitEncoder()` encodes fill `jit_data`: `{ relayData, repaymentChainId, repaymentAddress }`.
+
+All are Borsh payloads without account discriminators; replace `Encoder` with `Decoder` or `Codec` for the
+matching factories. The `RelayData` type and `getRelayDataEncoder/Decoder/Codec` exports also remain available.
+The retired `FillRelayParams` account/type and its generated codecs are removed; its account encoding is not
+the V5 JIT format. Existing instruction buffers remain closable without deserializing that retired account type.
+
+The `web3-v1` package subpath and its `helpers` module also remove these V4-only exports:
+
+- `getDepositSeedHash`, `getDepositPda`, `getDepositNowSeedHash`, and `getDepositNowPda`;
+- `getFillRelayDelegateSeedHash` and `getFillRelayDelegatePda`;
+- `DepositSeedData` and `DepositNowSeedData`.
+
+These helpers derived delegates for the removed instructions. Consumers must migrate to the authenticated V5
+adapter and its source/fill delegate rules above. The V4 buffer builders `loadFillRelayParams` and
+`createFillRelayParamsInstructions` are also removed. `getSolanaChainId`, `isSolanaDevnet`, relay hashing, refund and
+generic instruction-buffer helpers remain available. Generated `get_unsafe_deposit_id` instruction builders and
+codecs are removed with the endpoint.
+
+Anchor cannot discover these schemas through the adapter's `Vec<u8>` argument. The standard production/test
+IDL generation scripts include `V5AdapterInput`, `AcrossDepositJitParams`, `V5FillJit`, and their dependencies
+using their Rust `IdlBuild` derives, then regenerate Anchor types and Codama clients. The published IDL contains
+the complete schemas, so SDK-side Codama generation needs no extra schema injection or handwritten codecs.
+The intended package boundary is for contracts to publish the IDL and the SDK to generate and export production
+clients. Contracts currently also publishes generated clients; making those development-only is a separate migration.
+Use `yarn generate-svm-artifacts` for public assets and `yarn generate-svm-test-idls` for target-only test IDLs.
+A bare `anchor idl build` does not include these extra wire schemas; after a manual Spoke IDL build, run
+`yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts`.
 
 Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
 `V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
-legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) lists every current
-variant's old and new code plus the removed callback errors, distinguishing new errors from existing ones.
-Compatibility tests pin each range's first and last codes.
-Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`, including this
-new rejection. Consumers should use runtime log names or the version-appropriate runtime-code mapping; generated
-error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
+legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) compares this
+release with deployed `v5.0.12-beta.1`, including removed variants and reserved slow-fill slots. V4 retirement removes
+`InvalidRelayHash`, `InconsistentOptionalParameters`, `V5FillOnly`, and `LegacyFillMessageUnsupported`, plus their
+orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
+7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
+and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
+Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`. Consumers should
+use runtime log names or the version-appropriate runtime-code mapping; generated error-name tables alone are
+insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
 separate callback message. The replacement destination flow is a single in-place Across fill followed by
@@ -251,14 +306,14 @@ can use prefunded chaining; they are distinct from this atomic fill-and-swap fix
 
 ### Deployment sequencing
 
-Before deploying callback rejection and the error-code migration:
+Before deploying V4 entrypoint retirement and the error-code migration:
 
-1. Disable routes that create callback-bearing SVM deposits in API/builders and coordinate relayer cutover to the
+1. Disable routes that create V4 intents to or from Solana in API/builders and coordinate relayer cutover to the
    replacement V5 path. A route flag alone does not prevent direct deposits through permissionless entrypoints.
-2. Reconcile finalized deposits and successful fills across supported origin chains. Allow outstanding callback
+2. Reconcile finalized deposits and successful fills across supported origin chains. Allow outstanding V4
    deposits to fill before their deadlines, or wait past the remaining `fillDeadline` values and verify origin-chain
-   expiry-refund handling. Include finality/indexing lag and confirm no new callback deposits entered the window.
-3. Verify no unexpired callback-bearing obligations remain before deploying, or handle them through a separately
+   expiry-refund handling. Include finality/indexing lag and confirm no new V4 deposits entered the window.
+3. Verify no unexpired V4 obligations remain before deploying, or handle them through a separately
    reviewed migration procedure. Verify replacement route-building and relayer execution support before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
    moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
@@ -267,9 +322,10 @@ Before deploying callback rejection and the error-code migration:
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
 
-After the upgrade, a remaining callback-bearing deposit cannot be filled on Solana. Slow fills are also retired;
+After the upgrade, a remaining V4 deposit cannot be filled on Solana. Slow fills are also retired;
 an unfilled expired deposit follows the normal origin-chain refund process, not a destination fallback. These are
-deployment checks: the local fixtures do not establish that the live in-flight window is empty. A legacy
-callback-bearing deposit must never be reported as successfully filled with its requested action silently omitted.
+deployment checks: the local fixtures do not establish that the live in-flight window is empty. HubPool chain
+enablement does not guarantee that an arbitrary V4 deposit to Solana is fillable. API/builders and relayers must
+require the supported V5 path, including for empty-message transfers.
 The standalone MulticallHandler program and its package exports remain available to existing consumers; their
 retirement and any deployed-program closure require a separate decision.

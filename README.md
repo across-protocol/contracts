@@ -39,6 +39,10 @@ EVM builds and tests use the Foundry version pinned in `.foundry-version`; CI in
 `foundry-rs/foundry-toolchain`. Run `yarn pin-foundry` to switch your local toolchain to it (a no-op when it already
 matches). Bump the pin by editing that file.
 
+SVM local, verified, and real-Gateway builds fail on stack-overflow diagnostics even when the compiler exits
+successfully. The shared guard is `scripts/svm/buildHelpers/runSbfBuild.sh`; run `yarn test-svm-build-guard` to test it
+without a validator or Rust build. CI invalidates cached SVM builds when these build helpers change.
+
 ## Test
 
 ```shell
@@ -49,7 +53,12 @@ yarn test:report-gas # Run unit tests with gas reporting enabled
 yarn test-evm # Only test EVM code
 yarn test-svm # Only test SVM code (local toolchain build)
 yarn test-svm-solana-verify # Only test SVM code (verified docker build)
+yarn typecheck-tests # Typecheck all TypeScript tests without emitting files
 ```
+
+The test typecheck uses `tsconfig.test.json` and requires generated clients and test-feature IDLs. Run
+`yarn generate-svm-artifacts && yarn generate-svm-test-idls` first. CI runs this check after preparing these artifacts,
+before the verified SVM build and runtime tests. The package build continues to use `tsconfig.json`.
 
 ## Lint
 

@@ -4,18 +4,10 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{
-    state::State,
-    utils::{get_relay_hash, get_self_authority_pda},
-    RelayData,
-};
+use crate::{state::State, utils::get_self_authority_pda};
 
 pub fn is_local_or_remote_owner(signer: &Signer, state: &Account<State>) -> bool {
     signer.key() == state.owner || signer.key() == get_self_authority_pda()
-}
-
-pub fn is_relay_hash_valid(relay_hash: &[u8; 32], relay_data: &RelayData, state: &Account<State>) -> bool {
-    relay_hash == &get_relay_hash(relay_data, state.chain_id)
 }
 
 // Implements the same underlying logic as in Anchor's associated_token constraint macro, except for token_program_check
@@ -30,15 +22,4 @@ pub fn is_valid_associated_token_account(
     &token_account.owner == authority
         && token_account.key()
             == get_associated_token_address_with_program_id(authority, &mint.key(), &token_program.key())
-}
-
-// Validates if the optional parameter presence is consistent with each other and counter to the instruction_params
-// account presence.
-pub fn has_valid_params_presence(params_presence: &[bool], account_present: bool) -> bool {
-    let Some((&first_present, remaining_presence)) = params_presence.split_first() else {
-        return false;
-    };
-
-    // All remaining param presence must match the first param presence and the account presence must not match it.
-    remaining_presence.iter().all(|&p| p == first_present) && account_present != first_present
 }

@@ -12,7 +12,7 @@ import {
   MessageHeaderV2,
 } from "../../src/svm/web3-v1";
 import { MessageTransmitterV2 } from "../../target/types/message_transmitter_v2";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { SvmSpoke } from "../../src/svm/assets/svm_spoke";
 import { common } from "./SvmSpoke.common";
 import { receiveCctpV2MessageOnSpoke } from "../../scripts/svm/utils/cctpV2";
 

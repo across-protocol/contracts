@@ -103,6 +103,8 @@ jobs:
         run: cargo test -p svm-spoke --lib
       - name: Test Gateway hash vectors (no private dependency)
         run: yarn test-svm-gateway-vectors
+      - name: Test SBF build diagnostic guard
+        run: yarn test-svm-build-guard
       - name: Regenerate constants.json
         run: yarn generate-constants-json && yarn prettier --write generated/constants.json
       - name: Regenerate deployed-addresses
@@ -149,6 +151,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+      - name: Generate test-feature IDLs
+        run: yarn generate-svm-test-idls
+      - name: Typecheck TypeScript tests
+        run: yarn typecheck-tests
       # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
       # manually cache the verified build binaries if the program source code has not changed.
       - name: Cache verified test build binaries
@@ -165,9 +171,6 @@ jobs:
       - name: Archive verified test build (for caching)
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-test-binaries.tar target/deploy
-      - name: Generate test-feature IDLs
-        if: steps.filter.outputs.svm == 'true'
-        run: yarn generate-svm-test-idls
       - name: Test verified SVM build
         if: steps.filter.outputs.svm == 'true'
         run: anchor test --skip-build

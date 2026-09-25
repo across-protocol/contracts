@@ -9,19 +9,25 @@ publish = false
 crate-type = ["cdylib", "lib"]
 name = "svm_spoke"
 
+[[bin]]
+name = "export_v5_types"
+path = "idl/export_v5_types.rs"
+required-features = ["idl-build"]
+
 [features]
 default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "dep:serde_json"]
 test = []
 
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed","event-cpi"]}
 anchor-spl = "0.31.1"
 solana-security-txt = "1.1.1"
+serde_json = { version = "1.0", optional = true }
 
 [dev-dependencies]
 hex = "0.4.3"
