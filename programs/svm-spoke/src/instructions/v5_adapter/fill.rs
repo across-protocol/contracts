@@ -5,15 +5,18 @@ use crate::{
     constants::{GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX},
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
-    instructions::{create_v5_fill_status_account, V5FillStatusPdas},
     utils::{get_current_time, get_relay_hash, hash_non_empty_message, transfer_from},
     v5::{
+        accounts::find_v5_account,
         codec::{decode_strict, GatewayContextV1, V5FillInput, V5FillJit},
-        pda::find_v5_account,
+        fill_status::{create_v5_fill_status_account, V5FillStatusPdas},
     },
 };
 
-use super::{load_token_account, validate_v5_mint, AdapterExecuteAcrossV5};
+use super::{
+    token::{load_token_account, validate_v5_mint},
+    AdapterExecuteAcrossV5,
+};
 
 pub(super) fn execute_v5_fill<'info>(
     ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,

@@ -179,10 +179,17 @@ Gateway-attested submitter. It derives the canonical relay hash on-chain, create
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. Deposit and fill execution are V5-only: the adapter validates accounts and relay semantics, delivers
 tokens, finalizes V5 fill status, and constructs the canonical events. The entrypoint dispatches to separate deposit
-and fill modules, each owning its execution and account loading; token-account and mint validation remain shared.
+and fill modules, each owning its execution and account loading; shared token-account and mint validation live in
+`instructions/v5_adapter/token.rs`.
 Every successful fill emits `FastFill` with the original recipient and output amount in its execution info.
 Each execution handler performs validation, delivery, and event emission directly; fills also create and finalize
 their V5 fill status in that handler.
+
+Account resolution, dispatch authentication, and PDA derivation live in `v5/accounts.rs`. Fill-status creation and
+finalization live in `v5/fill_status.rs`, while the persisted account layout lives in `state/fill_status.rs`.
+The `close_fill_pda` and `withdraw_v5_fill_payer` instructions have matching files under `instructions/`; the
+test-only status-creation entrypoint is isolated in `instructions/test_create_v5_fill_status.rs`.
+V5 deposit identity is derived in `v5/jit.rs`. File organization does not change instruction names or persisted layouts.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
