@@ -47,6 +47,7 @@ fn retired_v4_discriminators_are_not_dispatchable() {
         [75, 228, 135, 221, 200, 25, 148, 26],  // deposit_now
         [196, 187, 166, 179, 3, 146, 150, 246], // unsafe_deposit
         [100, 84, 222, 90, 106, 209, 58, 222],  // fill_relay
+        [118, 10, 135, 0, 168, 243, 223, 117],  // get_unsafe_deposit_id
     ] {
         // Old clients fail at dispatch even when they supply historical arguments or parameter buffers.
         for payload in [vec![], vec![0; 512]] {
