@@ -235,12 +235,19 @@ Existing account layouts and event schemas are unchanged; legacy fill-status acc
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
 Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
 
-Public clients retain the `RelayData` type and `SvmSpokeClient.getRelayDataEncoder/Decoder/Codec` exports.
-Use `SvmSpokeClient.getV5FillJitEncoder()` to encode `{ relayData, repaymentChainId, repaymentAddress }` into
-the adapter's fill `jit_data`; matching decoder and codec exports are also available. This is a Borsh payload
-without an account discriminator. The retired `FillRelayParams` account/type and its generated codecs are
-removed; its account encoding is not the V5 JIT format. Existing instruction buffers remain closable without
-deserializing that retired account type.
+Public clients expose encoder, decoder, and codec factories for all three V5 payload roots:
+
+- `SvmSpokeClient.getV5AdapterInputEncoder()` encodes the committed `input`, including the `DepositV1` or `FillV1`
+  enum tag and the selected variant's fields.
+- `SvmSpokeClient.getAcrossDepositJitParamsEncoder()` encodes deposit `jit_data`: modified output amount,
+  exclusive relayer, and a fixed 65-byte signature (129 bytes total). Deposits without modification rules can
+  supply empty JIT bytes because that path does not decode them.
+- `SvmSpokeClient.getV5FillJitEncoder()` encodes fill `jit_data`: `{ relayData, repaymentChainId, repaymentAddress }`.
+
+All are Borsh payloads without account discriminators; replace `Encoder` with `Decoder` or `Codec` for the
+matching factories. The `RelayData` type and `getRelayDataEncoder/Decoder/Codec` exports also remain available.
+The retired `FillRelayParams` account/type and its generated codecs are removed; its account encoding is not
+the V5 JIT format. Existing instruction buffers remain closable without deserializing that retired account type.
 
 The `web3-v1` package subpath and its `helpers` module also remove these V4-only exports:
 
@@ -254,10 +261,14 @@ adapter and its source/fill delegate rules above. The V4 buffer builders `loadFi
 generic instruction-buffer helpers remain available; the read-only `get_unsafe_deposit_id` is retained.
 
 Anchor cannot discover these schemas through the adapter's `Vec<u8>` argument. The standard production/test
-IDL generation scripts include `V5FillJit` and its `RelayData` dependency using their Rust `IdlBuild` derives,
-then regenerate Anchor types and Codama clients. Use `yarn generate-svm-artifacts` for public assets and
-`yarn generate-svm-test-idls` for target-only test IDLs. A bare `anchor idl build` does not include these extra
-wire schemas; run `yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts` after a manual Spoke IDL build.
+IDL generation scripts include `V5AdapterInput`, `AcrossDepositJitParams`, `V5FillJit`, and their dependencies
+using their Rust `IdlBuild` derives, then regenerate Anchor types and Codama clients. The published IDL contains
+the complete schemas, so SDK-side Codama generation needs no extra schema injection or handwritten codecs.
+The intended package boundary is for contracts to publish the IDL and the SDK to generate and export production
+clients. Contracts currently also publishes generated clients; making those development-only is a separate migration.
+Use `yarn generate-svm-artifacts` for public assets and `yarn generate-svm-test-idls` for target-only test IDLs.
+A bare `anchor idl build` does not include these extra wire schemas; after a manual Spoke IDL build, run
+`yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts`.
 
 Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
 `V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping

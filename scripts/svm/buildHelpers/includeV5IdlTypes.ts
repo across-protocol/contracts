@@ -3,8 +3,8 @@ import { execFileSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { isDeepStrictEqual } from "util";
 
-// Anchor only discovers types reachable from instruction signatures/accounts/events. V5FillJit travels
-// inside Vec<u8>, so include its Rust-derived schema and dependencies before generating public clients.
+// Anchor only discovers types reachable from instruction signatures/accounts/events. V5 committed input and
+// mode-specific JIT travel inside Vec<u8>, so include their Rust-derived schemas before generating public clients.
 const idlPath = "target/idl/svm_spoke.json";
 const idl: Idl = JSON.parse(readFileSync(idlPath, "utf8"));
 const types: NonNullable<Idl["types"]> = JSON.parse(

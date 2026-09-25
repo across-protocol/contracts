@@ -37,7 +37,14 @@ const vec = (value: Buffer) => Buffer.concat([u32(value.length), value]);
 const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
 const encodeFill = (recipient: PublicKey, outputToken: PublicKey, minOutputAmount: bigint) =>
-  Buffer.concat([Buffer.from([1]), recipient.toBuffer(), outputToken.toBuffer(), u64(minOutputAmount)]);
+  Buffer.from(
+    SvmSpokeClient.getV5AdapterInputEncoder().encode({
+      __kind: "FillV1",
+      fields: [
+        { recipient: address(recipient.toBase58()), outputToken: address(outputToken.toBase58()), minOutputAmount },
+      ],
+    }) as Uint8Array
+  );
 const encodeJit = (relay: RelayData, repaymentChainId: BN, repaymentAddress: PublicKey) =>
   Buffer.from(
     SvmSpokeClient.getV5FillJitEncoder().encode({

@@ -35,11 +35,6 @@ import { common } from "./SvmSpoke.common";
 const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
 const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
 const mockDiscriminator = createHash("sha256").update("global:execute_adapter").digest().subarray(0, 8);
-const u16 = (value: number) => {
-  const data = Buffer.alloc(2);
-  data.writeUInt16LE(value);
-  return data;
-};
 const u32 = (value: number) => {
   const data = Buffer.alloc(4);
   data.writeUInt32LE(value);
@@ -83,25 +78,31 @@ const encodeDeposit = (
     relayer: false,
   }
 ) =>
-  Buffer.concat([
-    Buffer.from([0]),
-    deposit.depositor.toBuffer(),
-    deposit.recipient.toBuffer(),
-    deposit.inputToken.toBuffer(),
-    deposit.outputToken.toBuffer(),
-    u64(deposit.inputAmount),
-    deposit.outputAmount,
-    u64(deposit.destinationChainId),
-    deposit.exclusiveRelayer.toBuffer(),
-    u64(deposit.depositNonce),
-    u32(deposit.quoteTimestamp),
-    u32(deposit.fillDeadline),
-    u32(deposit.exclusivityParameter),
-    deposit.dstStepId,
-    "literal" in amountMode ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), u16(amountMode.bips)]),
-    rules.authority,
-    Buffer.from([Number(rules.output), Number(rules.relayer)]),
-  ]);
+  Buffer.from(
+    SvmSpokeClient.getV5AdapterInputEncoder().encode({
+      __kind: "DepositV1",
+      fields: [
+        {
+          depositParams: {
+            ...deposit,
+            depositor: address(deposit.depositor.toBase58()),
+            recipient: address(deposit.recipient.toBase58()),
+            inputToken: address(deposit.inputToken.toBase58()),
+            outputToken: address(deposit.outputToken.toBase58()),
+            exclusiveRelayer: address(deposit.exclusiveRelayer.toBase58()),
+          },
+          dstStepId: deposit.dstStepId,
+          inputAmountMode:
+            "literal" in amountMode ? { __kind: "Literal" } : { __kind: "InputVaultBalance", bips: amountMode.bips },
+          modificationRules: {
+            authority: rules.authority,
+            allowOutputAmount: rules.output,
+            allowExclusiveRelayer: rules.relayer,
+          },
+        },
+      ],
+    }) as Uint8Array
+  );
 
 const signJit = (
   signer: ethers.Wallet,
@@ -130,11 +131,13 @@ const signJit = (
       ]
     )
   );
-  return Buffer.concat([
-    outputAmount,
-    exclusiveRelayer.toBuffer(),
-    Buffer.from(ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest)))),
-  ]);
+  return Buffer.from(
+    SvmSpokeClient.getAcrossDepositJitParamsEncoder().encode({
+      newOutputAmount: outputAmount,
+      newExclusiveRelayer: address(exclusiveRelayer.toBase58()),
+      signature: ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest))),
+    }) as Uint8Array
+  );
 };
 
 describe("svm_spoke V5 source deposit", () => {
