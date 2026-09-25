@@ -11,9 +11,9 @@ pub const MAX_EXCLUSIVITY_PERIOD_SECONDS: u32 = 31_536_000;
 
 pub const BIPS_DENOMINATOR: u16 = 10_000;
 
-pub const V5_SOURCE_DELEGATE_SEED: &[u8] = b"v5_source_delegate";
-pub const V5_SOURCE_DELEGATE: Pubkey = pubkey!("CVh7qLq3yviU8iGuBmmgipJpfy95p9B81e2YTWDaxCbb");
-pub const V5_SOURCE_DELEGATE_BUMP: u8 = 255;
+pub const V5_DEPOSIT_DELEGATE_SEED: &[u8] = b"v5_deposit_delegate";
+pub const V5_DEPOSIT_DELEGATE: Pubkey = pubkey!("8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX");
+pub const V5_DEPOSIT_DELEGATE_BUMP: u8 = 252;
 pub const V5_FILL_DELEGATE_SEED: &[u8] = b"v5_fill_delegate";
 pub const V5_FILL_DELEGATE: Pubkey = pubkey!("D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1");
 pub const V5_FILL_DELEGATE_BUMP: u8 = 252;

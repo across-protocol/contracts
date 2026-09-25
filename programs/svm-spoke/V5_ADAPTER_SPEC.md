@@ -36,7 +36,7 @@ writable at the transaction level.
 
 Deposit mode resolves the following remaining accounts by key: the committed input mint, its executable token
 program, the canonical Gateway vault ATA, the pre-created canonical SpokePool vault ATA, and
-`["v5_source_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
+`["v5_deposit_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
 
 ## Committed input and JIT wire
 
@@ -68,7 +68,7 @@ Amount resolution rejects `bips` greater than 10,000; the wire decoder does not.
 mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
 continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
 Gateway does not currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to
-`v5_source_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
+`v5_deposit_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
 matching EVM `transferFrom` behavior. Any residual Gateway-vault balance is already movable by a later committed
 Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The SpokePool never delegates its own
 vault.
@@ -111,7 +111,7 @@ hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v
 
 ## PDA and token invariants
 
-- Source delegate: `["v5_source_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
+- Deposit delegate: `["v5_deposit_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
   allowance at least the resolved amount, including `u64::MAX`. `svm_spoke` later pulls exactly the resolved amount.
 - External fill delegate: `["v5_fill_delegate"]` under `svm_spoke`; sufficient allowance is accepted and the exact
   JIT `output_amount` is pulled.
@@ -120,6 +120,10 @@ hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v
 - Fill status: the existing `["fills", relay_hash]` PDA under `svm_spoke`, preserving the standard replay namespace.
 - Fill payer float: `["v5_fill_payer", submitter]` under `svm_spoke`. The data-less, system-owned PDA manually pays
   fill-status rent with `invoke_signed`; it is not a forwarded transaction signer.
+
+For the configured Spoke program, `v5_deposit_delegate` derives
+`8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
+target and the supplied deposit delegate account.
 
 An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical
 Gateway-vault delivery validates that same live vault in place and its amount, records the fill, and performs no token
@@ -165,7 +169,7 @@ altering accounting.
 
 After authenticating the live Gateway dispatch PDA, Deposit mode strictly decodes branch-specific JIT data, resolves
 the input amount against the canonical Gateway vault, and pulls exactly the resolved amount into the pre-created
-SpokePool vault. The token transfer enforces the static source delegate and sufficient allowance. The adapter applies
+SpokePool vault. The token transfer enforces the static deposit delegate and sufficient allowance. The adapter applies
 only signed, committed JIT modifications, derives the final 32-byte deposit ID directly from the Gateway executor
 identity and live context, and emits the standard `FundsDeposited` event with
 `message = V5_MAGIC_PREFIX || dst_step_id`. Any later failure in the same transaction rolls back the approval,

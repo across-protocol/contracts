@@ -86,7 +86,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   const gatewayEvent = pda(GATEWAY, Buffer.from("__event_authority"));
   const dispatch = pda(GATEWAY, Buffer.from("dispatch_authority"), spoke.programId.toBuffer());
   const event = pda(spoke.programId, Buffer.from("__event_authority"));
-  const sourceDelegate = pda(spoke.programId, Buffer.from("v5_source_delegate"));
+  const depositDelegate = pda(spoke.programId, Buffer.from("v5_deposit_delegate"));
   const fillDelegate = pda(spoke.programId, Buffer.from("v5_fill_delegate"));
   const fillPayer = pda(spoke.programId, Buffer.from("v5_fill_payer"), owner.toBuffer());
   const prefundedConfig = pda(PREFUNDED, Buffer.from("config"));
@@ -146,7 +146,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     meta(tokenProgram),
     meta(vault, true),
     meta(spokeVault, true),
-    meta(sourceDelegate),
+    meta(depositDelegate),
   ];
   const fillMetas = (inPlace: boolean): Meta[] => [
     ...baseMetas(),
@@ -180,7 +180,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     writable(userAta),
     writable(recipientAta),
     readonly(vaultAuthority),
-    readonly(sourceDelegate),
+    readonly(depositDelegate),
     readonly(fillDelegate),
     writable(fillPayer),
     readonly(SystemProgram.programId),
@@ -320,7 +320,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       dstStepId: root,
     };
     const deposit: Command = { op: OP.ADAPTER_CALL, input: call(spoke.programId, sourceMetas(), depositInput(d)) };
-    const commands = [approve(mint, sourceDelegate), deposit];
+    const commands = [approve(mint, depositDelegate), deposit];
     const extra: AccountMeta[] = [];
     let jit: Buffer[] = [],
       funds: Buffer[] = [];
@@ -506,7 +506,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   }
   const sourcePath = (failAfter = false) =>
     path([
-      approve(mint, sourceDelegate),
+      approve(mint, depositDelegate),
       {
         op: OP.ADAPTER_CALL,
         input: call(

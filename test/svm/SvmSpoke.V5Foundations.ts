@@ -160,7 +160,7 @@ describe("svm_spoke V5 foundations", () => {
     const cases: Array<[[string, number], { address: string; bump: number }]> = [
       [derive([Buffer.from("dispatch_authority"), svmSpoke.toBuffer()], gateway), fixture.pdas.dispatchAuthority],
       [derive([Buffer.from("vault_authority")], gateway), fixture.pdas.gatewayVaultAuthority],
-      [derive([Buffer.from("v5_source_delegate")], svmSpoke), fixture.pdas.sourceDelegate],
+      [derive([Buffer.from("v5_deposit_delegate")], svmSpoke), fixture.pdas.depositDelegate],
       [derive([Buffer.from("v5_fill_delegate")], svmSpoke), fixture.pdas.fillDelegate],
       [derive([Buffer.from("v5_fill_payer"), raw(0x11)], svmSpoke), fixture.pdas.fillPayer],
       [derive([Buffer.from("fills"), fromHex(fixture.deposit.depositId)], svmSpoke), fixture.pdas.fillStatus],

@@ -5,8 +5,8 @@ use crate::{
     constants::{
         BIPS_DENOMINATOR, GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, GATEWAY_DISPATCH_AUTHORITY,
         GATEWAY_DISPATCH_AUTHORITY_BUMP, GATEWAY_DISPATCH_AUTHORITY_SEED, GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY,
-        GATEWAY_VAULT_AUTHORITY_BUMP, GATEWAY_VAULT_AUTHORITY_SEED, V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP,
-        V5_FILL_DELEGATE_SEED, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP, V5_SOURCE_DELEGATE_SEED,
+        GATEWAY_VAULT_AUTHORITY_BUMP, GATEWAY_VAULT_AUTHORITY_SEED, V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP,
+        V5_DEPOSIT_DELEGATE_SEED, V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP, V5_FILL_DELEGATE_SEED,
     },
     ID,
 };
@@ -200,7 +200,7 @@ fn pda_domains_match_golden_fixture() {
     let cases = [
         ((GATEWAY_DISPATCH_AUTHORITY, GATEWAY_DISPATCH_AUTHORITY_BUMP), "/pdas/dispatchAuthority"),
         ((GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP), "/pdas/gatewayVaultAuthority"),
-        ((V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP), "/pdas/sourceDelegate"),
+        ((V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP), "/pdas/depositDelegate"),
         ((V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP), "/pdas/fillDelegate"),
         (derive_v5_fill_payer(&submitter), "/pdas/fillPayer"),
         (derive_fill_status(&relay_hash), "/pdas/fillStatus"),
@@ -222,8 +222,8 @@ fn hardcoded_v5_authorities_match_canonical_pdas() {
         (GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP)
     );
     assert_eq!(
-        Pubkey::find_program_address(&[V5_SOURCE_DELEGATE_SEED], &ID),
-        (V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP)
+        Pubkey::find_program_address(&[V5_DEPOSIT_DELEGATE_SEED], &ID),
+        (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP)
     );
     assert_eq!(Pubkey::find_program_address(&[V5_FILL_DELEGATE_SEED], &ID), (V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP));
 }
