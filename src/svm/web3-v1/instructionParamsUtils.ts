@@ -8,7 +8,7 @@ import { LargeAccountsCoder } from "./coders";
 type InstructionParamsProgram = Pick<Program<SvmSpokeAnchor>, "programId" | "provider" | "methods"> & { idl: Idl };
 
 /**
- * Loads execute relayer refund leaf parameters.
+ * Loads execute relayer refund leaf parameters and waits for the writes to be confirmed.
  */
 export async function loadExecuteRelayerRefundLeafParams(
   program: InstructionParamsProgram,
@@ -38,7 +38,10 @@ export async function loadExecuteRelayerRefundLeafParams(
 
   for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
     const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
-    await program.methods.writeInstructionParamsFragment(i, fragment).rpc();
+    // Preflight must see the preceding initialization; wait for confirmed visibility before the caller executes.
+    await program.methods
+      .writeInstructionParamsFragment(i, fragment)
+      .rpc({ preflightCommitment: "processed", commitment: "confirmed" });
   }
   return instructionParams;
 }
