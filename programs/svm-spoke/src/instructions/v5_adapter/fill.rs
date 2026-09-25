@@ -6,7 +6,6 @@ use crate::{
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     instructions::{create_v5_fill_status_account, V5FillStatusPdas},
-    state::State,
     utils::{get_current_time, get_relay_hash, hash_non_empty_message, transfer_from},
     v5::{
         codec::{decode_strict, GatewayContextV1, V5FillInput, V5FillJit},
@@ -45,9 +44,71 @@ pub(super) fn execute_v5_fill<'info>(
         &ctx_values.submitter,
         &relay_hash,
     )?;
-    let event = complete_v5_fill(accounts, &ctx.accounts.state, &jit, ctx_values.submitter)?;
+    let current_time = get_current_time(&ctx.accounts.state)?;
 
-    emit_cpi!(event);
+    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer.
+    if relay.exclusive_relayer != ctx_values.submitter
+        && relay.exclusivity_deadline >= current_time
+        && relay.exclusive_relayer != Pubkey::default()
+    {
+        return err!(CommonError::NotExclusiveRelayer);
+    }
+
+    // Check if the fill deadline has passed.
+    if relay.fill_deadline < current_time {
+        return err!(CommonError::ExpiredFillDeadline);
+    }
+
+    // Account creation rejects existing program-owned state; V5 has no slow-fill lifecycle.
+    let fill_status = create_v5_fill_status_account(
+        &accounts.payer,
+        &accounts.fill_status,
+        &accounts.system_program,
+        &accounts.fill_status_pdas,
+    )?;
+
+    // Only authenticated in-place delivery skips the token transfer.
+    match accounts.delivery {
+        FillDelivery::Delegated(delegate) => transfer_from(
+            TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
+            accounts.token_program,
+            relay.output_amount,
+            accounts.mint_decimals,
+            V5_FILL_DELEGATE_SEED,
+        )?,
+        FillDelivery::InPlace => {
+            require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
+        }
+    }
+
+    // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
+    fill_status.write_filled(relay.fill_deadline)?;
+
+    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
+    let message_hash = hash_non_empty_message(&relay.message);
+
+    emit_cpi!(FilledRelay {
+        input_token: relay.input_token,
+        output_token: relay.output_token,
+        input_amount: relay.input_amount,
+        output_amount: relay.output_amount,
+        repayment_chain_id: jit.repayment_chain_id,
+        origin_chain_id: relay.origin_chain_id,
+        deposit_id: relay.deposit_id,
+        fill_deadline: relay.fill_deadline,
+        exclusivity_deadline: relay.exclusivity_deadline,
+        exclusive_relayer: relay.exclusive_relayer,
+        relayer: jit.repayment_address,
+        depositor: relay.depositor,
+        recipient: relay.recipient,
+        message_hash,
+        relay_execution_info: RelayExecutionEventInfo {
+            updated_recipient: relay.recipient,
+            updated_message_hash: [0; 32],
+            updated_output_amount: relay.output_amount,
+            fill_type: FillType::FastFill,
+        },
+    });
     Ok(())
 }
 
@@ -67,82 +128,6 @@ struct V5FillAccounts<'a, 'info> {
     fill_status: AccountInfo<'info>,
     system_program: AccountInfo<'info>,
     fill_status_pdas: V5FillStatusPdas<'a>,
-}
-
-// Preserve a separate SBF frame; inlining event construction can push the fill handler past the 4 KiB limit.
-#[inline(never)]
-fn complete_v5_fill(
-    accounts: V5FillAccounts<'_, '_>,
-    state: &State,
-    jit: &V5FillJit,
-    submitter: Pubkey,
-) -> Result<FilledRelay> {
-    let relay_data = &jit.relay_data;
-    let current_time = get_current_time(state)?;
-
-    // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer.
-    if relay_data.exclusive_relayer != submitter
-        && relay_data.exclusivity_deadline >= current_time
-        && relay_data.exclusive_relayer != Pubkey::default()
-    {
-        return err!(CommonError::NotExclusiveRelayer);
-    }
-
-    // Check if the fill deadline has passed.
-    if relay_data.fill_deadline < current_time {
-        return err!(CommonError::ExpiredFillDeadline);
-    }
-
-    // Account creation rejects existing program-owned state; V5 has no slow-fill lifecycle.
-    let fill_status = create_v5_fill_status_account(
-        &accounts.payer,
-        &accounts.fill_status,
-        &accounts.system_program,
-        &accounts.fill_status_pdas,
-    )?;
-
-    // Only authenticated in-place delivery skips the token transfer.
-    match accounts.delivery {
-        FillDelivery::Delegated(delegate) => transfer_from(
-            TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
-            accounts.token_program,
-            relay_data.output_amount,
-            accounts.mint_decimals,
-            V5_FILL_DELEGATE_SEED,
-        )?,
-        FillDelivery::InPlace => {
-            require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
-        }
-    }
-
-    // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
-    fill_status.write_filled(relay_data.fill_deadline)?;
-
-    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
-    let message_hash = hash_non_empty_message(&relay_data.message);
-
-    Ok(FilledRelay {
-        input_token: relay_data.input_token,
-        output_token: relay_data.output_token,
-        input_amount: relay_data.input_amount,
-        output_amount: relay_data.output_amount,
-        repayment_chain_id: jit.repayment_chain_id,
-        origin_chain_id: relay_data.origin_chain_id,
-        deposit_id: relay_data.deposit_id,
-        fill_deadline: relay_data.fill_deadline,
-        exclusivity_deadline: relay_data.exclusivity_deadline,
-        exclusive_relayer: relay_data.exclusive_relayer,
-        relayer: jit.repayment_address,
-        depositor: relay_data.depositor,
-        recipient: relay_data.recipient,
-        message_hash,
-        relay_execution_info: RelayExecutionEventInfo {
-            updated_recipient: relay_data.recipient,
-            updated_message_hash: [0; 32],
-            updated_output_amount: relay_data.output_amount,
-            fill_type: FillType::FastFill,
-        },
-    })
 }
 
 fn load_v5_fill_accounts<'a, 'info>(
