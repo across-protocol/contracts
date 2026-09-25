@@ -288,17 +288,18 @@ Use `yarn generate-svm-artifacts` for public assets and `yarn generate-svm-test-
 A bare `anchor idl build` does not include these extra wire schemas; after a manual Spoke IDL build, run
 `yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts`.
 
-Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
-`V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
+Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `V5Error` at 8000, and
+`CallDataError` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
 legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) compares this
 release with deployed `v5.0.12-beta.1`, including removed variants and reserved slow-fill slots. V4 retirement removes
 `InvalidRelayHash`, `InconsistentOptionalParameters`, `V5FillOnly`, and `LegacyFillMessageUnsupported`, plus their
 orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
 7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
-Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`. Consumers should
-use runtime log names or the version-appropriate runtime-code mapping; generated error-name tables alone are
-insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
+Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete, omits `SvmError`, and does not reflect
+the explicit runtime offsets. Consumers should use runtime log names or the version-appropriate runtime-code
+mapping; generated error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the
+generated IDL table.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
 separate callback message. The replacement destination flow is a single in-place Across fill followed by
@@ -330,8 +331,8 @@ Before deploying V4 entrypoint retirement and the error-code migration:
 3. Verify no unexpired V4 obligations remain before deploying, or handle them through a separately
    reviewed migration procedure. Verify replacement route-building and relayer execution support before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
-   moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
-   Earlier undeployed V5 integrations must use the final 9000 range. Consumers matching runtime log names need no
+   moves from 6000 to 7000 and `CallDataError` from 6000 to 9000; existing `CommonError` codes are unchanged.
+   Earlier undeployed V5 integrations must use the final 8000 range. Consumers matching runtime log names need no
    renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
