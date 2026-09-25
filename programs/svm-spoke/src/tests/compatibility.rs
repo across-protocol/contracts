@@ -18,13 +18,13 @@ fn custom_error_ranges_are_stable() {
     assert_eq!(u32::from(SvmError::NotOwner), 7_000);
     assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
     assert_eq!(u32::from(SvmError::InvalidDelegatePda), 7_016);
-    assert_eq!(u32::from(CallDataError::InvalidSelector), 8_000);
-    assert_eq!(u32::from(CallDataError::UnsupportedSelector), 8_006);
-    assert_eq!(u32::from(V5Error::InvalidWireFormat), 9_000);
-    assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 9_006);
-    assert_eq!(u32::from(V5Error::InvalidAmountBips), 9_007);
-    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 9_012);
-    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 9_015);
+    assert_eq!(u32::from(V5Error::InvalidWireFormat), 8_000);
+    assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 8_006);
+    assert_eq!(u32::from(V5Error::InvalidAmountBips), 8_007);
+    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 8_012);
+    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 8_015);
+    assert_eq!(u32::from(CallDataError::InvalidSelector), 9_000);
+    assert_eq!(u32::from(CallDataError::UnsupportedSelector), 9_006);
 }
 
 #[test]
