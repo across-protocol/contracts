@@ -33,7 +33,7 @@ pub mod mock_gateway {
                 ApproveChecked {
                     to: ctx.accounts.gateway_vault.to_account_info(),
                     mint: ctx.accounts.mint.to_account_info(),
-                    delegate: ctx.accounts.source_delegate.to_account_info(),
+                    delegate: ctx.accounts.deposit_delegate.to_account_info(),
                     authority: ctx.accounts.vault_authority.to_account_info(),
                 },
                 &[vault_seeds],
@@ -57,7 +57,7 @@ pub mod mock_gateway {
             ctx.accounts.spoke_vault.to_account_info(),
             ctx.accounts.mint.to_account_info(),
             ctx.accounts.token_program.to_account_info(),
-            ctx.accounts.source_delegate.to_account_info(),
+            ctx.accounts.deposit_delegate.to_account_info(),
         ];
         invoke_signed(
             &Instruction {
@@ -71,7 +71,7 @@ pub mod mock_gateway {
                     AccountMeta::new(ctx.accounts.spoke_vault.key(), false),
                     AccountMeta::new_readonly(ctx.accounts.mint.key(), false),
                     AccountMeta::new_readonly(ctx.accounts.token_program.key(), false),
-                    AccountMeta::new_readonly(ctx.accounts.source_delegate.key(), false),
+                    AccountMeta::new_readonly(ctx.accounts.deposit_delegate.key(), false),
                 ],
                 data: svm_spoke::instruction::AdapterExecuteAcrossV5 {
                     ctx_values: svm_spoke::v5::codec::GatewayContextV1 {
@@ -222,8 +222,8 @@ pub struct ExecuteAdapter<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    /// CHECK: The svm-spoke adapter authenticates the static source-delegate key.
-    pub source_delegate: UncheckedAccount<'info>,
+    /// CHECK: The svm-spoke adapter authenticates the static V5 deposit-delegate key.
+    pub deposit_delegate: UncheckedAccount<'info>,
 
     /// CHECK: Validated by the svm-spoke CPI account constraints.
     pub state: UncheckedAccount<'info>,
