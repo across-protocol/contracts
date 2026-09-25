@@ -29,8 +29,6 @@ pub const GATEWAY_DISPATCH_AUTHORITY_BUMP: u8 = 253;
 pub const GATEWAY_VAULT_AUTHORITY_SEED: &[u8] = b"vault_authority";
 pub const GATEWAY_VAULT_AUTHORITY: Pubkey = pubkey!("D3rtRbTdrBx8x8wp6xmQcUeS6seSt9nBB7DUG5S86HHb");
 pub const GATEWAY_VAULT_AUTHORITY_BUMP: u8 = 254;
-/// First eight SHA-256 bytes of `global:adapter_execute_across_v5`.
-pub const GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR: [u8; 8] = [23, 161, 69, 148, 150, 128, 173, 220];
 
 // Magic prefix tagging a deposit message as an Across V5 witness: `message = V5_MAGIC_PREFIX || stepId`, where
 // stepId is the Merkle root of the Gateway execution allowed to consume the deposit. V5-tagged deposits are only
