@@ -12,7 +12,8 @@ const types: NonNullable<Idl["types"]> = JSON.parse(
     encoding: "utf8",
     stdio: ["ignore", "pipe", "inherit"],
   }),
-  // Match Anchor's unqualified IDL names for both definitions and references; reject collisions below.
+  // Strip Rust qualification from every string-valued `name`, including type definitions and references.
+  // This matches Anchor's unqualified type names; reject conflicting type definitions below.
   (key, value) => (key === "name" && typeof value === "string" ? value.split("::").pop() : value)
 );
 idl.types ??= [];
