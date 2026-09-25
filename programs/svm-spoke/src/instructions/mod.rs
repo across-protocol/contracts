@@ -1,7 +1,6 @@
 mod admin;
 mod bundle;
 mod create_token_accounts;
-mod deposit;
 mod fill;
 mod handle_receive_message;
 mod instruction_params;
@@ -12,7 +11,6 @@ mod v5_fill_status;
 pub use admin::*;
 pub use bundle::*;
 pub use create_token_accounts::*;
-pub use deposit::*;
 pub use fill::*;
 pub use handle_receive_message::*;
 pub use instruction_params::*;
