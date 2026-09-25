@@ -39,6 +39,10 @@ EVM builds and tests use the Foundry version pinned in `.foundry-version`; CI in
 `foundry-rs/foundry-toolchain`. Run `yarn pin-foundry` to switch your local toolchain to it (a no-op when it already
 matches). Bump the pin by editing that file.
 
+SVM local, verified, and real-Gateway builds fail on stack-overflow diagnostics even when the compiler exits
+successfully. The shared guard is `scripts/svm/buildHelpers/runSbfBuild.sh`; run `yarn test-svm-build-guard` to test it
+without a validator or Rust build. CI invalidates cached SVM builds when these build helpers change.
+
 ## Test
 
 ```shell

@@ -103,6 +103,8 @@ jobs:
         run: cargo test -p svm-spoke --lib
       - name: Test Gateway hash vectors (no private dependency)
         run: yarn test-svm-gateway-vectors
+      - name: Test SBF build diagnostic guard
+        run: yarn test-svm-build-guard
       - name: Regenerate constants.json
         run: yarn generate-constants-json && yarn prettier --write generated/constants.json
       - name: Regenerate deployed-addresses
