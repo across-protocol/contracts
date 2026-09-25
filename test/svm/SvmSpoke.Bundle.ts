@@ -1804,6 +1804,14 @@ describe("svm_spoke.bundle", () => {
       // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
+      // The loader must return with the full buffer visible to confirmed preflight, including multi-fragment proofs.
+      const confirmedParams = await program.account.executeRelayerRefundLeafParams.fetch(
+        instructionParams,
+        "confirmed"
+      );
+      assert.equal(confirmedParams.rootBundleId, rootBundleId);
+      assert.deepEqual(confirmedParams.proof, proofAsNumbers);
+
       const executeInstruction = await program.methods
         .executeRelayerRefundLeafDeferred()
         .accounts(executeAccounts)
