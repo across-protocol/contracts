@@ -6,8 +6,8 @@ use anchor_spl::{
 
 use crate::{
     constants::{
-        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_MAGIC_PREFIX,
-        V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_SEED,
+        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_DEPOSIT_DELEGATE,
+        V5_DEPOSIT_DELEGATE_SEED, V5_MAGIC_PREFIX,
     },
     error::{CommonError, V5Error},
     event::FundsDeposited,
@@ -65,7 +65,7 @@ pub(super) fn execute_v5_deposit<'info>(
         accounts.token_program,
         input_amount,
         accounts.mint_decimals,
-        V5_SOURCE_DELEGATE_SEED,
+        V5_DEPOSIT_DELEGATE_SEED,
     )?;
 
     emit_cpi!(FundsDeposited {
@@ -119,13 +119,13 @@ impl<'info> V5DepositAccounts<'info> {
         let spoke_vault = get_associated_token_address_with_program_id(&state, &input_token, &token_program_id);
         let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
         let spoke_vault_info = find_v5_account(remaining_accounts, &spoke_vault, true)?;
-        let source_delegate_info = find_v5_account(remaining_accounts, &V5_SOURCE_DELEGATE, false)?;
+        let deposit_delegate_info = find_v5_account(remaining_accounts, &V5_DEPOSIT_DELEGATE, false)?;
 
         // Canonical ATA addresses plus these owner, mint, and authority checks mirror the static associated-token
         // constraints.
         let source = load_token_account(gateway_vault_info, &token_program_id, &input_token, &GATEWAY_VAULT_AUTHORITY)?;
         load_token_account(spoke_vault_info, &token_program_id, &input_token, &state)?;
-        require!(source.delegate == COption::Some(V5_SOURCE_DELEGATE), V5Error::InvalidTokenAccount);
+        require!(source.delegate == COption::Some(V5_DEPOSIT_DELEGATE), V5Error::InvalidTokenAccount);
 
         Ok((
             Self {
@@ -133,7 +133,7 @@ impl<'info> V5DepositAccounts<'info> {
                     from: gateway_vault_info.clone(),
                     mint: mint_info.clone(),
                     to: spoke_vault_info.clone(),
-                    authority: source_delegate_info.clone(),
+                    authority: deposit_delegate_info.clone(),
                 },
                 token_program: token_program.clone(),
                 mint_decimals,
