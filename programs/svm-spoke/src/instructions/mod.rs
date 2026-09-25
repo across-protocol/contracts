@@ -17,8 +17,3 @@ pub use instruction_params::*;
 pub use refund_claims::*;
 pub use v5_adapter::*;
 pub use withdraw_v5_fill_payer::*;
-
-#[cfg(feature = "test")]
-mod test_create_v5_fill_status;
-#[cfg(feature = "test")]
-pub use test_create_v5_fill_status::*;

@@ -188,7 +188,7 @@ their V5 fill status in that handler.
 Account resolution, dispatch authentication, and PDA derivation live in `v5/accounts.rs`. Fill-status creation and
 finalization live in `v5/fill_status.rs`, while the persisted account layout lives in `state/fill_status.rs`.
 The `close_fill_pda` and `withdraw_v5_fill_payer` instructions have matching files under `instructions/`; the
-test-only status-creation entrypoint is isolated in `instructions/test_create_v5_fill_status.rs`.
+test-only status-creation entrypoint lives with the other test-support handlers in `utils/testable_utils.rs`.
 V5 deposit identity is derived in `v5/jit.rs`. File organization does not change instruction names or persisted layouts.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
