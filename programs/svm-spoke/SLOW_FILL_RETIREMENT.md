@@ -22,8 +22,10 @@ V5-tagged relays still require the V5 adapter and transition from an uninitializ
 Retiring slow fills does not change the V5 delivery or payer rules.
 
 Historical `RequestedSlowFill` events remain decodable. `FillType` keeps `FastFill = 0`, `ReplacedSlowFill = 1`,
-and `SlowFill = 2`; the latter two variants are historical only. Old slow-fill error slots are retained so subsequent
-error numbers do not shift. Indexers must continue checking transaction success before accepting any event.
+and `SlowFill = 2`; the latter two variants are historical only. Reserved slow-fill slots 6003 and 6005 in
+`CommonError` preserve subsequent `CommonError` assignments. SVM/CCTP errors are renumbered in this release;
+see the [runtime-code mapping](ERROR_CODES.md) against deployed `v5.0.12-beta.1`.
+Indexers must continue checking transaction success before accepting any event.
 
 `RootBundle` retains both roots and its refund-claim bitmap. `relay_root_bundle` and its cross-chain admin payload
 still accept both `relayer_refund_root` and `slow_relay_root`; the latter is stored and emitted but cannot be executed.
