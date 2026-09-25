@@ -1,11 +1,14 @@
-use anchor_lang::{prelude::*, solana_program::program_option::COption};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{keccak, program_option::COption},
+};
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
     constants::{GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX},
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
-    utils::{get_current_time, get_relay_hash, hash_non_empty_message, transfer_from},
+    utils::{get_current_time, get_relay_hash, transfer_from},
     v5::{
         accounts::find_v5_account,
         codec::{decode_strict, GatewayContextV1, V5FillInput, V5FillJit},
@@ -39,7 +42,8 @@ pub(super) fn execute_v5_fill<'info>(
     );
     require!(relay.output_amount >= fill_input.min_output_amount, V5Error::FillOutputAmountTooLow);
 
-    let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id);
+    let message_hash = keccak::hash(&relay.message).to_bytes();
+    let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id, &message_hash);
     let accounts = V5FillAccounts::load(
         ctx.remaining_accounts,
         &fill_input,
@@ -86,9 +90,6 @@ pub(super) fn execute_v5_fill<'info>(
 
     // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
     fill_status.write_filled(relay.fill_deadline)?;
-
-    // Empty message is not hashed and emits zeroed bytes32 for easier human observability.
-    let message_hash = hash_non_empty_message(&relay.message);
 
     emit_cpi!(FilledRelay {
         input_token: relay.input_token,
