@@ -5,9 +5,9 @@ import { createHash } from "crypto";
 import { ethers } from "ethers";
 import { RelayData } from "../../src/types/svm";
 
-export const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
-export const PREFUNDED = new PublicKey("7S5DKhyg9BxzAofhkM1vRM13d767S4cj8X5yKUXuVBWS");
-export const GATEWAY_COMMIT = "457cf693d09765c8e7e9ab33d23f84cba0999afe";
+export const GATEWAY = new PublicKey("pVs6PJ3ofdqPyDhCXXdVW7waG6oNnwKQBKtuM6Mi6JP");
+export const PREFUNDED = new PublicKey("8kUXfjTu6EUR1YLo962Nr2V66DfS4mcNKRKgSxgmipPJ");
+export const GATEWAY_COMMIT = "e2b91eb0454136773728f941b33163346e039aa4";
 export const PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
 export const OP = {
   BALANCE_REQ: 0x00,
