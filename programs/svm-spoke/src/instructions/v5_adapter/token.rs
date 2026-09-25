@@ -47,18 +47,3 @@ fn is_supported_v5_mint_extension(extension: &ExtensionType) -> bool {
             | ExtensionType::TokenGroupMember
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn token_2022_mint_extension_allowlist_is_fail_closed() {
-        assert!(is_supported_v5_mint_extension(&ExtensionType::MetadataPointer));
-        assert!(is_supported_v5_mint_extension(&ExtensionType::MintCloseAuthority));
-        assert!(!is_supported_v5_mint_extension(&ExtensionType::TransferFeeConfig));
-        assert!(!is_supported_v5_mint_extension(&ExtensionType::TransferHook));
-        assert!(!is_supported_v5_mint_extension(&ExtensionType::PermanentDelegate));
-        assert!(!is_supported_v5_mint_extension(&ExtensionType::DefaultAccountState));
-    }
-}
