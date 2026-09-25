@@ -31,6 +31,7 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
+  sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { address, createNoopSigner } from "@solana/kit";
 import { SvmSpokeClient } from "../../src/svm/clients";
@@ -68,6 +69,7 @@ import {
   pda,
   tape,
   transfer,
+  u16,
   u32,
   u64,
   vec,
@@ -990,17 +992,55 @@ describe("SVM V5 with the pinned real Gateway", () => {
     assert.isNull((await getAccount(connection, vault)).delegate, "in-place delivery never approves");
     const refund = await connection.getBalance(prefundedRentRefund);
     assert.isAbove(refund, 0);
-    const payerBefore = await connection.getBalance(owner);
-    const signature = await send(
-      ix(PREFUNDED, "claim_rent", Buffer.alloc(0), [
-        writable(owner),
-        writable(prefundedRentRefund),
-        readonly(SystemProgram.programId),
-      ])
+    const claimer = Keypair.generate();
+    const fundingSignature = await send(
+      SystemProgram.transfer({ fromPubkey: owner, toPubkey: claimer.publicKey, lamports: 1_000_000 })
     );
-    const receipt = await confirmedReceipt(signature);
+    await connection.confirmTransaction(fundingSignature, "confirmed");
+    const payerBefore = await connection.getBalance(owner);
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction({ feePayer: claimer.publicKey }).add(
+        ix(PREFUNDED, "claim_rent", Buffer.alloc(0), [
+          writable(owner),
+          writable(prefundedRentRefund),
+          readonly(SystemProgram.programId),
+        ])
+      ),
+      [claimer],
+      { commitment: "confirmed" }
+    );
     assert.equal(await connection.getBalance(prefundedRentRefund), 0);
-    assert.equal(await connection.getBalance(owner), payerBefore + refund - receipt.meta!.fee);
+    assert.equal(await connection.getBalance(owner), payerBefore + refund);
+  });
+  it("Gateway remainder transfers preserve the reserve and saturate at zero", async () => {
+    await fund();
+    for (const reserve of [amount + 1n, amount, amount - 123n]) {
+      await execute(
+        path([
+          {
+            op: OP.TRANSFER,
+            input: Buffer.concat([mint.toBuffer(), recipient.toBuffer(), u64(reserve), u16(0xb6f2)]),
+          },
+        ])
+      );
+      const retained = reserve < amount ? reserve : amount;
+      assert.equal((await getAccount(connection, vault)).amount, retained);
+      assert.equal((await getAccount(connection, recipientAta)).amount, amount - retained);
+    }
+  });
+  it("Gateway zero transfers skip missing recipients while a positive canonical floor still rejects an empty vault", async () => {
+    const missingRecipient = Keypair.generate().publicKey;
+    const missingAta = getAssociatedTokenAddressSync(mint, missingRecipient);
+    assert.isNull(await connection.getAccountInfo(missingAta));
+    const [, requirement, consumption] = canonicalInPlace(fillCommand(), mint, amount, missingRecipient);
+    // Exercise the canonical post-fill suffix against an empty vault.
+    await execute(path([consumption]));
+    await expectFailure(execute(path([requirement, consumption])), "BalanceRequirementNotMet");
+    await fund();
+    await expectFailure(execute(path([consumption])), "MissingRequiredAccount");
+    assert.equal((await getAccount(connection, vault)).amount, amount);
+    assert.isNull(await connection.getAccountInfo(missingAta));
   });
   it("rejects a relay committed to another destination step without spending the payer", async () => {
     const relay = await origin(pathId(destination()));

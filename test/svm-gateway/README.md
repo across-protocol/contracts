@@ -52,7 +52,9 @@ in-place destination delivery, first-fill-wins siblings, root mismatch and reuse
 funding/reclaim/withdrawal, and downstream rollback. Root reuse examples fund and fully deliver each execution.
 Prefunded delivery injects the credit and `PDA(["rent_refund", payer], PrefundedAdapter)`, followed by the payer's
 32-byte JIT payload. Tests verify that closing the credit parks its rent in that system-owned PDA and a separate
-`claim_rent` transaction refunds the original payer.
+`claim_rent` transaction signed and paid for by an unrelated claimer refunds the original payer without their signature.
+This covers the delivery rent path; PrefundedAdapter's admin `rescue` path has no SpokePool involvement and remains
+covered by the upstream suite.
 
 Delivery tests deliberately separate two results:
 
@@ -69,6 +71,11 @@ Delivery tests deliberately separate two results:
 submits an actual failing transaction after the fill and transfer, checks `meta.err`, and proves that fill status,
 tokens and payer rent were rolled back. It decodes the attempted `FilledRelay` event from that failed receipt's inner
 instructions and matches its deposit ID; such events never count as successful settlement.
+
+The pin includes Gateway's remainder amount form (`bips == 0xB6F2`, resolving to `max(balance - raw, 0)`) and
+zero-resolved transfers that skip recipient lookup. Tests cover remainder saturation and a zero full-balance transfer
+without a recipient ATA. The positive canonical post-fill floor still rejects an empty vault before that no-op;
+a zero floor does not guarantee positive delivery.
 
 The additional `v5_gateway_path.json` vector is a deterministic consumption-tape/hash fixture with placeholder keys,
 independently checked by Rust and Solidity as well as TypeScript. Existing `v5_adapter_v1.json` vectors continue to

@@ -222,6 +222,13 @@ payer JIT payload. Credit closure parks rent in that system-owned PDA; a separat
 returns it only to the original payer. The payer account is not forwarded during settlement. Supplying an account only in
 the outer pool does not forward it. Committed signer metas and duplicate dispatch metas are rejected.
 
+This pin also includes Gateway's remainder amount form: `bips == 0xB6F2` resolves to
+`max(balance - raw, 0)`, preserving `raw` as a reserve. This is separate from SpokePool's `V5InputAmountMode`.
+A Gateway `TRANSFER` resolving to zero succeeds before recipient lookup, even without a recipient ATA.
+The positive post-fill `BALANCE_REQ` in `canonicalInPlace` rejects an empty vault before its full-balance transfer;
+a zero floor provides no positive-delivery guarantee. Conformance tests cover balances above/at/below
+the reserve, zero-transfer recipient omission, and rejection by the canonical positive floor.
+
 The integration suite derives relays from actual origin deposit events, binds `dst_step_id` to a destination root,
 exercises both siblings and separately funded root reuse, and distinguishes safe consumption from deliberately
 accepted unsafe primitives. Its aggregate examples prove or disprove delivery for concrete executions; they do not
