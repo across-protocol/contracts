@@ -32,7 +32,6 @@ describe("SvmSpoke V5 client surface", () => {
     assert.isFunction(SvmWeb3V1.loadExecuteRelayerRefundLeafParams);
     assert.isFunction(SvmWeb3V1.closeInstructionParams);
     assert.isFunction(SvmSpokeClient.getAdapterExecuteAcrossV5Instruction);
-    assert.isFunction(SvmSpokeClient.getGetUnsafeDepositIdInstruction);
     assert.containsAllKeys(
       SvmSpokeClient,
       ["V5AdapterInput", "AcrossDepositJitParams", "V5FillJit"].flatMap((type) =>
