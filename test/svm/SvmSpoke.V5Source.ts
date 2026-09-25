@@ -67,11 +67,13 @@ const signJit = (
       ]
     )
   );
-  return Buffer.concat([
-    outputAmount,
-    exclusiveRelayer.toBuffer(),
-    Buffer.from(ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest)))),
-  ]);
+  return Buffer.from(
+    SvmSpokeClient.getAcrossDepositJitParamsEncoder().encode({
+      newOutputAmount: outputAmount,
+      newExclusiveRelayer: address(exclusiveRelayer.toBase58()),
+      signature: ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest))),
+    }) as Uint8Array
+  );
 };
 
 describe("svm_spoke V5 source deposit", () => {
