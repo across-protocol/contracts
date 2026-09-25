@@ -13,13 +13,16 @@ use crate::{
     event::FundsDeposited,
     utils::{get_current_time, transfer_from},
     v5::{
+        accounts::find_v5_account,
         codec::{decode_strict, resolve_v5_input_amount, AcrossDepositInput, GatewayContextV1},
         jit::{derive_v5_deposit_id, resolve_v5_deposit_modifications},
-        pda::find_v5_account,
     },
 };
 
-use super::{load_token_account, validate_v5_mint, AdapterExecuteAcrossV5};
+use super::{
+    token::{load_token_account, validate_v5_mint},
+    AdapterExecuteAcrossV5,
+};
 
 pub(super) fn execute_v5_deposit<'info>(
     ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
