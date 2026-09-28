@@ -214,10 +214,11 @@ describe("svm_spoke V5 source deposit", () => {
   const expectError = async (promise: Promise<unknown>, name: string) => {
     try {
       await promise;
-      assert.fail(`Expected ${name}`);
     } catch (error: any) {
       assert.include(error.toString(), name);
+      return;
     }
+    assert.fail(`Expected ${name}`);
   };
 
   const setInputMint = async (nextMint: PublicKey, nextTokenProgram: PublicKey, updateDeposit = false) => {
