@@ -1221,10 +1221,14 @@ describe("SVM V5 with the pinned real Gateway", () => {
     const refund = await connection.getBalance(prefundedRentRefund);
     assert.isAbove(refund, 0);
     const claimer = Keypair.generate();
-    const fundingSignature = await send(
-      SystemProgram.transfer({ fromPubkey: owner, toPubkey: claimer.publicKey, lamports: 1_000_000 })
+    await sendAndConfirmTransaction(
+      connection,
+      new Transaction().add(
+        SystemProgram.transfer({ fromPubkey: owner, toPubkey: claimer.publicKey, lamports: 1_000_000 })
+      ),
+      [wallet],
+      { commitment: "confirmed" }
     );
-    await connection.confirmTransaction(fundingSignature, "confirmed");
     const payerBefore = await connection.getBalance(owner);
     await sendAndConfirmTransaction(
       connection,
