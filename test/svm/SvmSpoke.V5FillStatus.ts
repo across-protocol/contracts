@@ -20,11 +20,12 @@ describe("svm_spoke V5 fill-status payer", () => {
   const expectError = async (promise: Promise<unknown>, name: string) => {
     try {
       await promise;
-      assert.fail(`Expected ${name}`);
     } catch (error: any) {
       const text = [error.toString(), ...(error.logs ?? [])].join("\n");
       if (!text.includes(name)) throw new Error(text);
+      return;
     }
+    assert.fail(`Expected ${name}`);
   };
 
   it("creates fill statuses with a PDA payer and permissionlessly reclaims their rent", async () => {
