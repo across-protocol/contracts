@@ -112,6 +112,20 @@ export const CCTPTokenMinterInterface = [
   },
 ];
 
+export const IOpUSDCBridgeAdapterAbi = [
+  {
+    inputs: [
+      { internalType: "address", name: "_to", type: "address" },
+      { internalType: "uint256", name: "_amount", type: "uint256" },
+      { internalType: "uint32", name: "_minGasLimit", type: "uint32" },
+    ],
+    name: "sendMessage",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];
+
 export const CCTPMessageTransmitterInterface = [
   {
     inputs: [
