@@ -20,7 +20,7 @@ pub struct AcrossPlusMessage {
 pub fn invoke_handler<'info>(
     relayer: &AccountInfo<'info>,
     remaining_accounts: &[AccountInfo<'info>],
-    message: &Vec<u8>,
+    message: &[u8],
 ) -> Result<()> {
     let message =
         AcrossPlusMessage::deserialize(&mut &message[..]).map_err(|_| AcrossPlusError::MessageDidNotDeserialize)?;
@@ -93,7 +93,7 @@ pub fn invoke_handler<'info>(
     Ok(())
 }
 
-pub fn hash_non_empty_message(message: &Vec<u8>) -> [u8; 32] {
+pub fn hash_non_empty_message(message: &[u8]) -> [u8; 32] {
     match message.len() {
         0 => [0u8; 32],
         _ => keccak::hash(message).to_bytes(),

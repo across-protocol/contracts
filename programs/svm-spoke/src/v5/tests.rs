@@ -42,8 +42,8 @@ fn assert_error_name<T>(result: Result<T>, expected: &str) {
 #[test]
 fn v5_errors_use_dedicated_range() {
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
-    assert_eq!(u32::from(V5Error::InvalidAmountBips), 7_008);
-    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 7_013);
+    assert_eq!(u32::from(V5Error::InvalidAmountBips), 7_007);
+    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 7_015);
 }
 
 #[test]
@@ -242,7 +242,7 @@ fn fill_wire_is_branch_specific() {
 }
 
 #[test]
-fn balance_resolution_floor_and_ordinary_delegate_allowance_are_strict() {
+fn balance_resolution_floor_is_strict() {
     let fixture = fixture();
     let mut input = decode_v5_adapter_input(&bytes(&fixture, "/wire/depositInput")).unwrap();
     if let V5AdapterInput::DepositV1(deposit) = &mut input {
@@ -257,10 +257,6 @@ fn balance_resolution_floor_and_ordinary_delegate_allowance_are_strict() {
         resolve_v5_input_amount(V5InputAmountMode::InputVaultBalance { bips: BIPS_DENOMINATOR + 1 }, 0, u64::MAX),
         "InvalidAmountBips",
     );
-
-    require_v5_delegate_allowance(99, 99).unwrap();
-    require_v5_delegate_allowance(u64::MAX, 99).unwrap();
-    assert!(require_v5_delegate_allowance(98, 99).is_err());
 }
 
 #[test]

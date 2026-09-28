@@ -6,11 +6,6 @@ use crate::{
     ID,
 };
 
-pub fn require_v5_delegate_allowance(allowance: u64, amount: u64) -> Result<()> {
-    require!(allowance >= amount, V5Error::InsufficientDelegateAllowance);
-    Ok(())
-}
-
 pub fn derive_v5_fill_payer(submitter: &Pubkey) -> (Pubkey, u8) {
     Pubkey::find_program_address(&[V5_FILL_PAYER_SEED, submitter.as_ref()], &ID)
 }

@@ -24,7 +24,6 @@ pub struct V5FillStatusPdas<'a> {
 }
 
 impl<'a> V5FillStatusPdas<'a> {
-    #[cfg_attr(not(feature = "test"), allow(dead_code))]
     pub fn derive(submitter: &'a Pubkey, relay_hash: &'a [u8; 32]) -> Self {
         let (payer, payer_bump) = derive_v5_fill_payer(submitter);
         let (fill_status, fill_status_bump) = derive_fill_status(relay_hash);
@@ -48,7 +47,6 @@ pub struct PendingV5FillStatus<'a, 'info> {
 
 impl PendingV5FillStatus<'_, '_> {
     /// Serializes the terminal V5 fill status after the caller completes semantic validation and token delivery.
-    #[cfg_attr(not(feature = "test"), allow(dead_code))]
     pub fn write_filled(self, fill_deadline: u32) -> Result<()> {
         FillStatusAccount { status: FillStatus::Filled, relayer: self.pdas.payer(), fill_deadline }
             .try_serialize(&mut &mut self.fill_status.try_borrow_mut_data()?[..])
@@ -69,7 +67,6 @@ impl PendingV5FillStatus<'_, '_> {
 /// then complete semantic validation before calling this helper. Every successful instruction path must then call
 /// `PendingV5FillStatus::write_filled` with the unexpired deadline committed in that `RelayData`; failed paths atomically
 /// roll back the zeroed intermediate account.
-#[allow(dead_code)] // Called when Step 4 enables the reserved Fill adapter branch.
 pub fn create_v5_fill_status_account<'a, 'info>(
     payer: &AccountInfo<'info>,
     fill_status: &AccountInfo<'info>,
