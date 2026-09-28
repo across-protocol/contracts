@@ -488,7 +488,9 @@ mod tests {
 
 #[derive(Accounts)]
 pub struct CloseFillPda<'info> {
-    /// CHECK: The address constraint binds this non-signing account to the recorded rent recipient.
+    /// CHECK: The address constraint binds this account to the recorded rent recipient; no signature is required.
+    /// The name `signer` is retained for client/IDL compatibility only. For V5 fills, supply the submitter's
+    /// `["v5_fill_payer", submitter]` PDA recorded in `fill_status.relayer`; legacy fills retain the relayer address.
     #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
     pub signer: UncheckedAccount<'info>,
 
