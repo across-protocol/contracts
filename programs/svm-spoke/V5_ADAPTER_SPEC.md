@@ -280,6 +280,18 @@ can use prefunded chaining; they are distinct from this atomic fill-and-swap fix
 
 ### Deployment sequencing
 
+Before deploying slow-fill retirement as part of the Lite-chain upgrade, verify the active dataworker and
+configuration exclude Solana slow fills. The SDK excludes slow fills to/from Lite chains and requires token
+equivalence through pool-rebalance routes. Lite-chain classification uses each deposit's quote timestamp;
+today's classification does not establish that older deposits were excluded.
+
+Reconcile older requests and bundles, including funded slow-fill leaves, pending return liabilities, and vault
+balances. Settle remaining obligations before removing their execution/return paths, or use a separately reviewed
+recovery procedure. The combined upgrade rejects nonzero `amount_to_return` and removes
+`bridge_tokens_to_hub_pool`, so ordinary return processing cannot recover residual Solana funds afterward.
+An origin-chain expiry refund does not itself return excess Solana vault funds. Compatibility tests do not
+establish that the live in-flight window is empty.
+
 Before deploying callback rejection and the error-code migration:
 
 1. Disable routes that create callback-bearing SVM deposits in API/builders and coordinate relayer cutover to the
@@ -302,17 +314,3 @@ deployment checks: the local fixtures do not establish that the live in-flight w
 callback-bearing deposit must never be reported as successfully filled with its requested action silently omitted.
 The standalone MulticallHandler program and its package exports remain available to existing consumers; their
 retirement and any deployed-program closure require a separate decision.
-
-## Deployment sequencing
-
-Before deploying slow-fill retirement as part of the Lite-chain upgrade, verify the active dataworker and
-configuration exclude Solana slow fills. The SDK excludes slow fills to/from Lite chains and requires token
-equivalence through pool-rebalance routes. Lite-chain classification uses each deposit's quote timestamp;
-today's classification does not establish that older deposits were excluded.
-
-Reconcile older requests and bundles, including funded slow-fill leaves, pending return liabilities, and vault
-balances. Settle remaining obligations before removing their execution/return paths, or use a separately reviewed
-recovery procedure. The combined upgrade rejects nonzero `amount_to_return` and removes
-`bridge_tokens_to_hub_pool`, so ordinary return processing cannot recover residual Solana funds afterward.
-An origin-chain expiry refund does not itself return excess Solana vault funds. Compatibility tests do not
-establish that the live in-flight window is empty.
