@@ -7,6 +7,8 @@ It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
 after the run. Production package IDLs and clients are not regenerated.
+Generate production Spoke artifacts first (`yarn generate-svm-artifacts`); the shared wire helpers use its public
+generated codecs. CI runs the vector checks after downloading those artifacts.
 
 Install Agave 4.1.2, Anchor CLI 1.1.2 for foreign builds, and Anchor CLI 0.31.1 for this repository's IDL. The runner
 pins SpokePool compilation to Solana platform-tools v1.52 rather than the CLI's moving default. With both
@@ -25,7 +27,7 @@ Pass Mocha filters through the runner, e.g. `yarn test-svm-gateway --grep 'JIT R
 
 The current runner needs access to the pinned `solana-v5` checkout, so run this lane locally with existing repository
 access; do not add a cross-repository credential to `contracts` CI. Ordinary PR checks run
-`yarn test-svm-gateway-vectors` for the dependency-free wire/hash fixtures, but do not run the real-Gateway lane.
+`yarn test-svm-gateway-vectors` for the public-only wire/hash fixtures, but do not run the real-Gateway lane.
 Changes in `test/svm-gateway` also trigger the ordinary SVM tests.
 
 Public artifact distribution is a separate follow-up; this lane does not prescribe a hosting repository or require
