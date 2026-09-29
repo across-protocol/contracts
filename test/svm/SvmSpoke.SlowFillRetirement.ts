@@ -13,8 +13,29 @@ import { assert } from "chai";
 import { calculateRelayHashUint8Array, getFillRelayDelegatePda, readEventsUntilFound } from "../../src/svm/web3-v1";
 import { SvmSpokeIdl } from "../../src/svm/assets";
 import legacyAccount from "./accounts/legacy_requested_slow_fill.json";
-import { legacyMint, legacyRelay, legacyRequester } from "./fixtures/legacySlowFill";
+import { RelayData } from "../../src/types/svm";
 import { common } from "./SvmSpoke.common";
+
+// Deterministic test keys, not production credentials. These values match the frozen 45-byte RequestedSlowFill
+// account in accounts/legacy_requested_slow_fill.json, encoded with the pre-retirement IDL and loaded by Anchor.toml.
+// Keep the JSON bytes frozen: re-encoding with the current IDL could conceal a historical layout regression.
+// This suite closes that account; every run needs a fresh validator ledger with the genesis fixture loaded.
+const legacyMint = Keypair.fromSeed(Buffer.alloc(32, 221));
+const legacyRequester = Keypair.fromSeed(Buffer.alloc(32, 222)).publicKey;
+const legacyRelay: RelayData = {
+  depositor: legacyRequester,
+  recipient: Keypair.fromSeed(Buffer.alloc(32, 223)).publicKey,
+  exclusiveRelayer: PublicKey.default,
+  inputToken: legacyMint.publicKey,
+  outputToken: legacyMint.publicKey,
+  inputAmount: [...Buffer.alloc(31), 1],
+  outputAmount: new BN(500000),
+  originChainId: new BN(1),
+  depositId: [...Buffer.alloc(31), 221],
+  fillDeadline: 4000000000,
+  exclusivityDeadline: 0,
+  message: Buffer.alloc(0),
+};
 
 describe("svm_spoke slow-fill retirement compatibility", () => {
   const { provider, connection, program, chainId } = common;

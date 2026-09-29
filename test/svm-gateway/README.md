@@ -38,7 +38,7 @@ reviewed, pinned SHA-256 checksum (`sha256sum -c`) before execution; a versioned
 This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
 an oversized account-validation stack frame in the legacy `FillRelay` handler;
 this lane does not exercise or certify that handler. Slow-fill handlers have been removed (see
-[slow-fill retirement](../../programs/svm-spoke/SLOW_FILL_RETIREMENT.md)). The existing verified-build and ordinary SVM lanes remain
+[historical compatibility](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#historical-compatibility)). The existing verified-build and ordinary SVM lanes remain
 separate requirements.
 
 Ordinary Gateway/Prefunded instructions use Anchor builders and IDLs generated from the same pinned checkout as the
