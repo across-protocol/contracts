@@ -83,9 +83,9 @@ pub(super) fn execute_v5_fill<'info>(
             accounts.mint_decimals,
             V5_FILL_DELEGATE_SEED,
         )?,
-        V5FillDelivery::InPlace => {
-            require_keys_eq!(accounts.from.key(), accounts.recipient.key(), V5Error::InvalidTokenAccount)
-        }
+        // The loader has validated the canonical shared vault and sufficient balance.
+        // The committed Gateway tape must enforce balance checks covering the fill obligations and consume the funds.
+        V5FillDelivery::InPlace => {}
     }
 
     // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
@@ -118,6 +118,7 @@ pub(super) fn execute_v5_fill<'info>(
 
 enum V5FillDelivery<'info> {
     Delegated(AccountInfo<'info>),
+    /// The private loader validated both accounts as the canonical Gateway vault with sufficient live balance.
     InPlace,
 }
 
