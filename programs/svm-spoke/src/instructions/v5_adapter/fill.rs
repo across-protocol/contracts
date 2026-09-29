@@ -5,7 +5,7 @@ use anchor_lang::{
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
-    constants::{GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX},
+    constants::{V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX},
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     utils::{get_current_time, get_relay_hash, transfer_from},
@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    token::{load_token_account, validate_v5_mint},
+    token::{load_token_account, V5TokenAccounts},
     AdapterExecuteAcrossV5,
 };
 
@@ -142,42 +142,27 @@ impl<'a, 'info> V5FillAccounts<'a, 'info> {
         submitter: &'a Pubkey,
         relay_hash: &'a [u8; 32],
     ) -> Result<Self> {
-        let mint_info = find_v5_account(remaining_accounts, &fill_input.output_token, false)?;
-        let token_program_id = *mint_info.owner;
-        require!(
-            token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
-            V5Error::InvalidTokenAccount
-        );
-        let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
-        let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
-
-        let gateway_vault = get_associated_token_address_with_program_id(
-            &GATEWAY_VAULT_AUTHORITY,
-            &fill_input.output_token,
-            &token_program_id,
-        );
+        let token_accounts = V5TokenAccounts::load(remaining_accounts, &fill_input.output_token)?;
         let recipient = get_associated_token_address_with_program_id(
             &fill_input.recipient,
             &fill_input.output_token,
-            &token_program_id,
+            token_accounts.token_program.key,
         );
-        let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
         let recipient_info = find_v5_account(remaining_accounts, &recipient, true)?;
-        let source = load_token_account(
-            gateway_vault_info,
-            &token_program_id,
+        load_token_account(
+            recipient_info,
+            token_accounts.token_program.key,
             &fill_input.output_token,
-            &GATEWAY_VAULT_AUTHORITY,
+            &fill_input.recipient,
         )?;
-        load_token_account(recipient_info, &token_program_id, &fill_input.output_token, &fill_input.recipient)?;
 
-        let delivery = if gateway_vault == recipient {
+        let delivery = if token_accounts.gateway_vault.key() == recipient {
             // This check is not a debit. Builders must consume after one fill or enforce an aggregate floor covering
             // every in-place fill recorded before full-balance consumption; step-root reuse alone is valid.
-            require!(source.amount >= output_amount, V5Error::InsufficientVaultBalance);
+            require!(token_accounts.source.amount >= output_amount, V5Error::InsufficientVaultBalance);
             V5FillDelivery::InPlace
         } else {
-            require!(source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
+            require!(token_accounts.source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
             V5FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
         };
 
@@ -187,12 +172,12 @@ impl<'a, 'info> V5FillAccounts<'a, 'info> {
         let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
 
         Ok(Self {
-            from: gateway_vault_info.clone(),
+            from: token_accounts.gateway_vault,
             recipient: recipient_info.clone(),
             delivery,
-            mint: mint_info.clone(),
-            token_program: token_program.clone(),
-            mint_decimals,
+            mint: token_accounts.mint,
+            token_program: token_accounts.token_program,
+            mint_decimals: token_accounts.mint_decimals,
             payer: payer_info.clone(),
             fill_status: fill_status_info.clone(),
             system_program: system_program_info.clone(),

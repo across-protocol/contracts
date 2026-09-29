@@ -214,8 +214,9 @@ Gateway-attested submitter. It derives the canonical relay hash on-chain, create
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. Deposit and fill execution are V5-only: the adapter validates accounts and relay semantics, delivers
 tokens, finalizes V5 fill status, and constructs the canonical events. The entrypoint dispatches to separate deposit
-and fill modules, each owning its execution and account loading; shared token-account and mint validation live in
-`instructions/v5_adapter/token.rs`.
+and fill modules, each owning its execution and account loading. Both loaders use `V5TokenAccounts::load` in
+`instructions/v5_adapter/token.rs` to validate the mint, token program, and canonical Gateway vault before their
+branch-specific recipient and delegate checks.
 Every successful fill emits `FastFill` with the original recipient and output amount in its execution info.
 Each execution handler performs validation, delivery, and event emission directly; fills also create and finalize
 their V5 fill status in that handler.
