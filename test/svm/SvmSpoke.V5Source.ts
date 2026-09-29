@@ -28,79 +28,16 @@ import { createHash } from "crypto";
 import { ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { readEventsUntilFound } from "../../src/svm/web3-v1";
+import { DepositFields, encodeDeposit, u64, vec, word as bytes32 } from "./v5Encoding";
 import { common } from "./SvmSpoke.common";
 
 const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
 const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
 const adapterDiscriminator = createHash("sha256").update("global:adapter_execute_across_v5").digest().subarray(0, 8);
 const mockDiscriminator = createHash("sha256").update("global:execute_adapter").digest().subarray(0, 8);
-const u16 = (value: number) => {
-  const data = Buffer.alloc(2);
-  data.writeUInt16LE(value);
-  return data;
-};
-const u32 = (value: number) => {
-  const data = Buffer.alloc(4);
-  data.writeUInt32LE(value);
-  return data;
-};
-const u64 = (value: bigint | number) => {
-  const data = Buffer.alloc(8);
-  data.writeBigUInt64LE(BigInt(value));
-  return data;
-};
-const vec = (value: Buffer) => Buffer.concat([u32(value.length), value]);
-const bytes32 = (value: bigint | number) =>
-  Buffer.from(ethers.utils.zeroPad(ethers.BigNumber.from(value.toString()).toHexString(), 32));
-
 type ContextValues = { stepId: Buffer; pathId: Buffer; submitter: PublicKey };
-type DepositFields = {
-  depositor: PublicKey;
-  recipient: PublicKey;
-  inputToken: PublicKey;
-  outputToken: PublicKey;
-  inputAmount: bigint;
-  outputAmount: Buffer;
-  destinationChainId: bigint;
-  exclusiveRelayer: PublicKey;
-  depositNonce: bigint;
-  quoteTimestamp: number;
-  fillDeadline: number;
-  exclusivityParameter: number;
-  dstStepId: Buffer;
-};
-
 const encodeContext = ({ stepId, pathId, submitter }: ContextValues) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
-
-const encodeDeposit = (
-  deposit: DepositFields,
-  amountMode: { literal: true } | { bips: number },
-  rules: { authority: Buffer; output: boolean; relayer: boolean } = {
-    authority: Buffer.alloc(20),
-    output: false,
-    relayer: false,
-  }
-) =>
-  Buffer.concat([
-    Buffer.from([0]),
-    deposit.depositor.toBuffer(),
-    deposit.recipient.toBuffer(),
-    deposit.inputToken.toBuffer(),
-    deposit.outputToken.toBuffer(),
-    u64(deposit.inputAmount),
-    deposit.outputAmount,
-    u64(deposit.destinationChainId),
-    deposit.exclusiveRelayer.toBuffer(),
-    u64(deposit.depositNonce),
-    u32(deposit.quoteTimestamp),
-    u32(deposit.fillDeadline),
-    u32(deposit.exclusivityParameter),
-    deposit.dstStepId,
-    "literal" in amountMode ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), u16(amountMode.bips)]),
-    rules.authority,
-    Buffer.from([Number(rules.output), Number(rules.relayer)]),
-  ]);
 
 const signJit = (
   signer: ethers.Wallet,
@@ -383,9 +320,15 @@ describe("svm_spoke V5 source deposit", () => {
 
   it("enforces paused deposits and the committed dynamic-amount floor", async () => {
     const input = encodeDeposit(deposit, { literal: true });
-    await svmSpoke.methods.pauseDeposits(true).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseDeposits(true)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(input), "DepositsArePaused");
-    await svmSpoke.methods.pauseDeposits(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseDeposits(false)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(encodeDeposit(deposit, { bips: 4000 })), "ResolvedInputAmountBelowCommitted");
   });
 

@@ -36,8 +36,15 @@ async function main() {
     throw new Error(`Gateway checkout must be clean at ${GATEWAY_COMMIT}`);
   }
   const foreignAnchor = process.env.SVM_GATEWAY_ANCHOR || "anchor";
+  const gatewayIdlDir = path.join(work, "idl");
+  mkdirSync(gatewayIdlDir);
   for (const name of ["gateway", "prefunded_adapter"]) {
     run(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl"], checkout);
+    run(
+      foreignAnchor,
+      ["idl", "build", "--program-name", name, "--out", path.join(gatewayIdlDir, `${name}.json`)],
+      checkout
+    );
   }
   // IS_TEST is not sufficient for local Anchor builds: pass the feature explicitly.
   const spokeAnchor = process.env.SVM_SPOKE_ANCHOR || "anchor";
@@ -155,6 +162,7 @@ async function main() {
           ...process.env,
           ANCHOR_PROVIDER_URL: url,
           ANCHOR_WALLET: walletPath,
+          SVM_GATEWAY_IDL_DIR: gatewayIdlDir,
           NODE_OPTIONS: "--no-experimental-strip-types",
         },
       }

@@ -126,7 +126,8 @@ Gateway-vault delivery validates that same live vault in place and its amount, r
 self-transfer or approval. This asserts available balance rather than debiting it. A step root may be reused across
 source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor and
 full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
-consumption. A fixed minimum for one fill does not prove aggregate delivery.
+consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed minimum
+for one fill does not prove aggregate delivery.
 
 The obligation covers **actual JIT output amounts for all allowed executions**, not just the sum of committed
 `min_output_amount` values or the amounts in a sampled quote. Two fills can each accept output `2X` against a shared

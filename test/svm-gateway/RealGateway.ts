@@ -1,4 +1,3 @@
-import "./provider";
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import {
@@ -20,6 +19,8 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import { createHash, randomBytes } from "crypto";
+import { readFileSync } from "fs";
+import nodePath from "path";
 import { calculateRelayHashUint8Array, processEventFromTx, readEventsUntilFound } from "../../src/svm/web3-v1";
 import { RelayData } from "../../src/types/svm";
 import { common } from "../svm/SvmSpoke.common";
@@ -51,7 +52,6 @@ import {
   pda,
   tape,
   transfer,
-  u32,
   u64,
   vec,
   word,
@@ -60,6 +60,15 @@ import {
 describe("SVM V5 with the pinned real Gateway", () => {
   anchor.setProvider(common.provider);
   const { provider, connection, owner, program: spoke, initializeState, chainId, setCurrentTime } = common;
+  const loadProgram = (name: string, expectedAddress: PublicKey) => {
+    const directory = process.env.SVM_GATEWAY_IDL_DIR;
+    if (!directory) throw new Error("Run through yarn test-svm-gateway to generate the pinned IDLs");
+    const idl = JSON.parse(readFileSync(nodePath.join(directory, `${name}.json`), "utf8")) as anchor.Idl;
+    assert.equal(idl.address, expectedAddress.toBase58(), "IDL must match the pinned program");
+    return new anchor.Program(idl, provider);
+  };
+  const gateway = loadProgram("gateway", GATEWAY);
+  const prefundedAdapter = loadProgram("prefunded_adapter", PREFUNDED);
   const wallet = (provider.wallet as anchor.Wallet).payer;
   const depositor = Keypair.generate();
   const writable = (pubkey: PublicKey): AccountMeta => ({ pubkey, isWritable: true, isSigner: false });
@@ -168,39 +177,40 @@ describe("SVM V5 with the pinned real Gateway", () => {
       opts.jit ?? relays.map((r) => relayJit(r)),
       opts.funds ?? []
     );
-    const accountDiscriminator = createHash("sha256").update("account:ExecuteParamsAccount").digest().subarray(0, 8);
+    const accountDiscriminator = Buffer.from(
+      gateway.idl.accounts!.find((account) => account.name === "executeParamsAccount")!.discriminator
+    );
     const digest = createHash("sha256")
       .update(Buffer.concat([accountDiscriminator, bytes]))
       .digest();
     const buffer = pda(GATEWAY, Buffer.from("execute_params"), owner.toBuffer(), digest);
     try {
       await send(
-        ix(GATEWAY, "initialize_execute_params", Buffer.concat([digest, u32(bytes.length)]), [
-          { ...writable(owner), isSigner: true },
-          writable(buffer),
-          readonly(SystemProgram.programId),
-        ])
+        await gateway.methods
+          .initializeExecuteParams([...digest], bytes.length)
+          .accountsStrict({ submitter: owner, executeParams: buffer, systemProgram: SystemProgram.programId })
+          .instruction()
       );
       for (let offset = 0; offset < bytes.length; offset += 800) {
         await send(
-          ix(
-            GATEWAY,
-            "write_execute_params_fragment",
-            Buffer.concat([digest, u32(offset), vec(bytes.subarray(offset, offset + 800))]),
-            [{ ...readonly(owner), isSigner: true }, writable(buffer)]
-          )
+          await gateway.methods
+            .writeExecuteParamsFragment([...digest], offset, bytes.subarray(offset, offset + 800))
+            .accountsStrict({ submitter: owner, executeParams: buffer })
+            .instruction()
         );
       }
-      const instruction = ix(GATEWAY, "execute", Buffer.from([0]), [
-        { ...readonly(owner), isSigner: true },
-        { ...writable(owner), isSigner: true },
-        writable(buffer),
-        readonly(gatewayConfig),
-        readonly(gatewayEvent),
-        readonly(GATEWAY),
-        ...(opts.accounts ?? remaining(relays)),
-        ...(opts.extra ?? []),
-      ]);
+      const instruction = await gateway.methods
+        .execute(null)
+        .accountsStrict({
+          localFundingSigner: owner,
+          submitter: owner,
+          executeParams: buffer,
+          config: gatewayConfig,
+          eventAuthority: gatewayEvent,
+          program: GATEWAY,
+        })
+        .remainingAccounts([...(opts.accounts ?? remaining(relays)), ...(opts.extra ?? [])])
+        .instruction();
       if (opts.failed) {
         const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction);
         tx.feePayer = owner;
@@ -235,7 +245,10 @@ describe("SVM V5 with the pinned real Gateway", () => {
     } finally {
       if (await connection.getAccountInfo(buffer))
         await send(
-          ix(GATEWAY, "close_execute_params", digest, [{ ...writable(owner), isSigner: true }, writable(buffer)])
+          await gateway.methods
+            .closeExecuteParams([...digest])
+            .accountsStrict({ submitter: owner, executeParams: buffer })
+            .instruction()
         );
     }
   }
@@ -298,18 +311,21 @@ describe("SVM V5 with the pinned real Gateway", () => {
     if (prefunded) {
       const credit = pda(PREFUNDED, Buffer.from("credit"), rootSource, mint.toBuffer(), owner.toBuffer());
       await send(
-        ix(PREFUNDED, "store", Buffer.concat([rootSource, u64(amount)]), [
-          { ...readonly(owner), isSigner: true },
-          writable(owner),
-          readonly(prefundedAuthority),
-          readonly(mint),
-          writable(userAta),
-          writable(credit),
-          readonly(TOKEN_PROGRAM_ID),
-          readonly(SystemProgram.programId),
-          readonly(pda(PREFUNDED, Buffer.from("__event_authority"))),
-          readonly(PREFUNDED),
-        ])
+        await prefundedAdapter.methods
+          .store([...rootSource], new BN(amount.toString()))
+          .accountsStrict({
+            prefunder: owner,
+            payer: owner,
+            authority: prefundedAuthority,
+            mint,
+            source: userAta,
+            credit,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            eventAuthority: pda(PREFUNDED, Buffer.from("__event_authority")),
+            program: PREFUNDED,
+          })
+          .instruction()
       );
       jit = [Buffer.concat([credit.toBuffer(), owner.toBuffer(), owner.toBuffer()])];
       extra.push(
@@ -371,18 +387,21 @@ describe("SVM V5 with the pinned real Gateway", () => {
     };
   }
   before(async () => {
-    for (const [programId, config, data] of [
-      [GATEWAY, gatewayConfig, u64(chainId)],
-      [PREFUNDED, prefundedConfig, Buffer.concat([GATEWAY.toBuffer(), owner.toBuffer()])],
-    ] as [PublicKey, PublicKey, Buffer][])
+    for (const [program, config, args] of [
+      [gateway, gatewayConfig, [chainId]],
+      [prefundedAdapter, prefundedConfig, [GATEWAY, owner]],
+    ] as const)
       await send(
-        ix(programId, "initialize", data, [
-          { ...writable(owner), isSigner: true },
-          writable(config),
-          readonly(programId),
-          readonly(pda(loader, programId.toBuffer())),
-          readonly(SystemProgram.programId),
-        ])
+        await program.methods
+          .initialize(...args)
+          .accountsStrict({
+            payer: owner,
+            config,
+            program: program.programId,
+            programData: pda(loader, program.programId.toBuffer()),
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction()
       );
   });
   beforeEach(async () => {
@@ -405,7 +424,10 @@ describe("SVM V5 with the pinned real Gateway", () => {
   });
 
   it("cleans parameter buffers after setup errors so byte-identical executions can retry", async () => {
-    for (const failAfter of ["initialize_execute_params", "write_execute_params_fragment"]) {
+    for (const failAfter of ["initializeExecuteParams", "writeExecuteParamsFragment"]) {
+      const failDiscriminator = Buffer.from(
+        gateway.idl.instructions.find((ix) => ix.name === failAfter)!.discriminator
+      );
       const dst = path([floor(mint, 0n)]);
       const originalSend = provider.sendAndConfirm;
       provider.sendAndConfirm = async (tx, ...args) => {
@@ -413,7 +435,8 @@ describe("SVM V5 with the pinned real Gateway", () => {
         if (
           tx instanceof Transaction &&
           tx.instructions.some(
-            (ix) => ix.programId.equals(GATEWAY) && ix.data.subarray(0, 8).equals(discriminator(failAfter))
+            (ix) =>
+              ix.programId.equals(GATEWAY) && ix.data.subarray(0, failDiscriminator.length).equals(failDiscriminator)
           )
         )
           throw new Error("injected setup confirmation failure");
