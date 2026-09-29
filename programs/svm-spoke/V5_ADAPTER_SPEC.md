@@ -171,6 +171,10 @@ Their historical selectors fail with `InstructionFallbackNotFound` (101) before 
 
 Legacy deposit/fill entrypoints are also retired. Historical requested accounts remain readable and closable,
 but cannot be fast-filled after V4 retirement. V5 fills create a new status account directly as `Filled`.
+Both versions use `["fills", relay_hash]`; preserving that namespace and account layout does not migrate an
+existing `RequestedSlowFill` into a V5-fillable state. The relay hash commits the fill deadline, so an expired
+requested account cannot collide with an unexpired V5 relay. Expired accounts may remain for later rent cleanup;
+closing them is not a prerequisite for V5 enablement. Check unexpired accounts during the deployment sequence below.
 
 Historical `RequestedSlowFill` and `FilledRelay` events remain decodable. `FillType` retains `FastFill = 0`,
 `ReplacedSlowFill = 1`, and `SlowFill = 2`; the latter two variants are historical only.
@@ -180,7 +184,7 @@ Indexers must check transaction success before accepting events.
 `RootBundle` retains both roots and its refund-claim bitmap. The two-root admin payload still accepts nonzero
 `slow_relay_root`: HubPool shares that root across chains, so it may contain other destinations' slow fills.
 Rejecting it would also block the accompanying refund root. Solana stores and emits it but cannot execute it.
-No account or two-root admin-message migration is required. Historical instruction-parameter buffers remain
+No account-layout or two-root admin-message migration is required. Historical instruction-parameter buffers remain
 closable by their creator through `close_instruction_params` without decoding the retired parameter types.
 
 After the recorded deadline, anyone may call `close_fill_pda`; rent goes only to the recorded recipient.
@@ -338,32 +342,46 @@ configuration exclude Solana slow fills. The SDK excludes slow fills to/from Lit
 equivalence through pool-rebalance routes. Lite-chain classification uses each deposit's quote timestamp;
 today's classification does not establish that older deposits were excluded.
 
-Reconcile older requests and bundles, including funded slow-fill leaves, pending return liabilities, and vault
-balances. Settle remaining obligations before removing their execution/return paths, or use a separately reviewed
-recovery procedure. The combined upgrade rejects nonzero `amount_to_return` and removes
+The shutdown reconciliation established that known in-flight user transfers were completed or refunded; it is
+not an outstanding V4 fill obligation for this rollout. Keep remaining relayer repayments, deferred claims, and
+incident root cleanup separate from that completed reconciliation. Any recovery relying on execution/return paths
+being removed needs completion before the upgrade or a separately reviewed replacement. The combined upgrade rejects
+nonzero `amount_to_return` and removes
 `bridge_tokens_to_hub_pool`, so ordinary return processing cannot recover residual Solana funds afterward.
-An origin-chain expiry refund does not itself return excess Solana vault funds. Compatibility tests do not
-establish that the live in-flight window is empty.
+Unfilled deposits targeting Solana retain their input funds on their origin chains and are refunded there after
+expiry; they do not explain a residual Solana vault balance. Solana-origin deposit refunds, relayer repayments,
+deferred claims, and other vault funds need their own accounting. Preserve backing for outstanding claims and
+repayments: the upgrade does not require an empty vault or withdrawal of every deferred claim, since refund/claim
+instructions remain available. An expired fill-status account alone proves neither an unpaid deposit nor a completed
+refund. Record settlement evidence separately from status-account rent cleanup.
 
 Before deploying V4 entrypoint retirement and the error-code migration:
 
-1. Disable routes that create V4 intents to or from Solana in API/builders and coordinate relayer cutover to the
-   replacement V5 path. A route flag alone does not prevent direct deposits through permissionless entrypoints.
-2. Reconcile finalized deposits and successful fills across supported origin chains. Allow outstanding V4
-   deposits to fill before their deadlines, or wait past the remaining `fillDeadline` values and verify origin-chain
-   expiry-refund handling. Include finality/indexing lag and confirm no new V4 deposits entered the window.
-3. Verify no unexpired V4 obligations remain before deploying, or handle them through a separately
-   reviewed migration procedure. Verify replacement route-building and relayer execution support before enablement.
+1. Keep V4 intent routes to and from Solana disabled in API/builders and coordinate relayer cutover to the
+   replacement V5 path. Keep both `paused_deposits` and `paused_fills` set through the upgrade. Legacy
+   `request_slow_fill` checks `paused_fills`, so maintaining that pause also prevents new requested-state PDAs.
+   Backend route disablement alone does not prevent direct deposits on other origin chains.
+2. Retain the completed shutdown reconciliation and refund evidence in the deployment record. No additional
+   pre-shutdown V4 fill/refund reconciliation or resumption of legacy fills is required for this cutover.
+   Any newly identified direct deposit after route disablement is a separate exception to assess, not a reason
+   to reopen the settled shutdown backlog.
+3. Carry forward the completed finalized-state check showing no unexpired `RequestedSlowFill` accounts, with its
+   slot and deadline results in the deployment record. No repeat enumeration is needed while fills remain paused.
+   If fills are unpaused before legacy retirement, refresh the check and resolve any conflict with fixed or
+   already-emitted V5 relay hashes before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
    moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
    Earlier undeployed V5 integrations must use the final 9000 range. Consumers matching runtime log names need no
    renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
+5. Deploy with both pause flags still set and verify legacy deposit/fill and slow-fill selectors are absent from
+   the deployed program. Validate replacement V5 route-building and relayer execution support before unpausing
+   deposits/fills and enabling V5 routes. The pause flags are shared by V4 and V5; unpausing before legacy entrypoint
+   retirement would reopen the old paths.
 
-After the upgrade, a remaining V4 deposit cannot be filled on Solana. Slow fills are also retired;
-an unfilled expired deposit follows the normal origin-chain refund process, not a destination fallback. These are
-deployment checks: the local fixtures do not establish that the live in-flight window is empty. HubPool chain
+After the upgrade, V4 deposits cannot be filled on Solana. Slow fills are also retired;
+any new unsupported V4 deposit follows the normal origin-chain expiry-refund process, not a destination fallback. HubPool chain
 enablement does not guarantee that an arbitrary V4 deposit to Solana is fillable. API/builders and relayers must
 require the supported V5 path, including for empty-message transfers.
 The standalone MulticallHandler program and its package exports remain available to existing consumers; their
