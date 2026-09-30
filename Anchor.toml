@@ -12,8 +12,8 @@ test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 sponsored_cctp_src_periphery = "FsD4uqAyXiAcQapVTokNvdz1ZC5hMHjY6a93nYmEqZQS"
 
 [programs.devnet]
+# V5 svm_spoke and its supporting offchain infrastructure are not configured on public devnet.
 multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
 sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 
 [programs.mainnet]

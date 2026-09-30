@@ -8,6 +8,11 @@ Install dependencies with `yarn install --frozen-lockfile`, build with `yarn bui
 
 Set `ANCHOR_PROVIDER_URL` to the desired Solana RPC and `ANCHOR_WALLET` to a funded Solana keypair file, or supply Anchor's `--provider.cluster` and `--provider.wallet` options. The existing network resolver expects `devnet` or `mainnet` in the RPC URL; it selects the corresponding deployed program IDs and Circle Iris endpoint. Use the upgraded CCTP V2 spoke deployment. The production state seed is `0`.
 
+V5 Spoke/Gateway flows have no configured public-devnet deployment or supporting offchain infrastructure. The retained
+devnet Spoke address is a legacy deployment, not a V5 target. These scripts resolve addresses from the deployment registry
+independently of `Anchor.toml`; removing its devnet Spoke entry does not disable devnet script access. Other devnet tooling,
+including sponsored CCTP scripts and Circle IDL fetching, is retained.
+
 ## Finalize an existing root/admin message or token transfer
 
 ```sh

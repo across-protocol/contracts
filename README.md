@@ -103,7 +103,14 @@ yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpoke
 
 For CCTP V2 root/admin finalization, pause recovery and light-chain intent examples, see the [Solana operational scripts guide](scripts/svm/README.md).
 
+V5 `svm_spoke` is configured for mainnet and local-validator testing. Its public-devnet deployment and supporting
+offchain infrastructure are not configured, so `Anchor.toml` has no devnet Spoke entry. The devnet deployment examples
+below require a separately configured deployment; the legacy devnet Spoke address is not a V5 target.
+
 Before deploying for the first time make sure all program IDs in `lib.rs` and `Anchor.toml` are the same as listed when running `anchor keys list`. If not, update them to match the deployment keypairs under `target/deploy/` and commit the changes.
+
+V5 PDA addresses and bumps are pinned to the configured Spoke and Gateway IDs to avoid runtime derivation costs.
+If either program ID changes, update its dependent PDA constants and run `cargo test -p svm-spoke --lib` to check consistency.
 
 Use `solana-verify` 0.5.1, matching CI, to build the verified Docker binaries. The build removes each
 previous binary before compilation and rejects missing or empty output; failed builds must not be used for deployment.
