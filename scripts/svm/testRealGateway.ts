@@ -14,6 +14,9 @@ function run(command: string, args: string[], cwd = process.cwd()) {
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} failed (${result.status})`);
 }
+function buildSbf(command: string, args: string[], cwd = process.cwd()) {
+  run("bash", [path.join(__dirname, "buildHelpers/runSbfBuild.sh"), command, ...args], cwd);
+}
 async function freePort(): Promise<number> {
   const server = createServer();
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -50,7 +53,7 @@ async function main() {
     swapDirty.stdout.trim()
   )
     throw new Error(`Swap checkout must be clean at ${SWAP_COMMIT}`);
-  run(
+  buildSbf(
     "cargo",
     [
       "build-sbf",
@@ -69,7 +72,7 @@ async function main() {
   const gatewayIdlDir = path.join(work, "idl");
   mkdirSync(gatewayIdlDir);
   for (const name of ["gateway", "prefunded_adapter", "authority_requirement_planner"]) {
-    run(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl"], checkout);
+    buildSbf(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl"], checkout);
     run(
       foreignAnchor,
       ["idl", "build", "--program-name", name, "--out", path.join(gatewayIdlDir, `${name}.json`)],
@@ -78,7 +81,7 @@ async function main() {
   }
   // IS_TEST is not sufficient for local Anchor builds: pass the feature explicitly.
   const spokeAnchor = process.env.SVM_SPOKE_ANCHOR || "anchor";
-  run("cargo", [
+  buildSbf("cargo", [
     "build-sbf",
     "--tools-version",
     "v1.52",

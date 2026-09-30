@@ -7,6 +7,8 @@ It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
 after the run. Production package IDLs and clients are not regenerated.
+Generate production Spoke artifacts first (`yarn generate-svm-artifacts`); the shared wire helpers use its public
+generated codecs. CI runs the vector checks after downloading those artifacts.
 
 Install Agave 4.1.2, Anchor CLI 1.1.2 for foreign builds, and Anchor CLI 0.31.1 for this repository's IDL. The runner
 pins SpokePool compilation to Solana platform-tools v1.52 rather than the CLI's moving default. With both
@@ -25,7 +27,7 @@ Pass Mocha filters through the runner, e.g. `yarn test-svm-gateway --grep 'JIT R
 
 The current runner needs access to the pinned `solana-v5` checkout, so run this lane locally with existing repository
 access; do not add a cross-repository credential to `contracts` CI. Ordinary PR checks run
-`yarn test-svm-gateway-vectors` for the dependency-free wire/hash fixtures, but do not run the real-Gateway lane.
+`yarn test-svm-gateway-vectors` for the public-only wire/hash fixtures, but do not run the real-Gateway lane.
 Changes in `test/svm-gateway` also trigger the ordinary SVM tests.
 
 Public artifact distribution is a separate follow-up; this lane does not prescribe a hosting repository or require
@@ -37,11 +39,9 @@ Reuse `.github/actions/setup-solana-anchor` to derive this repository's toolchai
 setting in `pr.yml`. If the Gateway's separate Anchor CLI is downloaded as a release binary, verify it against a
 reviewed, pinned SHA-256 checksum (`sha256sum -c`) before execution; a versioned download URL is not an integrity check.
 
-This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
-an oversized account-validation stack frame in the legacy `FillRelay` handler;
-this lane does not exercise or certify that handler. Slow-fill handlers have been removed (see
-[historical compatibility](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#historical-compatibility)). The existing verified-build and ordinary SVM lanes remain
-separate requirements.
+This is a V5 integration test binary, not a verified production release build. Legacy V4 deposit/fill and slow-fill
+handlers have been removed (see [historical compatibility](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#historical-compatibility)). The existing
+verified-build and ordinary SVM lanes remain separate requirements.
 
 Ordinary Gateway/Prefunded instructions use Anchor builders and IDLs generated from the same pinned checkout as the
 binaries. These IDLs stay in the temporary run directory, passed to the suite via `SVM_GATEWAY_IDL_DIR`; no private
@@ -52,6 +52,10 @@ pool. Status and payer slots are injected
 because their addresses depend on the relay/root or submitter; the adapter derives their expected addresses.
 Large committed tapes use the Gateway's content-addressed parameter buffer because lookup tables cannot compress
 instruction data. Failed executions leave the buffer available for explicit cleanup.
+
+The [V4-to-V5 coverage inventory](V4_COVERAGE.md) maps every deleted deposit/fill suite guarantee to its replacement,
+including guarded Token-2022 funding, native SOL wrapping, vault/ATA provisioning and two external fills in one
+transaction. Retired selector, sequential-ID and callback semantics are identified separately.
 
 The suite covers StepDelegate and prefunded source deposits, standard deposit identities and witnesses, external and
 in-place destination delivery, first-fill-wins siblings, root mismatch and reuse, account/dispatch rejection, payer
@@ -107,7 +111,8 @@ the committed tape still uses the content-addressed parameter buffer.
 Full-balance approval, `BalanceSub`, and output transfer follow EVM V5 semantics and the same delivery policy:
 every recorded fill's actual output must be covered by proportional or authenticated aggregate delivery. This
 fixture exercises one funded fill with empty initial vaults; other routes must satisfy the same V5 policy.
-See the [adapter delivery requirements](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#legacy-callback-retirement-and-destination-actions).
+See the
+[adapter delivery requirements](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#v4-entrypoint-retirement-and-destination-actions).
 
 Tests verify actual pool reserve movement, recipient delivery, cleared input/output vaults and consumed allowance,
 plus replay rejection. Swap slippage and an unmet post-swap floor are separately submitted as actual failing
@@ -137,20 +142,28 @@ allowance and replay rejection.
 This is coverage of one concrete Raydium route and authority policy, not authorization of every possible JIT child
 tape. Production builders must apply the same V5 delivery policy to every route they support.
 
-## Callback migration and consumer inventory
+## V4 entrypoint migration and consumer inventory
 
-Legacy Spoke fills reject nonempty callback payloads explicitly; V5 witnesses remain required by the adapter.
-The ordinary SVM suite covers inline and buffered parameters, with malformed and well-formed payloads rejected
-identically before parsing. These are two parameter-loading paths, not distinct payload-parsing branches; actual
-failed receipts show no handler invocation. `SvmSpoke.Fill.ts` separately pins `V5FillOnly` for V5-prefixed messages.
-`fakeFillWithRandomDistribution.ts` now exits with a migration message before creating accounts or sending transactions.
+`deposit`, `deposit_now`, `unsafe_deposit`, and `fill_relay` are absent from Spoke dispatch, IDLs, and generated
+clients. Historical selectors fail with `InstructionFallbackNotFound` (101) before argument decoding or account
+validation, regardless of message contents or instruction-parameter buffers. All deposits and fills must use
+`adapter_execute_across_v5` through authenticated Gateway execution. V5 fills still require the relay witness
+`V5_MAGIC_PREFIX || stepId`; destination actions must run as committed Gateway commands following the fill, subject
+to the delivery requirements above.
+
+The ordinary SVM suite's [retirement tests](../svm/SvmSpoke.SlowFillRetirement.ts) check removed selectors with empty
+and padded payloads, unchanged account/token state on rejection, IDL/client exports, historical event decoding,
+and expiry rent reclaim. The [V5 source tests](../svm/SvmSpoke.V5Source.ts) cover authenticated deposits and source
+validation; the [V5 fill tests](../svm/SvmSpoke.V5Fill.ts) cover delivery, witness/commitment checks, replay protection,
+and downstream rollback. [RealGateway.ts](RealGateway.ts) covers the committed destination swap described above.
+The disabled [fake-fill script](../../scripts/svm/fakeFillWithRandomDistribution.ts) exits with a migration message
+before creating accounts or sending transactions.
 
 Standalone consumers retained in this repository are `programs/multicall-handler`, its Anchor deployment entries,
 `test/svm/MulticallHandler.ts`, public `MulticallHandlerCoder`/`AcrossPlusMessageCoder` exports, the program connector,
-and generated MulticallHandler IDLs/clients. Callback rejection tests use the encoders only to construct rejected
-inputs. Public package consumers outside this repository are not enumerable here; removing those exports or closing
-the deployed program is outside this change. Generated artifacts live in ignored `src/svm/assets` and
-`src/svm/clients`; regenerate production assets before test-only IDLs.
+and generated MulticallHandler IDLs/clients. Public package consumers outside this repository are not enumerable
+here; removing those exports or closing the deployed program is outside this change. Generated artifacts live in
+ignored `src/svm/assets` and `src/svm/clients`; regenerate production assets before test-only IDLs.
 
 Follow the [deployment sequence](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#deployment-sequencing) to disable old
 routes and reconcile the in-flight window before upgrading. Production cutover requires API and relayer support

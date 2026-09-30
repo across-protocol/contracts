@@ -22,7 +22,20 @@ for program in programs/*; do
   fi
 
   echo "Running verified build for $program_name"
-  solana-verify build --library-name "$program_name" --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" -- $CARGO_OPTIONS
+  binary="target/deploy/$program_name.so"
+  # Older verifiers can swallow compiler failures and hash a leftover binary instead.
+  rm -f "$binary"
+  if bash scripts/svm/buildHelpers/runSbfBuild.sh solana-verify build --library-name "$program_name" --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" -- $CARGO_OPTIONS; then
+    if [[ ! -s "$binary" ]]; then
+      echo "Verified build failed: missing or empty $binary" >&2
+      rm -f "$binary"
+      exit 1
+    fi
+  else
+    status=$?
+    rm -f "$binary"
+    exit "$status"
+  fi
 
   # We don't need keypair files from the verified build and they cause permission issues on CI when Swatinem/rust-cache
   # tries to delete them.

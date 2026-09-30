@@ -98,6 +98,16 @@ fn v1_wire_and_gateway_dispatch_match_golden_fixture() {
 
     let jit: AcrossDepositJitParams = decode_strict(&jit_bytes).unwrap();
     assert_eq!(serialize(&jit), jit_bytes);
+    assert_eq!(jit_bytes.len(), 129);
+    assert_eq!(jit.signature, array(&fixture, "/jit/signature"));
+
+    let mut literal = input.clone();
+    if let V5AdapterInput::DepositV1(deposit) = &mut literal {
+        deposit.input_amount_mode = V5InputAmountMode::Literal;
+    }
+    let literal_bytes = bytes(&fixture, "/wire/depositInputLiteral");
+    assert_eq!(serialize(&literal), literal_bytes);
+    assert_eq!(serialize(&decode_v5_adapter_input(&literal_bytes).unwrap()), literal_bytes);
 
     let ctx = GatewayContextV1 {
         step_id: array(&fixture, "/context/stepId"),
@@ -262,7 +272,11 @@ fn fill_wire_is_branch_specific() {
     let input = decode_v5_adapter_input(&input_bytes).unwrap();
     assert!(matches!(input, V5AdapterInput::FillV1(_)));
     assert_eq!(serialize(&input), input_bytes);
-    decode_strict::<V5FillJit>(&bytes(&fixture, "/wire/fillJit")).unwrap();
+    let jit_bytes = bytes(&fixture, "/wire/fillJit");
+    let jit = decode_strict::<V5FillJit>(&jit_bytes).unwrap();
+    assert_eq!(jit.relay_data.message, bytes(&fixture, "/fill/witness"));
+    assert_eq!(serialize(&jit), jit_bytes);
+    assert_eq!(serialize(&jit.relay_data), jit_bytes[..jit_bytes.len() - 40]);
     assert!(decode_strict::<V5FillJit>(&bytes(&fixture, "/wire/depositJit")).is_err());
 }
 

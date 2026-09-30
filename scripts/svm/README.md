@@ -8,6 +8,11 @@ Install dependencies with `yarn install --frozen-lockfile`, build with `yarn bui
 
 Set `ANCHOR_PROVIDER_URL` to the desired Solana RPC and `ANCHOR_WALLET` to a funded Solana keypair file, or supply Anchor's `--provider.cluster` and `--provider.wallet` options. The existing network resolver expects `devnet` or `mainnet` in the RPC URL; it selects the corresponding deployed program IDs and Circle Iris endpoint. Use the upgraded CCTP V2 spoke deployment. The production state seed is `0`.
 
+V5 Spoke/Gateway flows have no configured public-devnet deployment or supporting offchain infrastructure. The retained
+devnet Spoke address is a legacy deployment, not a V5 target. These scripts resolve addresses from the deployment registry
+independently of `Anchor.toml`; removing its devnet Spoke entry does not disable devnet script access. Other devnet tooling,
+including sponsored CCTP scripts and Circle IDL fetching, is retained.
+
 ## Finalize an existing root/admin message or token transfer
 
 ```sh
@@ -65,9 +70,14 @@ This requires `MNEMONIC` and the matching `NODE_URL_*`. Both scripts print the s
 
 ## Intent examples and retained token transfers
 
-`simpleFill` and `fakeFillWithRandomDistribution` use `originChainId` as the repayment chain, including when deriving the fill delegate PDA. Both require `--repaymentAddress` for that origin chain (EVM hex or Solana base58); it is separate from the Solana transaction signer.
+The legacy `simpleDeposit`, `nativeDeposit`, and `simpleFill` scripts and Anchor aliases are removed alongside the
+V4 deposit/fill entrypoints. `fakeFillWithRandomDistribution` remains a migration notice that exits without sending
+transactions. Build V5 intents through Gateway; see the [adapter specification](../../programs/svm-spoke/V5_ADAPTER_SPEC.md)
+and [reference Gateway integration](../../test/svm-gateway/README.md).
 
-`simpleFakeRelayerRepayment` is a test fixture: it deposits local tokens, creates a synthetic refund root and repays on Solana with `amountToReturn = 0`. It needs local spoke admin authority and is not a production bundle-construction script.
+`simpleFakeRelayerRepayment` is a test fixture: it transfers local tokens directly into the spoke vault (creating its ATA if needed),
+creates a synthetic refund root and repays on Solana with `amountToReturn = 0`. It needs local spoke admin authority
+and is not a production bundle-construction script. It does not create an Across deposit.
 
 There are no HubPool-to-spoke rebalance scripts because Solana is a light chain. Independent token transfers are supported: `SponsoredCctpSrc/*` uses CCTP V2 and provides deposit-for-burn, EVM receive, event-account reclamation and nonce/rent operations.
 
