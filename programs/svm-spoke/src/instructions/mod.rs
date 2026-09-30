@@ -6,7 +6,6 @@ mod fill;
 mod handle_receive_message;
 mod instruction_params;
 mod refund_claims;
-mod slow_fill;
 mod v5_adapter;
 mod v5_fill_status;
 
@@ -18,6 +17,5 @@ pub use fill::*;
 pub use handle_receive_message::*;
 pub use instruction_params::*;
 pub use refund_claims::*;
-pub use slow_fill::*;
 pub use v5_adapter::*;
 pub use v5_fill_status::*;

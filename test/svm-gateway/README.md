@@ -36,8 +36,9 @@ setting in `pr.yml`. If the Gateway's separate Anchor CLI is downloaded as a rel
 reviewed, pinned SHA-256 checksum (`sha256sum -c`) before execution; a versioned download URL is not an integrity check.
 
 This is a V5 integration test binary, not a verified production release build. The pinned compiler currently reports
-oversized account-validation stack frames in the unchanged legacy `FillRelay` and `ExecuteSlowRelayLeaf` handlers;
-this lane does not exercise or certify those handlers. The existing verified-build and ordinary SVM lanes remain
+an oversized account-validation stack frame in the legacy `FillRelay` handler;
+this lane does not exercise or certify that handler. Slow-fill handlers have been removed (see
+[historical compatibility](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#historical-compatibility)). The existing verified-build and ordinary SVM lanes remain
 separate requirements.
 
 Ordinary Gateway/Prefunded instructions use Anchor builders and IDLs generated from the same pinned checkout as the

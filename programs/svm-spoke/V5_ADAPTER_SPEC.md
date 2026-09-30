@@ -151,7 +151,9 @@ V5 fills (legacy fills continue to store their relayer), binding permissionless 
 rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
 relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. As on EVM, V5-tagged relays are quarantined
-from the slow-fill lifecycle, so their fill status can only transition directly from an uninitialized PDA to `Filled`.
+from legacy fill handling, so their fill status can only transition directly from an uninitialized PDA to `Filled`.
+Slow-fill request and execution entrypoints are retired for all relays. Existing legacy requested accounts and
+historical event slots remain compatible as described in [historical compatibility](#historical-compatibility).
 
 Token-2022 mint extensions fail closed. Wire version 1 permits only mint-close authority and metadata/group pointer
 or data extensions. Transfer fees remain excluded until debit/delivery delta semantics are defined; transfer hooks,
@@ -159,6 +161,34 @@ permanent delegates, default-frozen accounts, and all other extensions remain di
 semantics are explicitly reviewed and validator-tested. This gate covers mint extensions only. Account-side guards
 relevant to this path, such as source CPI guard or destination memo requirements, fail the token transfer rather than
 altering accounting.
+
+## Historical compatibility
+
+`request_slow_fill` and `execute_slow_relay_leaf` are absent from dispatch, the public IDL, and generated clients.
+Their historical selectors fail with `InstructionFallbackNotFound` (101) before account validation.
+`FillStatus` retains `Unfilled = 0`, `RequestedSlowFill = 1`, and `Filled = 2`; no supported instruction creates
+`RequestedSlowFill`. Account layouts and enum positions must remain stable for existing accounts.
+
+An existing requested relay may still receive a legacy fast fill before its deadline, subject to the normal
+legacy fill checks. Success records `Filled`, updates the rent recipient to the submitting relayer, and emits
+`ReplacedSlowFill`; replay fails and transaction failure rolls back the transfer and status change. V5-tagged
+relays require the V5 adapter and create a new status account directly as `Filled`.
+
+Historical `RequestedSlowFill` and `FilledRelay` events remain decodable. `FillType` retains `FastFill = 0`,
+`ReplacedSlowFill = 1`, and `SlowFill = 2`; `SlowFill` is historical only.
+Retired slow-fill error slots remain reserved so later Common error assignments do not shift.
+Indexers must check transaction success before accepting events.
+
+`RootBundle` retains both roots and its refund-claim bitmap. The two-root admin payload still accepts nonzero
+`slow_relay_root`: HubPool shares that root across chains, so it may contain other destinations' slow fills.
+Rejecting it would also block the accompanying refund root. Solana stores and emits it but cannot execute it.
+No account or two-root admin-message migration is required. Historical instruction-parameter buffers remain
+closable by their creator through `close_instruction_params` without decoding the retired parameter types.
+
+After the recorded deadline, anyone may call `close_fill_pda`; rent goes only to the recorded recipient.
+Closing the PDA reclaims rent, not the deposit. Unfilled expired deposits follow the dataworker-driven origin-chain
+refund process; there is no destination slow-fill fallback. `scripts/svm/closeRelayerPdas.ts` discovers only
+`FilledRelay` events, so never-filled requests need separate discovery before submitting the permissionless close.
 
 ## Enabled source-deposit behavior
 
@@ -212,3 +242,17 @@ authenticate all JIT variants of an aggregate production route. The canonical re
 single-fill template. `fixtures/v5_gateway_path.json` additionally pins Borsh consumption-tape bytes, path hashes,
 sorted sibling roots and witnesses across TypeScript, Rust and Solidity. Its placeholder keys are hashing fixtures,
 not deployed token accounts. See [the lane guide](../../test/svm-gateway/README.md) for execution and companion docs.
+
+## Deployment sequencing
+
+Before deploying slow-fill retirement as part of the Lite-chain upgrade, verify the active dataworker and
+configuration exclude Solana slow fills. The SDK excludes slow fills to/from Lite chains and requires token
+equivalence through pool-rebalance routes. Lite-chain classification uses each deposit's quote timestamp;
+today's classification does not establish that older deposits were excluded.
+
+Reconcile older requests and bundles, including funded slow-fill leaves, pending return liabilities, and vault
+balances. Settle remaining obligations before removing their execution/return paths, or use a separately reviewed
+recovery procedure. The combined upgrade rejects nonzero `amount_to_return` and removes
+`bridge_tokens_to_hub_pool`, so ordinary return processing cannot recover residual Solana funds afterward.
+An origin-chain expiry refund does not itself return excess Solana vault funds. Compatibility tests do not
+establish that the live in-flight window is empty.
