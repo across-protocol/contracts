@@ -68,7 +68,7 @@ async function main() {
   const foreignAnchor = process.env.SVM_GATEWAY_ANCHOR || "anchor";
   const gatewayIdlDir = path.join(work, "idl");
   mkdirSync(gatewayIdlDir);
-  for (const name of ["gateway", "prefunded_adapter"]) {
+  for (const name of ["gateway", "prefunded_adapter", "authority_requirement_planner"]) {
     run(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl"], checkout);
     run(
       foreignAnchor,
@@ -105,6 +105,9 @@ async function main() {
   ]);
 
   const spokeId = JSON.parse(readFileSync("target/idl/svm_spoke.json", "utf8")).address;
+  const plannerId = JSON.parse(
+    readFileSync(path.join(gatewayIdlDir, "authority_requirement_planner.json"), "utf8")
+  ).address;
   const walletPath = path.resolve("test/svm/keys/localnet-wallet.json");
   const wallet = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(walletPath, "utf8"))));
   const rpcPort = await freePort();
@@ -140,6 +143,10 @@ async function main() {
       "--upgradeable-program",
       PREFUNDED.toBase58(),
       path.join(checkout, "target/deploy/prefunded_adapter.so"),
+      wallet.publicKey.toBase58(),
+      "--upgradeable-program",
+      plannerId,
+      path.join(checkout, "target/deploy/authority_requirement_planner.so"),
       wallet.publicKey.toBase58(),
       "--upgradeable-program",
       spokeId,
@@ -190,6 +197,7 @@ async function main() {
         "1000000",
         "test/svm-gateway/PathVectors.ts",
         "test/svm-gateway/RealGateway.ts",
+        ...process.argv.slice(2),
       ],
       {
         stdio: "inherit",

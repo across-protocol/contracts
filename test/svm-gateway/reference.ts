@@ -13,6 +13,8 @@ export const OP = {
   BALANCE_REQ: 0x00,
   CALL: 0x08,
   ADAPTER_CALL: 0x0a,
+  PLAN_FROM_JIT: 0x0d,
+  PLAN_FROM_PLANNER: 0x0e,
   APPROVE: 0x10,
   TRANSFER: 0x11,
   JIT: 0x40,
@@ -82,6 +84,11 @@ export const depositInput = (d: Deposit) =>
   );
 export type Path = { chainId: bigint; salt: Buffer; message: Buffer };
 export const pathId = (p: Path) => hash(Buffer.concat([word(p.chainId), p.salt, GATEWAY.toBuffer(), hash(p.message)]));
+// AuthorityRequirementPlanner's raw digest: domain, live path, plan slot and child tape.
+export const authorityPlanDigest = (p: Path, planId: number, payload: Buffer) => {
+  const domain = hash(Buffer.concat([hash(Buffer.from("ACXV.AuthorityRequirementPlanner.V1")), GATEWAY.toBuffer()]));
+  return hash(Buffer.concat([domain, pathId(p), word(BigInt(planId)), hash(payload)]));
+};
 export const pair = (a: Buffer, b: Buffer) => hash(Buffer.concat(Buffer.compare(a, b) < 0 ? [a, b] : [b, a]));
 export const executeParams = (path: Path, root: Buffer, proof: Buffer[], jit: Buffer[], funding: Buffer[]) =>
   Buffer.concat([

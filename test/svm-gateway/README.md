@@ -1,8 +1,8 @@
 # SVM V5 real-Gateway conformance
 
-Run `yarn test-svm-gateway`. It builds Gateway and PrefundedAdapter from the immutable `GATEWAY_COMMIT` in
+Run `yarn test-svm-gateway`. It builds Gateway, PrefundedAdapter and AuthorityRequirementPlanner from `GATEWAY_COMMIT` in
 `reference.ts`, builds this checkout's SpokePool with `--features test`, generates test IDLs, and starts
-an isolated validator with Gateway, PrefundedAdapter, SpokePool and Raydium CPMM loaded as upgradeable programs.
+an isolated validator with those programs, SpokePool and Raydium CPMM loaded as upgradeable programs.
 It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
@@ -21,6 +21,7 @@ yarn test-svm-gateway
 `SVM_GATEWAY_CHECKOUT` may point to an existing clean checkout at the exact pin to avoid another clone. Builds still
 run; arbitrary prebuilt binaries are not accepted as conformance evidence. Dependency downloads and local validator
 ports require network permission in sandboxed environments.
+Pass Mocha filters through the runner, e.g. `yarn test-svm-gateway --grep 'JIT Raydium'`, for focused validation.
 
 The current runner needs access to the pinned `solana-v5` checkout, so run this lane locally with existing repository
 access; do not add a cross-repository credential to `contracts` CI. Ordinary PR checks run
@@ -98,7 +99,7 @@ the pool, deposits equal reserves of two fresh six-decimal SPL mints, and execut
 No swap mock, mainnet balances, production keys, or external liquidity is used. The fixture gives the swap signer
 SPL delegate authority while the token-account owner remains the distinct Gateway vault authority.
 
-The committed tape is `Spoke ADAPTER_CALL(Fill) → APPROVE → CALL(swap_base_input) → BALANCE_REQ(output) →
+The fixed-route committed tape is `Spoke ADAPTER_CALL(Fill) → APPROVE → CALL(swap_base_input) → BALANCE_REQ(output) →
 TRANSFER(all output, committed recipient)`. `BalanceSub` patches the entire live input balance into the swap.
 Submitter funding occurs in the same Gateway execution. A lookup table carries the combined program accounts;
 the committed tape still uses the content-addressed parameter buffer.
@@ -112,6 +113,28 @@ Tests verify actual pool reserve movement, recipient delivery, cleared input/out
 plus replay rejection. Swap slippage and an unmet post-swap floor are separately submitted as actual failing
 transactions; pool state, reserves, user funding, fill status and payer float must all roll back. The existing
 payer reclaim/withdrawal and V5 witness tests remain in the suite.
+
+### JIT swap and signed quality requirement
+
+The auction-shaped fixture commits `Spoke ADAPTER_CALL(Fill) → PLAN_FROM_JIT → BALANCE_REQ(user minimum) →
+PLAN_FROM_PLANNER(quality) → TRANSFER(all output, committed recipient)`. Only after the origin deposit commits that
+destination path does the fixture build the swap route and sign the quality quote. The JIT child tape contains
+`APPROVE → CALL(swap_base_input)`; its own JIT queue is empty. The parent queue supplies three independent items:
+the Spoke fill data, the child-plan envelope, and the signed planner envelope.
+
+The parent commits the requirements-only planner, a secp256k1 authority and a plan slot. The authority signs a
+child tape containing a stricter output `BALANCE_REQ`; its digest binds the planner domain, Gateway, live path ID,
+plan slot and child-tape hash. The real planner verifies the signature and restricts the returned commands to
+requirements; Gateway enforces the returned floor before the parent transfers output to the committed recipient.
+The signer is generated only for this local fixture. Planner binaries and IDLs come from the same immutable
+Gateway checkout, and the program address is read from its generated IDL.
+
+The same committed path rejects swap slippage, an empty swap plan below the user's floor, a valid signed quote
+whose quality floor is not met, a modified quote, and signatures for another path or plan slot. Each failed
+transaction proves rollback of funding, pool state, fill status and payer rent. The successful route proves
+actual reserve movement, both floors, full recipient delivery, consumed delegate allowance and replay rejection.
+This is coverage of one concrete Raydium route and authority policy, not authorization of every possible JIT child
+tape. Production builders must apply the same V5 delivery policy to every route they support.
 
 ## Callback migration and consumer inventory
 
@@ -131,5 +154,5 @@ the deployed program is outside this change. Generated artifacts live in ignored
 Follow the [deployment sequence](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#deployment-sequencing) to disable old
 routes and reconcile the in-flight window before upgrading. Production cutover requires API and relayer support
 for the replacement path and validation of the exact supported swap instruction/version. Owner-bound venues need
-their own reviewed staging adapter. This fixture does not enable
-arbitrary JIT swaps, separate-auction prefunded chaining, or aggregate fills.
+their own reviewed staging adapter. The tested JIT route does not enable arbitrary swap programs,
+separate-auction prefunded chaining, or aggregate fills.
