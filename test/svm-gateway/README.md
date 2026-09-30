@@ -130,9 +130,10 @@ The signer is generated only for this local fixture. Planner binaries and IDLs c
 Gateway checkout, and the program address is read from its generated IDL.
 
 The same committed path rejects swap slippage, an empty swap plan below the user's floor, a valid signed quote
-whose quality floor is not met, a modified quote, and signatures for another path or plan slot. Each failed
-transaction proves rollback of funding, pool state, fill status and payer rent. The successful route proves
-actual reserve movement, both floors, full recipient delivery, consumed delegate allowance and replay rejection.
+whose quality floor is not met, a modified quote, a weaker quote signed by another key, and signatures for another
+path or plan slot. Each failed transaction proves rollback of funding, pool state, fill status and payer rent.
+The successful route proves actual reserve movement, both floors, full recipient delivery, consumed delegate
+allowance and replay rejection.
 This is coverage of one concrete Raydium route and authority policy, not authorization of every possible JIT child
 tape. Production builders must apply the same V5 delivery policy to every route they support.
 

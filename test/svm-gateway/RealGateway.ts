@@ -596,23 +596,23 @@ describe("SVM V5 with the pinned real Gateway", () => {
       },
       transfer(fixture.outputMint, recipient),
     ]);
-    const committed = pathId(dst);
-    const relay = await origin(committed);
+    const relay = await origin(pathId(dst));
     // Route calldata and the quality quote arrive after the destination commitment.
     const swapPlan = async (minOut: bigint) =>
       Buffer.concat([vec(tape([approve(mint, executorAuthority), await fixture.swap(minOut)])), vec(jitQueue([]))]);
     const requirement = (value: bigint) => tape([floor(fixture.outputMint, value)]);
-    const sign = (payload: Buffer, signedPath = dst, signedPlanId = planId) =>
+    const sign = (payload: Buffer, signedPath = dst, signedPlanId = planId, signer = authority) =>
       Buffer.from(
         ethers.utils.arrayify(
           ethers.utils.joinSignature(
-            authority._signingKey().signDigest(authorityPlanDigest(signedPath, signedPlanId, payload))
+            signer._signingKey().signDigest(authorityPlanDigest(signedPath, signedPlanId, payload))
           )
         )
       );
     const envelope = (payload: Buffer, signature = sign(payload)) =>
       Buffer.concat([vec(payload), vec(signature), vec(jitQueue([]))]);
     const payload = requirement(quality);
+    const weaker = requirement(0n);
     const signedQuality = envelope(payload);
     const route = await swapPlan(0n);
     const extra = [
@@ -651,7 +651,15 @@ describe("SVM V5 with the pinned real Gateway", () => {
         false,
       ],
       ["quality floor", route, envelope(requirement(impossible)), "BalanceRequirementNotMet", true, true],
-      ["tampered quality", route, envelope(requirement(0n), sign(payload)), "InvalidAuthoritySignature", true, true],
+      ["tampered quality", route, envelope(weaker, sign(payload)), "InvalidAuthoritySignature", true, true],
+      [
+        "other signer",
+        route,
+        envelope(weaker, sign(weaker, dst, planId, ethers.Wallet.createRandom())),
+        "InvalidAuthoritySignature",
+        true,
+        true,
+      ],
       [
         "other path",
         route,
@@ -688,7 +696,6 @@ describe("SVM V5 with the pinned real Gateway", () => {
       );
       assert.equal(failedReceipt!.attemptedEvents.filter((e) => e.name === "filledRelay").length, 1, name);
       assert.deepEqual(await connection.getMultipleAccountsInfo(watched), before, `${name}: atomic rollback`);
-      assert.deepEqual(pathId(dst), committed, "changing the route/quote never changes the committed parent");
     }
     const jit = [relayJit(relay), route, signedQuality];
     const { signature } = await execute(dst, { ...opts, jit });
