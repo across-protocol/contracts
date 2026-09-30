@@ -80,6 +80,19 @@ Anchor crates 0.32.1, and Solana platform-tools v1.52. Gateway/PrefundedAdapter 
 the runner still builds it with its committed Cargo.lock. This proves the pinned source fixture, not equivalence
 to a currently deployed mainnet binary or universal Jupiter/DEX compatibility.
 
+The retained [Raydium IDL](fixtures/raydium_cp_swap.244e1241.json) is generated from that same source pin.
+Anchor builders construct `initialize` and `swapBaseInput`; the IDL account coder encodes the genesis `AmmConfig`.
+Gateway meta flags are derived from the built instruction. Gateway tape and `BalanceSub` encoding remain local;
+the fixture checks that the pinned IDL places the first `u64` argument, `amount_in`, after its eight-byte discriminator.
+When updating `SWAP_COMMIT`, regenerate the IDL in the matching Raydium checkout with Anchor 0.32.1:
+
+```sh
+anchor idl build --program-name raydium_cp_swap --out /tmp/raydium_cp_swap.json -- --locked
+```
+
+Copy that output to the versioned fixture and update its import. The complete IDL is retained without hand edits;
+ordinary runs use it without invoking Raydium's toolchain selection or adding a Raydium SDK dependency.
+
 Genesis seeds only a local AmmConfig (0.25% trade fee, no other fees) and pool-fee receiver. The real program creates
 the pool, deposits equal reserves of two fresh six-decimal SPL mints, and executes `swap_base_input`.
 No swap mock, mainnet balances, production keys, or external liquidity is used. The fixture gives the swap signer

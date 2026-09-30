@@ -468,7 +468,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       const dst = path([
         fillCommand(),
         approve(mint, executorAuthority),
-        fixture.swap(failure === "swap" ? impossible : 0n),
+        await fixture.swap(failure === "swap" ? impossible : 0n),
         floor(fixture.outputMint, failure === "floor" ? impossible : minimum),
         transfer(fixture.outputMint, recipient),
       ]);

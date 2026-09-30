@@ -128,7 +128,7 @@ async function main() {
       "--quiet",
       "--mint",
       wallet.publicKey.toBase58(),
-      ...swapGenesis(work),
+      ...(await swapGenesis(work)),
       "--upgradeable-program",
       SWAP_PROGRAM.toBase58(),
       path.join(swapCheckout, "target/deploy/raydium_cp_swap.so"),
