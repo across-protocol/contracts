@@ -105,7 +105,9 @@ For CCTP V2 root/admin finalization, pause recovery and light-chain intent examp
 
 Before deploying for the first time make sure all program IDs in `lib.rs` and `Anchor.toml` are the same as listed when running `anchor keys list`. If not, update them to match the deployment keypairs under `target/deploy/` and commit the changes.
 
-Make sure to use the verified docker binaries that can be built:
+Use `solana-verify` 0.5.1, matching CI, to build the verified Docker binaries. The build removes each
+previous binary before compilation and rejects missing or empty output; failed builds must not be used for deployment.
+Keep the stack-diagnostic guard enabled, since SBF compilers can report stack overflows with a successful exit status.
 
 ```shell
 unset IS_TEST # Ensures the production build is used (not the test feature)

@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { spawnSync } from "child_process";
-import { mkdtempSync, readdirSync, rmSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 
@@ -56,4 +56,94 @@ describe("SBF build diagnostic guard", () => {
     assert.equal(result.status, 7);
     assert.include(result.stdout, "compilation failed");
   });
+});
+
+describe("Verified SBF build artifacts", () => {
+  const helper = path.resolve("scripts/svm/buildHelpers/buildSolanaVerify.sh");
+  const guard = path.resolve("scripts/svm/buildHelpers/runSbfBuild.sh");
+
+  function runBuild(mode: string, isTest = false) {
+    const work = mkdtempSync(path.join(tmpdir(), "svm-verified-build-"));
+    try {
+      for (const directory of [
+        "bin",
+        "programs/svm-spoke",
+        "programs/mock-gateway",
+        "scripts/svm/buildHelpers",
+        "target/deploy",
+      ]) {
+        mkdirSync(path.join(work, directory), { recursive: true });
+      }
+      copyFileSync(guard, path.join(work, "scripts/svm/buildHelpers/runSbfBuild.sh"));
+      writeFileSync(path.join(work, "Cargo.lock"), '[[package]]\nname = "solana-program"\nversion = "2.2.1"\n');
+      writeFileSync(path.join(work, "target/deploy/svm_spoke.so"), "stale binary");
+      writeFileSync(
+        path.join(work, "bin/solana-verify"),
+        `#!/usr/bin/env bash
+set -eu
+binary="target/deploy/$3.so"
+if [[ -e "$binary" ]]; then
+  echo "stale artifact reached verifier" >&2
+  exit 99
+fi
+printf '%s\\n' "$*" >> calls
+case "$BUILD_MODE" in
+  swallowed) echo "error: compilation failed" >&2 ;;
+  empty) touch "$binary" ;;
+  failure) echo partial > "$binary"; exit 7 ;;
+  stack) echo partial > "$binary"; echo "Stack offset of 4752 exceeded max offset of 4096" >&2 ;;
+  success) echo fresh > "$binary" ;;
+esac
+`,
+        { mode: 0o755 }
+      );
+      const result = spawnSync("bash", [helper], {
+        cwd: work,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${work}/bin:${process.env.PATH}`,
+          CI: "false",
+          IS_TEST: String(isTest),
+          BUILD_MODE: mode,
+        },
+      });
+      if (result.error) throw result.error;
+      const binary = path.join(work, "target/deploy/svm_spoke.so");
+      return {
+        ...result,
+        binary: existsSync(binary) ? readFileSync(binary, "utf8") : undefined,
+        calls: readFileSync(path.join(work, "calls"), "utf8"),
+      };
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+    }
+  }
+
+  for (const [mode, status] of [
+    ["swallowed", 1],
+    ["empty", 1],
+    ["failure", 7],
+    ["stack", 1],
+  ] as const) {
+    it(`rejects ${mode} builds and leaves no deployable output`, () => {
+      const result = runBuild(mode);
+      assert.equal(result.status, status, result.stdout + result.stderr);
+      assert.isUndefined(result.binary);
+    });
+  }
+
+  for (const isTest of [false, true]) {
+    it(`accepts fresh ${isTest ? "test" : "production"} binaries with the intended programs and features`, () => {
+      const result = runBuild("success", isTest);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.equal(result.binary, "fresh\n");
+      assert.include(
+        result.calls,
+        "--library-name svm_spoke --base-image solanafoundation/solana-verifiable-build:2.2.1 --"
+      );
+      assert.equal(result.calls.includes("--library-name mock_gateway"), isTest);
+      assert.equal(result.calls.includes("--features test"), isTest);
+    });
+  }
 });
