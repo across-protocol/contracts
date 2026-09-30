@@ -109,6 +109,11 @@ secp256k1 `r[32] || s[32] || v[1]`, accept
 only `v` 27 or 28, require low `s`, recover an uncompressed public key, and compare the last 20 bytes of its Keccak
 hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v` 0/1 encodings are unsupported.
 
+Like EVM `unsafeDeposit`, source execution does not consume deposit IDs. Re-executing the same source path with
+the same submitter, depositor, and nonce can transfer fresh funds under the same ID; identical relay data can only
+be filled once. Builders must use a fresh source path salt or deposit nonce for each newly funded order.
+Funding authorization replay protection is separate; destination roots may be reused across distinct deposits.
+
 ## PDA and token invariants
 
 - Deposit delegate: `["v5_deposit_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
