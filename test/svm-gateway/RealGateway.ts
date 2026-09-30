@@ -10,6 +10,10 @@ import {
 } from "@solana/spl-token";
 import {
   AccountMeta,
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
+  TransactionMessage,
+  VersionedTransaction,
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
@@ -19,9 +23,11 @@ import {
 } from "@solana/web3.js";
 import { assert } from "chai";
 import { createHash, randomBytes } from "crypto";
+import { ethers } from "ethers";
 import { readFileSync } from "fs";
 import nodePath from "path";
 import { calculateRelayHashUint8Array, processEventFromTx, readEventsUntilFound } from "../../src/svm/web3-v1";
+import { createSwapFixture, SWAP_PROGRAM } from "./swapFixture";
 import { RelayData } from "../../src/types/svm";
 import { common } from "../svm/SvmSpoke.common";
 import {
@@ -34,6 +40,7 @@ import {
   Meta,
   Path,
   approve,
+  authorityPlanDigest,
   assertAggregateDelivery,
   call,
   canonicalInPlace,
@@ -46,6 +53,7 @@ import {
   funding,
   hash,
   injected,
+  jitQueue,
   meta,
   pair,
   pathId,
@@ -60,15 +68,16 @@ import {
 describe("SVM V5 with the pinned real Gateway", () => {
   anchor.setProvider(common.provider);
   const { provider, connection, owner, program: spoke, initializeState, chainId, setCurrentTime } = common;
-  const loadProgram = (name: string, expectedAddress: PublicKey) => {
+  const loadProgram = (name: string, expectedAddress?: PublicKey) => {
     const directory = process.env.SVM_GATEWAY_IDL_DIR;
     if (!directory) throw new Error("Run through yarn test-svm-gateway to generate the pinned IDLs");
     const idl = JSON.parse(readFileSync(nodePath.join(directory, `${name}.json`), "utf8")) as anchor.Idl;
-    assert.equal(idl.address, expectedAddress.toBase58(), "IDL must match the pinned program");
+    if (expectedAddress) assert.equal(idl.address, expectedAddress.toBase58(), "IDL must match the pinned program");
     return new anchor.Program(idl, provider);
   };
   const gateway = loadProgram("gateway", GATEWAY);
   const prefundedAdapter = loadProgram("prefunded_adapter", PREFUNDED);
+  const qualityPlanner = loadProgram("authority_requirement_planner");
   const wallet = (provider.wallet as anchor.Wallet).payer;
   const depositor = Keypair.generate();
   const writable = (pubkey: PublicKey): AccountMeta => ({ pubkey, isWritable: true, isSigner: false });
@@ -95,8 +104,57 @@ describe("SVM V5 with the pinned real Gateway", () => {
   let recipient: PublicKey, recipientAta: PublicKey, now: number;
   const ix = (programId: PublicKey, name: string, data: Buffer, keys: AccountMeta[]) =>
     new TransactionInstruction({ programId, keys, data: Buffer.concat([discriminator(name), data]) });
-  const send = (...instructions: TransactionInstruction[]) =>
-    provider.sendAndConfirm(new Transaction().add(...instructions));
+  async function sendTransaction(tx: Transaction | VersionedTransaction) {
+    try {
+      return await provider.sendAndConfirm(tx);
+    } catch (error) {
+      // Older Anchor clients can lose the logs when wrapping a failed receipt.
+      const signature = tx instanceof VersionedTransaction ? tx.signatures[0] : tx.signature;
+      if (signature?.some((byte) => byte !== 0)) {
+        const receipt = await connection.getTransaction(anchor.utils.bytes.bs58.encode(signature), {
+          commitment: "confirmed",
+          maxSupportedTransactionVersion: 0,
+        });
+        if (receipt?.meta?.err) throw new Error(receipt.meta.logMessages?.join("\n") ?? String(error));
+      }
+      throw error;
+    }
+  }
+  async function confirmedReceipt(signature: string) {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const receipt = await connection.getTransaction(signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+      if (receipt) return receipt;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`Confirmed receipt unavailable: ${signature}`);
+  }
+  const send = (...instructions: TransactionInstruction[]) => sendTransaction(new Transaction().add(...instructions));
+  async function createLookupTable(accounts: AccountMeta[]) {
+    const [createTable, tableKey] = AddressLookupTableProgram.createLookupTable({
+      authority: owner,
+      payer: owner,
+      recentSlot: (await connection.getSlot("confirmed")) - 1,
+    });
+    await send(createTable);
+    const addresses = [...new Map(accounts.map((m) => [m.pubkey.toBase58(), m.pubkey])).values()];
+    for (let offset = 0; offset < addresses.length; offset += 20)
+      await send(
+        AddressLookupTableProgram.extendLookupTable({
+          lookupTable: tableKey,
+          authority: owner,
+          payer: owner,
+          addresses: addresses.slice(offset, offset + 20),
+        })
+      );
+    const extended = (await connection.getAddressLookupTable(tableKey)).value!;
+    // The validator's transaction scheduler must also see the table, not only simulation's bank.
+    while ((await connection.getSlot("finalized")) <= extended.state.lastExtendedSlot)
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    return (await connection.getAddressLookupTable(tableKey, { commitment: "finalized" })).value!;
+  }
   const status = (relay: RelayData) =>
     pda(spoke.programId, Buffer.from("fills"), Buffer.from(calculateRelayHashUint8Array(relay, chainId)));
   const path = (commands: Command[], salt = randomBytes(32)): Path => ({
@@ -167,6 +225,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       extra?: AccountMeta[];
       accounts?: AccountMeta[];
       failed?: boolean;
+      lookupTable?: AddressLookupTableAccount;
     } = {}
   ) {
     const relays = opts.relays ?? [];
@@ -211,11 +270,18 @@ describe("SVM V5 with the pinned real Gateway", () => {
         })
         .remainingAccounts([...(opts.accounts ?? remaining(relays)), ...(opts.extra ?? [])])
         .instruction();
+      const instructions = [ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction];
+      const recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      const tx = opts.lookupTable
+        ? new VersionedTransaction(
+            new TransactionMessage({ payerKey: owner, recentBlockhash, instructions }).compileToV0Message([
+              opts.lookupTable,
+            ])
+          )
+        : new Transaction({ feePayer: owner, recentBlockhash }).add(...instructions);
       if (opts.failed) {
-        const tx = new Transaction().add(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction);
-        tx.feePayer = owner;
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-        tx.sign(wallet);
+        if (tx instanceof VersionedTransaction) tx.sign([wallet]);
+        else tx.sign(wallet);
         const signature = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
         await connection.confirmTransaction(signature, "confirmed");
         let receipt = await connection.getTransaction(signature, {
@@ -239,7 +305,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
           },
         };
       }
-      const signature = await send(ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 }), instruction);
+      const signature = await sendTransaction(tx);
       assert.isNull(await connection.getAccountInfo(buffer), "successful execution closes parameter buffer");
       return { signature };
     } finally {
@@ -421,6 +487,236 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await mintTo(connection, wallet, mint, userAta, wallet, amount * 10n);
     await mintTo(connection, wallet, mint, depositAta, wallet, amount * 10n);
     await send(SystemProgram.transfer({ fromPubkey: owner, toPubkey: fillPayer, lamports: 10_000_000 }));
+  });
+
+  for (const failure of [undefined, "swap", "floor"] as const) {
+    it(`Across fill then real Raydium CPMM swap: ${failure ?? "delivery and replay"}`, async () => {
+      const executorAuthority = pda(GATEWAY, Buffer.from("executor_authority"));
+      const fixture = await createSwapFixture(
+        provider,
+        wallet,
+        mint,
+        vault,
+        vaultAuthority,
+        executorAuthority,
+        recipient
+      );
+      const minimum = (amount * 9n) / 10n;
+      const impossible = 2_000_000_000n;
+      const dst = path([
+        fillCommand(),
+        approve(mint, executorAuthority),
+        await fixture.swap(failure === "swap" ? impossible : 0n),
+        floor(fixture.outputMint, failure === "floor" ? impossible : minimum),
+        transfer(fixture.outputMint, recipient),
+      ]);
+      const relay = await origin(pathId(dst));
+      const lookupTable = await createLookupTable([...remaining([relay]), ...fixture.extra]);
+      const watched = [
+        vault,
+        fixture.outputVault,
+        fixture.recipientAta,
+        fixture.poolInput,
+        fixture.poolOutput,
+        fixture.pool,
+        fixture.observation,
+        fillPayer,
+        status(relay),
+        userAta,
+      ];
+      const before = await connection.getMultipleAccountsInfo(watched);
+      const opts = {
+        relays: [relay],
+        extra: fixture.extra,
+        lookupTable,
+        funds: [funding(userAta, mint, amount, undefined)],
+      };
+      if (failure) {
+        const { failedReceipt } = await execute(dst, { ...opts, failed: true });
+        assert.include(
+          failedReceipt!.logs.join("\n"),
+          failure === "swap" ? "ExceededSlippage" : "BalanceRequirementNotMet"
+        );
+        assert.isTrue(failedReceipt!.logs.some((log) => log.startsWith(`Program ${SWAP_PROGRAM} invoke`)));
+        assert.equal(failedReceipt!.attemptedEvents.filter((e) => e.name === "filledRelay").length, 1);
+        assert.deepEqual(
+          await connection.getMultipleAccountsInfo(watched),
+          before,
+          "funding, pool swap, fill and payer changes roll back"
+        );
+      } else {
+        const { signature } = await execute(dst, opts);
+        await filled(relay);
+        const delivered = (await getAccount(connection, fixture.recipientAta)).amount;
+        assert.isTrue(delivered >= minimum);
+        assert.equal((await getAccount(connection, fixture.poolInput)).amount, 1_000_000_000n + amount);
+        assert.equal((await getAccount(connection, fixture.poolOutput)).amount, 1_000_000_000n - delivered);
+        assert.equal((await getAccount(connection, fixture.outputVault)).amount, 0n);
+        const inputAccount = await getAccount(connection, vault);
+        assert.equal(inputAccount.amount, 0n);
+        assert.isTrue(inputAccount.owner.equals(vaultAuthority));
+        assert.isNull(inputAccount.delegate, "full swap consumes the exact delegate allowance");
+        const receipt = await confirmedReceipt(signature);
+        assert.isTrue(receipt!.meta!.logMessages!.some((log) => log.startsWith(`Program ${SWAP_PROGRAM} invoke`)));
+        assert.equal(processEventFromTx(receipt!, [spoke]).filter((e) => e.name === "filledRelay").length, 1);
+        const settled = await connection.getMultipleAccountsInfo(watched);
+        await expectFailure(execute(dst, opts), "RelayFilled");
+        assert.deepEqual(await connection.getMultipleAccountsInfo(watched), settled);
+      }
+    });
+  }
+
+  it("JIT Raydium swap and signed quality planner enforce both floors and roll back invalid plans", async () => {
+    const executorAuthority = pda(GATEWAY, Buffer.from("executor_authority"));
+    const fixture = await createSwapFixture(
+      provider,
+      wallet,
+      mint,
+      vault,
+      vaultAuthority,
+      executorAuthority,
+      recipient
+    );
+    const authority = ethers.Wallet.createRandom();
+    const planId = 7;
+    const minimum = (amount * 9n) / 10n;
+    const quality = (amount * 99n) / 100n;
+    const impossible = 2_000_000_000n;
+    const dst = path([
+      fillCommand(),
+      { op: OP.PLAN_FROM_JIT | OP.JIT, input: Buffer.alloc(0) },
+      floor(fixture.outputMint, minimum),
+      {
+        op: OP.PLAN_FROM_PLANNER | OP.JIT,
+        input: call(
+          qualityPlanner.programId,
+          [],
+          Buffer.concat([Buffer.from(ethers.utils.arrayify(authority.address)), Buffer.from([planId])])
+        ),
+      },
+      transfer(fixture.outputMint, recipient),
+    ]);
+    const relay = await origin(pathId(dst));
+    // Route calldata and the quality quote arrive after the destination commitment.
+    const swapPlan = async (minOut: bigint) =>
+      Buffer.concat([vec(tape([approve(mint, executorAuthority), await fixture.swap(minOut)])), vec(jitQueue([]))]);
+    const requirement = (value: bigint) => tape([floor(fixture.outputMint, value)]);
+    const sign = (payload: Buffer, signedPath = dst, signedPlanId = planId, signer = authority) =>
+      Buffer.from(
+        ethers.utils.arrayify(
+          ethers.utils.joinSignature(
+            signer._signingKey().signDigest(authorityPlanDigest(signedPath, signedPlanId, payload))
+          )
+        )
+      );
+    const envelope = (payload: Buffer, signature = sign(payload)) =>
+      Buffer.concat([vec(payload), vec(signature), vec(jitQueue([]))]);
+    const payload = requirement(quality);
+    const weaker = requirement(0n);
+    const signedQuality = envelope(payload);
+    const route = await swapPlan(0n);
+    const extra = [
+      ...fixture.extra,
+      readonly(qualityPlanner.programId),
+      readonly(pda(GATEWAY, Buffer.from("dispatch_authority"), qualityPlanner.programId.toBuffer())),
+    ];
+    const lookupTable = await createLookupTable([...remaining([relay]), ...extra]);
+    const opts = {
+      relays: [relay],
+      extra,
+      lookupTable,
+      funds: [funding(userAta, mint, amount)],
+    };
+    const watched = [
+      vault,
+      fixture.outputVault,
+      fixture.recipientAta,
+      fixture.poolInput,
+      fixture.poolOutput,
+      fixture.pool,
+      fixture.observation,
+      fillPayer,
+      status(relay),
+      userAta,
+    ];
+    const before = await connection.getMultipleAccountsInfo(watched);
+    for (const [name, child, quote, error, swaps, plans] of [
+      ["swap slippage", await swapPlan(impossible), signedQuality, "ExceededSlippage", true, false],
+      [
+        "user floor",
+        Buffer.concat([vec(tape([])), vec(jitQueue([]))]),
+        signedQuality,
+        "BalanceRequirementNotMet",
+        false,
+        false,
+      ],
+      ["quality floor", route, envelope(requirement(impossible)), "BalanceRequirementNotMet", true, true],
+      ["tampered quality", route, envelope(weaker, sign(payload)), "InvalidAuthoritySignature", true, true],
+      [
+        "other signer",
+        route,
+        envelope(weaker, sign(weaker, dst, planId, ethers.Wallet.createRandom())),
+        "InvalidAuthoritySignature",
+        true,
+        true,
+      ],
+      [
+        "other path",
+        route,
+        envelope(payload, sign(payload, { ...dst, salt: randomBytes(32) })),
+        "InvalidAuthoritySignature",
+        true,
+        true,
+      ],
+      [
+        "other plan slot",
+        route,
+        envelope(payload, sign(payload, dst, planId + 1)),
+        "InvalidAuthoritySignature",
+        true,
+        true,
+      ],
+    ] as const) {
+      const { failedReceipt } = await execute(dst, {
+        ...opts,
+        jit: [relayJit(relay), child, quote],
+        failed: true,
+      });
+      const logs = failedReceipt!.logs;
+      assert.include(logs.join("\n"), error, name);
+      assert.equal(
+        logs.some((log) => log.startsWith(`Program ${SWAP_PROGRAM} invoke`)),
+        swaps,
+        name
+      );
+      assert.equal(
+        logs.some((log) => log.startsWith(`Program ${qualityPlanner.programId} invoke`)),
+        plans,
+        name
+      );
+      assert.equal(failedReceipt!.attemptedEvents.filter((e) => e.name === "filledRelay").length, 1, name);
+      assert.deepEqual(await connection.getMultipleAccountsInfo(watched), before, `${name}: atomic rollback`);
+    }
+    const jit = [relayJit(relay), route, signedQuality];
+    const { signature } = await execute(dst, { ...opts, jit });
+    await filled(relay);
+    const delivered = (await getAccount(connection, fixture.recipientAta)).amount;
+    assert.isTrue(delivered >= quality && quality > minimum);
+    assert.equal((await getAccount(connection, fixture.poolInput)).amount, 1_000_000_000n + amount);
+    assert.equal((await getAccount(connection, fixture.poolOutput)).amount, 1_000_000_000n - delivered);
+    assert.equal((await getAccount(connection, fixture.outputVault)).amount, 0n);
+    const input = await getAccount(connection, vault);
+    assert.equal(input.amount, 0n);
+    assert.isTrue(input.owner.equals(vaultAuthority));
+    assert.isNull(input.delegate);
+    const receipt = await confirmedReceipt(signature);
+    const logs = receipt!.meta!.logMessages!;
+    assert.isTrue(logs.some((log) => log.startsWith(`Program ${SWAP_PROGRAM} invoke`)));
+    assert.isTrue(logs.some((log) => log.startsWith(`Program ${qualityPlanner.programId} invoke`)));
+    assert.equal(processEventFromTx(receipt!, [spoke]).filter((e) => e.name === "filledRelay").length, 1);
+    const settled = await connection.getMultipleAccountsInfo(watched);
+    await expectFailure(execute(dst, { ...opts, jit }), "RelayFilled");
+    assert.deepEqual(await connection.getMultipleAccountsInfo(watched), settled);
   });
 
   it("cleans parameter buffers after setup errors so byte-identical executions can retry", async () => {

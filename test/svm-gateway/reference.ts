@@ -9,7 +9,17 @@ export const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm
 export const PREFUNDED = new PublicKey("7S5DKhyg9BxzAofhkM1vRM13d767S4cj8X5yKUXuVBWS");
 export const GATEWAY_COMMIT = "457cf693d09765c8e7e9ab33d23f84cba0999afe";
 export const PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
-export const OP = { BALANCE_REQ: 0x00, ADAPTER_CALL: 0x0a, APPROVE: 0x10, TRANSFER: 0x11, JIT: 0x40, OPTIONAL: 0x80 };
+export const OP = {
+  BALANCE_REQ: 0x00,
+  CALL: 0x08,
+  ADAPTER_CALL: 0x0a,
+  PLAN_FROM_JIT: 0x0d,
+  PLAN_FROM_PLANNER: 0x0e,
+  APPROVE: 0x10,
+  TRANSFER: 0x11,
+  JIT: 0x40,
+  OPTIONAL: 0x80,
+};
 export const discriminator = (name: string) => createHash("sha256").update(`global:${name}`).digest().subarray(0, 8);
 export const list = (items: Buffer[]) => Buffer.concat([u32(items.length), ...items]);
 export const hash = (b: Buffer) => Buffer.from(ethers.utils.arrayify(ethers.utils.keccak256(b)));
@@ -21,12 +31,12 @@ export type Command = { op: number; input: Buffer };
 export const tape = (commands: Command[]) =>
   Buffer.concat([vec(Buffer.from(commands.map((c) => c.op))), list(commands.map((c) => vec(c.input)))]);
 export const jitQueue = (items: Buffer[]) => list(items.map(vec));
-export const call = (program: PublicKey, metas: Meta[], input: Buffer): Buffer =>
+export const call = (program: PublicKey, metas: Meta[], input: Buffer, balanceSubs: Buffer[] = []): Buffer =>
   Buffer.concat([
     program.toBuffer(),
     list(metas.map((m) => Buffer.concat([m.pubkey.toBuffer(), Buffer.from([m.flags])]))),
     vec(input),
-    u32(0),
+    list(balanceSubs),
   ]);
 export const approve = (mint: PublicKey, delegate: PublicKey): Command => ({
   op: OP.APPROVE,
@@ -74,6 +84,11 @@ export const depositInput = (d: Deposit) =>
   );
 export type Path = { chainId: bigint; salt: Buffer; message: Buffer };
 export const pathId = (p: Path) => hash(Buffer.concat([word(p.chainId), p.salt, GATEWAY.toBuffer(), hash(p.message)]));
+// AuthorityRequirementPlanner's raw digest: domain, live path, plan slot and child tape.
+export const authorityPlanDigest = (p: Path, planId: number, payload: Buffer) => {
+  const domain = hash(Buffer.concat([hash(Buffer.from("ACXV.AuthorityRequirementPlanner.V1")), GATEWAY.toBuffer()]));
+  return hash(Buffer.concat([domain, pathId(p), word(BigInt(planId)), hash(payload)]));
+};
 export const pair = (a: Buffer, b: Buffer) => hash(Buffer.concat(Buffer.compare(a, b) < 0 ? [a, b] : [b, a]));
 export const executeParams = (path: Path, root: Buffer, proof: Buffer[], jit: Buffer[], funding: Buffer[]) =>
   Buffer.concat([

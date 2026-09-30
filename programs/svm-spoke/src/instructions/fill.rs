@@ -12,7 +12,7 @@ use crate::{
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
     utils::{
-        derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, is_v5_message, transfer_from,
+        derive_seed_hash, get_current_time, hash_non_empty_message, transfer_from, validate_legacy_fill_message,
         DelegatePda, FillSeedData,
     },
 };
@@ -151,7 +151,7 @@ impl<'info> From<&FillRelay<'info>> for FillAccounts<'info> {
 }
 
 /// Executes shared fill validation, token delivery, and status transition, then constructs the event.
-/// Instruction handlers retain only branch-specific account loading, callback handling, and event emission.
+/// Instruction handlers retain only branch-specific account loading and event emission.
 // Preserve a separate SBF frame; inlining event construction can push stack-heavy fill handlers past the 4 KiB limit.
 #[inline(never)]
 pub fn _fill(
@@ -253,10 +253,7 @@ pub fn fill_relay<'info>(
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
-    // V5 tagged deposits must be filled through new V5 entrypoints
-    if is_v5_message(&relay_data.message) {
-        return err!(CommonError::V5FillOnly);
-    }
+    validate_legacy_fill_message(&relay_data.message)?;
 
     let event = _fill(
         FillAccounts::from(&*ctx.accounts),
@@ -269,10 +266,6 @@ pub fn fill_relay<'info>(
         FillStatusInput::Legacy(&mut ctx.accounts.fill_status),
         DelegatePda::UniqueHash(derive_seed_hash(&FillSeedData { relay_hash, repayment_chain_id, repayment_address })),
     )?;
-
-    if !relay_data.message.is_empty() {
-        invoke_handler(ctx.accounts.signer.as_ref(), ctx.remaining_accounts, &relay_data.message)?;
-    }
 
     emit_cpi!(event);
 
