@@ -8,43 +8,14 @@ import { ethers } from "ethers";
 import { calculateRelayHashUint8Array, hashNonEmptyMessage, readEventsUntilFound } from "../../src/svm/web3-v1";
 import { RelayData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
+import { encodeFill, encodeJit, u64, vec } from "./v5Encoding";
 import { common } from "./SvmSpoke.common";
 
 const GATEWAY = new PublicKey("34trBszXuqhRjWaMxXWsunJNmyUsBvDNPxAwTzbPTm4p");
 const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
 const mockDiscriminator = createHash("sha256").update("global:execute_fill_adapter").digest().subarray(0, 8);
-const u32 = (value: number) => {
-  const data = Buffer.alloc(4);
-  data.writeUInt32LE(value);
-  return data;
-};
-const u64 = (value: bigint | number | BN) => {
-  const data = Buffer.alloc(8);
-  data.writeBigUInt64LE(BigInt(value.toString()));
-  return data;
-};
-const vec = (value: Buffer) => Buffer.concat([u32(value.length), value]);
 const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
-const encodeFill = (recipient: PublicKey, outputToken: PublicKey, minOutputAmount: bigint) =>
-  Buffer.concat([Buffer.from([1]), recipient.toBuffer(), outputToken.toBuffer(), u64(minOutputAmount)]);
-const encodeRelay = (relay: RelayData) =>
-  Buffer.concat([
-    relay.depositor.toBuffer(),
-    relay.recipient.toBuffer(),
-    relay.exclusiveRelayer.toBuffer(),
-    relay.inputToken.toBuffer(),
-    relay.outputToken.toBuffer(),
-    Buffer.from(relay.inputAmount),
-    u64(relay.outputAmount),
-    u64(relay.originChainId),
-    Buffer.from(relay.depositId),
-    u32(relay.fillDeadline),
-    u32(relay.exclusivityDeadline),
-    vec(relay.message),
-  ]);
-const encodeJit = (relay: RelayData, repaymentChainId: BN, repaymentAddress: PublicKey) =>
-  Buffer.concat([encodeRelay(relay), u64(repaymentChainId), repaymentAddress.toBuffer()]);
 
 describe("svm_spoke V5 destination fill", () => {
   anchor.setProvider(common.provider);
@@ -206,7 +177,7 @@ describe("svm_spoke V5 destination fill", () => {
     assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
 
     await setCurrentTime(svmSpoke, state, Keypair.generate(), new BN(relay.fillDeadline + 1));
-    await svmSpoke.methods.closeFillPda().accounts({ state, signer: fillPayer, fillStatus: fillStatus() }).rpc();
+    await svmSpoke.methods.closeFillPda().accountsPartial({ state, signer: fillPayer, fillStatus: fillStatus() }).rpc();
     assert.isNull(await connection.getAccountInfo(fillStatus()));
     assert.equal(await connection.getBalance(fillPayer), await connection.getMinimumBalanceForRentExemption(45));
   });
@@ -237,9 +208,15 @@ describe("svm_spoke V5 destination fill", () => {
   });
 
   it("rejects paused fills, wrong branch accounts, and insufficient allowance", async () => {
-    await svmSpoke.methods.pauseFills(true).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseFills(true)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
     await expectError(execute(), "FillsArePaused");
-    await svmSpoke.methods.pauseFills(false).accounts({ state, signer: owner, program: svmSpoke.programId }).rpc();
+    await svmSpoke.methods
+      .pauseFills(false)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
 
     await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), "custom program error: 0x1");
     await expectError(execute(undefined, undefined, { delegate: Keypair.generate().publicKey }), "InvalidTokenAccount");

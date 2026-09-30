@@ -55,6 +55,13 @@ HubPool on L1 owns all L2 SpokePools. Admin functions are relayed cross-chain vi
 
 Located in `contracts/periphery/mintburn/`. A modular framework for executing cross-chain sponsored token flows using mint-burn bridge integrations (CCTP, LayerZero OFT). Off-chain signers authorize transfer parameters via signed quotes; source periphery contracts validate quotes and initiate bridge transfers, while destination handlers receive bridged tokens and execute on-chain actions (swaps, HyperCore transfers, or arbitrary multicalls). Bridge-specific peripheries live in `sponsored-cctp/` and `sponsored-oft/` subdirectories.
 
+### SVM Across V5 Gateway integration
+
+`svm_spoke` is a direct Gateway adapter for V5 source deposits and destination fills. External fills transfer tokens;
+in-place fills check the shared vault, leaving downstream delivery to the committed Gateway path. See the
+[adapter spec](programs/svm-spoke/V5_ADAPTER_SPEC.md#pda-and-token-invariants) for authoritative delivery/security rules
+and the [integration guide](test/svm-gateway/README.md) for real-Gateway test execution and coverage.
+
 ### Deployments
 
 Canonical deployed addresses are generated into `broadcast/deployed-addresses.json`, with `broadcast/deployed-addresses.md` as the readable companion. `deployments/legacy-addresses.json` is still included for legacy Hardhat deployments. In Foundry scripts, use `script/utils/DeploymentUtils.sol` lookup helpers such as `getDeployedAddress()` and `getSpokePoolDeploymentInfo()`.

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { Hashes } from "@openzeppelin/contracts/utils/cryptography/Hashes.sol";
 
 /// @notice EVM-side conformance checks for the SVM V5 adapter's cross-VM hash and signature fixtures.
 contract SvmSpokeV5VectorsTest is Test {
@@ -56,6 +57,26 @@ contract SvmSpokeV5VectorsTest is Test {
     function testGatewayDiscriminatorVector() public view {
         bytes memory discriminator = vm.parseJsonBytes(fixture, ".dispatch.discriminator");
         assertEq(bytes8(sha256("global:adapter_execute_across_v5")), bytes8(discriminator));
+    }
+
+    function testGatewayPathAndStepRootVector() public view {
+        string memory pathFixture = vm.readFile("programs/svm-spoke/fixtures/v5_gateway_path.json");
+        bytes32 messageHash = keccak256(vm.parseJsonBytes(pathFixture, ".message"));
+        uint256 chainId = vm.parseJsonUint(pathFixture, ".chainId");
+        bytes32 executor = vm.parseJsonBytes32(pathFixture, ".executor");
+        bytes32 a = keccak256(abi.encode(chainId, vm.parseJsonBytes32(pathFixture, ".salt"), executor, messageHash));
+        bytes32 b = keccak256(
+            abi.encode(chainId, vm.parseJsonBytes32(pathFixture, ".siblingSalt"), executor, messageHash)
+        );
+        assertEq(a, vm.parseJsonBytes32(pathFixture, ".pathId"));
+        assertEq(b, vm.parseJsonBytes32(pathFixture, ".siblingPathId"));
+        bytes32 root = Hashes.commutativeKeccak256(a, b);
+        assertEq(root, vm.parseJsonBytes32(pathFixture, ".stepRoot"));
+        assertEq(Hashes.commutativeKeccak256(b, a), root);
+        assertEq(
+            abi.encodePacked(keccak256("AcrossV5MessagePrefix.V1"), root),
+            vm.parseJsonBytes(pathFixture, ".witness")
+        );
     }
 
     function _jitDigest(bytes32 domain) internal view returns (bytes32) {
