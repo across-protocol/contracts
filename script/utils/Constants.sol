@@ -13,9 +13,6 @@ contract Constants is Script {
 
     uint32 constant CCTP_NO_DOMAIN = 2 ** 32 - 1;
 
-    // CCTP V2 finality threshold at which Circle attests only after hard finality on the source chain.
-    uint32 constant CCTP_FINALITY_THRESHOLD_FINALIZED = 2000;
-
     constructor() {
         file = vm.readFile("generated/constants.json");
     }

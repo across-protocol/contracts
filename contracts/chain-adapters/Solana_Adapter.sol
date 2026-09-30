@@ -38,9 +38,10 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @notice Minimum CCTP finality threshold at which Circle attests messages relayed to Solana.
      * @dev Circle attests "finalized" (2000) messages only after the source chain reached hard finality. The Solana
      * spoke pool only implements the finalized message handler, so any message attested below Circle's finalized
-     * threshold could never be consumed. Kept configurable in case Circle redefines its threshold values.
+     * threshold could never be consumed.
+     * https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/FinalityThresholds.sol#L21
      */
-    uint32 public immutable CCTP_MIN_FINALITY_THRESHOLD;
+    uint32 public constant CCTP_MIN_FINALITY_THRESHOLD = 2000;
 
     // Solana spoke pool address, decoded from Base58 to bytes32.
     bytes32 public immutable SOLANA_SPOKE_POOL_BYTES32;
@@ -75,8 +76,6 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param solanaSpokePool Solana spoke pool address, decoded from Base58 to bytes32.
      * @param solanaUsdc USDC mint address on Solana, decoded from Base58 to bytes32.
      * @param solanaSpokePoolUsdcVault USDC token address on Solana for the spoke pool, decoded from Base58 to bytes32.
-     * @param _cctpMinFinalityThreshold Minimum CCTP finality threshold for relayed messages. Should be Circle's
-     * finalized threshold (2000) as the Solana spoke pool only accepts finalized messages.
      */
     constructor(
         IERC20 _l1Usdc,
@@ -84,8 +83,7 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         IMessageTransmitterV2 _cctpMessageTransmitter,
         bytes32 solanaSpokePool,
         bytes32 solanaUsdc,
-        bytes32 solanaSpokePoolUsdcVault,
-        uint32 _cctpMinFinalityThreshold
+        bytes32 solanaSpokePoolUsdcVault
     ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Solana) {
         // Solana adapter requires CCTP TokenMessenger and MessageTransmitter contracts to be set.
         if (address(_cctpTokenMessenger) == address(0)) {
@@ -96,7 +94,6 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         }
 
         cctpMessageTransmitter = _cctpMessageTransmitter;
-        CCTP_MIN_FINALITY_THRESHOLD = _cctpMinFinalityThreshold;
 
         SOLANA_SPOKE_POOL_BYTES32 = solanaSpokePool;
         SOLANA_SPOKE_POOL_ADDRESS = solanaSpokePool.toAddressUnchecked();
