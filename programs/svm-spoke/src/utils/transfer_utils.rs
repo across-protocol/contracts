@@ -1,15 +1,37 @@
-use crate::{error::SvmError, program::SvmSpoke};
+use crate::{
+    constants::{
+        V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP, V5_DEPOSIT_DELEGATE_SEED, V5_FILL_DELEGATE,
+        V5_FILL_DELEGATE_BUMP, V5_FILL_DELEGATE_SEED,
+    },
+    error::SvmError,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 
-pub fn transfer_from<'info>(
+/// Select a trusted address/seed/bump combination; callers cannot mix delegate components.
+#[derive(Clone, Copy)]
+pub(crate) enum V5TransferDelegate {
+    Deposit,
+    Fill,
+}
+
+impl V5TransferDelegate {
+    fn pda(&self) -> (Pubkey, &'static [u8], u8) {
+        match self {
+            Self::Deposit => (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_SEED, V5_DEPOSIT_DELEGATE_BUMP),
+            Self::Fill => (V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_FILL_DELEGATE_BUMP),
+        }
+    }
+}
+
+pub(crate) fn transfer_from<'info>(
     accounts: TransferChecked<'info>,
     token_program: AccountInfo<'info>,
     amount: u64,
     mint_decimals: u8,
-    delegate_seed: &[u8],
+    delegate: V5TransferDelegate,
 ) -> Result<()> {
-    let (delegate, bump) = Pubkey::find_program_address(&[delegate_seed], &SvmSpoke::id());
+    let (delegate, delegate_seed, bump) = delegate.pda();
     if delegate != accounts.authority.key() {
         return err!(SvmError::InvalidDelegatePda);
     }
@@ -19,4 +41,39 @@ pub fn transfer_from<'info>(
     let signer_seeds = [signer_seeds];
 
     transfer_checked(CpiContext::new_with_signer(token_program, accounts, &signer_seeds), amount, mint_decimals)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transfer_delegates_match_canonical_pdas() {
+        for delegate in [V5TransferDelegate::Deposit, V5TransferDelegate::Fill] {
+            let (address, seed, bump) = delegate.pda();
+            assert_eq!(Pubkey::find_program_address(&[seed], &crate::ID), (address, bump));
+        }
+    }
+
+    #[test]
+    fn wrong_transfer_authority_is_rejected_before_cpi() {
+        for delegate in [V5TransferDelegate::Deposit, V5TransferDelegate::Fill] {
+            // Include the other canonical delegate: a valid Spoke PDA is insufficient for the wrong operation.
+            for authority in [Pubkey::new_unique(), V5_DEPOSIT_DELEGATE, V5_FILL_DELEGATE] {
+                if authority == delegate.pda().0 {
+                    continue;
+                }
+                let mut lamports = 0;
+                let owner = Pubkey::default();
+                let info = AccountInfo::new(&authority, false, false, &mut lamports, &mut [], &owner, false, 0);
+                let accounts = TransferChecked {
+                    from: info.clone(),
+                    mint: info.clone(),
+                    to: info.clone(),
+                    authority: info.clone(),
+                };
+                assert_eq!(transfer_from(accounts, info, 1, 6, delegate), Err(error!(SvmError::InvalidDelegatePda)));
+            }
+        }
+    }
 }
