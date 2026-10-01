@@ -5,11 +5,12 @@ use crate::{
     constants::{V5_FILL_DELEGATE, V5_MAGIC_PREFIX},
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
-    utils::{get_current_time, get_relay_hash, transfer_from, V5TransferDelegate},
+    utils::{get_current_time, get_relay_hash},
     v5::{
         accounts::find_v5_account,
         codec::{decode_strict, GatewayContextV1, V5FillInput, V5FillJit},
         fill_status::{create_v5_fill_status_account, V5FillStatusPdas},
+        transfer::{transfer_from, V5TransferDelegate},
     },
 };
 

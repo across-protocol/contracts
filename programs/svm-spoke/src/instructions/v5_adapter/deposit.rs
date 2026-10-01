@@ -8,11 +8,12 @@ use crate::{
     },
     error::CommonError,
     event::FundsDeposited,
-    utils::{get_current_time, transfer_from, V5TransferDelegate},
+    utils::get_current_time,
     v5::{
         accounts::find_v5_account,
         codec::{decode_strict, resolve_v5_input_amount, AcrossDepositInput, GatewayContextV1},
         jit::{derive_v5_deposit_id, resolve_v5_deposit_modifications},
+        transfer::{transfer_from, V5TransferDelegate},
     },
 };
 
