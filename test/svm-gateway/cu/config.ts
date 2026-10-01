@@ -5,6 +5,9 @@ export const LEGACY_COMMIT = "7445f72de17900544605c7e6706c5fb3b3784738";
 export const VALIDATOR_VERSION = "4.1.2";
 export const SPOKE = new PublicKey("DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru");
 export const SAMPLES = [0, 1, 2, 3, 4];
+// Fixed conservative test-helper policy, not a production submitter setting or maximum packet utilization.
+// Keep two uploads for each current V5 fixture so buffer costs can be compared at the same transaction count.
+export const BUFFER_FRAGMENT_BYTES = 800;
 export const AMOUNT = 500_000n;
 export const CHAIN_ID = 420n;
 export const NOW = 1_800_000_000;

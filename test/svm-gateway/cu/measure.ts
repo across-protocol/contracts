@@ -25,6 +25,7 @@ import { appendFileSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import {
   AMOUNT,
+  BUFFER_FRAGMENT_BYTES,
   Case,
   CHAIN_ID,
   FUNDING_DEADLINE,
@@ -165,7 +166,21 @@ async function main() {
     await send("setup:clock", [
       await spoke.methods.setCurrentTime(NOW).accountsStrict({ state, signer: owner }).instruction(),
     ]);
-    const fixture = { mint: mint.toBase58(), recipient: recipient.toBase58(), state: state.toBase58(), stateBump };
+    const ataBump = (authority: PublicKey) =>
+      PublicKey.findProgramAddressSync(
+        [authority.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )[1];
+    const fixture = {
+      mint: mint.toBase58(),
+      recipient: recipient.toBase58(),
+      state: state.toBase58(),
+      stateBump,
+      sourceBump: ataBump(owner),
+      recipientAtaBump: ataBump(recipient),
+      spokeVaultBump: ataBump(state),
+      vaultBump: ataBump(vaultAuthority),
+    };
     const record = (
       name: Case,
       execution: number,
@@ -351,10 +366,10 @@ async function main() {
           .accountsStrict({ submitter: owner, executeParams: buffer, systemProgram: SystemProgram.programId })
           .instruction(),
       ]);
-      for (let offset = 0; offset < params.length; offset += 800)
+      for (let offset = 0; offset < params.length; offset += BUFFER_FRAGMENT_BYTES)
         bufferCu += await send(`${name}:buffer-write`, [
           await gateway.methods
-            .writeExecuteParamsFragment([...digest], offset, params.subarray(offset, offset + 800))
+            .writeExecuteParamsFragment([...digest], offset, params.subarray(offset, offset + BUFFER_FRAGMENT_BYTES))
             .accountsStrict({ submitter: owner, executeParams: buffer })
             .instruction(),
         ]);
@@ -378,6 +393,8 @@ async function main() {
       record(name, execution, approval, bufferCu, {
         pathId: pathId(selected).toString("hex"),
         paramsBytes: params.length,
+        bufferFragmentBytes: BUFFER_FRAGMENT_BYTES,
+        bufferWrites: Math.ceil(params.length / BUFFER_FRAGMENT_BYTES),
         bufferBump,
         ...details,
       });

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "81a2211c27d9107a0835280d3437c05624275a20",
+  "head": "e80949f92c0a8cd1fcf17191691bd0bcaa10b479",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
   "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -10,7 +10,7 @@
   "node": "v24.14.1",
   "spokeFeatures": ["test"],
   "sbfVersion": "cargo-build-sbf 4.1.0\nplatform-tools v1.54\nrustc 1.89.0",
-  "fixtureSha256": "0fc5ac4e2be55871cc7ed49ac1082e9320ded6873b818956e676e4c454ffcabb",
+  "fixtureSha256": "f94ec266e35ba0e34a48d26414baa1f814937ef490d95eb5d0a913b3e3e7be9c",
   "programs": {
     "legacy": {
       "tools": "v1.44",
@@ -65,6 +65,10 @@
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
         "state": "B2cWiexX8JCMjducu125Z138yDrQvK6SckLHRjctJiX6",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 252,
+        "vaultBump": 253,
         "delegateBump": 251
       }
     },
@@ -80,6 +84,10 @@
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
         "state": "B2cWiexX8JCMjducu125Z138yDrQvK6SckLHRjctJiX6",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 252,
+        "vaultBump": 253,
         "statusBump": 253,
         "delegateBump": 255
       }
@@ -96,6 +104,10 @@
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
         "state": "AHL7PCqFZa5chcJzVbMyWxWdJPDQvPMYzsxtXmSkW1y2",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 254,
+        "spokeVaultBump": 254,
+        "vaultBump": 255,
         "delegateBump": 255
       }
     },
@@ -111,6 +123,10 @@
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
         "state": "AHL7PCqFZa5chcJzVbMyWxWdJPDQvPMYzsxtXmSkW1y2",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 254,
+        "spokeVaultBump": 254,
+        "vaultBump": 255,
         "statusBump": 255,
         "delegateBump": 252
       }
@@ -127,6 +143,10 @@
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
         "state": "9wwXGGj6DKTsssREKLoCHWL8kT8VkFRTWPXWGpqJBYXW",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 254,
+        "vaultBump": 254,
         "delegateBump": 255
       }
     },
@@ -142,6 +162,10 @@
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
         "state": "9wwXGGj6DKTsssREKLoCHWL8kT8VkFRTWPXWGpqJBYXW",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 254,
+        "vaultBump": 254,
         "statusBump": 254,
         "delegateBump": 255
       }
@@ -158,6 +182,10 @@
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
         "state": "8nsrnQ3MfDBfXCBucedH3HbB2P9M5aw7toGr9oTraDNh",
         "stateBump": 255,
+        "sourceBump": 253,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 250,
         "delegateBump": 255
       }
     },
@@ -173,6 +201,10 @@
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
         "state": "8nsrnQ3MfDBfXCBucedH3HbB2P9M5aw7toGr9oTraDNh",
         "stateBump": 255,
+        "sourceBump": 253,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 250,
         "statusBump": 255,
         "delegateBump": 254
       }
@@ -189,6 +221,10 @@
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
         "state": "FS3hUfQKNGAFsBwTQvd1gP33oS4Kxny9cAJ6SuktpVne",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 255,
         "delegateBump": 253
       }
     },
@@ -204,6 +240,10 @@
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
         "state": "FS3hUfQKNGAFsBwTQvd1gP33oS4Kxny9cAJ6SuktpVne",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 255,
         "statusBump": 255,
         "delegateBump": 246
       }
@@ -220,8 +260,14 @@
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
         "state": "B2cWiexX8JCMjducu125Z138yDrQvK6SckLHRjctJiX6",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 252,
+        "vaultBump": 253,
         "pathId": "d03f37edad28e61cecd6c35dab02febcd2dd923a926bc60e0feaa1f378b95f02",
         "paramsBytes": 891,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 254,
         "fundingBump": 254
       }
@@ -238,8 +284,14 @@
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
         "state": "B2cWiexX8JCMjducu125Z138yDrQvK6SckLHRjctJiX6",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 252,
+        "vaultBump": 253,
         "pathId": "e12ad4db8befd9a3fd5cd469024ba154c74364a438656ce75e64a318db38b62c",
         "paramsBytes": 1194,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 254,
         "statusBump": 255
       }
@@ -256,8 +308,14 @@
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
         "state": "B2cWiexX8JCMjducu125Z138yDrQvK6SckLHRjctJiX6",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 252,
+        "vaultBump": 253,
         "pathId": "5a30c4c157dc9bd23d8f35a77cfd9cb1fead3dea6385ab7a060788a6b953b42a",
         "paramsBytes": 1173,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "statusBump": 255
       }
@@ -274,8 +332,14 @@
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
         "state": "AHL7PCqFZa5chcJzVbMyWxWdJPDQvPMYzsxtXmSkW1y2",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 254,
+        "spokeVaultBump": 254,
+        "vaultBump": 255,
         "pathId": "ff8cb07dc847fcab46f3d925315376034e52163d1fd568d0e2c3e347cbfa806c",
         "paramsBytes": 891,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "fundingBump": 252
       }
@@ -292,8 +356,14 @@
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
         "state": "AHL7PCqFZa5chcJzVbMyWxWdJPDQvPMYzsxtXmSkW1y2",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 254,
+        "spokeVaultBump": 254,
+        "vaultBump": 255,
         "pathId": "27454e40da4a60853ef221cb0f81d016c9359a29fb899055d5e9e4e12fd7619b",
         "paramsBytes": 1194,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 254,
         "statusBump": 255
       }
@@ -310,8 +380,14 @@
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
         "state": "AHL7PCqFZa5chcJzVbMyWxWdJPDQvPMYzsxtXmSkW1y2",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 254,
+        "spokeVaultBump": 254,
+        "vaultBump": 255,
         "pathId": "c5f8a3b22a66be07214b61f7456504f60a259e393364c1ee1aad3a4d9179fcef",
         "paramsBytes": 1173,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 254,
         "statusBump": 255
       }
@@ -328,8 +404,14 @@
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
         "state": "9wwXGGj6DKTsssREKLoCHWL8kT8VkFRTWPXWGpqJBYXW",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 254,
+        "vaultBump": 254,
         "pathId": "810a0ce853fbd269fcce9eec17db4d64753eb73c2ed0add3712a91e05f6e2242",
         "paramsBytes": 891,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "fundingBump": 254
       }
@@ -346,8 +428,14 @@
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
         "state": "9wwXGGj6DKTsssREKLoCHWL8kT8VkFRTWPXWGpqJBYXW",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 254,
+        "vaultBump": 254,
         "pathId": "00677dae84201c7d28a78fc8d6373150b593f96bfc59f678facca83c26a570fd",
         "paramsBytes": 1194,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 253,
         "statusBump": 254
       }
@@ -364,8 +452,14 @@
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
         "state": "9wwXGGj6DKTsssREKLoCHWL8kT8VkFRTWPXWGpqJBYXW",
         "stateBump": 255,
+        "sourceBump": 254,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 254,
+        "vaultBump": 254,
         "pathId": "a56221b5d9dd0087be4f93c5daa74d758dcc37546d272a08254fc76fb4b97c4d",
         "paramsBytes": 1173,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "statusBump": 254
       }
@@ -382,8 +476,14 @@
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
         "state": "8nsrnQ3MfDBfXCBucedH3HbB2P9M5aw7toGr9oTraDNh",
         "stateBump": 255,
+        "sourceBump": 253,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 250,
         "pathId": "7e319e18276036dd6fa8295345a2ff297c604c27c9e478a0836087a37ddb26d1",
         "paramsBytes": 891,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "fundingBump": 255
       }
@@ -400,8 +500,14 @@
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
         "state": "8nsrnQ3MfDBfXCBucedH3HbB2P9M5aw7toGr9oTraDNh",
         "stateBump": 255,
+        "sourceBump": 253,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 250,
         "pathId": "75f95b60ef444de854235a5dcded126b2e243b40115ef317087e6f433abc1606",
         "paramsBytes": 1194,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "statusBump": 255
       }
@@ -418,8 +524,14 @@
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
         "state": "8nsrnQ3MfDBfXCBucedH3HbB2P9M5aw7toGr9oTraDNh",
         "stateBump": 255,
+        "sourceBump": 253,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 250,
         "pathId": "15e8242b583a50d9c54ae4e3a83cbe0baaf55bcf3738f942fcc20cd68584dc61",
         "paramsBytes": 1173,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "statusBump": 253
       }
@@ -436,8 +548,14 @@
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
         "state": "FS3hUfQKNGAFsBwTQvd1gP33oS4Kxny9cAJ6SuktpVne",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 255,
         "pathId": "52100e887bc35370cbf6159372d81bb592c486814f8ddd0556bb0d3206a29962",
         "paramsBytes": 891,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 254,
         "fundingBump": 255
       }
@@ -454,8 +572,14 @@
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
         "state": "FS3hUfQKNGAFsBwTQvd1gP33oS4Kxny9cAJ6SuktpVne",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 255,
         "pathId": "70ee2b25c0f933c03fda5bc2e7f48737758fc982f30ef4532862cceb838f9c3b",
         "paramsBytes": 1194,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 254,
         "statusBump": 250
       }
@@ -472,8 +596,14 @@
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
         "state": "FS3hUfQKNGAFsBwTQvd1gP33oS4Kxny9cAJ6SuktpVne",
         "stateBump": 255,
+        "sourceBump": 255,
+        "recipientAtaBump": 255,
+        "spokeVaultBump": 255,
+        "vaultBump": 255,
         "pathId": "ef08471cffea25505971f469193d482834e8097830d0161517c872e30de09863",
         "paramsBytes": 1173,
+        "bufferFragmentBytes": 800,
+        "bufferWrites": 2,
         "bufferBump": 255,
         "statusBump": 253
       }

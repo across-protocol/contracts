@@ -34,11 +34,20 @@ same source/recipient/vault balances and use the same mint, submitter, recipient
 Each fixture has deterministic test-only keys, nonce, path salt, quote/deadline and a fixed Spoke test clock.
 StepDelegate funding uses a fixed maximum deadline, keeping the Gateway authorization bytes independent of wall time.
 Paths and relay identities necessarily differ between fill variants; their buffer/status PDA bumps are reported.
+Fixtures also record source, recipient, Spoke vault and Gateway vault ATA bumps (`sourceBump`, `recipientAtaBump`,
+`spokeVaultBump`, `vaultBump`). `recipientAtaBump` always describes the final recipient's ATA, including when Spoke
+records an in-place fill against the Gateway vault before Gateway performs final delivery.
 The external route approves a Spoke delegate and transfers inside Spoke; the in-place route skips that approval
 and transfer, then checks the floor and transfers in Gateway. Different account validation and PDA derivation costs
 also contribute, so a total-CU difference does not isolate the cost of a single command.
 Five fixed seeds expose some of that variation but are not a worst-case bound or a statistical production estimate.
 The validator's bundled token programs and activated features are part of this baseline; it is not a mainnet CU budget.
+Specifically, [Agave 4.1.2 bundles p-token 1.0.0-rc.1](https://github.com/anza-xyz/agave/blob/v4.1.2/program-binaries/src/lib.rs#L19-L24)
+at `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`. That bundled binary's SHA-256 is
+`8190d3f7ceb6cb7a7a8d8924bff89f9f611e15ce1f806f2b6237f3311a98f697`, matching the baseline's executable hash.
+The 310-CU approval includes 150 CU for the compute-budget instruction and 160 CU for `ApproveChecked`.
+V5 performs more token CPIs than legacy, so this implementation affects the relative comparison as well as absolute CU.
+No mainnet token-program dump was captured for this run; equivalence to mainnet at run time was not verified.
 
 The table reports medians of **consumed CU**, not requested limits:
 
@@ -53,6 +62,52 @@ All token accounts already exist. Minting, state/clock initialization, balance r
 ATA creation, rent reclaim and other deployment/setup transactions are excluded. Legacy uses an empty message; V5
 uses the required 64-byte witness. Successful delivery, source/vault consumption, fill status and rent accounting are
 asserted before a run is accepted. PrefundedAdapter, swaps, signed modifications and Token-2022 are separate workloads.
+
+### Interpreting bump variation and buffer costs
+
+The fixed fixtures are intentionally retained rather than grinding addresses until their bumps are 255. For this
+baseline, subtracting 1,500 CU per additional PDA search attempt explains all 25 execution measurements and all 15
+buffer measurements exactly. The following is an analytical normalization to fixture-variable bumps of 255, not a
+second on-chain measurement, a production estimate, or a model guaranteed to apply after program/runtime changes.
+Every recorded bump is already canonical for its seeds; 255 simply means the first derivation attempt succeeds.
+
+| Flow             | Measured execution median | Bump-normalized execution | Bump-normalized total |
+| ---------------- | ------------------------: | ------------------------: | --------------------: |
+| legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
+| legacy-fill      |                    41,021 |                    38,021 |                38,331 |
+| v5-deposit       |                    73,530 |                    67,530 |                80,169 |
+| v5-external-fill |                    84,660 |                    78,660 |                90,989 |
+| v5-inplace-fill  |                    77,369 |                    71,369 |                83,698 |
+
+To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
+the following sum from `execution`:
+
+| Flow             | Extra search attempts                                   |
+| ---------------- | ------------------------------------------------------- |
+| legacy-deposit   | `d(sourceBump) + d(spokeVaultBump) + d(delegateBump)`   |
+| legacy-fill      | `d(statusBump) + d(delegateBump) + d(recipientAtaBump)` |
+| v5-deposit       | `d(fundingBump) + 2*d(vaultBump) + d(spokeVaultBump)`   |
+| v5-external-fill | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
+| v5-inplace-fill  | `d(statusBump) + 3*d(vaultBump) + d(recipientAtaBump)`  |
+
+State bumps are already 255 in every fixture. Fixed program/submitter authority costs remain included. Normalize
+V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
+totals sum these adjusted components per row.
+
+External minus in-place execution is 7,291 CU after normalization for every sample. Sample 3's measured reversal
+comes from one extra Gateway-vault ATA derivation at bump 250 (7,500 extra CU) plus an in-place status bump two
+steps lower (3,000 extra CU): `7,291 - 7,500 - 3,000 = -3,209`. This is explained by address-dependent search work.
+The measured total-median gap is 13,291 CU, versus 7,291 after normalization; use per-row sums because independently
+computed component medians need not add to the total median.
+
+`BUFFER_FRAGMENT_BYTES = 800` in `cu/config.ts` is a conservative, fixed test-helper policy, not a measured production
+submitter setting or maximum packet utilization. The 891/1,194/1,173-byte V5 parameter payloads each require two writes;
+`bufferFragmentBytes` and `bufferWrites` are recorded per row. Each flow sends initialization plus two separate writes,
+so this baseline's entire buffer variation is `12,329 + 4,500 * d(bufferBump)`, not a difference in upload count.
+A larger fragment can fit this transaction shape and put the deposit payload into one write; packing initialization
+with a write can also reduce transaction count. Those are separate SDK/backend composition choices tracked in
+[sdk #1541](https://github.com/across-protocol/sdk/issues/1541). This benchmark holds the upload policy fixed to expose
+program and bump costs; contracts helpers do not define production client composition.
 
 `target/cu-benchmark/results.json` contains per-case values, fixture identities/bumps, source revisions, fixture and
 binary/IDL hashes, compiler pins, validator version/feature-set and SPL Token/ATA executable hashes. Raw receipts and
