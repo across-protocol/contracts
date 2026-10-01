@@ -91,8 +91,7 @@ contract Solana_AdapterTest is HubPoolTestBase {
             IMessageTransmitterV2(address(cctpMessageTransmitter)),
             solanaSpokePoolBytes32,
             solanaUsdcBytes32,
-            solanaSpokePoolUsdcVaultBytes32,
-            CCTP_MIN_FINALITY_THRESHOLD
+            solanaSpokePoolUsdcVaultBytes32
         );
 
         // Configure HubPool with adapter

@@ -15,8 +15,6 @@ import { IMessageTransmitterV2, ITokenMessenger } from "../../contracts/external
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
 // 5. forge script script/chain-adapters/DeploySolanaAdapter.s.sol:DeploySolanaAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
-// Optional: set CCTP_MIN_FINALITY_THRESHOLD to override the default finalized (2000) CCTP V2 threshold. The Solana
-// spoke pool only accepts finalized messages, so lower it only if Circle redefines its threshold values.
 
 contract DeploySolanaAdapter is Script, Test, Constants {
     // Solana addresses decoded from Base58 to bytes32. Ethereum mainnet pairs with Solana mainnet and Sepolia with
@@ -53,9 +51,6 @@ contract DeploySolanaAdapter is Script, Test, Constants {
         (bytes32 solanaSpokePool, bytes32 solanaUsdc, bytes32 solanaSpokePoolUsdcVault) = isMainnet
             ? (SOLANA_MAINNET_SPOKE_POOL, SOLANA_MAINNET_USDC, SOLANA_MAINNET_SPOKE_POOL_USDC_VAULT)
             : (SOLANA_DEVNET_SPOKE_POOL, SOLANA_DEVNET_USDC, SOLANA_DEVNET_SPOKE_POOL_USDC_VAULT);
-        uint32 cctpMinFinalityThreshold = uint32(
-            vm.envOr("CCTP_MIN_FINALITY_THRESHOLD", uint256(CCTP_FINALITY_THRESHOLD_FINALIZED))
-        );
 
         address usdc = getUSDCAddress(chainId);
         address cctpV2TokenMessenger = getL1Addresses(chainId).cctpV2TokenMessenger;
@@ -70,8 +65,7 @@ contract DeploySolanaAdapter is Script, Test, Constants {
             IMessageTransmitterV2(cctpV2MessageTransmitter), // CCTP V2 Message Transmitter
             solanaSpokePool,
             solanaUsdc,
-            solanaSpokePoolUsdcVault,
-            cctpMinFinalityThreshold
+            solanaSpokePoolUsdcVault
         );
 
         // Log the deployed addresses
@@ -80,7 +74,6 @@ contract DeploySolanaAdapter is Script, Test, Constants {
         console.log("L1 USDC:", usdc);
         console.log("CCTP V2 Token Messenger:", cctpV2TokenMessenger);
         console.log("CCTP V2 Message Transmitter:", cctpV2MessageTransmitter);
-        console.log("CCTP min finality threshold:", cctpMinFinalityThreshold);
         console.log("Solana spoke pool:", vm.toString(solanaSpokePool));
         console.log("Solana USDC:", vm.toString(solanaUsdc));
         console.log("Solana spoke pool USDC vault:", vm.toString(solanaSpokePoolUsdcVault));
