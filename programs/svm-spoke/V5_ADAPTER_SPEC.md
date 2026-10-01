@@ -130,9 +130,10 @@ For the configured Spoke program, `v5_deposit_delegate` derives
 `8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
 target and the supplied deposit delegate account.
 
-Transfers select the deposit or fill delegate's constant address, seed and bump as one internal combination. The
-helper checks the supplied authority against that address and signs the token CPI with its canonical seeds, without
-searching for the PDA again. Both combinations are tested against derivation under the configured Spoke program ID;
+The V5-specific [transfer helper](src/v5/transfer.rs) selects the deposit or fill delegate's constant address, seed and
+bump as one internal combination. It checks the supplied authority against that address and signs the token CPI with
+its canonical seeds, without searching for the PDA again. Both combinations are tested against derivation under the
+configured Spoke program ID;
 program-ID changes must update those constants together. No caller-supplied bump is accepted.
 
 An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical

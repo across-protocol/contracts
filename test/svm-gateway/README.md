@@ -132,11 +132,13 @@ deposit** and **6,046 CU per external fill**. Runtime signer derivation for the 
 skip this helper and their CU is unchanged.
 
 The [before snapshot](cu/before-constant-delegates.json) measures benchmark base
-`24e07c9cc9bb7677b904b74c33dc84723a36dba5`; [baseline.json](cu/baseline.json) records the optimized source as that
-base plus `trackedDiffSha256`. Both sides use Node 24.14.1, the same compiler pins, validator, token programs,
+`24e07c9cc9bb7677b904b74c33dc84723a36dba5`; [baseline.json](cu/baseline.json) records the optimized source as its
+`head` plus `trackedDiffSha256`. Both sides use Node 24.14.1, the same compiler pins, validator, token programs,
 fixtures and Gateway commit. The before run reproduced every prior baseline measurement and binary/IDL hash.
-Two optimized runs in fresh output directories produced identical measurements, binary/IDL hashes and runtime
-metadata. Only the Spoke binary changed relative to before; the public IDL, legacy and Gateway binaries are identical.
+Two initial optimized runs in fresh output directories produced identical measurements, binary/IDL hashes and runtime
+metadata. Moving the helper into `v5/transfer.rs` changed the Spoke binary hash; a subsequent run reproduced all 25 CU
+measurements and the same runtime metadata. The snapshot records that relocation build. Only the Spoke binary changed
+relative to before; the public IDL, legacy and Gateway binaries are identical.
 
 Execution CU for every fixed fixture is below. Approval and buffer CU are unchanged in every row, so each total-CU
 delta equals its execution delta. These are consumed-CU results for this runtime, not production budget guarantees.
@@ -169,8 +171,8 @@ delta equals its execution delta. These are consumed-CU results for this runtime
 | v5-inplace-fill  |       3 | 96,869 | 96,869 |      0 |
 | v5-inplace-fill  |       4 | 74,369 | 74,369 |      0 |
 
-Raw receipts and build/validator logs are retained locally in `target/cu-1569-before`, `target/cu-1569-after` and
-`target/cu-1569-repeat`. Reproduce with the command above, using distinct `SVM_CU_OUTPUT` directories before and
+Raw receipts and build/validator logs are retained locally in `target/cu-1569-before`, `target/cu-1569-after`,
+`target/cu-1569-repeat` and `target/cu-1569-v5-module`. Reproduce with the command above, using distinct `SVM_CU_OUTPUT` directories before and
 after the source change; compare every row and provenance field before replacing the reviewed snapshot.
 
 ## Conformance suite

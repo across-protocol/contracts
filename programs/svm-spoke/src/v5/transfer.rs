@@ -1,3 +1,5 @@
+//! Transfers authorized by the V5 adapter's fixed deposit and fill delegates.
+
 use crate::{
     constants::{
         V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP, V5_DEPOSIT_DELEGATE_SEED, V5_FILL_DELEGATE,
