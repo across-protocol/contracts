@@ -2,28 +2,11 @@
 import { BN } from "@coral-xyz/anchor";
 import { address } from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
-import { ethers } from "ethers";
 import { RelayData } from "../../src/types/svm";
 import { SvmSpokeClient } from "../../src/svm/clients";
 
-export const u16 = (n: number) => {
-  const b = Buffer.alloc(2);
-  b.writeUInt16LE(n);
-  return b;
-};
-export const u32 = (n: number) => {
-  const b = Buffer.alloc(4);
-  b.writeUInt32LE(n);
-  return b;
-};
-export const u64 = (n: bigint | number | BN) => {
-  const b = Buffer.alloc(8);
-  b.writeBigUInt64LE(BigInt(n.toString()));
-  return b;
-};
-export const word = (n: bigint | number) =>
-  Buffer.from(ethers.utils.zeroPad(ethers.BigNumber.from(n.toString()).toHexString(), 32));
-export const vec = (b: Buffer) => Buffer.concat([u32(b.length), b]);
+import { u32, u64, vec } from "../svm-gateway/wire";
+export { u16, u32, u64, vec, word } from "../svm-gateway/wire";
 
 export type DepositFields = {
   depositor: PublicKey;
