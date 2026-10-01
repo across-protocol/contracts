@@ -2,7 +2,7 @@
 
 This release assigns distinct runtime error ranges to `svm_spoke`. **Existing `CommonError` codes are unchanged.**
 `SvmError` moves from 6000–6018 to 7000–7016 after unused variants are removed; `CallDataError` moves from
-6000–6006 to 8000–8006.
+6000–6006 to 9000–9006.
 The compatibility baseline is the deployed release
 [`v5.0.12-beta.1` (`d8da3000`)](https://github.com/across-protocol/contracts/blob/d8da3000f1aba2593e712a9942a3249bf8e8205b/programs/svm-spoke/src/error.rs),
 not intermediate PRs in this undeployed stack. V5 errors are new relative to that baseline. A dash means the
@@ -17,7 +17,8 @@ Enum membership does not imply reachability: the old `CommonError` slow-fill slo
 Use the mapping for the program version being queried. Historical transaction errors retain the old codes;
 do not relabel them using the new table. Legacy
 numbers overlap across enums, so a number alone cannot identify a historical error. Runtime log names distinguish
-the enums. Anchor 0.31.1's generated IDL error table remains incomplete despite the distinct runtime ranges.
+the enums. Anchor 0.31.1's generated IDL error table remains incomplete and does not reflect the explicit runtime
+offsets; use the runtime mappings below.
 
 Before upgrading, inspect off-chain numeric-code maps and update affected consumers; stale maps can silently
 mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-sequencing).
@@ -79,38 +80,38 @@ relayer refund leaves that return tokens to the HubPool. V4 entrypoint retiremen
 and `InconsistentOptionalParameters`; neither has a remaining construction site. The final 7000–7016 mapping
 includes these removals. Intermediate stack assignments were never deployed and are not compatibility constraints.
 
-## CallDataError
-
-| Error                 | Before release | This release |
-| --------------------- | -------------- | ------------ |
-| `InvalidSelector`     | 6000           | 8000         |
-| `InvalidArgument`     | 6001           | 8001         |
-| `InvalidBool`         | 6002           | 8002         |
-| `InvalidAddress`      | 6003           | 8003         |
-| `InvalidUint32`       | 6004           | 8004         |
-| `InvalidUint64`       | 6005           | 8005         |
-| `UnsupportedSelector` | 6006           | 8006         |
-
 ## V5Error
 
 | Error                               | Before release | This release |
 | ----------------------------------- | -------------- | ------------ |
-| `InvalidWireFormat`                 | —              | 9000         |
-| `InvalidParamModificationSignature` | —              | 9001         |
-| `MissingAccount`                    | —              | 9002         |
-| `InvalidDispatchAuthority`          | —              | 9003         |
-| `InvalidAccountMutability`          | —              | 9004         |
-| `ResolvedInputAmountBelowCommitted` | —              | 9005         |
-| `ParamModificationNotAnImprovement` | —              | 9006         |
-| `InvalidAmountBips`                 | —              | 9007         |
-| `UnsupportedMode`                   | —              | 9008         |
-| `InvalidTokenAccount`               | —              | 9009         |
-| `UnsupportedTokenExtension`         | —              | 9010         |
-| `InvalidFillPayer`                  | —              | 9011         |
-| `InvalidFillStatusAccount`          | —              | 9012         |
-| `FillCommitmentMismatch`            | —              | 9013         |
-| `FillOutputAmountTooLow`            | —              | 9014         |
-| `InsufficientVaultBalance`          | —              | 9015         |
+| `InvalidWireFormat`                 | —              | 8000         |
+| `InvalidParamModificationSignature` | —              | 8001         |
+| `MissingAccount`                    | —              | 8002         |
+| `InvalidDispatchAuthority`          | —              | 8003         |
+| `InvalidAccountMutability`          | —              | 8004         |
+| `ResolvedInputAmountBelowCommitted` | —              | 8005         |
+| `ParamModificationNotAnImprovement` | —              | 8006         |
+| `InvalidAmountBips`                 | —              | 8007         |
+| `UnsupportedMode`                   | —              | 8008         |
+| `InvalidTokenAccount`               | —              | 8009         |
+| `UnsupportedTokenExtension`         | —              | 8010         |
+| `InvalidFillPayer`                  | —              | 8011         |
+| `InvalidFillStatusAccount`          | —              | 8012         |
+| `FillCommitmentMismatch`            | —              | 8013         |
+| `FillOutputAmountTooLow`            | —              | 8014         |
+| `InsufficientVaultBalance`          | —              | 8015         |
+
+## CallDataError
+
+| Error                 | Before release | This release |
+| --------------------- | -------------- | ------------ |
+| `InvalidSelector`     | 6000           | 9000         |
+| `InvalidArgument`     | 6001           | 9001         |
+| `InvalidBool`         | 6002           | 9002         |
+| `InvalidAddress`      | 6003           | 9003         |
+| `InvalidUint32`       | 6004           | 9004         |
+| `InvalidUint64`       | 6005           | 9005         |
+| `UnsupportedSelector` | 6006           | 9006         |
 
 ## Removed (AcrossPlusError)
 

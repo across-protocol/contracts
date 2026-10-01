@@ -191,7 +191,7 @@ pub mod svm_spoke {
     /// - event_authority: Anchor event CPI authority derived from ["__event_authority"].
     /// - program: The SVM Spoke program.
     /// - remaining accounts: Branch-specific mint and token-program accounts plus writable canonical token accounts.
-    ///   Deposit mode also requires the SpokePool vault and ["v5_source_delegate"]. Fill mode requires the
+    ///   Deposit mode also requires the SpokePool vault and ["v5_deposit_delegate"]. Fill mode requires the
     ///   submitter-scoped ["v5_fill_payer"], relay-scoped fill-status PDA, and System Program; external delivery also
     ///   requires the recipient ATA and ["v5_fill_delegate"]. Account order is unrestricted because each account is
     ///   resolved by its authenticated expected key.
@@ -240,7 +240,7 @@ pub mod svm_spoke {
         relay_hash: [u8; 32],
         fill_deadline: u32,
     ) -> Result<()> {
-        instructions::test_create_v5_fill_status(ctx, relay_hash, fill_deadline)
+        utils::test_create_v5_fill_status(ctx, relay_hash, fill_deadline)
     }
 
     /// Claims a relayer refund for the caller.

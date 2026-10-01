@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace, PartialEq)]
 pub enum FillStatus {
     Unfilled,
-    // Historical slot 1: existing requests may still be fast-filled. Never remove or reorder.
+    // Historical slot 1 retained for deserialization and rent cleanup. Never remove or reorder.
     RequestedSlowFill,
     Filled,
 }
