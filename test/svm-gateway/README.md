@@ -121,6 +121,10 @@ different `SVM_CU_OUTPUT` directories and compare `measurements` and program/run
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
 
+For the constant-delegate optimization's per-fixture CU comparison, see
+[PR #1573](https://github.com/across-protocol/contracts/pull/1573)
+([issue #1569](https://github.com/across-protocol/contracts/issues/1569)).
+
 ## Conformance suite
 
 Run `yarn test-svm-gateway`. It builds Gateway, PrefundedAdapter and AuthorityRequirementPlanner from `GATEWAY_COMMIT` in
