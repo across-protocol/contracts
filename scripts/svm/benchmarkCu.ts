@@ -1,13 +1,12 @@
 // SVM compute must be measured by Agave; Foundry cannot execute these programs.
 import { strict as assert } from "assert";
 import { isDeepStrictEqual } from "util";
-import { spawn, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import { createHash } from "crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, openSync, closeSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
-import { createServer } from "net";
-import { Connection } from "@solana/web3.js";
+import { prepareGatewayCheckout, withLocalValidator } from "./localValidator";
 import { GATEWAY, GATEWAY_COMMIT } from "../../test/svm-gateway/wire";
 import {
   CASES,
@@ -95,89 +94,36 @@ function build(cwd: string, name: string, tools: string, anchor: string, test = 
   return { binary: path.join(work, name, `${binaryName}.so`), idl: idlPath, tools };
 }
 
-async function freePort() {
-  const server = createServer();
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const port = (server.address() as { port: number }).port;
-  await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
-  return port;
-}
-
 async function benchmark(mode: "legacy" | "v5", spoke: ReturnType<typeof build>, gateway: ReturnType<typeof build>) {
-  const port = await freePort();
-  const url = `http://127.0.0.1:${port}`;
-  const log = openSync(path.join(output, `${mode}-validator.log`), "w");
-  const validator = spawn(
-    "solana-test-validator",
-    [
-      "--ledger",
-      path.join(work, `${mode}-ledger`),
-      "--bind-address",
-      "127.0.0.1",
-      "--rpc-port",
-      String(port),
-      "--faucet-port",
-      String(await freePort()),
-      "--gossip-port",
-      String(await freePort()),
-      "--quiet",
-      "--mint",
-      WALLET.publicKey.toBase58(),
-      "--upgradeable-program",
-      SPOKE.toBase58(),
-      spoke.binary,
-      WALLET.publicKey.toBase58(),
-      ...(mode === "v5"
-        ? ["--upgradeable-program", GATEWAY.toBase58(), gateway.binary, WALLET.publicKey.toBase58()]
-        : []),
-    ],
-    { stdio: ["ignore", log, log] }
-  );
-  let spawnError: Error | undefined;
-  validator.once("error", (error) => {
-    spawnError = error;
-  });
-  const closed = new Promise<void>((resolve) => validator.once("close", () => resolve()));
-  const stop = () => {
-    validator.kill("SIGTERM");
-  };
-  process.once("SIGINT", stop);
-  process.once("SIGTERM", stop);
-  try {
-    const connection = new Connection(url, "confirmed");
-    let ready = false;
-    for (let attempt = 0; attempt < 120; attempt++) {
-      if (spawnError) throw spawnError;
-      if (validator.exitCode !== null) throw new Error(`Validator exited: ${mode}`);
-      try {
-        if ((await connection.getSlot()) > 10) {
-          ready = true;
-          break;
-        }
-      } catch {
-        /* genesis startup */
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500));
+  await withLocalValidator(
+    {
+      ledger: path.join(work, `${mode}-ledger`),
+      logPath: path.join(output, `${mode}-validator.log`),
+      mint: WALLET.publicKey.toBase58(),
+      args: [
+        "--upgradeable-program",
+        SPOKE.toBase58(),
+        spoke.binary,
+        WALLET.publicKey.toBase58(),
+        ...(mode === "v5"
+          ? ["--upgradeable-program", GATEWAY.toBase58(), gateway.binary, WALLET.publicKey.toBase58()]
+          : []),
+      ],
+    },
+    (url) => {
+      const env = {
+        ...process.env,
+        NODE_OPTIONS: "--no-experimental-strip-types",
+        SVM_CU_MODE: mode,
+        SVM_CU_RPC: url,
+        SVM_CU_OUTPUT: output,
+        SVM_CU_SPOKE_IDL: spoke.idl,
+        SVM_CU_GATEWAY_IDL: gateway.idl,
+      };
+      console.log(`Measuring ${mode} (five fixed fixtures)`);
+      console.log(run("yarn", ["ts-node", "test/svm-gateway/cu/measure.ts"], root, env));
     }
-    if (!ready) throw new Error(`Validator startup timed out: ${mode}`);
-    const env = {
-      ...process.env,
-      NODE_OPTIONS: "--no-experimental-strip-types",
-      SVM_CU_MODE: mode,
-      SVM_CU_RPC: url,
-      SVM_CU_OUTPUT: output,
-      SVM_CU_SPOKE_IDL: spoke.idl,
-      SVM_CU_GATEWAY_IDL: gateway.idl,
-    };
-    console.log(`Measuring ${mode} (five fixed fixtures)`);
-    console.log(run("yarn", ["ts-node", "test/svm-gateway/cu/measure.ts"], root, env));
-  } finally {
-    stop();
-    await closed;
-    closeSync(log);
-    process.removeListener("SIGINT", stop);
-    process.removeListener("SIGTERM", stop);
-  }
+  );
 }
 
 async function main() {
@@ -200,13 +146,7 @@ async function main() {
   if (archive.status !== 0)
     throw new Error(`Missing legacy commit ${LEGACY_COMMIT}; fetch repository history first. ${archive.stderr}`);
   run("tar", ["-x", "-C", legacy], root, process.env, archive.stdout);
-  const checkout = process.env.SVM_GATEWAY_CHECKOUT || path.join(work, "solana-v5");
-  if (!process.env.SVM_GATEWAY_CHECKOUT) {
-    run("git", ["clone", "git@github.com:across-protocol/solana-v5.git", checkout]);
-    run("git", ["checkout", "--detach", GATEWAY_COMMIT], checkout);
-  }
-  if (run("git", ["rev-parse", "HEAD"], checkout) !== GATEWAY_COMMIT || run("git", ["status", "--porcelain"], checkout))
-    throw new Error(`Gateway checkout must be clean at ${GATEWAY_COMMIT}`);
+  const checkout = prepareGatewayCheckout(work);
   // Sequential builds: cargo-build-sbf updates a global Rust toolchain link.
   const builds = {
     legacy: build(legacy, "legacy", "v1.44", spokeAnchor, true),
@@ -266,6 +206,7 @@ async function main() {
     fixtureSha256: sha256(
       [
         "scripts/svm/benchmarkCu.ts",
+        "scripts/svm/localValidator.ts",
         "test/svm-gateway/cu/config.ts",
         "test/svm-gateway/cu/measure.ts",
         "test/svm-gateway/wire.ts",
