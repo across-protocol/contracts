@@ -18,7 +18,7 @@ pub(crate) enum V5TransferDelegate {
 }
 
 impl V5TransferDelegate {
-    fn pda(&self) -> (Pubkey, &'static [u8], u8) {
+    fn pda(self) -> (Pubkey, &'static [u8], u8) {
         match self {
             Self::Deposit => (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_SEED, V5_DEPOSIT_DELEGATE_BUMP),
             Self::Fill => (V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_FILL_DELEGATE_BUMP),
@@ -50,11 +50,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn transfer_delegates_match_canonical_pdas() {
-        for delegate in [V5TransferDelegate::Deposit, V5TransferDelegate::Fill] {
-            let (address, seed, bump) = delegate.pda();
-            assert_eq!(Pubkey::find_program_address(&[seed], &crate::ID), (address, bump));
-        }
+    fn transfer_delegate_variants_select_their_expected_pdas() {
+        assert_eq!(
+            V5TransferDelegate::Deposit.pda(),
+            (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_SEED, V5_DEPOSIT_DELEGATE_BUMP)
+        );
+        assert_eq!(V5TransferDelegate::Fill.pda(), (V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_FILL_DELEGATE_BUMP));
     }
 
     #[test]

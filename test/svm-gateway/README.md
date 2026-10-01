@@ -123,57 +123,9 @@ different `SVM_CU_OUTPUT` directories and compare `measurements` and program/run
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
 
-### Constant transfer delegate optimization (#1569)
-
-The transfer helper now selects a trusted deposit or fill delegate address/seed/bump combination instead of
-searching for that PDA on every transfer. Both bumps are 252. Removing the four derivation attempts saves about
-6,000 CU; the measured whole-change savings, including surrounding compiled-code differences, are **6,047 CU per
-deposit** and **6,046 CU per external fill**. Runtime signer derivation for the token CPI remains. In-place fills
-skip this helper and their CU is unchanged.
-
-The [before snapshot](cu/before-constant-delegates.json) measures benchmark base
-`24e07c9cc9bb7677b904b74c33dc84723a36dba5`; [baseline.json](cu/baseline.json) records the optimized source as its
-`head` plus `trackedDiffSha256`. Both sides use Node 24.14.1, the same compiler pins, validator, token programs,
-fixtures and Gateway commit. The before run reproduced every prior baseline measurement and binary/IDL hash.
-Two initial optimized runs in fresh output directories produced identical measurements, binary/IDL hashes and runtime
-metadata. Moving the helper into `v5/transfer.rs` changed the Spoke binary hash; a subsequent run reproduced all 25 CU
-measurements and the same runtime metadata. The snapshot records that relocation build. Only the Spoke binary changed
-relative to before; the public IDL, legacy and Gateway binaries are identical.
-
-Execution CU for every fixed fixture is below. Approval and buffer CU are unchanged in every row, so each total-CU
-delta equals its execution delta. These are consumed-CU results for this runtime, not production budget guarantees.
-
-| Flow             | Fixture | Before |  After |  Delta |
-| ---------------- | ------: | -----: | -----: | -----: |
-| legacy-deposit   |       0 | 42,207 | 42,207 |      0 |
-| legacy-deposit   |       1 | 34,707 | 34,707 |      0 |
-| legacy-deposit   |       2 | 34,707 | 34,707 |      0 |
-| legacy-deposit   |       3 | 34,707 | 34,707 |      0 |
-| legacy-deposit   |       4 | 34,707 | 34,707 |      0 |
-| legacy-fill      |       0 | 41,021 | 41,021 |      0 |
-| legacy-fill      |       1 | 44,021 | 44,021 |      0 |
-| legacy-fill      |       2 | 39,521 | 39,521 |      0 |
-| legacy-fill      |       3 | 39,521 | 39,521 |      0 |
-| legacy-fill      |       4 | 51,521 | 51,521 |      0 |
-| v5-deposit       |       0 | 79,530 | 73,483 | -6,047 |
-| v5-deposit       |       1 | 73,530 | 67,483 | -6,047 |
-| v5-deposit       |       2 | 73,530 | 67,483 | -6,047 |
-| v5-deposit       |       3 | 82,530 | 76,483 | -6,047 |
-| v5-deposit       |       4 | 67,530 | 61,483 | -6,047 |
-| v5-external-fill |       0 | 84,660 | 78,614 | -6,046 |
-| v5-external-fill |       1 | 80,160 | 74,114 | -6,046 |
-| v5-external-fill |       2 | 83,160 | 77,114 | -6,046 |
-| v5-external-fill |       3 | 93,660 | 87,614 | -6,046 |
-| v5-external-fill |       4 | 86,160 | 80,114 | -6,046 |
-| v5-inplace-fill  |       0 | 80,369 | 80,369 |      0 |
-| v5-inplace-fill  |       1 | 72,869 | 72,869 |      0 |
-| v5-inplace-fill  |       2 | 77,369 | 77,369 |      0 |
-| v5-inplace-fill  |       3 | 96,869 | 96,869 |      0 |
-| v5-inplace-fill  |       4 | 74,369 | 74,369 |      0 |
-
-Raw receipts and build/validator logs are retained locally in `target/cu-1569-before`, `target/cu-1569-after`,
-`target/cu-1569-repeat` and `target/cu-1569-v5-module`. Reproduce with the command above, using distinct `SVM_CU_OUTPUT` directories before and
-after the source change; compare every row and provenance field before replacing the reviewed snapshot.
+For the constant-delegate optimization's per-fixture CU comparison, see
+[PR #1573](https://github.com/across-protocol/contracts/pull/1573)
+([issue #1569](https://github.com/across-protocol/contracts/issues/1569)).
 
 ## Conformance suite
 
