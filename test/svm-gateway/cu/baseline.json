@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "e80949f92c0a8cd1fcf17191691bd0bcaa10b479",
+  "head": "b02518a5576d44cc8b26a1f85707ea979cf9bded",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
   "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "validatorVersion": "solana-test-validator 4.1.2 (src:182084b8; feat:c763ae0a, client:Agave)",
   "anchorVersions": ["anchor-cli 0.31.1", "anchor-cli 1.1.2"],
-  "node": "v24.14.1",
+  "node": "v22.18.0",
   "spokeFeatures": ["test"],
   "sbfVersion": "cargo-build-sbf 4.1.0\nplatform-tools v1.54\nrustc 1.89.0",
-  "fixtureSha256": "f94ec266e35ba0e34a48d26414baa1f814937ef490d95eb5d0a913b3e3e7be9c",
+  "fixtureSha256": "aa352f4e8fe6042991ece6056f4f8d18d4c8ccb951ebf6af59bbf60548d866fc",
   "programs": {
     "legacy": {
       "tools": "v1.44",

@@ -5,7 +5,7 @@
 `yarn bench-svm-cu` builds the legacy Spoke at `7445f72de17900544605c7e6706c5fb3b3784738`, this checkout's V5 Spoke,
 and the Gateway at `GATEWAY_COMMIT`, then measures five fixed fixtures per flow on fresh Agave 4.1.2 validators.
 It needs installed Yarn dependencies, repository history containing that legacy commit, Anchor CLI 0.31.1 and 1.1.2,
-and access to the pinned Gateway source. The baseline used Node 24.14.1, Yarn 1.22.22 and `cargo-build-sbf` 4.1.0;
+and access to the pinned Gateway source. The baseline used Node 22.18.0, Yarn 1.22.22 and `cargo-build-sbf` 4.1.0;
 the full tool/runtime metadata is in `cu/baseline.json`. It generates its own IDLs; package clients and local binaries are
 not prerequisites. It builds neither Raydium nor planners. Foundry cannot measure SVM compute, so this lane uses the
 repository's TypeScript/Agave approach and existing SBF diagnostic guard.
@@ -113,6 +113,8 @@ program and bump costs; contracts helpers do not define production client compos
 binary/IDL hashes, compiler pins, validator version/feature-set and SPL Token/ATA executable hashes. Raw receipts and
 build/validator logs are alongside it; temporary source builds and ledgers are retained at the printed path.
 `SVM_CU_OUTPUT` relocates the output. A run fails if legacy and V5 runtime/program environments differ.
+The fixture hash includes the shared `scripts/svm/localValidator.ts` helper as well as the runner, configuration,
+measurement code and wire encoders.
 
 The checked-in `cu/baseline.json` is a reviewable snapshot. Normal runs print total-CU deltas and do not modify it or
 enforce a regression threshold. After reviewing the provenance and changes, regenerate it explicitly with
@@ -143,9 +145,14 @@ SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
 yarn test-svm-gateway
 ```
 
-`SVM_GATEWAY_CHECKOUT` may point to an existing clean checkout at the exact pin to avoid another clone. Builds still
-run; arbitrary prebuilt binaries are not accepted as conformance evidence. Dependency downloads and local validator
-ports require network permission in sandboxed environments.
+Both runners use `scripts/svm/localValidator.ts` for clean pinned checkouts, local ports, validator startup and cleanup.
+Gateway clones use SSH; `SVM_GATEWAY_CHECKOUT` avoids cloning when a clean checkout at the exact pin is available.
+Readiness requires a confirmed slot above 10, with bounded RPC requests. The validator is stopped and signal listeners
+are removed on startup failure and after the test callback, including failures. The focused helper tests run with
+`NODE_OPTIONS=--no-experimental-strip-types yarn ts-mocha -p tsconfig.test.json -t 15000 test/svm/Scripts.LocalValidator.ts`.
+
+Builds still run with existing checkouts; arbitrary prebuilt binaries are not accepted as conformance evidence.
+Dependency downloads and local validator ports require network permission in sandboxed environments.
 Pass Mocha filters through the runner, e.g. `yarn test-svm-gateway --grep 'JIT Raydium'`, for focused validation.
 
 The current runner needs access to the pinned `solana-v5` checkout, so run this lane locally with existing repository

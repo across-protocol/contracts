@@ -1,10 +1,10 @@
 // Separate validator: the ordinary Anchor suite installs mock_gateway at the
 // same address. Build the foreign programs from immutable source checkouts.
-import { spawn, spawnSync } from "child_process";
-import { mkdirSync, mkdtempSync, readFileSync, openSync, closeSync } from "fs";
+import { spawnSync } from "child_process";
+import { mkdirSync, mkdtempSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
-import { createServer } from "net";
+import { prepareGatewayCheckout, preparePinnedCheckout, withLocalValidator } from "./localValidator";
 import { Keypair } from "@solana/web3.js";
 import { SWAP_COMMIT, SWAP_PROGRAM, swapGenesis } from "../../test/svm-gateway/swapFixture";
 import { GATEWAY, PREFUNDED, GATEWAY_COMMIT } from "../../test/svm-gateway/reference";
@@ -17,42 +17,16 @@ function run(command: string, args: string[], cwd = process.cwd()) {
 function buildSbf(command: string, args: string[], cwd = process.cwd()) {
   run("bash", [path.join(__dirname, "buildHelpers/runSbfBuild.sh"), command, ...args], cwd);
 }
-async function freePort(): Promise<number> {
-  const server = createServer();
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const port = (server.address() as { port: number }).port;
-  await new Promise<void>((resolve) => server.close(() => resolve()));
-  return port;
-}
 async function main() {
   const work = mkdtempSync(path.join(tmpdir(), "acp184-gateway-"));
-  const checkout = process.env.SVM_GATEWAY_CHECKOUT || path.join(work, "solana-v5");
-  if (!process.env.SVM_GATEWAY_CHECKOUT) {
-    run("git", ["clone", "https://github.com/across-protocol/solana-v5.git", checkout]);
-    run("git", ["checkout", "--detach", GATEWAY_COMMIT], checkout);
-  }
-  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" });
-  const dirty = spawnSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
-    cwd: checkout,
-    encoding: "utf8",
+  const checkout = prepareGatewayCheckout(work);
+  const swapCheckout = preparePinnedCheckout({
+    name: "Swap",
+    repository: "https://github.com/raydium-io/raydium-cp-swap.git",
+    commit: SWAP_COMMIT,
+    destination: path.join(work, "raydium-cp-swap"),
+    existing: process.env.SVM_SWAP_CHECKOUT,
   });
-  if (head.status !== 0 || head.stdout.trim() !== GATEWAY_COMMIT || dirty.status !== 0 || dirty.stdout.trim()) {
-    throw new Error(`Gateway checkout must be clean at ${GATEWAY_COMMIT}`);
-  }
-  const swapCheckout = process.env.SVM_SWAP_CHECKOUT || path.join(work, "raydium-cp-swap");
-  if (!process.env.SVM_SWAP_CHECKOUT) {
-    run("git", ["clone", "https://github.com/raydium-io/raydium-cp-swap.git", swapCheckout]);
-    run("git", ["checkout", "--detach", SWAP_COMMIT], swapCheckout);
-  }
-  const swapHead = spawnSync("git", ["rev-parse", "HEAD"], { cwd: swapCheckout, encoding: "utf8" });
-  const swapDirty = spawnSync("git", ["status", "--porcelain"], { cwd: swapCheckout, encoding: "utf8" });
-  if (
-    swapHead.status !== 0 ||
-    swapHead.stdout.trim() !== SWAP_COMMIT ||
-    swapDirty.status !== 0 ||
-    swapDirty.stdout.trim()
-  )
-    throw new Error(`Swap checkout must be clean at ${SWAP_COMMIT}`);
   buildSbf(
     "cargo",
     [
@@ -113,112 +87,65 @@ async function main() {
   ).address;
   const walletPath = path.resolve("test/svm/keys/localnet-wallet.json");
   const wallet = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(walletPath, "utf8"))));
-  const rpcPort = await freePort();
-  const faucetPort = await freePort();
-  const url = `http://127.0.0.1:${rpcPort}`;
   const logPath = path.join(work, "validator.log");
-  const log = openSync(logPath, "w");
-  const validator = spawn(
-    "solana-test-validator",
-    [
-      "--ledger",
-      path.join(work, "ledger"),
-      "--bind-address",
-      "127.0.0.1",
-      "--rpc-port",
-      String(rpcPort),
-      "--faucet-port",
-      String(faucetPort),
-      "--gossip-port",
-      String(await freePort()),
-      "--quiet",
-      "--mint",
-      wallet.publicKey.toBase58(),
-      ...(await swapGenesis(work)),
-      "--upgradeable-program",
-      SWAP_PROGRAM.toBase58(),
-      path.join(swapCheckout, "target/deploy/raydium_cp_swap.so"),
-      wallet.publicKey.toBase58(),
-      "--upgradeable-program",
-      GATEWAY.toBase58(),
-      path.join(checkout, "target/deploy/gateway.so"),
-      wallet.publicKey.toBase58(),
-      "--upgradeable-program",
-      PREFUNDED.toBase58(),
-      path.join(checkout, "target/deploy/prefunded_adapter.so"),
-      wallet.publicKey.toBase58(),
-      "--upgradeable-program",
-      plannerId,
-      path.join(checkout, "target/deploy/authority_requirement_planner.so"),
-      wallet.publicKey.toBase58(),
-      "--upgradeable-program",
-      spokeId,
-      path.join(work, "spoke/svm_spoke.so"),
-      wallet.publicKey.toBase58(),
-    ],
-    { stdio: ["ignore", log, log] }
-  );
-  let spawnFailure: Error | undefined;
-  validator.once("error", (error) => {
-    spawnFailure = error;
-  });
-  const closed = new Promise<void>((resolve) => validator.once("close", () => resolve()));
-  const stop = () => validator.kill("SIGTERM");
-  process.once("SIGINT", stop);
-  process.once("SIGTERM", stop);
-  try {
-    let ready = false;
-    for (let attempt = 0; attempt < 120; attempt++) {
-      if (spawnFailure) throw spawnFailure;
-      if (validator.exitCode !== null || validator.signalCode !== null)
-        throw new Error(`Validator exited; see ${logPath}`);
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getHealth" }),
-        });
-        if (((await response.json()) as { result?: string }).result === "ok") {
-          ready = true;
-          break;
-        }
-      } catch {
-        /* RPC starts after genesis setup. */
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    if (!ready) throw new Error(`Validator did not start; see ${logPath}`);
-    console.log(`Real Gateway ${GATEWAY_COMMIT}; Raydium CPMM ${SWAP_COMMIT}; validator logs: ${logPath}`);
-    const tests = spawnSync(
-      "yarn",
-      [
-        "ts-mocha",
-        "--bail",
-        "-p",
-        "tsconfig.json",
-        "-t",
-        "1000000",
-        "test/svm-gateway/PathVectors.ts",
-        "test/svm-gateway/RealGateway.ts",
-        ...process.argv.slice(2),
+  await withLocalValidator(
+    {
+      ledger: path.join(work, "ledger"),
+      logPath,
+      mint: wallet.publicKey.toBase58(),
+      args: [
+        ...(await swapGenesis(work)),
+        "--upgradeable-program",
+        SWAP_PROGRAM.toBase58(),
+        path.join(swapCheckout, "target/deploy/raydium_cp_swap.so"),
+        wallet.publicKey.toBase58(),
+        "--upgradeable-program",
+        GATEWAY.toBase58(),
+        path.join(checkout, "target/deploy/gateway.so"),
+        wallet.publicKey.toBase58(),
+        "--upgradeable-program",
+        PREFUNDED.toBase58(),
+        path.join(checkout, "target/deploy/prefunded_adapter.so"),
+        wallet.publicKey.toBase58(),
+        "--upgradeable-program",
+        plannerId,
+        path.join(checkout, "target/deploy/authority_requirement_planner.so"),
+        wallet.publicKey.toBase58(),
+        "--upgradeable-program",
+        spokeId,
+        path.join(work, "spoke/svm_spoke.so"),
+        wallet.publicKey.toBase58(),
       ],
-      {
-        stdio: "inherit",
-        env: {
-          ...process.env,
-          ANCHOR_PROVIDER_URL: url,
-          ANCHOR_WALLET: walletPath,
-          SVM_GATEWAY_IDL_DIR: gatewayIdlDir,
-          NODE_OPTIONS: "--no-experimental-strip-types",
-        },
-      }
-    );
-    if (tests.error || tests.status !== 0) throw new Error(`Real-Gateway tests failed; see ${logPath}`);
-  } finally {
-    stop();
-    await closed;
-    closeSync(log);
-  }
+    },
+    (url) => {
+      console.log(`Real Gateway ${GATEWAY_COMMIT}; Raydium CPMM ${SWAP_COMMIT}; validator logs: ${logPath}`);
+      const tests = spawnSync(
+        "yarn",
+        [
+          "ts-mocha",
+          "--bail",
+          "-p",
+          "tsconfig.json",
+          "-t",
+          "1000000",
+          "test/svm-gateway/PathVectors.ts",
+          "test/svm-gateway/RealGateway.ts",
+          ...process.argv.slice(2),
+        ],
+        {
+          stdio: "inherit",
+          env: {
+            ...process.env,
+            ANCHOR_PROVIDER_URL: url,
+            ANCHOR_WALLET: walletPath,
+            SVM_GATEWAY_IDL_DIR: gatewayIdlDir,
+            NODE_OPTIONS: "--no-experimental-strip-types",
+          },
+        }
+      );
+      if (tests.error || tests.status !== 0) throw new Error(`Real-Gateway tests failed; see ${logPath}`);
+    }
+  );
 }
 main().catch((error) => {
   console.error(error);
