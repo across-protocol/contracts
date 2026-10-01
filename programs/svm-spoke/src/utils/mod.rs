@@ -8,4 +8,4 @@ pub use bitmap_utils::*;
 pub use cctp_utils::*;
 pub use merkle_proof_utils::*;
 pub use testable_utils::*;
-pub use transfer_utils::*;
+pub(crate) use transfer_utils::*;

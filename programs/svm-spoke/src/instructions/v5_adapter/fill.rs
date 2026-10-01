@@ -5,10 +5,10 @@ use anchor_lang::{
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
-    constants::{V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_MAGIC_PREFIX},
+    constants::{V5_FILL_DELEGATE, V5_MAGIC_PREFIX},
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
-    utils::{get_current_time, get_relay_hash, transfer_from},
+    utils::{get_current_time, get_relay_hash, transfer_from, V5TransferDelegate},
     v5::{
         accounts::find_v5_account,
         codec::{decode_strict, GatewayContextV1, V5FillInput, V5FillJit},
@@ -81,7 +81,7 @@ pub(super) fn execute_v5_fill<'info>(
             accounts.token_program,
             relay.output_amount,
             accounts.mint_decimals,
-            V5_FILL_DELEGATE_SEED,
+            V5TransferDelegate::Fill,
         )?,
         // The loader has validated the canonical shared vault and sufficient balance.
         // The committed Gateway tape must enforce balance checks covering the fill obligations and consume the funds.
