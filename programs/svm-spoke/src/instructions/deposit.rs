@@ -11,7 +11,7 @@ use crate::{
     error::CommonError,
     event::FundsDeposited,
     state::State,
-    utils::{get_current_time, transfer_from, DelegatePda},
+    utils::{get_current_time, transfer_from},
 };
 
 pub struct DepositAccounts<'info> {
@@ -20,22 +20,11 @@ pub struct DepositAccounts<'info> {
     pub mint_decimals: u8,
 }
 
-pub enum DepositId<'a> {
-    // No production entrypoint constructs this variant.
-    // TODO(V5 simplification): Remove this variant and its dead_code allowance when collapsing the shared core.
-    #[allow(dead_code)]
-    Next(&'a mut State),
-    Fixed {
-        state: &'a State,
-        value: [u8; 32],
-    },
-}
-
-/// Executes shared deposit validation and the vault transfer, resolves the deposit ID, and constructs the canonical
-/// deposit event.
+/// Validates the deposit, transfers tokens to the vault, and constructs the event with the adapter-derived deposit ID.
 /// The instruction handler emits the event because Anchor's `emit_cpi!` macro requires its concrete `ctx` in scope.
 pub fn _deposit(
     accounts: DepositAccounts,
+    state: &State,
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -44,18 +33,13 @@ pub fn _deposit(
     output_amount: [u8; 32],
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
-    deposit_id: DepositId<'_>,
+    deposit_id: [u8; 32],
     quote_timestamp: u32,
     fill_deadline: u32,
     exclusivity_parameter: u32,
     message: Vec<u8>,
-    delegate_pda: DelegatePda,
+    delegate_seed: &[u8],
 ) -> Result<FundsDeposited> {
-    let state = match &deposit_id {
-        DepositId::Next(state) => &**state,
-        DepositId::Fixed { state, .. } => *state,
-    };
-
     let current_time = get_current_time(state)?;
 
     if output_token == Pubkey::default() {
@@ -80,18 +64,7 @@ pub fn _deposit(
     }
 
     // Depositor must have delegated input_amount to the delegate PDA
-    transfer_from(accounts.transfer, accounts.token_program, input_amount, accounts.mint_decimals, delegate_pda)?;
-
-    let applied_deposit_id = match deposit_id {
-        DepositId::Next(state) => {
-            // Sequential deposits use the state's number of deposits as deposit_id.
-            state.number_of_deposits += 1;
-            let mut applied_deposit_id = [0u8; 32];
-            applied_deposit_id[28..].copy_from_slice(&state.number_of_deposits.to_be_bytes());
-            applied_deposit_id
-        }
-        DepositId::Fixed { value, .. } => value,
-    };
+    transfer_from(accounts.transfer, accounts.token_program, input_amount, accounts.mint_decimals, delegate_seed)?;
 
     Ok(FundsDeposited {
         input_token,
@@ -99,7 +72,7 @@ pub fn _deposit(
         input_amount,
         output_amount,
         destination_chain_id,
-        deposit_id: applied_deposit_id,
+        deposit_id,
         quote_timestamp,
         fill_deadline,
         exclusivity_deadline,

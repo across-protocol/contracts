@@ -16,7 +16,7 @@ use crate::{
     },
     error::{CommonError, V5Error},
     state::State,
-    utils::{get_relay_hash, DelegatePda},
+    utils::get_relay_hash,
     v5::{
         codec::{
             decode_strict, decode_v5_adapter_input, resolve_v5_input_amount, AcrossDepositInput, GatewayContextV1,
@@ -27,9 +27,7 @@ use crate::{
     },
 };
 
-use super::{
-    _deposit, _fill, DepositAccounts, DepositId, FillAccounts, FillDelivery, FillStatusInput, V5FillStatusPdas,
-};
+use super::{_deposit, _fill, DepositAccounts, FillAccounts, FillDelivery, FillStatusInput, V5FillStatusPdas};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -76,6 +74,7 @@ fn execute_v5_deposit<'info>(
     let message = [V5_MAGIC_PREFIX, deposit.dst_step_id].concat();
     let event = _deposit(
         accounts,
+        &ctx.accounts.state,
         params.depositor,
         params.recipient,
         params.input_token,
@@ -84,21 +83,18 @@ fn execute_v5_deposit<'info>(
         output_amount,
         params.destination_chain_id,
         exclusive_relayer,
-        DepositId::Fixed {
-            state: &ctx.accounts.state,
-            value: derive_v5_deposit_id(
-                &GATEWAY_PROGRAM_ID,
-                &ctx_values.submitter,
-                &ctx_values.path_id,
-                &params.depositor,
-                params.deposit_nonce,
-            ),
-        },
+        derive_v5_deposit_id(
+            &GATEWAY_PROGRAM_ID,
+            &ctx_values.submitter,
+            &ctx_values.path_id,
+            &params.depositor,
+            params.deposit_nonce,
+        ),
         params.quote_timestamp,
         params.fill_deadline,
         params.exclusivity_parameter,
         message,
-        DelegatePda::FunctionSeed(V5_SOURCE_DELEGATE_SEED),
+        V5_SOURCE_DELEGATE_SEED,
     )?;
     emit_cpi!(event);
     Ok(())
@@ -110,7 +106,7 @@ fn execute_v5_fill<'info>(
     fill_input: V5FillInput,
     jit_data: &[u8],
 ) -> Result<()> {
-    // Fail fast before decoding branch-specific JIT data; `_fill` repeats the invariant for both entrypoints.
+    // Fail fast before decoding JIT data; `_fill` also enforces the pause before creating fill status.
     require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
 
     let jit: V5FillJit = decode_strict(jit_data)?;
@@ -141,13 +137,13 @@ fn execute_v5_fill<'info>(
         jit.repayment_chain_id,
         jit.repayment_address,
         ctx_values.submitter,
-        FillStatusInput::V5 {
+        FillStatusInput {
             payer: &accounts.payer,
             fill_status: &accounts.fill_status,
             system_program: &accounts.system_program,
             pdas: &accounts.fill_status_pdas,
         },
-        DelegatePda::FunctionSeed(V5_FILL_DELEGATE_SEED),
+        V5_FILL_DELEGATE_SEED,
     )?;
 
     emit_cpi!(event);

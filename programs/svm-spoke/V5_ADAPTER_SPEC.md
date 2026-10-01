@@ -210,8 +210,8 @@ Gateway-attested submitter. It derives the canonical relay hash on-chain, create
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
 message hash. The adapter retains the internal `_fill` core for pause, exclusivity, deadline,
 replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
-construction. The adapter retains its branch-specific account loading and event-emission mechanics. Internal
-legacy branches are left for a follow-up simplification; they have no dispatchable legacy deposit/fill entrypoint.
+construction. The adapter retains its branch-specific account loading and event-emission mechanics. The core uses
+V5 fill-status storage directly and emits `FastFill`; historical fill-type variants remain available for decoding.
 
 External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
 from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
@@ -267,7 +267,9 @@ the removed utility. Admin/root messaging, relayer refunds and claims, token-acc
 management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
-Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
+Internal sequential-deposit, legacy-fill, and per-instruction delegate-hash branches are removed. Deposits receive
+the adapter-derived ID directly, and token transfers sign with the static source/fill delegate seed. Historical
+account decoding and rent reclaim do not depend on those retired execution branches.
 
 Public clients expose encoder, decoder, and codec factories for all three V5 payload roots:
 
