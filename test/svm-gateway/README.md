@@ -63,7 +63,8 @@ funding/reclaim/withdrawal, and downstream rollback. Root reuse examples fund an
 
 The [adapter spec](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#pda-and-token-invariants) is authoritative for delivery
 invariants, the shared-vault trust boundary, and production route enablement. This suite tests those rules; it is not
-a production order builder. `canonicalInPlace` exercises the single-fill/floor/full-transfer template. Counterexamples
+a production order builder. `canonicalInPlace` approves the fill delegate, executes one fill, clears its unconsumed
+self-transfer allowance with a zero approval, then enforces a floor and transfers the full balance. Counterexamples
 cover zero/short consumption, multiple fills observing one balance, and actual JIT amounts exceeding committed
 minima. `assertAggregateDelivery` checks the observed execution's accounting, not authorization of a root.
 
@@ -103,8 +104,10 @@ the pool, deposits equal reserves of two fresh six-decimal SPL mints, and execut
 No swap mock, mainnet balances, production keys, or external liquidity is used. The fixture gives the swap signer
 SPL delegate authority while the token-account owner remains the distinct Gateway vault authority.
 
-The fixed-route committed tape is `Spoke ADAPTER_CALL(Fill) → APPROVE → CALL(swap_base_input) → BALANCE_REQ(output) →
-TRANSFER(all output, committed recipient)`. `BalanceSub` patches the entire live input balance into the swap.
+The fixed-route committed tape is `APPROVE(fill delegate) → Spoke ADAPTER_CALL(Fill) → APPROVE(swap delegate) →
+CALL(swap_base_input) → BALANCE_REQ(output) → TRANSFER(all output, committed recipient)`.
+`BalanceSub` patches the entire live input balance into the swap.
+The swap approval replaces the fill's unconsumed allowance in SPL's single delegate slot.
 Submitter funding occurs in the same Gateway execution. A lookup table carries the combined program accounts;
 the committed tape still uses the content-addressed parameter buffer.
 
@@ -121,8 +124,9 @@ payer reclaim/withdrawal and V5 witness tests remain in the suite.
 
 ### JIT swap and signed quality requirement
 
-The auction-shaped fixture commits `Spoke ADAPTER_CALL(Fill) → PLAN_FROM_JIT → BALANCE_REQ(user minimum) →
-PLAN_FROM_PLANNER(quality) → TRANSFER(all output, committed recipient)`. Only after the origin deposit commits that
+The auction-shaped fixture commits `APPROVE(fill delegate) → Spoke ADAPTER_CALL(Fill) → APPROVE(fill delegate, 0) →
+PLAN_FROM_JIT → BALANCE_REQ(user minimum) → PLAN_FROM_PLANNER(quality) → TRANSFER(all output, committed recipient)`.
+Only after the origin deposit commits that
 destination path does the fixture build the swap route and sign the quality quote. The JIT child tape contains
 `APPROVE → CALL(swap_base_input)`; its own JIT queue is empty. The parent queue supplies three independent items:
 the Spoke fill data, the child-plan envelope, and the signed planner envelope.
