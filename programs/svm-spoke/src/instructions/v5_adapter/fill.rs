@@ -1,7 +1,4 @@
-use anchor_lang::{
-    prelude::*,
-    solana_program::{keccak, program_option::COption},
-};
+use anchor_lang::{prelude::*, solana_program::keccak};
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
@@ -44,13 +41,7 @@ pub(super) fn execute_v5_fill<'info>(
 
     let message_hash = keccak::hash(&relay.message).to_bytes();
     let relay_hash = get_relay_hash(relay, ctx.accounts.state.chain_id, &message_hash);
-    let accounts = V5FillAccounts::load(
-        ctx.remaining_accounts,
-        &fill_input,
-        relay.output_amount,
-        &ctx_values.submitter,
-        &relay_hash,
-    )?;
+    let accounts = V5FillAccounts::load(ctx.remaining_accounts, &fill_input, &ctx_values.submitter, &relay_hash)?;
     let current_time = get_current_time(&ctx.accounts.state)?;
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer.
@@ -74,19 +65,15 @@ pub(super) fn execute_v5_fill<'info>(
         &accounts.fill_status_pdas,
     )?;
 
-    // Only authenticated in-place delivery skips the token transfer.
-    match accounts.delivery {
-        V5FillDelivery::Delegated(delegate) => transfer_from(
-            TransferChecked { from: accounts.from, mint: accounts.mint, to: accounts.recipient, authority: delegate },
-            accounts.token_program,
-            relay.output_amount,
-            accounts.mint_decimals,
-            V5_FILL_DELEGATE_SEED,
-        )?,
-        // The loader has validated the canonical shared vault and sufficient balance.
-        // The committed Gateway tape must enforce balance checks covering the fill obligations and consume the funds.
-        V5FillDelivery::InPlace => {}
-    }
+    // Self-transfers validate balance and authority without debiting funds or allowance.
+    // The committed Gateway tape must still consume the funds and clear any remaining approval.
+    transfer_from(
+        accounts.transfer,
+        accounts.token_program,
+        relay.output_amount,
+        accounts.mint_decimals,
+        V5_FILL_DELEGATE_SEED,
+    )?;
 
     // Update the fill status and rent-reclaim metadata; V5 stores its payer PDA as the rent recipient.
     fill_status.write_filled(relay.fill_deadline)?;
@@ -116,17 +103,8 @@ pub(super) fn execute_v5_fill<'info>(
     Ok(())
 }
 
-enum V5FillDelivery<'info> {
-    Delegated(AccountInfo<'info>),
-    /// The private loader validated both accounts as the canonical Gateway vault with sufficient live balance.
-    InPlace,
-}
-
 struct V5FillAccounts<'a, 'info> {
-    from: AccountInfo<'info>,
-    recipient: AccountInfo<'info>,
-    delivery: V5FillDelivery<'info>,
-    mint: AccountInfo<'info>,
+    transfer: TransferChecked<'info>,
     token_program: AccountInfo<'info>,
     mint_decimals: u8,
     payer: AccountInfo<'info>,
@@ -139,7 +117,6 @@ impl<'a, 'info> V5FillAccounts<'a, 'info> {
     fn load(
         remaining_accounts: &[AccountInfo<'info>],
         fill_input: &V5FillInput,
-        output_amount: u64,
         submitter: &'a Pubkey,
         relay_hash: &'a [u8; 32],
     ) -> Result<Self> {
@@ -157,15 +134,7 @@ impl<'a, 'info> V5FillAccounts<'a, 'info> {
             &fill_input.recipient,
         )?;
 
-        let delivery = if token_accounts.gateway_vault.key() == recipient {
-            // This check is not a debit. Builders must consume after one fill or enforce an aggregate floor covering
-            // every in-place fill recorded before full-balance consumption; step-root reuse alone is valid.
-            require!(token_accounts.source.amount >= output_amount, V5Error::InsufficientVaultBalance);
-            V5FillDelivery::InPlace
-        } else {
-            require!(token_accounts.source.delegate == COption::Some(V5_FILL_DELEGATE), V5Error::InvalidTokenAccount);
-            V5FillDelivery::Delegated(find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?.clone())
-        };
+        let delegate = find_v5_account(remaining_accounts, &V5_FILL_DELEGATE, false)?;
 
         let fill_status_pdas = V5FillStatusPdas::derive(submitter, relay_hash);
         let payer_info = find_v5_account(remaining_accounts, &fill_status_pdas.payer(), true)?;
@@ -173,10 +142,12 @@ impl<'a, 'info> V5FillAccounts<'a, 'info> {
         let system_program_info = find_v5_account(remaining_accounts, &anchor_lang::system_program::ID, false)?;
 
         Ok(Self {
-            from: token_accounts.gateway_vault,
-            recipient: recipient_info.clone(),
-            delivery,
-            mint: token_accounts.mint,
+            transfer: TransferChecked {
+                from: token_accounts.gateway_vault,
+                mint: token_accounts.mint,
+                to: recipient_info.clone(),
+                authority: delegate.clone(),
+            },
             token_program: token_accounts.token_program,
             mint_decimals: token_accounts.mint_decimals,
             payer: payer_info.clone(),
