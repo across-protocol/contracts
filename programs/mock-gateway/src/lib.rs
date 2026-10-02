@@ -262,7 +262,7 @@ pub struct ExecuteFillAdapter<'info> {
     #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    /// CHECK: The svm-spoke adapter authenticates the static fill-delegate key for external delivery.
+    /// CHECK: The svm-spoke adapter authenticates the static fill-delegate key for all fills.
     pub fill_delegate: UncheckedAccount<'info>,
 
     /// CHECK: Validated by svm-spoke against the context submitter.

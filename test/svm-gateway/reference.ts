@@ -38,9 +38,14 @@ export const call = (program: PublicKey, metas: Meta[], input: Buffer, balanceSu
     vec(input),
     list(balanceSubs),
   ]);
-export const approve = (mint: PublicKey, delegate: PublicKey): Command => ({
+export const approve = (mint: PublicKey, delegate: PublicKey, amount?: bigint): Command => ({
   op: OP.APPROVE,
-  input: Buffer.concat([mint.toBuffer(), delegate.toBuffer(), u64(0xffffffffffffffffn), u16(10000)]),
+  input: Buffer.concat([
+    mint.toBuffer(),
+    delegate.toBuffer(),
+    u64(amount ?? 0xffffffffffffffffn),
+    u16(amount === undefined ? 10000 : 0),
+  ]),
 });
 export const floor = (mint: PublicKey, amount: bigint): Command => ({
   op: OP.BALANCE_REQ,
@@ -110,12 +115,18 @@ export const funding = (source: PublicKey, mint: PublicKey, amount: bigint, dead
     deadline === undefined ? Buffer.from([0]) : u64(deadline),
   ]);
 
-/** Only the simple canonical template: one fill, a post-fill floor, then full
+/** Only the simple canonical template: approve one fill, clear its allowance, a post-fill floor, then full
  * balance transfer. Arbitrary action/planner/aggregate paths need a separate
  * proof over ALL reachable outcomes and allowed JIT, not a check of one quote. */
-export function canonicalInPlace(fill: Command, mint: PublicKey, minimum: bigint, recipient: PublicKey): Command[] {
+export function canonicalInPlace(
+  fill: Command,
+  mint: PublicKey,
+  delegate: PublicKey,
+  minimum: bigint,
+  recipient: PublicKey
+): Command[] {
   if (fill.op !== (OP.ADAPTER_CALL | OP.JIT)) throw new Error("mandatory fill required");
-  return [fill, floor(mint, minimum), transfer(mint, recipient)];
+  return [approve(mint, delegate), fill, approve(mint, delegate, 0n), floor(mint, minimum), transfer(mint, recipient)];
 }
 
 /** Accounting oracle for a concrete execution, not authentication of JIT or a
