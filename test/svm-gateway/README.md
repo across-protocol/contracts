@@ -76,8 +76,8 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
 | v5-deposit       |                    73,530 |                    67,530 |                80,169 |
-| v5-external-fill |                    84,660 |                    78,660 |                90,989 |
-| v5-inplace-fill  |                    77,369 |                    71,369 |                83,698 |
+| v5-external-fill |                    84,688 |                    78,688 |                91,017 |
+| v5-inplace-fill  |                    73,837 |                    69,337 |                81,666 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -88,16 +88,16 @@ the following sum from `execution`:
 | legacy-fill      | `d(statusBump) + d(delegateBump) + d(recipientAtaBump)` |
 | v5-deposit       | `d(fundingBump) + 2*d(vaultBump) + d(spokeVaultBump)`   |
 | v5-external-fill | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
-| v5-inplace-fill  | `d(statusBump) + 3*d(vaultBump) + d(recipientAtaBump)`  |
+| v5-inplace-fill  | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
 
 State bumps are already 255 in every fixture. Fixed program/submitter authority costs remain included. Normalize
 V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
 totals sum these adjusted components per row.
 
-External minus in-place execution is 7,291 CU after normalization for every sample. Sample 3's measured reversal
-comes from one extra Gateway-vault ATA derivation at bump 250 (7,500 extra CU) plus an in-place status bump two
-steps lower (3,000 extra CU): `7,291 - 7,500 - 3,000 = -3,209`. This is explained by address-dependent search work.
-The measured total-median gap is 13,291 CU, versus 7,291 after normalization; use per-row sums because independently
+External minus in-place execution is 9,351 CU after normalization for every sample. Both fill variants have the same
+number of Gateway-vault ATA derivations. Sample 3's in-place status bump is two steps lower (3,000 extra CU), leaving
+a measured gap of `9,351 - 3,000 = 6,351` CU.
+The measured total-median gap is 15,351 CU, versus 9,351 after normalization; use per-row sums because independently
 computed component medians need not add to the total median.
 
 `BUFFER_FRAGMENT_BYTES = 800` in `cu/config.ts` is a conservative, fixed test-helper policy, not a measured production
@@ -122,6 +122,8 @@ enforce a regression threshold. After reviewing the provenance and changes, rege
 different `SVM_CU_OUTPUT` directories and compare `measurements` and program/runtime hashes. Transaction signatures,
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
+
+Validated Gateway vault reuse is tracked in [#1570](https://github.com/across-protocol/contracts/issues/1570).
 
 ## Conformance suite
 
