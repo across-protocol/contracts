@@ -1265,7 +1265,13 @@ describe("SVM V5 with the pinned real Gateway", () => {
     const missingRecipient = Keypair.generate().publicKey;
     const missingAta = getAssociatedTokenAddressSync(mint, missingRecipient);
     assert.isNull(await connection.getAccountInfo(missingAta));
-    const [, requirement, consumption] = canonicalInPlace(fillCommand(), mint, amount, missingRecipient);
+    const [requirement, consumption] = canonicalInPlace(
+      fillCommand(),
+      mint,
+      fillDelegate,
+      amount,
+      missingRecipient
+    ).slice(-2);
     // Exercise the canonical post-fill suffix against an empty vault.
     await execute(path([consumption]));
     await expectFailure(execute(path([requirement, consumption])), "BalanceRequirementNotMet");
