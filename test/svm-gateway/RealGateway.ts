@@ -1151,6 +1151,25 @@ describe("SVM V5 with the pinned real Gateway", () => {
       .rpc();
     assert.equal(await connection.getBalance(fillPayer), 0);
   });
+  it("rejects approval to a different delegate even when the correct fill-delegate account is supplied", async () => {
+    const dst = path([approve(mint, depositDelegate), fillCommand(false)]);
+    const relay = await origin(pathId(dst), false);
+    const payerBefore = await connection.getBalance(fillPayer);
+    const userBefore = (await getAccount(connection, userAta)).amount;
+    const { failedReceipt } = await execute(dst, {
+      relays: [relay],
+      funds: [funding(userAta, mint, amount)],
+      failed: true,
+    });
+    assert.include(failedReceipt!.logs, `Program ${tokenProgram} failed: custom program error: 0x4`);
+    assert.isNull(await connection.getAccountInfo(status(relay)));
+    assert.equal(await connection.getBalance(fillPayer), payerBefore);
+    assert.equal((await getAccount(connection, userAta)).amount, userBefore);
+    const source = await getAccount(connection, vault);
+    assert.equal(source.amount, 0n);
+    assert.isNull(source.delegate);
+    assert.equal((await getAccount(connection, recipientAta)).amount, 0n);
+  });
   it("prefunded origin composes with in-place fill and full-balance consumption", async () => {
     const dst = destination();
     const relay = await origin(pathId(dst), true, true);

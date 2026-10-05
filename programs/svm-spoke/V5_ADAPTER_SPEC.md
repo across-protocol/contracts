@@ -130,6 +130,11 @@ For the configured Spoke program, `v5_deposit_delegate` derives
 `8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
 target and the supplied deposit delegate account.
 
+The `v5_fill_delegate` PDA derives `D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1` with bump 252. Builders must use it
+as both the approval target and the supplied fill delegate account for every fill, including self-transfers.
+Sufficient approval must exist when the fill executes. Missing or wrong delegate approval fails in the token program
+with `OwnerMismatch` (0x4).
+
 Every delivery targets the canonical ATA of committed `recipient`, output mint, and token program. When that ATA is
 the Gateway vault, the same transfer helper performs an SPL self-transfer, validating balance, frozen state, and
 delegate authority/allowance without debiting funds or consuming allowance. Clearing the remaining allowance with
@@ -340,9 +345,10 @@ mapping; generated error-name tables alone are insufficient. Assigning distinct 
 generated IDL table.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
-separate callback message. The replacement destination flow is a single in-place Across fill followed by
-Gateway `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed output-mint `BALANCE_REQ`,
-and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the Gateway output vault.
+separate callback message. The replacement destination flow is Gateway `APPROVE(inputMint, v5_fill_delegate, full balance)`,
+a single in-place Across fill, then `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed
+output-mint `BALANCE_REQ`, and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the
+Gateway output vault.
 The vault owner signs only Gateway token operations; the swap receives its distinct SPL delegate as signer.
 A failed swap or output floor reverts the entire execution, including the fill and payer rent.
 

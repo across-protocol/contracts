@@ -22,7 +22,7 @@ fn custom_error_ranges_are_stable() {
     assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 8_006);
     assert_eq!(u32::from(V5Error::InvalidAmountBips), 8_007);
     assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 8_012);
-    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 8_015);
+    assert_eq!(u32::from(V5Error::FillOutputAmountTooLow), 8_014);
     assert_eq!(u32::from(CallDataError::InvalidSelector), 9_000);
     assert_eq!(u32::from(CallDataError::UnsupportedSelector), 9_006);
 }

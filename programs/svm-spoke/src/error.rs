@@ -111,8 +111,6 @@ pub enum V5Error {
     FillCommitmentMismatch,
     #[msg("Across V5 fill output amount is below the committed floor!")]
     FillOutputAmountTooLow,
-    #[msg("Across V5 Gateway vault balance is insufficient!")]
-    InsufficientVaultBalance,
 }
 
 // CCTP specific errors.

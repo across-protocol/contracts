@@ -114,15 +114,19 @@ describe("svm_spoke V5 destination fill", () => {
     options: Parameters<typeof instruction>[2] = {}
   ) => provider.sendAndConfirm(new Transaction().add(instruction(input, jit, options)));
 
-  const expectError = async (promise: Promise<unknown>, name: string) => {
+  const tokenError = (code: number) =>
+    new RegExp(`Program ${tokenProgram} failed: custom program error: 0x${code.toString(16)}\\b`);
+
+  const expectError = async (promise: Promise<unknown>, expected: string | RegExp) => {
     try {
       await promise;
     } catch (error: any) {
       const text = [error.toString(), ...(error.logs ?? [])].join("\n");
-      if (!text.includes(name)) throw new Error(text);
+      if (typeof expected === "string") assert.include(text, expected);
+      else assert.match(text, expected);
       return;
     }
-    assert.fail(`Expected ${name}`);
+    assert.fail(`Expected ${expected}`);
   };
 
   const setupTokens = async (programId = TOKEN_PROGRAM_ID) => {
@@ -251,7 +255,7 @@ describe("svm_spoke V5 destination fill", () => {
       .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
       .rpc();
 
-    await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), "custom program error: 0x1");
+    await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), tokenError(0x1));
     await expectError(execute(undefined, undefined, { delegate: Keypair.generate().publicKey }), "MissingAccount");
     await expectError(execute(undefined, undefined, { payer: Keypair.generate().publicKey }), "MissingAccount");
     await expectError(execute(undefined, undefined, { status: Keypair.generate().publicKey }), "MissingAccount");
@@ -267,7 +271,7 @@ describe("svm_spoke V5 destination fill", () => {
 
   it("rejects missing approval, wrong recipient accounts, mint mismatch, and reassigned ATA authority", async () => {
     const payerBefore = await connection.getBalance(fillPayer);
-    await expectError(execute(undefined, undefined, { approval: null }), "custom program error: 0x4");
+    await expectError(execute(undefined, undefined, { approval: null }), tokenError(0x4));
     await expectError(execute(undefined, undefined, { recipientAccount: consumptionAccount }), "MissingAccount");
     const otherMint = await createMint(connection, wallet, owner, null, 6);
     const original = relay;
@@ -382,7 +386,7 @@ describe("svm_spoke V5 destination fill", () => {
       execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
         recipientAccount: gatewayVault,
       }),
-      "custom program error: 0x1"
+      tokenError(0x1)
     );
     assert.isNull(await connection.getAccountInfo(fillStatus()));
   });
@@ -394,11 +398,8 @@ describe("svm_spoke V5 destination fill", () => {
       const input = encodeFill(vaultAuthority, mint, outputAmount);
       const options = { recipientAccount: gatewayVault };
       const payerBefore = await connection.getBalance(fillPayer);
-      await expectError(execute(input, undefined, { ...options, approval: null }), "custom program error: 0x4");
-      await expectError(
-        execute(input, undefined, { ...options, approval: outputAmount - 1n }),
-        "custom program error: 0x1"
-      );
+      await expectError(execute(input, undefined, { ...options, approval: null }), tokenError(0x4));
+      await expectError(execute(input, undefined, { ...options, approval: outputAmount - 1n }), tokenError(0x1));
       const oversized = { ...relay, outputAmount: new BN((outputAmount + 1n).toString()) };
       await expectError(
         execute(input, encodeJit(oversized, new BN(777), owner), {
@@ -406,7 +407,7 @@ describe("svm_spoke V5 destination fill", () => {
           approval: outputAmount + 1n,
           status: fillStatus(oversized),
         }),
-        "custom program error: 0x1"
+        tokenError(0x1)
       );
       assert.isNull(await connection.getAccountInfo(fillStatus()));
       assert.isNull(await connection.getAccountInfo(fillStatus(oversized)));
@@ -426,7 +427,7 @@ describe("svm_spoke V5 destination fill", () => {
       );
       await freezeAccount(connection, wallet, gatewayVault, mint, owner, [], undefined, tokenProgram);
       const frozenPayerBalance = await connection.getBalance(fillPayer);
-      await expectError(execute(input, undefined, { ...options, approval: null }), "custom program error: 0x11");
+      await expectError(execute(input, undefined, { ...options, approval: null }), tokenError(0x11));
       assert.isNull(await connection.getAccountInfo(fillStatus()));
       assert.equal(await connection.getBalance(fillPayer), frozenPayerBalance);
       const frozen = await getAccount(connection, gatewayVault, undefined, tokenProgram);

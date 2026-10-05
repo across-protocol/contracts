@@ -99,7 +99,6 @@ includes these removals. Intermediate stack assignments were never deployed and 
 | `InvalidFillStatusAccount`          | —              | 8012         |
 | `FillCommitmentMismatch`            | —              | 8013         |
 | `FillOutputAmountTooLow`            | —              | 8014         |
-| `InsufficientVaultBalance`          | —              | 8015         |
 
 ## CallDataError
 
