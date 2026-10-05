@@ -460,7 +460,8 @@ async function main() {
           SPOKE,
           [
             ...baseMetas,
-            ...(!inPlace ? [meta(recipientAta, true), meta(fillDelegate)] : []),
+            ...(!inPlace ? [meta(recipientAta, true)] : []),
+            meta(fillDelegate),
             injected(),
             injected(),
             meta(SystemProgram.programId),
@@ -469,7 +470,9 @@ async function main() {
         ),
       };
       const selected = makePath(
-        inPlace ? canonicalInPlace(command, mint, AMOUNT, recipient) : [approve(mint, fillDelegate), command]
+        inPlace
+          ? canonicalInPlace(command, mint, fillDelegate, AMOUNT, recipient)
+          : [approve(mint, fillDelegate), command]
       );
       const value = relay(who, Buffer.concat([PREFIX, pathId(selected)])),
         digest = relayHash(value);
@@ -496,7 +499,7 @@ async function main() {
       assert("filled" in filled.status);
       assert(filled.relayer.equals(fillPayer));
       assert.equal((await getAccount(connection, recipientAta)).amount, AMOUNT);
-      assert.equal((await getAccount(connection, vault)).delegate, null);
+      assert.equal((await getAccount(connection, vault)).delegatedAmount, 0n);
       assert.equal(
         payerBefore - (await connection.getBalance(fillPayer)),
         (await connection.getAccountInfo(status))!.lamports

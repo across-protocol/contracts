@@ -5,7 +5,7 @@
 `yarn bench-svm-cu` builds the legacy Spoke at `7445f72de17900544605c7e6706c5fb3b3784738`, this checkout's V5 Spoke,
 and the Gateway at `GATEWAY_COMMIT`, then measures five fixed fixtures per flow on fresh Agave 4.1.2 validators.
 It needs installed Yarn dependencies, repository history containing that legacy commit, Anchor CLI 0.31.1 and 1.1.2,
-and access to the pinned Gateway source. The baseline used Node 22.18.0, Yarn 1.22.22 and `cargo-build-sbf` 4.1.0;
+and access to the pinned Gateway source. The baseline used Node 22.22.0, Yarn 1.22.22 and `cargo-build-sbf` 4.1.0;
 the full tool/runtime metadata is in `cu/baseline.json`. It generates its own IDLs; package clients and local binaries are
 not prerequisites. It builds neither Raydium nor planners. Foundry cannot measure SVM compute, so this lane uses the
 repository's TypeScript/Agave approach and existing SBF diagnostic guard.
@@ -37,8 +37,8 @@ Paths and relay identities necessarily differ between fill variants; their buffe
 Fixtures also record source, recipient, Spoke vault and Gateway vault ATA bumps (`sourceBump`, `recipientAtaBump`,
 `spokeVaultBump`, `vaultBump`). `recipientAtaBump` always describes the final recipient's ATA, including when Spoke
 records an in-place fill against the Gateway vault before Gateway performs final delivery.
-The external route approves a Spoke delegate and transfers inside Spoke; the in-place route skips that approval
-and transfer, then checks the floor and transfers in Gateway. Different account validation and PDA derivation costs
+Both routes approve the Spoke fill delegate and call `transfer_checked`. The in-place route performs a self-transfer,
+clears its unconsumed allowance, then checks the floor and transfers in Gateway. Different account validation and PDA derivation costs
 also contribute, so a total-CU difference does not isolate the cost of a single command.
 Five fixed seeds expose some of that variation but are not a worst-case bound or a statistical production estimate.
 The validator's bundled token programs and activated features are part of this baseline; it is not a mainnet CU budget.
@@ -75,9 +75,9 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | ---------------- | ------------------------: | ------------------------: | --------------------: |
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
-| v5-deposit       |                    73,530 |                    67,530 |                80,169 |
-| v5-external-fill |                    84,660 |                    78,660 |                90,989 |
-| v5-inplace-fill  |                    77,369 |                    71,369 |                83,698 |
+| v5-deposit       |                    73,516 |                    67,516 |                80,155 |
+| v5-external-fill |                    84,564 |                    78,564 |                90,893 |
+| v5-inplace-fill  |                    91,841 |                    87,341 |                99,670 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -94,14 +94,12 @@ State bumps are already 255 in every fixture. Fixed program/submitter authority 
 V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
 totals sum these adjusted components per row.
 
-External minus in-place execution is 7,291 CU after normalization for every sample. Sample 3's measured reversal
-comes from one extra Gateway-vault ATA derivation at bump 250 (7,500 extra CU) plus an in-place status bump two
-steps lower (3,000 extra CU): `7,291 - 7,500 - 3,000 = -3,209`. This is explained by address-dependent search work.
-The measured total-median gap is 13,291 CU, versus 7,291 after normalization; use per-row sums because independently
-computed component medians need not add to the total median.
+In this baseline, in-place execution costs 8,777 CU more than external execution after normalization in every
+sample. Raw per-fixture gaps also include the recorded vault and status PDA search costs. Compare per-row totals;
+independently computed component medians need not add to the total median.
 
 `BUFFER_FRAGMENT_BYTES = 800` in `cu/config.ts` is a conservative, fixed test-helper policy, not a measured production
-submitter setting or maximum packet utilization. The 891/1,194/1,173-byte V5 parameter payloads each require two writes;
+submitter setting or maximum packet utilization. The 891/1,194/1,364-byte V5 parameter payloads each require two writes;
 `bufferFragmentBytes` and `bufferWrites` are recorded per row. Each flow sends initialization plus two separate writes,
 so this baseline's entire buffer variation is `12,329 + 4,500 * d(bufferBump)`, not a difference in upload count.
 A larger fragment can fit this transaction shape and put the deposit payload into one write; packing initialization

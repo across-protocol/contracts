@@ -54,9 +54,14 @@ export const call = (program: PublicKey, metas: Meta[], input: Buffer, balanceSu
     vec(input),
     list(balanceSubs),
   ]);
-export const approve = (mint: PublicKey, delegate: PublicKey): Command => ({
+export const approve = (mint: PublicKey, delegate: PublicKey, amount?: bigint): Command => ({
   op: OP.APPROVE,
-  input: Buffer.concat([mint.toBuffer(), delegate.toBuffer(), u64(0xffffffffffffffffn), u16(10000)]),
+  input: Buffer.concat([
+    mint.toBuffer(),
+    delegate.toBuffer(),
+    u64(amount ?? 0xffffffffffffffffn),
+    u16(amount === undefined ? 10000 : 0),
+  ]),
 });
 export const floor = (mint: PublicKey, amount: bigint): Command => ({
   op: OP.BALANCE_REQ,

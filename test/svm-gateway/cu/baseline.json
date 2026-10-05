@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "b02518a5576d44cc8b26a1f85707ea979cf9bded",
+  "head": "e280850cbe6e9374ba1f2e52223bb692acc874c0",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
   "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "validatorVersion": "solana-test-validator 4.1.2 (src:182084b8; feat:c763ae0a, client:Agave)",
   "anchorVersions": ["anchor-cli 0.31.1", "anchor-cli 1.1.2"],
-  "node": "v22.18.0",
+  "node": "v22.22.0",
   "spokeFeatures": ["test"],
   "sbfVersion": "cargo-build-sbf 4.1.0\nplatform-tools v1.54\nrustc 1.89.0",
-  "fixtureSha256": "aa352f4e8fe6042991ece6056f4f8d18d4c8ccb951ebf6af59bbf60548d866fc",
+  "fixtureSha256": "754f866d2f596e1c24d59f394773b5bbda33cf6f84ba50c46024367080e4008d",
   "programs": {
     "legacy": {
       "tools": "v1.44",
@@ -19,8 +19,8 @@
     },
     "v5": {
       "tools": "v1.52",
-      "binarySha256": "78f3c718e245ae7c6986fabf293b7ae09ed44bd2d8008b4cacb65b70ead9e456",
-      "idlSha256": "dd07cdf688dc93620fb98ff6676d53b5dbe85c07030fa87a173ac74a15da3a14"
+      "binarySha256": "a479ae65061feb46ba87119f0a6816407dd0dc321ed4893c4b0d03409d721f09",
+      "idlSha256": "6e94ecbbabb1addc2bd31ab5e01c6d4fd3455f35098540cad989479b50d7800f"
     },
     "gateway": {
       "tools": "v1.54",
@@ -251,10 +251,10 @@
     {
       "case": "v5-deposit",
       "sample": 0,
-      "execution": 79530,
+      "execution": 79516,
       "approval": 310,
       "buffer": 16829,
-      "total": 96669,
+      "total": 96655,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -275,10 +275,10 @@
     {
       "case": "v5-external-fill",
       "sample": 0,
-      "execution": 84660,
+      "execution": 84564,
       "approval": 0,
       "buffer": 16829,
-      "total": 101489,
+      "total": 101393,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -299,10 +299,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 0,
-      "execution": 80369,
+      "execution": 97841,
       "approval": 0,
-      "buffer": 12329,
-      "total": 92698,
+      "buffer": 25829,
+      "total": 123670,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -312,21 +312,21 @@
         "recipientAtaBump": 255,
         "spokeVaultBump": 252,
         "vaultBump": 253,
-        "pathId": "5a30c4c157dc9bd23d8f35a77cfd9cb1fead3dea6385ab7a060788a6b953b42a",
-        "paramsBytes": 1173,
+        "pathId": "44cfd705961626d3b57fed0e020abd512f79329b71f629116de94b9e505442f1",
+        "paramsBytes": 1364,
         "bufferFragmentBytes": 800,
         "bufferWrites": 2,
-        "bufferBump": 255,
-        "statusBump": 255
+        "bufferBump": 252,
+        "statusBump": 254
       }
     },
     {
       "case": "v5-deposit",
       "sample": 1,
-      "execution": 73530,
+      "execution": 73516,
       "approval": 310,
       "buffer": 12329,
-      "total": 86169,
+      "total": 86155,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -347,10 +347,10 @@
     {
       "case": "v5-external-fill",
       "sample": 1,
-      "execution": 80160,
+      "execution": 80064,
       "approval": 0,
       "buffer": 16829,
-      "total": 96989,
+      "total": 96893,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -371,10 +371,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 1,
-      "execution": 72869,
+      "execution": 91841,
       "approval": 0,
-      "buffer": 16829,
-      "total": 89698,
+      "buffer": 30329,
+      "total": 122170,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -384,21 +384,21 @@
         "recipientAtaBump": 254,
         "spokeVaultBump": 254,
         "vaultBump": 255,
-        "pathId": "c5f8a3b22a66be07214b61f7456504f60a259e393364c1ee1aad3a4d9179fcef",
-        "paramsBytes": 1173,
+        "pathId": "aee49a38b9782d34cea28fa6b8e2127705cb21b92f07d11c5ebbfe3fdaba7e0a",
+        "paramsBytes": 1364,
         "bufferFragmentBytes": 800,
         "bufferWrites": 2,
-        "bufferBump": 254,
-        "statusBump": 255
+        "bufferBump": 251,
+        "statusBump": 253
       }
     },
     {
       "case": "v5-deposit",
       "sample": 2,
-      "execution": 73530,
+      "execution": 73516,
       "approval": 310,
       "buffer": 12329,
-      "total": 86169,
+      "total": 86155,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -419,10 +419,10 @@
     {
       "case": "v5-external-fill",
       "sample": 2,
-      "execution": 83160,
+      "execution": 83064,
       "approval": 0,
       "buffer": 21329,
-      "total": 104489,
+      "total": 104393,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -443,10 +443,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 2,
-      "execution": 77369,
+      "execution": 91841,
       "approval": 0,
       "buffer": 12329,
-      "total": 89698,
+      "total": 104170,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -456,21 +456,21 @@
         "recipientAtaBump": 255,
         "spokeVaultBump": 254,
         "vaultBump": 254,
-        "pathId": "a56221b5d9dd0087be4f93c5daa74d758dcc37546d272a08254fc76fb4b97c4d",
-        "paramsBytes": 1173,
+        "pathId": "cf49f70ed846f8061f2219a8f36b69b67cdf235b703a0e92275ead156ea18150",
+        "paramsBytes": 1364,
         "bufferFragmentBytes": 800,
         "bufferWrites": 2,
         "bufferBump": 255,
-        "statusBump": 254
+        "statusBump": 255
       }
     },
     {
       "case": "v5-deposit",
       "sample": 3,
-      "execution": 82530,
+      "execution": 82516,
       "approval": 310,
       "buffer": 12329,
-      "total": 95169,
+      "total": 95155,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -491,10 +491,10 @@
     {
       "case": "v5-external-fill",
       "sample": 3,
-      "execution": 93660,
+      "execution": 93564,
       "approval": 0,
       "buffer": 12329,
-      "total": 105989,
+      "total": 105893,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -515,10 +515,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 3,
-      "execution": 96869,
+      "execution": 111341,
       "approval": 0,
-      "buffer": 12329,
-      "total": 109198,
+      "buffer": 21329,
+      "total": 132670,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -528,21 +528,21 @@
         "recipientAtaBump": 255,
         "spokeVaultBump": 255,
         "vaultBump": 250,
-        "pathId": "15e8242b583a50d9c54ae4e3a83cbe0baaf55bcf3738f942fcc20cd68584dc61",
-        "paramsBytes": 1173,
+        "pathId": "f83aab531fdea5ba1cd23acd1c467b088d51b5d4b362e644d8a1500502746807",
+        "paramsBytes": 1364,
         "bufferFragmentBytes": 800,
         "bufferWrites": 2,
-        "bufferBump": 255,
-        "statusBump": 253
+        "bufferBump": 253,
+        "statusBump": 254
       }
     },
     {
       "case": "v5-deposit",
       "sample": 4,
-      "execution": 67530,
+      "execution": 67516,
       "approval": 310,
       "buffer": 16829,
-      "total": 84669,
+      "total": 84655,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -563,10 +563,10 @@
     {
       "case": "v5-external-fill",
       "sample": 4,
-      "execution": 86160,
+      "execution": 86064,
       "approval": 0,
       "buffer": 16829,
-      "total": 102989,
+      "total": 102893,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -587,10 +587,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 4,
-      "execution": 74369,
+      "execution": 87341,
       "approval": 0,
       "buffer": 12329,
-      "total": 86698,
+      "total": 99670,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -600,12 +600,12 @@
         "recipientAtaBump": 255,
         "spokeVaultBump": 255,
         "vaultBump": 255,
-        "pathId": "ef08471cffea25505971f469193d482834e8097830d0161517c872e30de09863",
-        "paramsBytes": 1173,
+        "pathId": "a184bf8ee4be151e4b911953099b4410376b9ed65e768bc27fc224c1615e20a9",
+        "paramsBytes": 1364,
         "bufferFragmentBytes": 800,
         "bufferWrites": 2,
         "bufferBump": 255,
-        "statusBump": 253
+        "statusBump": 255
       }
     }
   ]
