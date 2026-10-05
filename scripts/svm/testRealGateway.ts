@@ -1,11 +1,12 @@
 // Separate validator: the ordinary Anchor suite installs mock_gateway at the
-// same address. Build both foreign programs from an immutable source checkout.
+// same address. Build the foreign programs from immutable source checkouts.
 import { spawn, spawnSync } from "child_process";
 import { mkdirSync, mkdtempSync, readFileSync, openSync, closeSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import { createServer } from "net";
 import { Keypair } from "@solana/web3.js";
+import { SWAP_COMMIT, SWAP_PROGRAM, swapGenesis } from "../../test/svm-gateway/swapFixture";
 import { GATEWAY, PREFUNDED, GATEWAY_COMMIT } from "../../test/svm-gateway/reference";
 
 function run(command: string, args: string[], cwd = process.cwd()) {
@@ -35,10 +36,39 @@ async function main() {
   if (head.status !== 0 || head.stdout.trim() !== GATEWAY_COMMIT || dirty.status !== 0 || dirty.stdout.trim()) {
     throw new Error(`Gateway checkout must be clean at ${GATEWAY_COMMIT}`);
   }
+  const swapCheckout = process.env.SVM_SWAP_CHECKOUT || path.join(work, "raydium-cp-swap");
+  if (!process.env.SVM_SWAP_CHECKOUT) {
+    run("git", ["clone", "https://github.com/raydium-io/raydium-cp-swap.git", swapCheckout]);
+    run("git", ["checkout", "--detach", SWAP_COMMIT], swapCheckout);
+  }
+  const swapHead = spawnSync("git", ["rev-parse", "HEAD"], { cwd: swapCheckout, encoding: "utf8" });
+  const swapDirty = spawnSync("git", ["status", "--porcelain"], { cwd: swapCheckout, encoding: "utf8" });
+  if (
+    swapHead.status !== 0 ||
+    swapHead.stdout.trim() !== SWAP_COMMIT ||
+    swapDirty.status !== 0 ||
+    swapDirty.stdout.trim()
+  )
+    throw new Error(`Swap checkout must be clean at ${SWAP_COMMIT}`);
+  run(
+    "cargo",
+    [
+      "build-sbf",
+      "--tools-version",
+      "v1.52",
+      "--manifest-path",
+      "programs/cp-swap/Cargo.toml",
+      "--sbf-out-dir",
+      "target/deploy",
+      "--",
+      "--locked",
+    ],
+    swapCheckout
+  );
   const foreignAnchor = process.env.SVM_GATEWAY_ANCHOR || "anchor";
   const gatewayIdlDir = path.join(work, "idl");
   mkdirSync(gatewayIdlDir);
-  for (const name of ["gateway", "prefunded_adapter"]) {
+  for (const name of ["gateway", "prefunded_adapter", "authority_requirement_planner"]) {
     run(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl"], checkout);
     run(
       foreignAnchor,
@@ -55,7 +85,7 @@ async function main() {
     "--manifest-path",
     "programs/svm-spoke/Cargo.toml",
     "--sbf-out-dir",
-    "target/deploy",
+    path.join(work, "spoke"),
     "--features",
     "test",
   ]);
@@ -75,6 +105,9 @@ async function main() {
   ]);
 
   const spokeId = JSON.parse(readFileSync("target/idl/svm_spoke.json", "utf8")).address;
+  const plannerId = JSON.parse(
+    readFileSync(path.join(gatewayIdlDir, "authority_requirement_planner.json"), "utf8")
+  ).address;
   const walletPath = path.resolve("test/svm/keys/localnet-wallet.json");
   const wallet = Keypair.fromSecretKey(Uint8Array.from(JSON.parse(readFileSync(walletPath, "utf8"))));
   const rpcPort = await freePort();
@@ -98,6 +131,11 @@ async function main() {
       "--quiet",
       "--mint",
       wallet.publicKey.toBase58(),
+      ...(await swapGenesis(work)),
+      "--upgradeable-program",
+      SWAP_PROGRAM.toBase58(),
+      path.join(swapCheckout, "target/deploy/raydium_cp_swap.so"),
+      wallet.publicKey.toBase58(),
       "--upgradeable-program",
       GATEWAY.toBase58(),
       path.join(checkout, "target/deploy/gateway.so"),
@@ -107,8 +145,12 @@ async function main() {
       path.join(checkout, "target/deploy/prefunded_adapter.so"),
       wallet.publicKey.toBase58(),
       "--upgradeable-program",
+      plannerId,
+      path.join(checkout, "target/deploy/authority_requirement_planner.so"),
+      wallet.publicKey.toBase58(),
+      "--upgradeable-program",
       spokeId,
-      path.resolve("target/deploy/svm_spoke.so"),
+      path.join(work, "spoke/svm_spoke.so"),
       wallet.publicKey.toBase58(),
     ],
     { stdio: ["ignore", log, log] }
@@ -143,7 +185,7 @@ async function main() {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     if (!ready) throw new Error(`Validator did not start; see ${logPath}`);
-    console.log(`Real Gateway ${GATEWAY_COMMIT}; validator logs: ${logPath}`);
+    console.log(`Real Gateway ${GATEWAY_COMMIT}; Raydium CPMM ${SWAP_COMMIT}; validator logs: ${logPath}`);
     const tests = spawnSync(
       "yarn",
       [
@@ -155,6 +197,7 @@ async function main() {
         "1000000",
         "test/svm-gateway/PathVectors.ts",
         "test/svm-gateway/RealGateway.ts",
+        ...process.argv.slice(2),
       ],
       {
         stdio: "inherit",

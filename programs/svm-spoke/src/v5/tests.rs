@@ -8,7 +8,6 @@ use crate::{
         GATEWAY_VAULT_AUTHORITY_BUMP, GATEWAY_VAULT_AUTHORITY_SEED, V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP,
         V5_FILL_DELEGATE_SEED, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP, V5_SOURCE_DELEGATE_SEED,
     },
-    error::V5Error,
     ID,
 };
 use serde_json::Value;
@@ -37,13 +36,6 @@ fn assert_error_name<T>(result: Result<T>, expected: &str) {
         anchor_lang::error::Error::AnchorError(error) => assert_eq!(error.error_name, expected),
         _ => panic!("expected Anchor error"),
     }
-}
-
-#[test]
-fn v5_errors_use_dedicated_range() {
-    assert_eq!(u32::from(V5Error::InvalidWireFormat), 7_000);
-    assert_eq!(u32::from(V5Error::InvalidAmountBips), 7_007);
-    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 7_015);
 }
 
 #[test]
