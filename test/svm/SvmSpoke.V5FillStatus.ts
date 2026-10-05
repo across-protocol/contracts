@@ -54,7 +54,12 @@ describe("svm_spoke V5 fill-status payer", () => {
 
     await program.methods
       .testCreateV5FillStatus([...relayHash], fillDeadline)
-      .accounts({ submitter: submitter.publicKey, payer, fillStatus: status, systemProgram: SystemProgram.programId })
+      .accountsPartial({
+        submitter: submitter.publicKey,
+        payer,
+        fillStatus: status,
+        systemProgram: SystemProgram.programId,
+      })
       .signers([submitter])
       .rpc();
     const account = await program.account.fillStatusAccount.fetch(status);
@@ -65,7 +70,12 @@ describe("svm_spoke V5 fill-status payer", () => {
     await expectError(
       program.methods
         .testCreateV5FillStatus([...relayHash], fillDeadline)
-        .accounts({ submitter: submitter.publicKey, payer, fillStatus: status, systemProgram: SystemProgram.programId })
+        .accountsPartial({
+          submitter: submitter.publicKey,
+          payer,
+          fillStatus: status,
+          systemProgram: SystemProgram.programId,
+        })
         .signers([submitter])
         .rpc(),
       "RelayFilled"
@@ -84,7 +94,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     );
     await program.methods
       .testCreateV5FillStatus([...prefundedRelayHash], fillDeadline)
-      .accounts({
+      .accountsPartial({
         submitter: submitter.publicKey,
         payer,
         fillStatus: prefundedStatus,
@@ -109,12 +119,12 @@ describe("svm_spoke V5 fill-status payer", () => {
       [providerPayer]
     );
     await expectError(
-      program.methods.closeFillPda().accounts({ state, signer: wrongRecipient, fillStatus: status }).rpc(),
+      program.methods.closeFillPda().accountsPartial({ state, signer: wrongRecipient, fillStatus: status }).rpc(),
       "NotRelayer"
     );
 
-    await program.methods.closeFillPda().accounts({ state, signer: payer, fillStatus: status }).rpc();
-    await program.methods.closeFillPda().accounts({ state, signer: payer, fillStatus: prefundedStatus }).rpc();
+    await program.methods.closeFillPda().accountsPartial({ state, signer: payer, fillStatus: status }).rpc();
+    await program.methods.closeFillPda().accountsPartial({ state, signer: payer, fillStatus: prefundedStatus }).rpc();
     assert.isNull(await connection.getAccountInfo(status));
     assert.isNull(await connection.getAccountInfo(prefundedStatus));
     assert.equal(await connection.getBalance(payer), initialFloat + prefundedLamports);
@@ -129,7 +139,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     await expectError(
       program.methods
         .testCreateV5FillStatus([...relayHash], 1)
-        .accounts({
+        .accountsPartial({
           submitter: submitter.publicKey,
           payer: Keypair.generate().publicKey,
           fillStatus: status,
@@ -142,7 +152,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     await expectError(
       program.methods
         .testCreateV5FillStatus([...relayHash], 1)
-        .accounts({
+        .accountsPartial({
           submitter: submitter.publicKey,
           payer,
           fillStatus: Keypair.generate().publicKey,
@@ -175,7 +185,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     await expectError(
       program.methods
         .withdrawV5FillPayer(new BN(1))
-        .accounts({ submitter: stranger.publicKey, payer, systemProgram: SystemProgram.programId })
+        .accountsPartial({ submitter: stranger.publicKey, payer, systemProgram: SystemProgram.programId })
         .signers([stranger])
         .rpc(),
       "ConstraintSeeds"
@@ -184,7 +194,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     await expectError(
       program.methods
         .withdrawV5FillPayer(new BN(rentMinimum + 1))
-        .accounts({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
+        .accountsPartial({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
         .signers([submitter])
         .rpc(),
       "insufficient funds for rent"
@@ -193,14 +203,14 @@ describe("svm_spoke V5 fill-status payer", () => {
 
     await program.methods
       .withdrawV5FillPayer(new BN(rentMinimum))
-      .accounts({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
+      .accountsPartial({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
       .signers([submitter])
       .rpc();
     assert.equal(await connection.getBalance(payer), rentMinimum);
 
     await program.methods
       .withdrawV5FillPayer(new BN("18446744073709551615"))
-      .accounts({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
+      .accountsPartial({ submitter: submitter.publicKey, payer, systemProgram: SystemProgram.programId })
       .signers([submitter])
       .rpc();
     assert.equal(await connection.getBalance(payer), 0);

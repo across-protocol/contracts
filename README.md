@@ -39,6 +39,10 @@ EVM builds and tests use the Foundry version pinned in `.foundry-version`; CI in
 `foundry-rs/foundry-toolchain`. Run `yarn pin-foundry` to switch your local toolchain to it (a no-op when it already
 matches). Bump the pin by editing that file.
 
+SVM local, verified, and real-Gateway builds fail on stack-overflow diagnostics even when the compiler exits
+successfully. The shared guard is `scripts/svm/buildHelpers/runSbfBuild.sh`; run `yarn test-svm-build-guard` to test it
+without a validator or Rust build. CI invalidates cached SVM builds when these build helpers change.
+
 ## Test
 
 ```shell
@@ -49,7 +53,12 @@ yarn test:report-gas # Run unit tests with gas reporting enabled
 yarn test-evm # Only test EVM code
 yarn test-svm # Only test SVM code (local toolchain build)
 yarn test-svm-solana-verify # Only test SVM code (verified docker build)
+yarn typecheck-tests # Typecheck all TypeScript tests without emitting files
 ```
+
+The test typecheck uses `tsconfig.test.json` and requires generated clients and test-feature IDLs. Run
+`yarn generate-svm-artifacts && yarn generate-svm-test-idls` first. CI runs this check after preparing these artifacts,
+before the verified SVM build and runtime tests. The package build continues to use `tsconfig.json`.
 
 ## Lint
 
@@ -94,9 +103,18 @@ yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpoke
 
 For CCTP V2 root/admin finalization, pause recovery and light-chain intent examples, see the [Solana operational scripts guide](scripts/svm/README.md).
 
+V5 `svm_spoke` is configured for mainnet and local-validator testing. Its public-devnet deployment and supporting
+offchain infrastructure are not configured, so `Anchor.toml` has no devnet Spoke entry. The devnet deployment examples
+below require a separately configured deployment; the legacy devnet Spoke address is not a V5 target.
+
 Before deploying for the first time make sure all program IDs in `lib.rs` and `Anchor.toml` are the same as listed when running `anchor keys list`. If not, update them to match the deployment keypairs under `target/deploy/` and commit the changes.
 
-Make sure to use the verified docker binaries that can be built:
+V5 PDA addresses and bumps are pinned to the configured Spoke and Gateway IDs to avoid runtime derivation costs.
+If either program ID changes, update its dependent PDA constants and run `cargo test -p svm-spoke --lib` to check consistency.
+
+Use `solana-verify` 0.5.1, matching CI, to build the verified Docker binaries. The build removes each
+previous binary before compilation and rejects missing or empty output; failed builds must not be used for deployment.
+Keep the stack-diagnostic guard enabled, since SBF compilers can report stack overflows with a successful exit status.
 
 ```shell
 unset IS_TEST # Ensures the production build is used (not the test feature)

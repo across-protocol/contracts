@@ -1,16 +1,19 @@
 # Spoke runtime error-code migration
 
 This release assigns distinct runtime error ranges to `svm_spoke`. **Existing `CommonError` codes are unchanged.**
-`SvmError` moves from 6000–6018 to 7000–7018, and `CallDataError` moves from 6000–6006 to 8000–8006.
-The callback rejection and V5 errors are new relative to
-[`master` at `75d968e4`](https://github.com/across-protocol/contracts/blob/75d968e4e86c37ef12c01277345ea8ed2f550901/programs/svm-spoke/src/error.rs),
-the comparison used in the tables below. A dash means the error did not exist in that baseline.
+`SvmError` moves from 6000–6018 to 7000–7016 after unused variants are removed; `CallDataError` moves from
+6000–6006 to 8000–8006.
+The compatibility baseline is the deployed release
+[`v5.0.12-beta.1` (`d8da3000`)](https://github.com/across-protocol/contracts/blob/d8da3000f1aba2593e712a9942a3249bf8e8205b/programs/svm-spoke/src/error.rs),
+not intermediate PRs in this undeployed stack. V5 errors are new relative to that baseline. A dash means the
+error did not exist in that deployed release.
 
-Earlier undeployed revisions of this stack used `V5Error` codes in the 7000 range. The finalized variants now use
-9000–9015; the pre-release list also changed before this migration was finalized. They also used 6019 for the new
-`LegacyFillMessageUnsupported`, now 7019. These earlier assignments were pre-release values.
+Earlier undeployed revisions used different SVM/V5 assignments and introduced `V5FillOnly` and
+`LegacyFillMessageUnsupported`. Both unused callback-rejection errors are now removed; neither existed in the
+deployed baseline, so they have no deployed assignments to preserve.
 
-The tables cover every current variant in [error.rs](src/error.rs) and the removed `AcrossPlusError` variants.
+The tables cover every declared variant in [error.rs](src/error.rs) and every removed deployed variant.
+Enum membership does not imply reachability: the old `CommonError` slow-fill slots remain reserved as noted below.
 Use the mapping for the program version being queried. Historical transaction errors retain the old codes;
 do not relabel them using the new table. Legacy
 numbers overlap across enums, so a number alone cannot identify a historical error. Runtime log names distinguish
@@ -26,9 +29,9 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InvalidQuoteTimestamp`                     | 6000           | 6000         |
 | `InvalidFillDeadline`                       | 6001           | 6001         |
 | `NotExclusiveRelayer`                       | 6002           | 6002         |
-| `NoSlowFillsInExclusivityWindow`            | 6003           | 6003         |
+| `RetiredNoSlowFillsInExclusivityWindow`     | 6003           | 6003         |
 | `RelayFilled`                               | 6004           | 6004         |
-| `InvalidSlowFillRequest`                    | 6005           | 6005         |
+| `RetiredInvalidSlowFillRequest`             | 6005           | 6005         |
 | `ExpiredFillDeadline`                       | 6006           | 6006         |
 | `InvalidMerkleProof`                        | 6007           | 6007         |
 | `InvalidChainId`                            | 6008           | 6008         |
@@ -39,36 +42,42 @@ mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-seque
 | `InsufficientSpokePoolBalanceToExecuteLeaf` | 6013           | 6013         |
 | `InvalidExclusiveRelayer`                   | 6014           | 6014         |
 | `InvalidOutputToken`                        | 6015           | 6015         |
-| `V5FillOnly`                                | —              | 6016         |
+
+The two `Retired` placeholders were named `NoSlowFillsInExclusivityWindow` (6003) and `InvalidSlowFillRequest`
+(6005) in the deployed release. Their numeric codes and messages are unchanged; the prefix explicitly marks
+the Rust symbols, and generated names wherever exposed, as retired. Historical transaction logs keep the old names.
+These slots must never be emitted, removed, or reused. Keeping them in place preserves every later live
+`CommonError` assignment.
 
 ## SvmError
 
 | Error                                           | Before release | This release |
 | ----------------------------------------------- | -------------- | ------------ |
 | `NotOwner`                                      | 6000           | 7000         |
-| `InvalidRelayHash`                              | 6001           | 7001         |
-| `CanOnlyCloseFillStatusPdaIfFillDeadlinePassed` | 6002           | 7002         |
-| `NotRelayer`                                    | 6003           | 7003         |
-| `CannotSetCurrentTime`                          | 6004           | 7004         |
-| `InvalidRemoteDomain`                           | 6005           | 7005         |
-| `InvalidRemoteSender`                           | 6006           | 7006         |
-| `InvalidMint`                                   | 6007           | 7007         |
+| `InvalidRelayHash`                              | 6001           | removed      |
+| `CanOnlyCloseFillStatusPdaIfFillDeadlinePassed` | 6002           | 7001         |
+| `NotRelayer`                                    | 6003           | 7002         |
+| `CannotSetCurrentTime`                          | 6004           | 7003         |
+| `InvalidRemoteDomain`                           | 6005           | 7004         |
+| `InvalidRemoteSender`                           | 6006           | 7005         |
+| `InvalidMint`                                   | 6007           | 7006         |
 | `ExceededPendingBridgeAmount`                   | 6008           | removed      |
-| `NonZeroAmountToReturn`                         | —              | 7008         |
-| `ParamsWriteOverflow`                           | 6009           | 7009         |
-| `InvalidRefund`                                 | 6010           | 7010         |
-| `ZeroRefundClaim`                               | 6011           | 7011         |
-| `NonZeroRefundClaim`                            | 6012           | 7012         |
-| `InvalidClaimInitializer`                       | 6013           | 7013         |
-| `InvalidRefundTokenAccount`                     | 6014           | 7014         |
-| `InvalidProductionSeed`                         | 6015           | 7015         |
-| `InvalidATACreationAccounts`                    | 6016           | 7016         |
-| `InvalidDelegatePda`                            | 6017           | 7017         |
-| `InconsistentOptionalParameters`                | 6018           | 7018         |
-| `LegacyFillMessageUnsupported`                  | —              | 7019         |
+| `NonZeroAmountToReturn`                         | —              | 7007         |
+| `ParamsWriteOverflow`                           | 6009           | 7008         |
+| `InvalidRefund`                                 | 6010           | 7009         |
+| `ZeroRefundClaim`                               | 6011           | 7010         |
+| `NonZeroRefundClaim`                            | 6012           | 7011         |
+| `InvalidClaimInitializer`                       | 6013           | 7012         |
+| `InvalidRefundTokenAccount`                     | 6014           | 7013         |
+| `InvalidProductionSeed`                         | 6015           | 7014         |
+| `InvalidATACreationAccounts`                    | 6016           | 7015         |
+| `InvalidDelegatePda`                            | 6017           | 7016         |
+| `InconsistentOptionalParameters`                | 6018           | removed      |
 
-The CCTP V2 migration removes `ExceededPendingBridgeAmount` and uses that enum slot for
-`NonZeroAmountToReturn`, which rejects relayer refund leaves that return tokens to the HubPool.
+The CCTP V2 migration replaces `ExceededPendingBridgeAmount` with `NonZeroAmountToReturn`, which rejects
+relayer refund leaves that return tokens to the HubPool. V4 entrypoint retirement removes `InvalidRelayHash`
+and `InconsistentOptionalParameters`; neither has a remaining construction site. The final 7000–7016 mapping
+includes these removals. Intermediate stack assignments were never deployed and are not compatibility constraints.
 
 ## CallDataError
 

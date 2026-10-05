@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    state::{FillStatus, FillStatusAccount, RootBundle},
+    *,
+};
 use anchor_lang::{solana_program::program_error::ProgramError, Discriminator, InstructionData};
 
 #[test]
@@ -6,9 +9,15 @@ fn custom_error_ranges_are_stable() {
     use crate::error::{CallDataError, CommonError, SvmError, V5Error};
 
     assert_eq!(u32::from(CommonError::InvalidQuoteTimestamp), 6_000);
-    assert_eq!(u32::from(CommonError::V5FillOnly), 6_016);
+    // Keep the deployed slow-fill slots so later live CommonError assignments do not shift.
+    assert_eq!(u32::from(CommonError::RetiredNoSlowFillsInExclusivityWindow), 6_003);
+    assert_eq!(u32::from(CommonError::RelayFilled), 6_004);
+    assert_eq!(u32::from(CommonError::RetiredInvalidSlowFillRequest), 6_005);
+    assert_eq!(u32::from(CommonError::ExpiredFillDeadline), 6_006);
+    assert_eq!(u32::from(CommonError::InvalidOutputToken), 6_015);
     assert_eq!(u32::from(SvmError::NotOwner), 7_000);
-    assert_eq!(u32::from(SvmError::LegacyFillMessageUnsupported), 7_019);
+    assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
+    assert_eq!(u32::from(SvmError::InvalidDelegatePda), 7_016);
     assert_eq!(u32::from(CallDataError::InvalidSelector), 8_000);
     assert_eq!(u32::from(CallDataError::UnsupportedSelector), 8_006);
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 9_000);
@@ -25,6 +34,23 @@ fn retired_slow_fill_discriminators_are_not_dispatchable() {
         [26, 207, 3, 168, 193, 252, 59, 127],
     ] {
         // Both historical selectors must fail at dispatch, before deserializing arguments or validating accounts.
+        for payload in [vec![], vec![0; 512]] {
+            let data = [discriminator.as_slice(), payload.as_slice()].concat();
+            assert_eq!(entry(&ID, &[], &data), Err(ProgramError::Custom(101)));
+        }
+    }
+}
+
+#[test]
+fn retired_v4_discriminators_are_not_dispatchable() {
+    for discriminator in [
+        [242, 35, 198, 137, 82, 225, 242, 182], // deposit
+        [75, 228, 135, 221, 200, 25, 148, 26],  // deposit_now
+        [196, 187, 166, 179, 3, 146, 150, 246], // unsafe_deposit
+        [100, 84, 222, 90, 106, 209, 58, 222],  // fill_relay
+        [118, 10, 135, 0, 168, 243, 223, 117],  // get_unsafe_deposit_id
+    ] {
+        // Old clients fail at dispatch even when they supply historical arguments or parameter buffers.
         for payload in [vec![], vec![0; 512]] {
             let data = [discriminator.as_slice(), payload.as_slice()].concat();
             assert_eq!(entry(&ID, &[], &data), Err(ProgramError::Custom(101)));
