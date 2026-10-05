@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::program_option::COption};
+use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::get_associated_token_address_with_program_id,
     token_interface::{TokenAccount, TransferChecked},
@@ -9,7 +9,7 @@ use crate::{
         GATEWAY_PROGRAM_ID, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_SEED,
         V5_MAGIC_PREFIX,
     },
-    error::{CommonError, V5Error},
+    error::CommonError,
     event::FundsDeposited,
     utils::{get_current_time, transfer_from},
     v5::{
@@ -111,7 +111,6 @@ impl<'info> V5DepositAccounts<'info> {
         let deposit_delegate_info = find_v5_account(remaining_accounts, &V5_DEPOSIT_DELEGATE, false)?;
 
         load_token_account(spoke_vault_info, token_accounts.token_program.key, &input_token, &state)?;
-        require!(token_accounts.source.delegate == COption::Some(V5_DEPOSIT_DELEGATE), V5Error::InvalidTokenAccount);
 
         Ok((
             Self {

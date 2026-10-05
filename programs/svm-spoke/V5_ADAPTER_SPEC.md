@@ -132,9 +132,11 @@ target and the supplied deposit delegate account.
 
 The `v5_fill_delegate` PDA derives `D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1` with bump 252. Builders must use it
 as both the approval target and the supplied fill delegate account for every fill, including self-transfers.
-Sufficient approval must exist when the fill executes. An unset or different delegate fails the token program's
-authority check with `OwnerMismatch` (0x4). An insufficient fill-delegate allowance fails with `InsufficientFunds`
-(0x1), including a zeroed allowance for a nonzero fill.
+Both deposits and fills rely on the token program to validate delegate authority and allowance during
+`transfer_checked`. Sufficient approval must exist when the operation executes. An unset or different delegate
+fails with `OwnerMismatch` (0x4). An insufficient delegate allowance fails with `InsufficientFunds` (0x1), including
+a zeroed allowance for a nonzero transfer. The mint-extension allowlist rejects `PermanentDelegate`, which could
+otherwise authorize a transfer without an ordinary account approval.
 
 Every delivery targets the canonical ATA of committed `recipient`, output mint, and token program. When that ATA is
 the Gateway vault, the same transfer helper performs an SPL self-transfer, validating balance, frozen state, and

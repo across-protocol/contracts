@@ -10,6 +10,10 @@ import {
   getOrCreateAssociatedTokenAccount,
   mintTo,
   freezeAccount,
+  ExtensionType,
+  getMintLen,
+  createInitializePermanentDelegateInstruction,
+  createInitializeMintInstruction,
 } from "@solana/spl-token";
 import { AccountMeta, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
@@ -129,9 +133,9 @@ describe("svm_spoke V5 destination fill", () => {
     assert.fail(`Expected ${expected}`);
   };
 
-  const setupTokens = async (programId = TOKEN_PROGRAM_ID) => {
+  const setupTokens = async (programId = TOKEN_PROGRAM_ID, existingMint?: PublicKey) => {
     tokenProgram = programId;
-    mint = await createMint(connection, wallet, owner, owner, 6, undefined, undefined, tokenProgram);
+    mint = existingMint ?? (await createMint(connection, wallet, owner, owner, 6, undefined, undefined, tokenProgram));
     recipient = Keypair.generate().publicKey;
     [gatewayVault, recipientToken, consumptionAccount] = await Promise.all(
       [vaultAuthority, recipient, owner].map(
@@ -390,6 +394,44 @@ describe("svm_spoke V5 destination fill", () => {
     );
     assert.isNull(await connection.getAccountInfo(fillStatus()));
   });
+
+  for (const inPlace of [false, true]) {
+    it(`rejects PermanentDelegate mints before ${inPlace ? "in-place" : "external"} fills can bypass approval`, async () => {
+      const extendedMint = Keypair.generate();
+      const space = getMintLen([ExtensionType.PermanentDelegate]);
+      await provider.sendAndConfirm(
+        new Transaction().add(
+          SystemProgram.createAccount({
+            fromPubkey: owner,
+            newAccountPubkey: extendedMint.publicKey,
+            lamports: await connection.getMinimumBalanceForRentExemption(space),
+            space,
+            programId: TOKEN_2022_PROGRAM_ID,
+          }),
+          createInitializePermanentDelegateInstruction(extendedMint.publicKey, fillDelegate, TOKEN_2022_PROGRAM_ID),
+          createInitializeMintInstruction(extendedMint.publicKey, 6, owner, owner, TOKEN_2022_PROGRAM_ID)
+        ),
+        [extendedMint]
+      );
+      await setupTokens(TOKEN_2022_PROGRAM_ID, extendedMint.publicKey);
+      relay = { ...relay, outputToken: mint, recipient: inPlace ? vaultAuthority : recipient };
+      const source = await getAccount(connection, gatewayVault, undefined, tokenProgram);
+      assert.isNull(source.delegate);
+      assert.equal(source.delegatedAmount, 0n);
+      // SPL would authorize this PDA as the permanent delegate without an ordinary account approval.
+      const watched = [gatewayVault, recipientToken, consumptionAccount, fillStatus(), fillPayer];
+      const before = await connection.getMultipleAccountsInfo(watched);
+      await expectError(
+        execute(encodeFill(relay.recipient, mint, outputAmount), undefined, {
+          approval: null,
+          recipientAccount: inPlace ? gatewayVault : recipientToken,
+        }),
+        "UnsupportedTokenExtension"
+      );
+      assert.deepEqual(await connection.getMultipleAccountsInfo(watched), before);
+      assert.isNull(await connection.getAccountInfo(fillStatus()));
+    });
+  }
 
   for (const programId of [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID]) {
     it(`validates in-place approval, allowance and frozen state through ${programId}`, async () => {

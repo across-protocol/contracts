@@ -1151,6 +1151,30 @@ describe("SVM V5 with the pinned real Gateway", () => {
       .rpc();
     assert.equal(await connection.getBalance(fillPayer), 0);
   });
+  for (const wrongApproval of [false, true]) {
+    it(`rejects ${wrongApproval ? "wrong" : "missing"} deposit approval with the correct deposit-delegate account supplied`, async () => {
+      const d: Deposit = {
+        depositor: owner,
+        recipient,
+        inputToken: mint,
+        outputToken: mint,
+        inputAmount: amount,
+        outputAmount: amount,
+        destinationChainId: BigInt(chainId.toString()),
+        nonce: 1n,
+        quoteTimestamp: now,
+        fillDeadline: now + 600,
+        dstStepId: pathId(destination(false)),
+      };
+      const deposit: Command = { op: OP.ADAPTER_CALL, input: call(spoke.programId, sourceMetas(), depositInput(d)) };
+      const src = path(wrongApproval ? [approve(mint, fillDelegate), deposit] : [deposit]);
+      const watched = [userAta, vault, spokeVault, state];
+      const before = await connection.getMultipleAccountsInfo(watched);
+      const { failedReceipt } = await execute(src, { funds: [funding(userAta, mint, amount)], failed: true });
+      assert.include(failedReceipt!.logs, `Program ${tokenProgram} failed: custom program error: 0x4`);
+      assert.deepEqual(await connection.getMultipleAccountsInfo(watched), before);
+    });
+  }
   it("rejects approval to a different delegate even when the correct fill-delegate account is supplied", async () => {
     const dst = path([approve(mint, depositDelegate), fillCommand(false)]);
     const relay = await origin(pathId(dst), false);

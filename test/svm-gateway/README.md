@@ -59,7 +59,8 @@ transaction. Retired selector, sequential-ID and callback semantics are identifi
 
 The suite covers StepDelegate and prefunded source deposits, standard deposit identities and witnesses, external and
 in-place destination delivery, first-fill-wins siblings, root mismatch and reuse, account/dispatch rejection, payer
-funding/reclaim/withdrawal, and downstream rollback. Root reuse examples fund and fully deliver each execution.
+funding/reclaim/withdrawal, and downstream rollback. Deposit and fill approval failures are checked against the SPL
+error even when the correct delegate account is supplied. Root reuse examples fund and fully deliver each execution.
 
 The [adapter spec](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#pda-and-token-invariants) is authoritative for delivery
 invariants, the shared-vault trust boundary, and production route enablement. This suite tests those rules; it is not

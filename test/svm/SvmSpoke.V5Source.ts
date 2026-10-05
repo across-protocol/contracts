@@ -151,14 +151,19 @@ describe("svm_spoke V5 source deposit", () => {
       new Transaction().add(mockInstruction(input, jitData, approval, failAfter, delegate, destination))
     );
 
-  const expectError = async (promise: Promise<unknown>, name: string) => {
+  const tokenError = (code: number) =>
+    new RegExp(`Program ${tokenProgram} failed: custom program error: 0x${code.toString(16)}\\b`);
+
+  const expectError = async (promise: Promise<unknown>, expected: string | RegExp) => {
     try {
       await promise;
     } catch (error: any) {
-      assert.include(error.toString(), name);
+      const text = [error.toString(), ...(error.logs ?? [])].join("\n");
+      if (typeof expected === "string") assert.include(text, expected);
+      else assert.match(text, expected);
       return;
     }
-    assert.fail(`Expected ${name}`);
+    assert.fail(`Expected ${expected}`);
   };
 
   const setInputMint = async (nextMint: PublicKey, nextTokenProgram: PublicKey, updateDeposit = false) => {
@@ -338,12 +343,9 @@ describe("svm_spoke V5 source deposit", () => {
       execute(encodeDeposit({ ...deposit, inputToken: Keypair.generate().publicKey }, { literal: true })),
       "MissingAccount"
     );
-    await expectError(execute(input, Buffer.alloc(0), 0n), "custom program error: 0x1");
-    await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), "custom program error: 0x1");
-    await expectError(
-      execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n),
-      "custom program error: 0x1"
-    );
+    await expectError(execute(input, Buffer.alloc(0), 0n), tokenError(0x1));
+    await expectError(execute(input, Buffer.alloc(0), deposit.inputAmount - 1n), tokenError(0x1));
+    await expectError(execute(encodeDeposit(deposit, { bips: 7500 }), Buffer.alloc(0), 700_000n), tokenError(0x1));
     assert.equal((await getAccount(connection, gatewayVault)).amount, 1_000_000n);
     assert.equal((await getAccount(connection, spokeVault)).amount, 0n);
   });
