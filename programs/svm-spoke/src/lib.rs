@@ -192,9 +192,9 @@ pub mod svm_spoke {
     /// - program: The SVM Spoke program.
     /// - remaining accounts: Branch-specific mint and token-program accounts plus writable canonical token accounts.
     ///   Deposit mode also requires the SpokePool vault and ["v5_deposit_delegate"]. Fill mode requires the
-    ///   submitter-scoped ["v5_fill_payer"], relay-scoped fill-status PDA, and System Program; external delivery also
-    ///   requires the recipient ATA and ["v5_fill_delegate"]. Account order is unrestricted because each account is
-    ///   resolved by its authenticated expected key.
+    ///   submitter-scoped ["v5_fill_payer"], relay-scoped fill-status PDA, System Program, recipient ATA, and
+    ///   ["v5_fill_delegate"], including when the recipient ATA is the Gateway vault itself. Account order is
+    ///   unrestricted because each account is resolved by its authenticated expected key.
     ///
     /// ### Parameters:
     /// - ctx_values: Gateway-attested step ID, path ID, and submitter.

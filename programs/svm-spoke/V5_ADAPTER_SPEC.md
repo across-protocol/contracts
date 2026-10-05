@@ -132,12 +132,13 @@ target and the supplied deposit delegate account.
 
 Every delivery targets the canonical ATA of committed `recipient`, output mint, and token program. When that ATA is
 the Gateway vault, the same transfer helper performs an SPL self-transfer, validating balance, frozen state, and
-delegate authority/allowance without debiting funds or consuming allowance. The tape must clear the remaining fill
-allowance with `APPROVE(..., 0)` or replace it with the next spender's approval and consume that approval. A step root
-may be reused across source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor and
-full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
-consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed minimum
-for one fill does not prove aggregate delivery.
+delegate authority/allowance without debiting funds or consuming allowance. Clearing the remaining allowance with
+`APPROVE(..., 0)` is optional cleanup: permissionless Gateway execution already permits fresh approvals and
+owner-authorized transfers, so clearing it does not protect funds left in the shared vault. A step root may be reused
+across source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor
+and full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before
+that consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed
+minimum for one fill does not prove aggregate delivery.
 
 The obligation covers **actual JIT output amounts for all allowed executions**, not just the sum of committed
 `min_output_amount` values or the amounts in a sampled quote. Two fills can each accept output `2X` against a shared
@@ -235,8 +236,8 @@ V5 deposit identity is derived in `v5/jit.rs`. File organization does not change
 
 All fills require a sufficient approval to `["v5_fill_delegate"]` and use the existing `transfer_from` helper for the
 exact JIT output amount. External delivery debits the Gateway vault; delivery to that same vault performs a validated
-self-transfer. The latter still depends on the proportional or aggregate continuing-path rule above, and its
-unconsumed allowance must be cleared. Any later failure rolls back token, fill-status, and payer-float changes together.
+self-transfer. The latter still depends on the proportional or aggregate continuing-path rule above; clearing its
+unconsumed allowance is optional cleanup. Any later failure rolls back token, fill-status, and payer-float changes together.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation

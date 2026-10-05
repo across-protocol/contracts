@@ -65,8 +65,8 @@ pub(super) fn execute_v5_fill<'info>(
         &accounts.fill_status_pdas,
     )?;
 
-    // Self-transfers validate balance and authority without debiting funds or allowance.
-    // The committed Gateway tape must still consume the funds and clear any remaining approval.
+    // Self-transfers validate balance, frozen state, and authority without debiting funds or allowance.
+    // The committed Gateway tape must enforce balance checks covering all fill obligations and consume the funds.
     transfer_from(
         accounts.transfer,
         accounts.token_program,
