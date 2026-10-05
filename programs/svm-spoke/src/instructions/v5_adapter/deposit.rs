@@ -2,10 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
-    constants::{
-        GATEWAY_PROGRAM_ID, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_DEPOSIT_DELEGATE,
-        V5_MAGIC_PREFIX,
-    },
+    constants::{GATEWAY_PROGRAM_ID, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_DEPOSIT_DELEGATE, V5_MAGIC_PREFIX},
     error::CommonError,
     event::FundsDeposited,
     utils::get_current_time,

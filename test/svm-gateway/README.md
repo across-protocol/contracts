@@ -75,9 +75,9 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | ---------------- | ------------------------: | ------------------------: | --------------------: |
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
-| v5-deposit       |                    73,516 |                    67,516 |                80,155 |
-| v5-external-fill |                    84,564 |                    78,564 |                90,893 |
-| v5-inplace-fill  |                    91,841 |                    87,341 |                99,670 |
+| v5-deposit       |                    67,469 |                    61,469 |                74,108 |
+| v5-external-fill |                    78,518 |                    72,518 |                84,847 |
+| v5-inplace-fill  |                    85,795 |                    81,295 |                93,624 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:

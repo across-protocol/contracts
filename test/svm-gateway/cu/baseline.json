@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "e280850cbe6e9374ba1f2e52223bb692acc874c0",
+  "head": "59de10444ca6653c68f1dd94e1c311bb1c002ee6",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
-  "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "trackedDiffSha256": "1188e747291553ed50754f7536f6a47565ebe1dd9f79647c5980e3457353d475",
   "validatorVersion": "solana-test-validator 4.1.2 (src:182084b8; feat:c763ae0a, client:Agave)",
   "anchorVersions": ["anchor-cli 0.31.1", "anchor-cli 1.1.2"],
   "node": "v22.22.0",
@@ -19,7 +19,7 @@
     },
     "v5": {
       "tools": "v1.52",
-      "binarySha256": "a479ae65061feb46ba87119f0a6816407dd0dc321ed4893c4b0d03409d721f09",
+      "binarySha256": "7e86199b4dc9401d3d167c44799b8d3f2a61f0492972ca5425f608a14f62081b",
       "idlSha256": "6e94ecbbabb1addc2bd31ab5e01c6d4fd3455f35098540cad989479b50d7800f"
     },
     "gateway": {
@@ -251,10 +251,10 @@
     {
       "case": "v5-deposit",
       "sample": 0,
-      "execution": 79516,
+      "execution": 73469,
       "approval": 310,
       "buffer": 16829,
-      "total": 96655,
+      "total": 90608,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -275,10 +275,10 @@
     {
       "case": "v5-external-fill",
       "sample": 0,
-      "execution": 84564,
+      "execution": 78518,
       "approval": 0,
       "buffer": 16829,
-      "total": 101393,
+      "total": 95347,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -299,10 +299,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 0,
-      "execution": 97841,
+      "execution": 91795,
       "approval": 0,
       "buffer": 25829,
-      "total": 123670,
+      "total": 117624,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -323,10 +323,10 @@
     {
       "case": "v5-deposit",
       "sample": 1,
-      "execution": 73516,
+      "execution": 67469,
       "approval": 310,
       "buffer": 12329,
-      "total": 86155,
+      "total": 80108,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -347,10 +347,10 @@
     {
       "case": "v5-external-fill",
       "sample": 1,
-      "execution": 80064,
+      "execution": 74018,
       "approval": 0,
       "buffer": 16829,
-      "total": 96893,
+      "total": 90847,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -371,10 +371,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 1,
-      "execution": 91841,
+      "execution": 85795,
       "approval": 0,
       "buffer": 30329,
-      "total": 122170,
+      "total": 116124,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -395,10 +395,10 @@
     {
       "case": "v5-deposit",
       "sample": 2,
-      "execution": 73516,
+      "execution": 67469,
       "approval": 310,
       "buffer": 12329,
-      "total": 86155,
+      "total": 80108,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -419,10 +419,10 @@
     {
       "case": "v5-external-fill",
       "sample": 2,
-      "execution": 83064,
+      "execution": 77018,
       "approval": 0,
       "buffer": 21329,
-      "total": 104393,
+      "total": 98347,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -443,10 +443,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 2,
-      "execution": 91841,
+      "execution": 85795,
       "approval": 0,
       "buffer": 12329,
-      "total": 104170,
+      "total": 98124,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -467,10 +467,10 @@
     {
       "case": "v5-deposit",
       "sample": 3,
-      "execution": 82516,
+      "execution": 76469,
       "approval": 310,
       "buffer": 12329,
-      "total": 95155,
+      "total": 89108,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -491,10 +491,10 @@
     {
       "case": "v5-external-fill",
       "sample": 3,
-      "execution": 93564,
+      "execution": 87518,
       "approval": 0,
       "buffer": 12329,
-      "total": 105893,
+      "total": 99847,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -515,10 +515,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 3,
-      "execution": 111341,
+      "execution": 105295,
       "approval": 0,
       "buffer": 21329,
-      "total": 132670,
+      "total": 126624,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -539,10 +539,10 @@
     {
       "case": "v5-deposit",
       "sample": 4,
-      "execution": 67516,
+      "execution": 61469,
       "approval": 310,
       "buffer": 16829,
-      "total": 84655,
+      "total": 78608,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -563,10 +563,10 @@
     {
       "case": "v5-external-fill",
       "sample": 4,
-      "execution": 86064,
+      "execution": 80018,
       "approval": 0,
       "buffer": 16829,
-      "total": 102893,
+      "total": 96847,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -587,10 +587,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 4,
-      "execution": 87341,
+      "execution": 81295,
       "approval": 0,
       "buffer": 12329,
-      "total": 99670,
+      "total": 93624,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
