@@ -118,8 +118,8 @@ Funding authorization replay protection is separate; destination roots may be re
 
 - Deposit delegate: `["v5_deposit_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
   allowance at least the resolved amount, including `u64::MAX`. `svm_spoke` later pulls exactly the resolved amount.
-- External fill delegate: `["v5_fill_delegate"]` under `svm_spoke`; sufficient allowance is accepted and the exact
-  JIT `output_amount` is pulled.
+- Fill delegate: `["v5_fill_delegate"]` under `svm_spoke`; every fill requires sufficient allowance and invokes
+  `transfer_checked` for the exact JIT `output_amount`, including when source and destination are the same account.
 - Gateway vault authority: `["vault_authority"]` under Gateway. A Gateway vault is the canonical ATA of this authority,
   the mint, and the mint's token program.
 - Fill status: the existing `["fills", relay_hash]` PDA under `svm_spoke`, preserving the standard replay namespace.
@@ -130,13 +130,21 @@ For the configured Spoke program, `v5_deposit_delegate` derives
 `8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
 target and the supplied deposit delegate account.
 
-An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical
-Gateway-vault delivery validates that same live vault in place and its amount, records the fill, and performs no token
-self-transfer or approval. This asserts available balance rather than debiting it. A step root may be reused across
-source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor and
-full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
-consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed minimum
-for one fill does not prove aggregate delivery.
+The `v5_fill_delegate` PDA derives `D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1` with bump 252. Builders must use it
+as both the approval target and the supplied fill delegate account for every fill, including self-transfers.
+Sufficient approval must exist when the fill executes. An unset or different delegate fails the token program's
+authority check with `OwnerMismatch` (0x4). An insufficient fill-delegate allowance fails with `InsufficientFunds`
+(0x1), including a zeroed allowance for a nonzero fill.
+
+Every delivery targets the canonical ATA of committed `recipient`, output mint, and token program. When that ATA is
+the Gateway vault, the same transfer helper performs an SPL self-transfer, validating balance, frozen state, and
+delegate authority/allowance without debiting funds or consuming allowance. Clearing the remaining allowance with
+`APPROVE(..., 0)` is optional cleanup: permissionless Gateway execution already permits fresh approvals and
+owner-authorized transfers, so clearing it does not protect funds left in the shared vault. A step root may be reused
+across source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor
+and full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before
+that consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed
+minimum for one fill does not prove aggregate delivery.
 
 The obligation covers **actual JIT output amounts for all allowed executions**, not just the sum of committed
 `min_output_amount` values or the amounts in a sampled quote. Two fills can each accept output `2X` against a shared
@@ -232,11 +240,10 @@ The `close_fill_pda` and `withdraw_v5_fill_payer` instructions have matching fil
 test-only status-creation entrypoint lives with the other test-support handlers in `utils/testable_utils.rs`.
 V5 deposit identity is derived in `v5/jit.rs`. File organization does not change instruction names or persisted layouts.
 
-External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
-from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
-vault itself, the adapter instead authenticates its live balance, records the fill in place, and performs no approval
-or self-transfer. Its safety therefore depends on the proportional or aggregate continuing-path rule above. Any later
-failure rolls back token, fill-status, and payer-float changes together.
+All fills require a sufficient approval to `["v5_fill_delegate"]` and use the existing `transfer_from` helper for the
+exact JIT output amount. External delivery debits the Gateway vault; delivery to that same vault performs a validated
+self-transfer. The latter still depends on the proportional or aggregate continuing-path rule above; clearing its
+unconsumed allowance is optional cleanup. Any later failure rolls back token, fill-status, and payer-float changes together.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation
@@ -339,9 +346,10 @@ mapping; generated error-name tables alone are insufficient. Assigning distinct 
 generated IDL table.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
-separate callback message. The replacement destination flow is a single in-place Across fill followed by
-Gateway `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed output-mint `BALANCE_REQ`,
-and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the Gateway output vault.
+separate callback message. The replacement destination flow is Gateway `APPROVE(inputMint, v5_fill_delegate, full balance)`,
+a single in-place Across fill, then `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed
+output-mint `BALANCE_REQ`, and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the
+Gateway output vault.
 The vault owner signs only Gateway token operations; the swap receives its distinct SPL delegate as signer.
 A failed swap or output floor reverts the entire execution, including the fill and payer rent.
 
