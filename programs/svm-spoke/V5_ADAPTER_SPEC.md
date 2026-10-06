@@ -67,11 +67,11 @@ values. Vectors use a `u32_le` length. `input_amount_mode` is `Literal = 0` or
 Amount resolution rejects `bips` greater than 10,000; the wire decoder does not. Gateway token vaults are shared per
 mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
 continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
-Gateway does not currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to
-`v5_deposit_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
-matching EVM `transferFrom` behavior. Any residual Gateway-vault balance is already movable by a later committed
-Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The SpokePool never delegates its own
-vault.
+Gateway does not currently enforce this net-zero settlement invariant. The adapter signs the transfer as
+`v5_deposit_delegate`; the token program requires that PDA to be the vault's delegate and accepts sufficient or
+maximum approvals rather than requiring equality, matching EVM `transferFrom` behavior. Any residual Gateway-vault
+balance is already movable by a later committed Gateway `TRANSFER`; exact allowance would not replace that custody
+invariant. The SpokePool never delegates its own vault.
 
 Unlike the EVM `inputAmountParam`, `DepositV1` has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
@@ -423,8 +423,10 @@ Before deploying V4 entrypoint retirement and the error-code migration:
    remain binary-compatible with these renames.
 6. Deploy with both pause flags still set and verify legacy deposit/fill and slow-fill selectors are absent from
    the deployed program. Validate replacement V5 route-building and relayer execution support before unpausing
-   deposits/fills and enabling V5 routes. The pause flags are shared by V4 and V5; unpausing before legacy entrypoint
-   retirement would reopen the old paths.
+   deposits/fills and enabling V5 routes. Ensure any enabled cleanup client passes the recorded rent recipient for
+   V5 accounts (the submitter's payer PDA), keeping the transaction fee payer separate. This is a V5 backend
+   readiness requirement; existing legacy rent cleanup does not depend on it. The pause flags are shared by V4
+   and V5; unpausing before legacy entrypoint retirement would reopen the old paths.
 
 After the upgrade, V4 deposits cannot be filled on Solana. Slow fills are also retired;
 any new unsupported V4 deposit follows the normal origin-chain expiry-refund process, not a destination fallback. HubPool chain
