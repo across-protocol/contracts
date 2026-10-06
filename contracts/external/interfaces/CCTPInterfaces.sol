@@ -181,6 +181,25 @@ interface IMessageTransmitter {
 }
 
 interface IMessageTransmitterV2 {
+    // Source: https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/MessageTransmitterV2.sol#L134C1-L175C6
+    /**
+     * @notice Sends an outgoing message from the source domain.
+     * @dev Formats the message, and emits a `MessageSent` event with message information.
+     * @param destinationDomain Domain of destination chain
+     * @param recipient Address of message recipient on destination domain as bytes32
+     * @param destinationCaller Caller on the destination domain, as bytes32. bytes32(0) allows any caller.
+     * @param minFinalityThreshold The minimum finality at which the message should be attested to. Circle currently
+     * treats values at or below 1000 as "confirmed" and anything above as 2000, "finalized" (hard finality).
+     * @param messageBody Contents of the message (bytes)
+     */
+    function sendMessage(
+        uint32 destinationDomain,
+        bytes32 recipient,
+        bytes32 destinationCaller,
+        uint32 minFinalityThreshold,
+        bytes calldata messageBody
+    ) external;
+
     // Source: https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/MessageTransmitterV2.sol#L176C1-L209C61
     /**
      * @notice Receive a message. Messages can only be broadcast once for a given nonce.

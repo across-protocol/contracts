@@ -40,6 +40,8 @@ contract MockMessageTransmitter is IMessageTransmitterV2, Test {
         mintToken = _mintToken;
     }
 
+    function sendMessage(uint32, bytes32, bytes32, uint32, bytes calldata) external pure override {}
+
     function receiveMessage(bytes calldata message, bytes calldata) external override returns (bool) {
         if (!shouldSucceed) return false;
         if (shouldMint && mintToken != address(0) && message.length >= 344) {

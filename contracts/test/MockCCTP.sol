@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/CircleCCTPAdapter.sol";
-import { IMessageTransmitter } from "../external/interfaces/CCTPInterfaces.sol";
+import { IMessageTransmitter, IMessageTransmitterV2 } from "../external/interfaces/CCTPInterfaces.sol";
 
 contract MockCCTPMinter is ITokenMinter {
     uint256 private _burnLimit = type(uint256).max;
@@ -100,6 +100,54 @@ contract MockCCTPMessageTransmitter is IMessageTransmitter {
         lastSendMessageCall = SendMessageCall(_destinationDomain, _recipient, _messageBody);
         emit SendMessageCalled(_destinationDomain, _recipient, _messageBody);
         return 0;
+    }
+}
+
+/**
+ * @notice Mock CCTP V2 MessageTransmitter that records the V2 sendMessage parameters.
+ */
+contract MockCCTPMessageTransmitterV2 is IMessageTransmitterV2 {
+    uint256 public sendMessageCallCount;
+
+    // Event for vm.expectEmit compatibility
+    event SendMessageCalled(
+        uint32 destinationDomain,
+        bytes32 recipient,
+        bytes32 destinationCaller,
+        uint32 minFinalityThreshold,
+        bytes messageBody
+    );
+
+    // Last call parameters (similar to smock's calledWith behavior)
+    struct SendMessageCall {
+        uint32 destinationDomain;
+        bytes32 recipient;
+        bytes32 destinationCaller;
+        uint32 minFinalityThreshold;
+        bytes messageBody;
+    }
+    SendMessageCall public lastSendMessageCall;
+
+    function sendMessage(
+        uint32 _destinationDomain,
+        bytes32 _recipient,
+        bytes32 _destinationCaller,
+        uint32 _minFinalityThreshold,
+        bytes calldata _messageBody
+    ) external {
+        sendMessageCallCount++;
+        lastSendMessageCall = SendMessageCall(
+            _destinationDomain,
+            _recipient,
+            _destinationCaller,
+            _minFinalityThreshold,
+            _messageBody
+        );
+        emit SendMessageCalled(_destinationDomain, _recipient, _destinationCaller, _minFinalityThreshold, _messageBody);
+    }
+
+    function receiveMessage(bytes calldata, bytes calldata) external pure returns (bool) {
+        return true;
     }
 }
 
