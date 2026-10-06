@@ -321,7 +321,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   async function filled(r: RelayData) {
     const account = await spoke.account.fillStatusAccount.fetch(status(r));
     assert.hasAnyKeys(account.status, ["filled"]);
-    assert.equal(account.relayer.toBase58(), fillPayer.toBase58());
+    assert.equal(account.rentRecipient.toBase58(), fillPayer.toBase58());
   }
   async function origin(root: Buffer, inPlace = true, prefunded = false, outputAmount = amount): Promise<RelayData> {
     const d: Deposit = {
@@ -1142,7 +1142,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await setCurrentTime(spoke, state, Keypair.generate(), new BN(relay.fillDeadline + 1));
     await spoke.methods
       .closeFillPda()
-      .accountsPartial({ state, signer: fillPayer, fillStatus: status(relay) })
+      .accountsPartial({ state, rentRecipient: fillPayer, fillStatus: status(relay) })
       .rpc();
     assert.equal(await connection.getBalance(fillPayer), payerBefore);
     await spoke.methods

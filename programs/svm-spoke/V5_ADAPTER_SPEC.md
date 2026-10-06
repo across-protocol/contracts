@@ -165,7 +165,7 @@ Fill-status expiry reclaim is permissionless and closes back to the submitter-sc
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
 fill-status accounts: old clients may continue supplying the recorded relayer signature, but it is no longer required.
-The unchanged `FillStatusAccount.relayer` field stores the payer PDA for V5 fills (historical legacy accounts
+The `FillStatusAccount.rent_recipient` field stores the payer PDA for V5 fills (historical legacy accounts
 retain their recorded relayer), binding permissionless reclaim to the float that paid the rent without an
 account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
@@ -207,6 +207,10 @@ No account-layout or two-root admin-message migration is required. Historical in
 closable by their creator through `close_instruction_params` without decoding the retired parameter types.
 
 After the recorded deadline, anyone may call `close_fill_pda`; rent goes only to the recorded recipient.
+The close instruction's `signer` account and the fill-status account's `relayer` field are now named `rent_recipient`
+(`rentRecipient` in generated TypeScript clients). Account order, privileges, serialized layout, and discriminators
+are unchanged, so clients retaining the old IDL remain compatible. Clients adopting the new IDL must use the new
+property names. The `NotRelayer` error name, message, and code 7002 remain unchanged.
 Closing the PDA reclaims rent, not the deposit. Unfilled expired deposits follow the dataworker-driven origin-chain
 refund process; there is no destination slow-fill fallback. `scripts/svm/closeRelayerPdas.ts` discovers only
 `FilledRelay` events, so never-filled requests need separate discovery before submitting the permissionless close.
@@ -406,7 +410,11 @@ Before deploying V4 entrypoint retirement and the error-code migration:
    renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
-5. Deploy with both pause flags still set and verify legacy deposit/fill and slow-fill selectors are absent from
+5. Publish the updated IDL and generated clients with the audited V5 release under a new package version in the
+   planned v6 major release. Any intervening prerelease publication must also use a new prerelease version.
+   The `rentRecipient` renames require consumer source updates when adopting the new clients; existing clients
+   remain binary-compatible with these renames.
+6. Deploy with both pause flags still set and verify legacy deposit/fill and slow-fill selectors are absent from
    the deployed program. Validate replacement V5 route-building and relayer execution support before unpausing
    deposits/fills and enabling V5 routes. The pause flags are shared by V4 and V5; unpausing before legacy entrypoint
    retirement would reopen the old paths.

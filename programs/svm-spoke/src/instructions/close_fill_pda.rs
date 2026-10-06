@@ -9,16 +9,16 @@ use crate::{
 #[derive(Accounts)]
 pub struct CloseFillPda<'info> {
     /// CHECK: The address constraint binds this account to the recorded rent recipient; no signature is required.
-    /// The name `signer` is retained for client/IDL compatibility only. For V5 fills, supply the submitter's
-    /// `["v5_fill_payer", submitter]` PDA recorded in `fill_status.relayer`; legacy fills retain the relayer address.
-    #[account(mut, address = fill_status.relayer @ SvmError::NotRelayer)]
-    pub signer: UncheckedAccount<'info>,
+    /// For V5 fills, supply the submitter's `["v5_fill_payer", submitter]` PDA recorded in
+    /// `fill_status.rent_recipient`; legacy fills retain the relayer address.
+    #[account(mut, address = fill_status.rent_recipient @ SvmError::NotRelayer)]
+    pub rent_recipient: UncheckedAccount<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     // No need to check seed derivation as this method only evaluates fill deadline that is recorded in this account.
-    #[account(mut, close = signer)]
+    #[account(mut, close = rent_recipient)]
     pub fill_status: Account<'info, FillStatusAccount>,
 }
 

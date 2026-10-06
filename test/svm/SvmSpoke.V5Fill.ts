@@ -199,7 +199,7 @@ describe("svm_spoke V5 destination fill", () => {
     assert.equal((await getAccount(connection, recipientToken)).amount, outputAmount);
     const status = await svmSpoke.account.fillStatusAccount.fetch(fillStatus());
     assert.hasAnyKeys(status.status, ["filled"]);
-    assert.equal(status.relayer.toBase58(), fillPayer.toBase58());
+    assert.equal(status.rentRecipient.toBase58(), fillPayer.toBase58());
     assert.equal(status.fillDeadline, relay.fillDeadline);
 
     const event = (await readEventsUntilFound(connection, signature, [svmSpoke])).find(
@@ -218,7 +218,10 @@ describe("svm_spoke V5 destination fill", () => {
     assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
 
     await setCurrentTime(svmSpoke, state, Keypair.generate(), new BN(relay.fillDeadline + 1));
-    await svmSpoke.methods.closeFillPda().accountsPartial({ state, signer: fillPayer, fillStatus: fillStatus() }).rpc();
+    await svmSpoke.methods
+      .closeFillPda()
+      .accountsPartial({ state, rentRecipient: fillPayer, fillStatus: fillStatus() })
+      .rpc();
     assert.isNull(await connection.getAccountInfo(fillStatus()));
     assert.equal(await connection.getBalance(fillPayer), await connection.getMinimumBalanceForRentExemption(45));
   });

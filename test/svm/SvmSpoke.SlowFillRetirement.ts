@@ -132,11 +132,11 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
     assert.deepEqual(before.data, Buffer.from(legacyAccount.account.data[0], "base64"));
     const requested = await program.account.fillStatusAccount.fetch(fillStatus);
     assert.deepEqual(requested.status, { requestedSlowFill: {} });
-    assert.equal(requested.relayer.toBase58(), legacyRequester.toBase58());
+    assert.equal(requested.rentRecipient.toBase58(), legacyRequester.toBase58());
 
     await common.setCurrentTime(program, state, payer, new BN(legacyRelay.fillDeadline));
     try {
-      await program.methods.closeFillPda().accountsPartial({ state, signer: legacyRequester, fillStatus }).rpc();
+      await program.methods.closeFillPda().accountsPartial({ state, rentRecipient: legacyRequester, fillStatus }).rpc();
       assert.fail("Must wait until after the recorded deadline");
     } catch (error: any) {
       assert.include(error.toString(), "CanOnlyCloseFillStatusPdaIfFillDeadlinePassed");
@@ -146,7 +146,7 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
     await common.setCurrentTime(program, state, payer, new BN(legacyRelay.fillDeadline + 1));
     const rentBefore = await connection.getBalance(legacyRequester);
     // The provider pays transaction fees; the recorded requester need not sign.
-    await program.methods.closeFillPda().accountsPartial({ state, signer: legacyRequester, fillStatus }).rpc();
+    await program.methods.closeFillPda().accountsPartial({ state, rentRecipient: legacyRequester, fillStatus }).rpc();
     assert.isNull(await connection.getAccountInfo(fillStatus));
     assert.equal(await connection.getBalance(legacyRequester), rentBefore + before.lamports);
     assert.equal((await getAccount(connection, vault)).amount, 1000000n);

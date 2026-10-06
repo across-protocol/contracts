@@ -64,7 +64,7 @@ describe("svm_spoke V5 fill-status payer", () => {
       .rpc();
     const account = await program.account.fillStatusAccount.fetch(status);
     assert.hasAnyKeys(account.status, ["filled"]);
-    assert.equal(account.relayer.toBase58(), payer.toBase58());
+    assert.equal(account.rentRecipient.toBase58(), payer.toBase58());
     assert.equal(account.fillDeadline, fillDeadline);
 
     await expectError(
@@ -119,12 +119,18 @@ describe("svm_spoke V5 fill-status payer", () => {
       [providerPayer]
     );
     await expectError(
-      program.methods.closeFillPda().accountsPartial({ state, signer: wrongRecipient, fillStatus: status }).rpc(),
+      program.methods
+        .closeFillPda()
+        .accountsPartial({ state, rentRecipient: wrongRecipient, fillStatus: status })
+        .rpc(),
       "NotRelayer"
     );
 
-    await program.methods.closeFillPda().accountsPartial({ state, signer: payer, fillStatus: status }).rpc();
-    await program.methods.closeFillPda().accountsPartial({ state, signer: payer, fillStatus: prefundedStatus }).rpc();
+    await program.methods.closeFillPda().accountsPartial({ state, rentRecipient: payer, fillStatus: status }).rpc();
+    await program.methods
+      .closeFillPda()
+      .accountsPartial({ state, rentRecipient: payer, fillStatus: prefundedStatus })
+      .rpc();
     assert.isNull(await connection.getAccountInfo(status));
     assert.isNull(await connection.getAccountInfo(prefundedStatus));
     assert.equal(await connection.getBalance(payer), initialFloat + prefundedLamports);

@@ -17,6 +17,7 @@ fn custom_error_ranges_are_stable() {
     assert_eq!(u32::from(CommonError::InvalidOutputToken), 6_015);
     assert_eq!(u32::from(SvmError::NotOwner), 7_000);
     assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
+    assert_eq!(u32::from(SvmError::NotRelayer), 7_002);
     assert_eq!(u32::from(SvmError::InvalidDelegatePda), 7_016);
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 8_000);
     assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 8_006);
@@ -71,7 +72,7 @@ fn historical_status_and_event_slots_remain_readable() {
         bytes.extend_from_slice(&4_000_000_000u32.to_le_bytes());
         let decoded = FillStatusAccount::try_deserialize(&mut bytes.as_slice()).unwrap();
         assert!(decoded.status == status);
-        assert_eq!(decoded.relayer, Pubkey::new_from_array([42; 32]));
+        assert_eq!(decoded.rent_recipient, Pubkey::new_from_array([42; 32]));
         assert_eq!(decoded.fill_deadline, 4_000_000_000);
         let mut encoded = Vec::new();
         decoded.try_serialize(&mut encoded).unwrap();

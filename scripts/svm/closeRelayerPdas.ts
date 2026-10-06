@@ -2,7 +2,7 @@
 // reclaim the lamports within these tracking accounts. Fill Status PDAs can be closed on the deposit has expired.
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { calculateRelayEventHashUint8Array, getSpokePoolProgram, readProgramEvents } from "../../src/svm/web3-v1";
@@ -89,8 +89,8 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
 
   try {
     // Check if the fillStatusPda account exists
-    const accountInfo = await provider.connection.getAccountInfo(fillStatusPda);
-    if (!accountInfo) {
+    const fillStatus = await program.account.fillStatusAccount.fetchNullable(fillStatusPda);
+    if (!fillStatus) {
       console.log(
         `Fill Status PDA for depositId: ${eventData.depositId} from source chain id: ${eventData.originChainId} is already closed or does not exist.`
       );
@@ -110,12 +110,12 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
       { Property: "Relay Hash", Value: Buffer.from(relayHashUint8Array).toString("hex") },
     ]);
 
-    const tx = await (program.methods.closeFillPda() as any)
-      .accounts({
+    const tx = await program.methods
+      .closeFillPda()
+      .accountsPartial({
         state: statePda,
-        signer: provider.wallet.publicKey,
+        rentRecipient: fillStatus.rentRecipient,
         fillStatus: fillStatusPda,
-        systemProgram: SystemProgram.programId,
       })
       .rpc();
 

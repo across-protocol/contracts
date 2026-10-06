@@ -214,15 +214,15 @@ pub mod svm_spoke {
     //          RELAYER FUNCTIONS           *
     // *************************************
 
-    /// Closes the FillStatusAccount PDA to reclaim relayer rent.
+    /// Closes the FillStatusAccount PDA to reclaim rent.
     ///
     /// This function is used to close the FillStatusAccount associated with a specific relay hash, effectively marking
     /// the end of its lifecycle. This can only be done once the fill deadline has passed. Anyone can trigger closure,
-    /// but rent is always returned to the recorded relayer.
+    /// but rent is always returned to the recorded rent recipient: the V5 payer PDA or historical relayer.
     ///
     /// ### Required Accounts:
-    /// - signer (Writable): The recorded relayer that receives rent; no signature is required.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
+    /// - rent_recipient (Writable): The recorded rent recipient; no signature is required.
+    /// - state (Readonly): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - fill_status (Writable): The FillStatusAccount PDA to be closed.
     pub fn close_fill_pda(ctx: Context<CloseFillPda>) -> Result<()> {
         instructions::close_fill_pda(ctx)
