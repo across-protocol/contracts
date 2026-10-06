@@ -10,7 +10,7 @@ use crate::{
 pub struct CloseFillPda<'info> {
     /// CHECK: The address constraint binds this account to the recorded rent recipient; no signature is required.
     /// For V5 fills, supply the submitter's `["v5_fill_payer", submitter]` PDA recorded in
-    /// `fill_status.rent_recipient`; legacy fills retain the relayer address.
+    /// `fill_status.rent_recipient`; legacy accounts retain the relayer or slow-fill requester address.
     #[account(mut, address = fill_status.rent_recipient @ SvmError::NotRelayer)]
     pub rent_recipient: UncheckedAccount<'info>,
 

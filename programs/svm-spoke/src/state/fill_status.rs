@@ -12,6 +12,6 @@ pub enum FillStatus {
 #[derive(InitSpace)]
 pub struct FillStatusAccount {
     pub status: FillStatus,     // Tracks fill completion to prevent replay.
-    pub rent_recipient: Pubkey, // Rent recipient for closing this PDA; legacy fills store the submitting relayer.
+    pub rent_recipient: Pubkey, // V5 payer PDA, legacy relayer, or slow-fill requester receiving reclaimed rent.
     pub fill_deadline: u32,     // Stores the fill deadline to control when this PDA can be safely closed.
 }

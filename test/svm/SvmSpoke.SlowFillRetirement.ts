@@ -4,7 +4,8 @@ import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } fro
 import { Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
 import { SvmSpokeClient } from "../../src/svm/clients";
-import { calculateRelayHashUint8Array } from "../../src/svm/web3-v1";
+import { calculateRelayHashUint8Array, getSpokePoolProgram } from "../../src/svm/web3-v1";
+import { closeExpiredFillStatuses } from "../../scripts/svm/closeRelayerPdas";
 import { SvmSpokeIdl } from "../../src/svm/assets";
 import legacyAccount from "./accounts/legacy_requested_slow_fill.json";
 import { RelayData } from "../../src/types/svm";
@@ -145,8 +146,12 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
 
     await common.setCurrentTime(program, state, payer, new BN(legacyRelay.fillDeadline + 1));
     const rentBefore = await connection.getBalance(legacyRequester);
-    // The provider pays transaction fees; the recorded requester need not sign.
-    await program.methods.closeFillPda().accountsPartial({ state, rentRecipient: legacyRequester, fillStatus }).rpc();
+    // Discover the historical requested account without a FilledRelay event. The requester need not sign.
+    const cleanupProgram = getSpokePoolProgram(provider, { programId: program.programId.toBase58() });
+    assert.equal(
+      await closeExpiredFillStatuses(cleanupProgram, state, { relayer: legacyRequester }, legacyRelay.fillDeadline + 1),
+      1
+    );
     assert.isNull(await connection.getAccountInfo(fillStatus));
     assert.equal(await connection.getBalance(legacyRequester), rentBefore + before.lamports);
     assert.equal((await getAccount(connection, vault)).amount, 1000000n);

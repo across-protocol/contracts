@@ -218,7 +218,8 @@ pub mod svm_spoke {
     ///
     /// This function is used to close the FillStatusAccount associated with a specific relay hash, effectively marking
     /// the end of its lifecycle. This can only be done once the fill deadline has passed. Anyone can trigger closure,
-    /// but rent is always returned to the recorded rent recipient: the V5 payer PDA or historical relayer.
+    /// but rent is always returned to the recorded rent recipient: the V5 payer PDA, historical relayer, or
+    /// slow-fill requester.
     ///
     /// ### Required Accounts:
     /// - rent_recipient (Writable): The recorded rent recipient; no signature is required.

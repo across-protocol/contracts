@@ -164,10 +164,10 @@ new aggregation support.
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
-fill-status accounts: old clients may continue supplying the recorded relayer signature, but it is no longer required.
-The `FillStatusAccount.rent_recipient` field stores the payer PDA for V5 fills (historical legacy accounts
-retain their recorded relayer), binding permissionless reclaim to the float that paid the rent without an
-account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
+fill-status accounts: old clients may continue supplying the recorded relayer/requester signature, but it is no
+longer required. The `FillStatusAccount.rent_recipient` field stores the payer PDA for V5 fills (historical legacy
+accounts retain their recorded relayer or slow-fill requester), binding permissionless reclaim to the float that
+paid the rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
 relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. V5 fill status can only transition directly from an
 uninitialized PDA to `Filled`.
@@ -210,10 +210,17 @@ After the recorded deadline, anyone may call `close_fill_pda`; rent goes only to
 The close instruction's `signer` account and the fill-status account's `relayer` field are now named `rent_recipient`
 (`rentRecipient` in generated TypeScript clients). Account order, privileges, serialized layout, and discriminators
 are unchanged, so clients retaining the old IDL remain compatible. Clients adopting the new IDL must use the new
-property names. The `NotRelayer` error name, message, and code 7002 remain unchanged.
+property names. Existing legacy cleanup remains compatible when the supplied wallet matches the recorded rent
+recipient. Future V5 cleanup clients must supply the recorded payer PDA instead of assuming the recipient is their
+wallet; reading the fill-status account provides that address. The transaction fee payer remains a separate signer.
+This is part of future backend V5 integration, not a prerequisite for reclaiming legacy rent. The `NotRelayer`
+error name, message, and code 7002 remain unchanged.
 Closing the PDA reclaims rent, not the deposit. Unfilled expired deposits follow the dataworker-driven origin-chain
-refund process; there is no destination slow-fill fallback. `scripts/svm/closeRelayerPdas.ts` discovers only
-`FilledRelay` events, so never-filled requests need separate discovery before submitting the permissionless close.
+refund process; there is no destination slow-fill fallback. The reference script `scripts/svm/closeRelayerPdas.ts`
+discovers live fill-status accounts by recorded rent recipient, including never-filled historical requests.
+Use `--submitter` for V5 payer-PDA rent or `--relayer` for a legacy relayer/slow-fill requester. For V5, supply the
+Solana submitter key, which may differ from the repayment address in `FilledRelay`.
+See the [cleanup script usage](../../scripts/svm/README.md#reclaim-fill-status-rent).
 
 ## Enabled source-deposit behavior
 
