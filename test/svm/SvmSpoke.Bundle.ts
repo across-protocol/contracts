@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Wallet, web3 } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, BN, Wallet, web3 } from "@anchor-lang/core";
 import {
   createMint,
   getAssociatedTokenAddressSync,

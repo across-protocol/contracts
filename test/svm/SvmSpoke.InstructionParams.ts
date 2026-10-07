@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import * as crypto from "crypto";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";

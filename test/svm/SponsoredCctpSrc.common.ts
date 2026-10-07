@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
 import { evmAddressToPublicKey } from "../../src/svm/web3-v1";

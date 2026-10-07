@@ -1,4 +1,4 @@
-import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, Idl, Program } from "@anchor-lang/core";
 import { getDeployedAddress } from "../../DeploymentUtils";
 import { SupportedNetworks } from "../../types/svm";
 import {

@@ -1,3 +1,4 @@
+// Legacy Anchor 0.31 deployments only. Anchor 1.1.2 uses Program Metadata, not this dispatcher.
 // This script prepares transaction for finalizing IDL upgrade and prints out Base58 encoded transaction that can be
 // imported in the Squads transaction builder. This requires one first to have written the upgraded IDL to the buffer
 // account (anchor idl write-buffer) and set its authority to the Squads multisig (anchor idl set-authority).

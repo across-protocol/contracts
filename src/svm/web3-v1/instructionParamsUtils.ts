@@ -1,5 +1,5 @@
 import { Keypair, Transaction, sendAndConfirmTransaction, PublicKey } from "@solana/web3.js";
-import { Idl, Program } from "@coral-xyz/anchor";
+import { Idl, Program } from "@anchor-lang/core";
 import { RelayerRefundLeafSolana } from "../../types/svm";
 import { SvmSpokeAnchor } from "../assets";
 import { LargeAccountsCoder } from "./coders";

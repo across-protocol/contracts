@@ -202,7 +202,7 @@ pub mod svm_spoke {
     /// - jit_data: Source modifications decoded only when the committed input enables them, or destination
     ///   relay/repayment data.
     pub fn adapter_execute_across_v5<'info>(
-        ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+        ctx: Context<'info, AdapterExecuteAcrossV5<'info>>,
         ctx_values: GatewayContextV1,
         input: Vec<u8>,
         jit_data: Vec<u8>,
@@ -275,7 +275,7 @@ pub mod svm_spoke {
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Program): The associated token program.
     /// - system_program (Program): The system program required for account creation.
-    pub fn create_token_accounts<'info>(ctx: Context<'_, '_, '_, 'info, CreateTokenAccounts<'info>>) -> Result<()> {
+    pub fn create_token_accounts<'info>(ctx: Context<'info, CreateTokenAccounts<'info>>) -> Result<()> {
         instructions::create_token_accounts(ctx)
     }
 
@@ -317,22 +317,14 @@ pub mod svm_spoke {
     /// - system_program: The system program required for account creation.
     ///
     /// execute_relayer_refund_leaf executes in mode where refunds are sent to ATA directly.
-    pub fn execute_relayer_refund_leaf<'c, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    ) -> Result<()>
-    where
-        'c: 'info,
-    {
+    pub fn execute_relayer_refund_leaf<'info>(ctx: Context<'info, ExecuteRelayerRefundLeaf<'info>>) -> Result<()> {
         instructions::execute_relayer_refund_leaf(ctx, false)
     }
 
     /// Similar to execute_relayer_refund_leaf, but executes in mode where refunds are allocated to claim_account PDAs.
-    pub fn execute_relayer_refund_leaf_deferred<'c, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
-    ) -> Result<()>
-    where
-        'c: 'info,
-    {
+    pub fn execute_relayer_refund_leaf_deferred<'info>(
+        ctx: Context<'info, ExecuteRelayerRefundLeaf<'info>>,
+    ) -> Result<()> {
         instructions::execute_relayer_refund_leaf(ctx, true)
     }
 
@@ -451,7 +443,7 @@ pub mod svm_spoke {
     ///     - message_body: The body of the message.
     ///     - authority_bump: The authority bump for the message transmitter.
     pub fn handle_receive_finalized_message<'info>(
-        ctx: Context<'_, '_, '_, 'info, HandleReceiveFinalizedMessage<'info>>,
+        ctx: Context<'info, HandleReceiveFinalizedMessage<'info>>,
         params: HandleReceiveMessageParams,
     ) -> Result<()> {
         instructions::handle_receive_finalized_message(ctx, params)

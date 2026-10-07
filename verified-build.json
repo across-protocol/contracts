@@ -1,0 +1,12 @@
+{
+  "solana_verify_version": "0.5.1",
+  "solana_verify_sha256": {
+    "linux": "b101230b26d5f75d17d931e5056d1a6253904f65649abe7bedb7b81dd38df114",
+    "macos": "78a3cc3e6ed4e79fc8610dab18a55be5d86f81af9bf224792854b43e65ac06e5"
+  },
+  "image": "solanafoundation/solana-verifiable-build@sha256:588d0c6f45c2faa4456c7b8279897d8af8c6cd17e9613bb8ddf622a820039eb2",
+  "build_solana_version": "4.0.3",
+  "build_sbf_version": "4.0.0",
+  "platform_tools_version": "1.53",
+  "arch": "v0"
+}

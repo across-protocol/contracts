@@ -75,12 +75,16 @@ describe("Verified SBF build artifacts", () => {
         mkdirSync(path.join(work, directory), { recursive: true });
       }
       copyFileSync(guard, path.join(work, "scripts/svm/buildHelpers/runSbfBuild.sh"));
-      writeFileSync(path.join(work, "Cargo.lock"), '[[package]]\nname = "solana-program"\nversion = "2.2.1"\n');
+      copyFileSync(path.resolve("verified-build.json"), path.join(work, "verified-build.json"));
       writeFileSync(path.join(work, "target/deploy/svm_spoke.so"), "stale binary");
       writeFileSync(
         path.join(work, "bin/solana-verify"),
         `#!/usr/bin/env bash
 set -eu
+if [[ "$1" == "--version" ]]; then
+  echo "solana-verify 0.5.1"
+  exit 0
+fi
 binary="target/deploy/$3.so"
 if [[ -e "$binary" ]]; then
   echo "stale artifact reached verifier" >&2
@@ -140,7 +144,7 @@ esac
       assert.equal(result.binary, "fresh\n");
       assert.include(
         result.calls,
-        "--library-name svm_spoke --base-image solanafoundation/solana-verifiable-build:2.2.1 --"
+        `--library-name svm_spoke --base-image ${JSON.parse(readFileSync("verified-build.json", "utf8")).image} --arch v0 --`
       );
       assert.equal(result.calls.includes("--library-name mock_gateway"), isTest);
       assert.equal(result.calls.includes("--features test"), isTest);

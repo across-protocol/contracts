@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorError, AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorError, AnchorProvider, Wallet } from "@anchor-lang/core";
 import { Keypair, PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
 import { assert } from "chai";
 import {

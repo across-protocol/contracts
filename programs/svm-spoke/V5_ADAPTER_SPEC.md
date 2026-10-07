@@ -362,10 +362,10 @@ release with deployed `v5.0.12-beta.1`, including removed variants and reserved 
 orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
 7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
-Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete, omits `SvmError`, and does not reflect
-the explicit runtime offsets. Consumers should use runtime log names or the version-appropriate runtime-code
-mapping; generated error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the
-generated IDL table.
+Anchor 1.1.2 requires one IDL error enum. `SpokeError` preserves these runtime ranges using explicit
+discriminants; the former group names remain Rust aliases. The generated IDL now includes all 55 errors
+with the correct runtime codes. Historical Anchor 0.31.1 IDLs were incomplete and ignored the custom
+offsets, so historical decoding still requires the version-appropriate runtime-code mapping.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
 separate callback message. The replacement destination flow is Gateway `APPROVE(inputMint, v5_fill_delegate, full balance)`,

@@ -1,12 +1,32 @@
 import { assert } from "chai";
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
+import { address } from "@solana/kit";
+import { SvmSpokeClient } from "../../src/svm/clients";
 import fixture from "../../programs/svm-spoke/fixtures/v5_gateway_path.json";
 import adapterFixture from "../../programs/svm-spoke/fixtures/v5_adapter_v1.json";
 import { encodeDeposit, encodeFill, encodeJit, word } from "../svm/v5Encoding";
 import { GATEWAY_COMMIT, PREFIX, floor, pair, pathId, tape, transfer } from "./reference";
 
 describe("Gateway path cross-VM vectors", () => {
+  it("preserves the generated async builder's canonical event-authority resolution", async () => {
+    const program = SvmSpokeClient.SVM_SPOKE_PROGRAM_ADDRESS;
+    const key = address(PublicKey.default.toBase58());
+    const instruction = await SvmSpokeClient.getAdapterExecuteAcrossV5InstructionAsync({
+      dispatchAuthority: key,
+      state: key,
+      program,
+      stepId: new Uint8Array(32),
+      pathId: new Uint8Array(32),
+      submitter: key,
+      input: new Uint8Array(),
+      jitData: new Uint8Array(),
+    });
+    const [authority] = PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], new PublicKey(program));
+    assert.equal(instruction.accounts[2].address, authority.toBase58());
+    assert.equal(instruction.accounts[2].role, 0); // Readonly, not a transaction signer.
+  });
+
   it("checks shared Spoke encoders against the independent adapter fixture", () => {
     const bytes = (s: string) => Buffer.from(s.slice(2), "hex");
     const key = (s: string) => new PublicKey(bytes(s));

@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Wallet, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, Wallet, Program } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createMint,

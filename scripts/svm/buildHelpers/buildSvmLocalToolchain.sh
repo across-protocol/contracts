@@ -9,4 +9,4 @@ else
 fi
 
 echo "Building all programs using local toolchain"
-bash scripts/svm/buildHelpers/runSbfBuild.sh anchor build -- $CARGO_OPTIONS
+bash scripts/svm/buildHelpers/runSbfBuild.sh anchor build -- --locked $CARGO_OPTIONS

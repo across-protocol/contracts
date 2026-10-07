@@ -1,7 +1,7 @@
 // This script deposits SOL to the SVM Sponsored CCTP bridge rent fund.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider } from "@anchor-lang/core";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";

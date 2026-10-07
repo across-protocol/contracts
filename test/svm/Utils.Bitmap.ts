@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Program } from "@anchor-lang/core";
 import { Test } from "../../target/types/test";
 import { assert } from "chai";
 import { SystemProgram } from "@solana/web3.js";

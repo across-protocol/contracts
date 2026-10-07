@@ -1,7 +1,6 @@
-use anchor_lang::{
-    prelude::*,
-    solana_program::{keccak, secp256k1_recover::secp256k1_recover},
-};
+use anchor_lang::prelude::*;
+use solana_keccak_hasher as keccak;
+use solana_secp256k1_recover::secp256k1_recover;
 
 use crate::error::V5Error;
 

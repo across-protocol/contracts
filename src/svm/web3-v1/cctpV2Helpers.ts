@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { array, enums, object, optional, string, union, nullable, Infer, coerce } from "superstruct";
 import { ethers } from "ethers";
 import { assert } from "superstruct";

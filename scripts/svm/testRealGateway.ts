@@ -9,13 +9,13 @@ import { Keypair } from "@solana/web3.js";
 import { SWAP_COMMIT, SWAP_PROGRAM, swapGenesis } from "../../test/svm-gateway/swapFixture";
 import { GATEWAY, PREFUNDED, GATEWAY_COMMIT } from "../../test/svm-gateway/reference";
 
-function run(command: string, args: string[], cwd = process.cwd()) {
-  const result = spawnSync(command, args, { cwd, stdio: "inherit", env: process.env });
+function run(command: string, args: string[], cwd = process.cwd(), env = process.env) {
+  const result = spawnSync(command, args, { cwd, stdio: "inherit", env });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} failed (${result.status})`);
 }
-function buildSbf(command: string, args: string[], cwd = process.cwd()) {
-  run("bash", [path.join(__dirname, "buildHelpers/runSbfBuild.sh"), command, ...args], cwd);
+function buildSbf(command: string, args: string[], cwd = process.cwd(), env = process.env) {
+  run("bash", [path.join(__dirname, "buildHelpers/runSbfBuild.sh"), command, ...args], cwd, env);
 }
 async function main() {
   const work = mkdtempSync(path.join(tmpdir(), "acp184-gateway-"));
@@ -46,40 +46,58 @@ async function main() {
   const gatewayIdlDir = path.join(work, "idl");
   mkdirSync(gatewayIdlDir);
   for (const name of ["gateway", "prefunded_adapter", "authority_requirement_planner"]) {
-    buildSbf(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl"], checkout);
+    buildSbf(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl", "--", "--locked"], checkout);
     run(
       foreignAnchor,
-      ["idl", "build", "--program-name", name, "--out", path.join(gatewayIdlDir, `${name}.json`)],
+      ["idl", "build", "--program-name", name, "--out", path.join(gatewayIdlDir, `${name}.json`), "--", "--locked"],
       checkout
     );
   }
   // IS_TEST is not sufficient for local Anchor builds: pass the feature explicitly.
   const spokeAnchor = process.env.SVM_SPOKE_ANCHOR || "anchor";
-  buildSbf("cargo", [
-    "build-sbf",
-    "--tools-version",
-    "v1.52",
-    "--manifest-path",
-    "programs/svm-spoke/Cargo.toml",
-    "--sbf-out-dir",
-    path.join(work, "spoke"),
-    "--features",
-    "test",
-  ]);
+  // Keep native Cargo output separate from Docker-owned verified-build caches.
+  const spokeEnv = {
+    ...process.env,
+    CARGO_TARGET_DIR: path.resolve(process.env.SVM_SPOKE_BUILD_ROOT || "target/real-gateway-spoke"),
+  };
+  buildSbf(
+    "cargo",
+    [
+      "build-sbf",
+      "--tools-version",
+      "v1.54",
+      "--manifest-path",
+      "programs/svm-spoke/Cargo.toml",
+      "--sbf-out-dir",
+      path.join(work, "spoke"),
+      "--features",
+      "test",
+      "--",
+      "--locked",
+    ],
+    process.cwd(),
+    spokeEnv
+  );
   for (const directory of ["target/idl", "target/types"]) mkdirSync(directory, { recursive: true });
-  run(spokeAnchor, [
-    "idl",
-    "build",
-    "--program-name",
-    "svm_spoke",
-    "--out",
-    "target/idl/svm_spoke.json",
-    "--out-ts",
-    "target/types/svm_spoke.ts",
-    "--",
-    "--features",
-    "test",
-  ]);
+  run(
+    spokeAnchor,
+    [
+      "idl",
+      "build",
+      "--program-name",
+      "svm_spoke",
+      "--out",
+      "target/idl/svm_spoke.json",
+      "--out-ts",
+      "target/types/svm_spoke.ts",
+      "--",
+      "--locked",
+      "--features",
+      "test",
+    ],
+    process.cwd(),
+    spokeEnv
+  );
 
   const spokeId = JSON.parse(readFileSync("target/idl/svm_spoke.json", "utf8")).address;
   const plannerId = JSON.parse(

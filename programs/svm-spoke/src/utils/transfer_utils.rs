@@ -18,5 +18,5 @@ pub fn transfer_from<'info>(
     let signer_seeds: &[&[u8]] = &[delegate_seed, &bump_seed];
     let signer_seeds = [signer_seeds];
 
-    transfer_checked(CpiContext::new_with_signer(token_program, accounts, &signer_seeds), amount, mint_decimals)
+    transfer_checked(CpiContext::new_with_signer(token_program.key(), accounts, &signer_seeds), amount, mint_decimals)
 }

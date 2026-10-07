@@ -11,7 +11,8 @@ not prerequisites. It builds neither Raydium nor planners. Foundry cannot measur
 repository's TypeScript/Agave approach and existing SBF diagnostic guard.
 
 ```sh
-SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
+SVM_LEGACY_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
+SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-1.1.2" \
 SVM_GATEWAY_ANCHOR="$HOME/.avm/bin/anchor-1.1.2" \
 SVM_GATEWAY_CHECKOUT=/path/to/clean/pinned/solana-v5 \
 yarn bench-svm-cu
@@ -21,7 +22,7 @@ Omit `SVM_GATEWAY_CHECKOUT` to clone the private repository with your Git SSH cr
 at the exact pin. Network/dependency access and local validator ports are required. This remains a local benchmark;
 the cross-repository credential restriction below also applies here.
 
-Builds pin platform-tools v1.44 for legacy, v1.52 for V5 Spoke, and v1.54 for Gateway. Legacy built with v1.52 can emit
+Builds pin platform-tools v1.44 for legacy, v1.54 for V5 Spoke and Gateway. Legacy built with v1.52 can emit
 oversized fill stack frames despite exiting successfully; the runner rejects stack diagnostics. These are integration
 builds with Spoke's `test` feature, not verified production binaries. Compiler differences are part of this comparison.
 Builds run sequentially because the SBF tools update a shared Rust toolchain link. `SVM_CU_SBF` selects the
@@ -130,18 +131,23 @@ It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
 after the run. Production package IDLs and clients are not regenerated.
+Run the ordinary Anchor suite separately: it uses fixed validator ports and shares generated test IDL files.
 Generate production Spoke artifacts first (`yarn generate-svm-artifacts`); the shared wire helpers use its public
 generated codecs. CI runs the vector checks after downloading those artifacts.
 
-Install Agave 4.1.2, Anchor CLI 1.1.2 for foreign builds, and Anchor CLI 0.31.1 for this repository's IDL. The runner
-pins SpokePool compilation to Solana platform-tools v1.52 rather than the CLI's moving default. With both
-versions installed by AVM, for example:
+Install Agave 4.1.2 and Anchor CLI 1.1.2 for both foreign programs and this repository's IDL. The runner
+pins SpokePool compilation to Solana platform-tools v1.54 rather than the CLI's moving default. With Anchor
+installed by AVM, for example:
 
 ```sh
 SVM_GATEWAY_ANCHOR="$HOME/.avm/bin/anchor-1.1.2" \
-SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
+SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-1.1.2" \
 yarn test-svm-gateway
 ```
+
+Spoke's native Cargo cache defaults to `target/real-gateway-spoke`, separate from Docker-owned verified-build
+outputs. Set `SVM_SPOKE_BUILD_ROOT` to reuse another native cache, such as the benchmark's `target/cu-builds/v5`.
+All runner builds and IDL generation enforce the committed Cargo lockfiles.
 
 Both runners use `scripts/svm/localValidator.ts` for clean pinned checkouts, local ports, validator startup and cleanup.
 Gateway clones use SSH; `SVM_GATEWAY_CHECKOUT` avoids cloning when a clean checkout at the exact pin is available.

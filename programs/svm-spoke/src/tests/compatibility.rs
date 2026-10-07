@@ -90,13 +90,13 @@ fn historical_status_and_event_slots_remain_readable() {
         historical_event[392] = slot;
         let decoded = FilledRelay::deserialize(&mut historical_event.as_slice()).unwrap();
         assert!(decoded.relay_execution_info.fill_type == fill_type);
-        assert_eq!(decoded.try_to_vec().unwrap(), historical_event);
+        assert_eq!(anchor_lang::prelude::borsh::to_vec(&decoded).unwrap(), historical_event);
     }
     assert_eq!(FilledRelay::DISCRIMINATOR, &[25, 58, 182, 0, 50, 99, 160, 117]);
     assert_eq!(RequestedSlowFill::DISCRIMINATOR, &[221, 123, 11, 14, 71, 37, 178, 167]);
     let historical_request = vec![0; 280];
     let decoded = RequestedSlowFill::deserialize(&mut historical_request.as_slice()).unwrap();
-    assert_eq!(decoded.try_to_vec().unwrap(), historical_request);
+    assert_eq!(anchor_lang::prelude::borsh::to_vec(&decoded).unwrap(), historical_request);
 }
 
 #[test]

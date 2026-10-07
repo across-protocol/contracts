@@ -1,5 +1,5 @@
 import { rejects } from "assert";
-import { AnchorProvider, Wallet, workspace } from "@coral-xyz/anchor";
+import { AnchorProvider, Wallet, workspace } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { assert } from "chai";

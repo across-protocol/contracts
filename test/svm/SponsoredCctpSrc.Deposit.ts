@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, workspace } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program, workspace } from "@anchor-lang/core";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID, getAccount } from "@solana/spl-token";
 import {
   AddressLookupTableAccount,

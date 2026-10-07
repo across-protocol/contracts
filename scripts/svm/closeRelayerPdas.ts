@@ -1,5 +1,5 @@
 // Reclaim expired fill-status rent to the recorded V5 payer PDA or legacy relayer/slow-fill requester.
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";

@@ -1,5 +1,5 @@
 import { rejects } from "assert";
-import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import { AnchorProvider, Wallet } from "@anchor-lang/core";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { fetchCctpV2Messages, finalizeCctpV2Messages } from "../../scripts/svm/utils/cctpV2";

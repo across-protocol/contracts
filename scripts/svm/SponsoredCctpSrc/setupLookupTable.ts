@@ -1,7 +1,7 @@
 // This script creates ALT for a given burn token used in SVM Sponsored CCTP bridge.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider } from "@anchor-lang/core";
 import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   AddressLookupTableProgram,

@@ -1,4 +1,4 @@
-import { AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider } from "@anchor-lang/core";
 import { BigNumber } from "@ethersproject/bignumber";
 import { ethers } from "ethers";
 

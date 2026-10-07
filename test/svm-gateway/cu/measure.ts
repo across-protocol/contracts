@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { AnchorProvider, BN, Idl, Program, Wallet } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, Idl, Program, Wallet } from "@anchor-lang/core";
 import {
   AccountMeta,
   ComputeBudgetProgram,

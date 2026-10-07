@@ -140,11 +140,21 @@ jobs:
         with:
           filters: |
             svm:
+              - 'Anchor.toml'
+              - 'verified-build.json'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/actions/setup-solana-anchor/**'
+              - '.github/workflows/pr.yml'
               - 'programs/**'
+              - 'idls/**'
               - 'scripts/svm/**'
               - 'src/svm/**'
               - 'test/svm/**'
               - 'test/svm-gateway/**'
+              - 'test/svm-production/**'
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -173,7 +183,10 @@ jobs:
         run: tar -cf svm-verified-test-binaries.tar target/deploy
       - name: Test verified SVM build
         if: steps.filter.outputs.svm == 'true'
-        run: anchor test --skip-build
+        run: anchor test --skip-build --validator legacy
+      - name: Test verified production binary in a fresh ledger
+        if: steps.filter.outputs.svm == 'true'
+        run: yarn test-svm-production
   build-ts:
     name: Build TypeScript
     needs:

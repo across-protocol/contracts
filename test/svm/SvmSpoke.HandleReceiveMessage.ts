@@ -1,6 +1,6 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { rejects } from "assert";
-import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@coral-xyz/anchor";
+import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@anchor-lang/core";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";

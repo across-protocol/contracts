@@ -1,5 +1,5 @@
 // This script queries the events of the spoke pool and prints them in a human readable format.
-import { AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider } from "@anchor-lang/core";
 import { address, createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import { stringifyCpiEvent } from "../../src/svm/web3-v1";
 import { SvmSpokeIdl } from "../../src/svm";

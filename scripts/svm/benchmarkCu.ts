@@ -133,9 +133,13 @@ async function main() {
     throw new Error(`Use Agave ${VALIDATOR_VERSION}; got ${validatorVersion}`);
   const spokeAnchor = process.env.SVM_SPOKE_ANCHOR || "anchor";
   const gatewayAnchor = process.env.SVM_GATEWAY_ANCHOR || "anchor";
+  const legacyAnchor = process.env.SVM_LEGACY_ANCHOR || "anchor";
   const anchorVersions = [run(spokeAnchor, ["--version"]), run(gatewayAnchor, ["--version"])];
-  if (anchorVersions[0] !== "anchor-cli 0.31.1" || anchorVersions[1] !== "anchor-cli 1.1.2")
-    throw new Error(`Set SVM_SPOKE_ANCHOR (0.31.1) and SVM_GATEWAY_ANCHOR (1.1.2): ${anchorVersions}`);
+  const legacyAnchorVersion = run(legacyAnchor, ["--version"]);
+  if (anchorVersions.some((version) => version !== "anchor-cli 1.1.2") || legacyAnchorVersion !== "anchor-cli 0.31.1")
+    throw new Error(
+      `Use Anchor 1.1.2 for Spoke/Gateway and SVM_LEGACY_ANCHOR 0.31.1: ${anchorVersions}, ${legacyAnchorVersion}`
+    );
   const legacy = path.join(work, "legacy-source");
   mkdirSync(legacy);
   const archive = spawnSync(
@@ -149,8 +153,8 @@ async function main() {
   const checkout = prepareGatewayCheckout(work);
   // Sequential builds: cargo-build-sbf updates a global Rust toolchain link.
   const builds = {
-    legacy: build(legacy, "legacy", "v1.44", spokeAnchor, true),
-    v5: build(root, "v5", "v1.52", spokeAnchor, true),
+    legacy: build(legacy, "legacy", "v1.44", legacyAnchor, true),
+    v5: build(root, "v5", "v1.54", spokeAnchor, true),
     gateway: build(checkout, "gateway", "v1.54", gatewayAnchor),
   };
   await benchmark("legacy", builds.legacy, builds.gateway);
@@ -200,6 +204,7 @@ async function main() {
     trackedDiffSha256: sha256(run("git", ["diff", "HEAD", "--", "programs", "Cargo.toml", "Cargo.lock"])),
     validatorVersion,
     anchorVersions,
+    legacyAnchorVersion,
     node: process.version,
     spokeFeatures: ["test"],
     sbfVersion: run(process.env.SVM_CU_SBF || "cargo-build-sbf", ["--version"]),

@@ -49,7 +49,7 @@ pub struct HandleReceiveMessageParams {
 }
 
 pub fn handle_receive_finalized_message<'info>(
-    ctx: Context<'_, '_, '_, 'info, HandleReceiveFinalizedMessage<'info>>,
+    ctx: Context<'info, HandleReceiveFinalizedMessage<'info>>,
     params: HandleReceiveMessageParams,
 ) -> Result<()> {
     let self_ix_data = translate_message(&params.message_body)?;
@@ -93,10 +93,7 @@ fn translate_message(data: &Vec<u8>) -> Result<Vec<u8>> {
 // the self_authority account and passing all remaining accounts from the context. Instruction data is obtained within
 // handle_receive_finalized_message by translating the received message body into a valid instruction data for the
 // invoked CPI.
-fn invoke_self<'info>(
-    ctx: &Context<'_, '_, '_, 'info, HandleReceiveFinalizedMessage<'info>>,
-    data: &Vec<u8>,
-) -> Result<()> {
+fn invoke_self<'info>(ctx: &Context<'info, HandleReceiveFinalizedMessage<'info>>, data: &Vec<u8>) -> Result<()> {
     let self_authority_seeds: &[&[&[u8]]] = &[&[b"self_authority", &[ctx.bumps.self_authority]]];
 
     let mut accounts = Vec::with_capacity(1 + ctx.remaining_accounts.len());
