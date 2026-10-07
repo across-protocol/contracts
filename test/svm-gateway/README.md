@@ -76,9 +76,9 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | ---------------- | ------------------------: | ------------------------: | --------------------: |
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
-| v5-deposit       |                    73,516 |                    67,516 |                80,155 |
-| v5-external-fill |                    84,564 |                    78,564 |                90,893 |
-| v5-inplace-fill  |                    91,841 |                    87,341 |                99,670 |
+| v5-deposit       |                    63,610 |                    57,610 |                70,249 |
+| v5-external-fill |                    74,461 |                    68,461 |                80,790 |
+| v5-inplace-fill  |                    81,731 |                    77,231 |                89,560 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -95,7 +95,7 @@ State bumps are already 255 in every fixture. Fixed program/submitter authority 
 V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
 totals sum these adjusted components per row.
 
-In this baseline, in-place execution costs 8,777 CU more than external execution after normalization in every
+In this baseline, in-place execution costs 8,770 CU more than external execution after normalization in every
 sample. Raw per-fixture gaps also include the recorded vault and status PDA search costs. Compare per-row totals;
 independently computed component medians need not add to the total median.
 
@@ -121,6 +121,32 @@ enforce a regression threshold. After reviewing the provenance and changes, rege
 different `SVM_CU_OUTPUT` directories and compare `measurements` and program/runtime hashes. Transaction signatures,
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
+
+### Anchor 1.1.2 upgrade comparison
+
+Two upgraded runs reproduce all 25 measurements exactly, including program binary/IDL hashes, runtime hashes
+and all 15 inner event-call costs. The checked-in snapshot records the committed source used for the second run.
+
+Compared with the pre-upgrade CU branch at `a537c4499dd7d5f267498de89913962d302a1b96`, the upgraded
+Spoke reduces execution CU by the same amount in each of the five fixtures for a flow:
+
+| Flow             | Before median | After median | Saving per fixture |
+| ---------------- | ------------: | -----------: | -----------------: |
+| v5-deposit       |        73,516 |       63,610 |              9,906 |
+| v5-external-fill |        84,564 |       74,461 |             10,103 |
+| v5-inplace-fill  |        91,841 |       81,731 |             10,110 |
+
+The inner Spoke event self-CPI falls from **5,119 to 520 CU** in every V5 fixture, a measured saving of
+4,599 CU. Anchor 1.1.2 uses the compile-time `EVENT_AUTHORITY_AND_BUMP.0` for both outer account validation
+and inner event-dispatch validation, removing both runtime PDA searches while retaining the signer check.
+The overall execution deltas also include other Anchor/SDK/compiler changes; they do not isolate the outer
+PDA optimization. Event instruction tags, discriminators and payload schemas remain unchanged, and the
+validator suites check decoded events plus rejection of unsigned canonical and signed noncanonical authorities.
+
+Legacy and Gateway binaries/IDLs and the runtime feature/token-program hashes remain identical across the
+comparison. V5 changes from Anchor 0.31.1/platform-tools 1.52 to Anchor 1.1.2/platform-tools 1.54. The fixture
+identities, balances, account order, bump distribution and upload policy are unchanged. These test-feature
+measurements are separate from the digest-pinned platform-tools 1.53 production builds.
 
 ## Conformance suite
 
