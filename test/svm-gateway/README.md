@@ -124,8 +124,8 @@ slots and temporary paths in raw receipts naturally vary. Before committing an u
 
 ### Anchor 1.1.2 upgrade comparison
 
-Two upgraded runs reproduce all 25 measurements exactly, including program binary/IDL hashes, runtime hashes
-and all 15 inner event-call costs. The checked-in snapshot records the committed source used for the second run.
+Three upgraded runs reproduce all 25 measurements exactly, including program binary/IDL hashes, runtime hashes
+and all 15 inner event-call costs. The checked-in snapshot records the committed source used for the final run.
 
 Compared with the pre-upgrade CU branch at `a537c4499dd7d5f267498de89913962d302a1b96`, the upgraded
 Spoke reduces execution CU by the same amount in each of the five fixtures for a flow:

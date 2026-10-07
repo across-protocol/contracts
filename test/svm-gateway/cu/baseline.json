@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "64ce541e6510d989638f944c26717c82f35913ad",
+  "head": "0807ddca6cc4f838f628e76c594b47d4452d8679",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
   "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
