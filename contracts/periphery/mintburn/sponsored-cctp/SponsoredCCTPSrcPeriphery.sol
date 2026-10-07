@@ -93,7 +93,11 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             if (!destinationHandler.isContract()) revert InvalidDirectHandler();
 
             address burnToken = quote.burnToken.toAddress();
-            IERC20(burnToken).safeTransferFrom(msg.sender, destinationHandler, quote.amount);
+            // Pull from user into this contract, then let the dst handler pull-fund the quote
+            // in the same call (mirrors CCTP minted-delta binding; avoids spending orphaned
+            // dst balance that merely covers quote.amount).
+            IERC20(burnToken).safeTransferFrom(msg.sender, address(this), quote.amount);
+            IERC20(burnToken).forceApprove(destinationHandler, quote.amount);
             SponsoredCCTPDstPeriphery(payable(destinationHandler)).directReceiveMessage(quote);
 
             emit SponsoredCCTPDirectExecution(
