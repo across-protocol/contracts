@@ -39,7 +39,9 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
             deployer,
             address(donationBox),
             baseToken,
-            multicallHandler
+            multicallHandler,
+            deployer,
+            30 minutes
         );
 
         console.log("SponsoredCCTPDstPeriphery deployed to:", address(sponsoredCCTPDstPeriphery));
