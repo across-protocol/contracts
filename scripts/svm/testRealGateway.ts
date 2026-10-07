@@ -46,7 +46,11 @@ async function main() {
   const gatewayIdlDir = path.join(work, "idl");
   mkdirSync(gatewayIdlDir);
   for (const name of ["gateway", "prefunded_adapter", "authority_requirement_planner"]) {
-    buildSbf(foreignAnchor, ["build", "--program-name", name, "--ignore-keys", "--no-idl", "--", "--locked"], checkout);
+    buildSbf(
+      foreignAnchor,
+      ["build", "--program-name", name, "--ignore-keys", "--no-idl", "--", "--", "--locked"],
+      checkout
+    );
     run(
       foreignAnchor,
       ["idl", "build", "--program-name", name, "--out", path.join(gatewayIdlDir, `${name}.json`), "--", "--locked"],
