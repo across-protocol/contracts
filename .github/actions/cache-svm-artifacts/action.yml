@@ -30,4 +30,6 @@ runs:
     - name: Unpack restored SVM artifacts
       if: steps.svm-artifacts-cache.outputs.cache-hit == 'true'
       shell: bash
-      run: tar -xf svm-${{ inputs.type }}.tar
+      env:
+        SVM_TYPE: ${{ inputs.type }}
+      run: tar -xf "svm-${SVM_TYPE}.tar"
