@@ -79,9 +79,9 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | ---------------- | ------------------------: | ------------------------: | --------------------: |
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
-| v5-deposit       |                    63,498 |                    57,498 |                70,137 |
-| v5-external-fill |                    74,368 |                    68,368 |                80,697 |
-| v5-inplace-fill  |                    81,638 |                    77,138 |                89,467 |
+| v5-deposit       |                    57,501 |                    51,501 |                64,140 |
+| v5-external-fill |                    68,385 |                    62,385 |                74,714 |
+| v5-inplace-fill  |                    73,654 |                    69,154 |                81,483 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -98,7 +98,7 @@ State bumps are already 255 in every fixture. Fixed program/submitter authority 
 V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
 totals sum these adjusted components per row.
 
-In this baseline, in-place execution costs 8,770 CU more than external execution after normalization in every
+In this baseline, in-place execution costs 6,769 CU more than external execution after normalization in every
 sample. Raw per-fixture gaps also include the recorded vault and status PDA search costs. Compare per-row totals;
 independently computed component medians need not add to the total median.
 
