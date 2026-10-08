@@ -3,6 +3,7 @@ import * as crypto from "crypto";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
+import { requestAndConfirmAirdrop } from "./utils";
 
 const { provider, program, connection, assertSE } = common;
 
@@ -40,8 +41,7 @@ describe("svm_spoke.instruction_params", () => {
   beforeEach(async () => {
     caller = Keypair.generate();
 
-    await connection.requestAirdrop(caller.publicKey, 10_000_000_000); // 10 SOL
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait so that subsequent transactions have funds.
+    await requestAndConfirmAirdrop(connection, caller.publicKey, 10_000_000_000); // 10 SOL
 
     [instructionParams] = PublicKey.findProgramAddressSync(
       [Buffer.from("instruction_params"), caller.publicKey.toBuffer()],
