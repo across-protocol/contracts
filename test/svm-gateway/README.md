@@ -76,9 +76,9 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | ---------------- | ------------------------: | ------------------------: | --------------------: |
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
-| v5-deposit       |                    63,610 |                    57,610 |                70,249 |
-| v5-external-fill |                    74,461 |                    68,461 |                80,790 |
-| v5-inplace-fill  |                    81,731 |                    77,231 |                89,560 |
+| v5-deposit       |                    63,498 |                    57,498 |                70,137 |
+| v5-external-fill |                    74,368 |                    68,368 |                80,697 |
+| v5-inplace-fill  |                    81,638 |                    77,138 |                89,467 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -124,17 +124,17 @@ slots and temporary paths in raw receipts naturally vary. Before committing an u
 
 ### Anchor 1.1.2 upgrade comparison
 
-Three upgraded runs reproduce all 25 measurements exactly, including program binary/IDL hashes, runtime hashes
+Two upgraded runs reproduce all 25 measurements exactly, including program binary/IDL hashes, runtime hashes
 and all 15 inner event-call costs. The checked-in snapshot records the committed source used for the final run.
 
-Compared with the pre-upgrade CU branch at `a537c4499dd7d5f267498de89913962d302a1b96`, the upgraded
+Compared with the pre-upgrade CU branch at `5136d0238fc7e18489413b16d783db10b04fa8e6`, the upgraded
 Spoke reduces execution CU by the same amount in each of the five fixtures for a flow:
 
 | Flow             | Before median | After median | Saving per fixture |
 | ---------------- | ------------: | -----------: | -----------------: |
-| v5-deposit       |        73,516 |       63,610 |              9,906 |
-| v5-external-fill |        84,564 |       74,461 |             10,103 |
-| v5-inplace-fill  |        91,841 |       81,731 |             10,110 |
+| v5-deposit       |        73,440 |       63,498 |              9,942 |
+| v5-external-fill |        84,495 |       74,368 |             10,127 |
+| v5-inplace-fill  |        91,772 |       81,638 |             10,134 |
 
 The inner Spoke event self-CPI falls from **5,119 to 520 CU** in every V5 fixture, a measured saving of
 4,599 CU. Anchor 1.1.2 uses the compile-time `EVENT_AUTHORITY_AND_BUMP.0` for both outer account validation
