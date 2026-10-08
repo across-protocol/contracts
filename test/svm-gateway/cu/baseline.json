@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "2f027ae336dd1cbffb5334b2c4b26e7311c2cbd2",
+  "head": "59cc2ddeaa4e6b692804c137a77eacc0483994e5",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
-  "trackedDiffSha256": "beb1044cf7c28ca0c5c36e04282b84e0bd5e887ac270d180f40d0cf6bfa94d13",
+  "trackedDiffSha256": "92559dd4d9d8a0a121efc9ae13b1974551015d210744f06f8e72f47f30d9ad2d",
   "validatorVersion": "solana-test-validator 4.1.2 (src:182084b8; feat:c763ae0a, client:Agave)",
   "anchorVersions": ["anchor-cli 0.31.1", "anchor-cli 1.1.2"],
   "node": "v22.22.0",
@@ -19,7 +19,7 @@
     },
     "v5": {
       "tools": "v1.52",
-      "binarySha256": "0b809c8bc7827a802db295c5465634ef6cd70789c93a972eb066f061617164bc",
+      "binarySha256": "b857693fd39e0a644afa68a3572fc7a3a825702c13a94a3525db54feade5595a",
       "idlSha256": "a27b64e27256f93a18fc72839df176c4e96bb2de01155c8cda149438bf40e6ab"
     },
     "gateway": {

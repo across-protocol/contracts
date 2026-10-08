@@ -40,9 +40,7 @@ pub(crate) fn transfer_from<'info>(
     mint_decimals: u8,
     delegate: V5TransferDelegate,
 ) -> Result<()> {
-    if delegate.address() != accounts.authority.key() {
-        return err!(SvmError::InvalidDelegatePda);
-    }
+    require_keys_eq!(accounts.authority.key(), delegate.address(), SvmError::InvalidDelegatePda);
 
     transfer_checked(
         CpiContext::new_with_signer(token_program, accounts, &[&delegate.signer_seeds()]),
