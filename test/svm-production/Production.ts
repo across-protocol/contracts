@@ -45,10 +45,15 @@ describe("svm_spoke verified production binary", () => {
   it("uses the Clock sysvar to reclaim an expired historical fill despite stored time zero", async () => {
     const fillStatus = new PublicKey(legacyAccount.pubkey);
     const account = await program.account.fillStatusAccount.fetch(fillStatus);
-    const before = await provider.connection.getBalance(account.relayer);
-    await program.methods.closeFillPda().accountsPartial({ state, signer: account.relayer, fillStatus }).rpc();
+    const before = await provider.connection.getBalance(account.rentRecipient);
+    await program.methods
+      .closeFillPda()
+      .accountsPartial({ state, rentRecipient: account.rentRecipient, fillStatus })
+      .rpc();
     expect(await provider.connection.getAccountInfo(fillStatus)).to.equal(null);
-    expect(await provider.connection.getBalance(account.relayer)).to.equal(before + legacyAccount.account.lamports);
+    expect(await provider.connection.getBalance(account.rentRecipient)).to.equal(
+      before + legacyAccount.account.lamports
+    );
   });
 
   it("emits a decodable event through the canonical signed self-CPI", async () => {
