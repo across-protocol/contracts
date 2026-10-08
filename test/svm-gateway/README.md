@@ -1,7 +1,130 @@
 # SVM V5 real-Gateway conformance
 
+## Reproducible CU comparison
+
+`yarn bench-svm-cu` builds the legacy Spoke at `7445f72de17900544605c7e6706c5fb3b3784738`, this checkout's V5 Spoke,
+and the Gateway at `GATEWAY_COMMIT`, then measures five fixed fixtures per flow on fresh Agave 4.1.2 validators.
+It needs installed Yarn dependencies, repository history containing that legacy commit, Anchor CLI 0.31.1 and 1.1.2,
+and access to the pinned Gateway source. The baseline used Node 22.22.0, Yarn 1.22.22 and `cargo-build-sbf` 4.1.0;
+the full tool/runtime metadata is in `cu/baseline.json`. It generates its own IDLs; package clients and local binaries are
+not prerequisites. It builds neither Raydium nor planners. Foundry cannot measure SVM compute, so this lane uses the
+repository's TypeScript/Agave approach and existing SBF diagnostic guard.
+
+```sh
+SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
+SVM_GATEWAY_ANCHOR="$HOME/.avm/bin/anchor-1.1.2" \
+SVM_GATEWAY_CHECKOUT=/path/to/clean/pinned/solana-v5 \
+yarn bench-svm-cu
+```
+
+Omit `SVM_GATEWAY_CHECKOUT` to clone the private repository with your Git SSH credentials. The checkout must be clean
+at the exact pin. Network/dependency access and local validator ports are required. This remains a local benchmark;
+the cross-repository credential restriction below also applies here.
+
+Builds pin platform-tools v1.44 for legacy, v1.52 for V5 Spoke, and v1.54 for Gateway. Legacy built with v1.52 can emit
+oversized fill stack frames despite exiting successfully; the runner rejects stack diagnostics. These are integration
+builds with Spoke's `test` feature, not verified production binaries. Compiler differences are part of this comparison.
+Builds run sequentially because the SBF tools update a shared Rust toolchain link. `SVM_CU_SBF` selects the
+`cargo-build-sbf` executable; `SVM_CU_BUILD_ROOT` relocates the default `target/cu-builds` compiler caches. Programs
+are rebuilt on every run, including when caches are present.
+
+The matrix covers legacy deposit/fill, StepDelegate-funded V5 deposit, co-signed external V5 fill, and co-signed
+in-place V5 fill followed by a balance requirement and full recipient transfer. Both fill variants start with the
+same source/recipient/vault balances and use the same mint, submitter, recipient, amount, state and account order.
+Each fixture has deterministic test-only keys, nonce, path salt, quote/deadline and a fixed Spoke test clock.
+StepDelegate funding uses a fixed maximum deadline, keeping the Gateway authorization bytes independent of wall time.
+Paths and relay identities necessarily differ between fill variants; their buffer/status PDA bumps are reported.
+Fixtures also record source, recipient, Spoke vault and Gateway vault ATA bumps (`sourceBump`, `recipientAtaBump`,
+`spokeVaultBump`, `vaultBump`). `recipientAtaBump` always describes the final recipient's ATA, including when Spoke
+records an in-place fill against the Gateway vault before Gateway performs final delivery.
+Both routes approve the Spoke fill delegate and call `transfer_checked`. The in-place route performs a self-transfer,
+clears its unconsumed allowance, then checks the floor and transfers in Gateway. Different account validation and PDA derivation costs
+also contribute, so a total-CU difference does not isolate the cost of a single command.
+Five fixed seeds expose some of that variation but are not a worst-case bound or a statistical production estimate.
+The validator's bundled token programs and activated features are part of this baseline; it is not a mainnet CU budget.
+Specifically, [Agave 4.1.2 bundles p-token 1.0.0-rc.1](https://github.com/anza-xyz/agave/blob/v4.1.2/program-binaries/src/lib.rs#L19-L24)
+at `TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA`. That bundled binary's SHA-256 is
+`8190d3f7ceb6cb7a7a8d8924bff89f9f611e15ce1f806f2b6237f3311a98f697`, matching the baseline's executable hash.
+The 310-CU approval includes 150 CU for the compute-budget instruction and 160 CU for `ApproveChecked`.
+V5 performs more token CPIs than legacy, so this implementation affects the relative comparison as well as absolute CU.
+No mainnet token-program dump was captured for this run; equivalence to mainnet at run time was not verified.
+
+The table reports medians of **consumed CU**, not requested limits:
+
+- `execution`: the deposit/fill transaction, including V5 funding and final delivery, plus its compute-budget instruction.
+- `approval`: a separate source/relayer approval transaction where required, including its compute-budget instruction.
+  V5 vault approvals executed inside the tape are already part of `execution`.
+- `buffer`: initialization and all parameter-fragment uploads, each including its compute-budget instruction.
+  Successful execution closes the buffer; there is no extra successful-path close transaction.
+- `total`: the sum for each sample before taking the median. The displayed component medians need not add to it.
+
+All token accounts already exist. Minting, state/clock initialization, balance resets, rent-float provisioning,
+ATA creation, rent reclaim and other deployment/setup transactions are excluded. Legacy uses an empty message; V5
+uses the required 64-byte witness. Successful delivery, source/vault consumption, fill status and rent accounting are
+asserted before a run is accepted. PrefundedAdapter, swaps, signed modifications and Token-2022 are separate workloads.
+
+### Interpreting bump variation and buffer costs
+
+The fixed fixtures are intentionally retained rather than grinding addresses until their bumps are 255. For this
+baseline, subtracting 1,500 CU per additional PDA search attempt explains all 25 execution measurements and all 15
+buffer measurements exactly. The following is an analytical normalization to fixture-variable bumps of 255, not a
+second on-chain measurement, a production estimate, or a model guaranteed to apply after program/runtime changes.
+Every recorded bump is already canonical for its seeds; 255 simply means the first derivation attempt succeeds.
+
+| Flow             | Measured execution median | Bump-normalized execution | Bump-normalized total |
+| ---------------- | ------------------------: | ------------------------: | --------------------: |
+| legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
+| legacy-fill      |                    41,021 |                    38,021 |                38,331 |
+| v5-deposit       |                    73,440 |                    67,440 |                80,079 |
+| v5-external-fill |                    84,495 |                    78,495 |                90,824 |
+| v5-inplace-fill  |                    91,772 |                    87,272 |                99,601 |
+
+To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
+the following sum from `execution`:
+
+| Flow             | Extra search attempts                                   |
+| ---------------- | ------------------------------------------------------- |
+| legacy-deposit   | `d(sourceBump) + d(spokeVaultBump) + d(delegateBump)`   |
+| legacy-fill      | `d(statusBump) + d(delegateBump) + d(recipientAtaBump)` |
+| v5-deposit       | `d(fundingBump) + 2*d(vaultBump) + d(spokeVaultBump)`   |
+| v5-external-fill | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
+| v5-inplace-fill  | `d(statusBump) + 3*d(vaultBump) + d(recipientAtaBump)`  |
+
+State bumps are already 255 in every fixture. Fixed program/submitter authority costs remain included. Normalize
+V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
+totals sum these adjusted components per row.
+
+In this baseline, in-place execution costs 8,777 CU more than external execution after normalization in every
+sample. Raw per-fixture gaps also include the recorded vault and status PDA search costs. Compare per-row totals;
+independently computed component medians need not add to the total median.
+
+`BUFFER_FRAGMENT_BYTES = 800` in `cu/config.ts` is a conservative, fixed test-helper policy, not a measured production
+submitter setting or maximum packet utilization. The 891/1,194/1,364-byte V5 parameter payloads each require two writes;
+`bufferFragmentBytes` and `bufferWrites` are recorded per row. Each flow sends initialization plus two separate writes,
+so this baseline's entire buffer variation is `12,329 + 4,500 * d(bufferBump)`, not a difference in upload count.
+A larger fragment can fit this transaction shape and put the deposit payload into one write; packing initialization
+with a write can also reduce transaction count. Those are separate SDK/backend composition choices tracked in
+[sdk #1541](https://github.com/across-protocol/sdk/issues/1541). This benchmark holds the upload policy fixed to expose
+program and bump costs; contracts helpers do not define production client composition.
+
+`target/cu-benchmark/results.json` contains per-case values, fixture identities/bumps, source revisions, fixture and
+binary/IDL hashes, compiler pins, validator version/feature-set and SPL Token/ATA executable hashes. Raw receipts and
+build/validator logs are alongside it; temporary source builds and ledgers are retained at the printed path.
+`SVM_CU_OUTPUT` relocates the output. A run fails if legacy and V5 runtime/program environments differ.
+The fixture hash includes the shared `scripts/svm/localValidator.ts` helper as well as the runner, configuration,
+measurement code and wire encoders.
+
+The checked-in `cu/baseline.json` is a reviewable snapshot. Normal runs print total-CU deltas and do not modify it or
+enforce a regression threshold. After reviewing the provenance and changes, regenerate it explicitly with
+`yarn bench-svm-cu --update-baseline` (using the same environment above). To verify reproducibility, run twice into
+different `SVM_CU_OUTPUT` directories and compare `measurements` and program/runtime hashes. Transaction signatures,
+slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
+`yarn prettier --write test/svm-gateway/cu/baseline.json`.
+
+## Conformance suite
+
 Run `yarn test-svm-gateway`. It builds Gateway, PrefundedAdapter and AuthorityRequirementPlanner from `GATEWAY_COMMIT` in
-`reference.ts`, builds this checkout's SpokePool with `--features test`, generates test IDLs, and starts
+`wire.ts` (re-exported by `reference.ts`), builds this checkout's SpokePool with `--features test`, generates test IDLs, and starts
 an isolated validator with those programs, SpokePool and Raydium CPMM loaded as upgradeable programs.
 It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
@@ -20,9 +143,14 @@ SVM_SPOKE_ANCHOR="$HOME/.avm/bin/anchor-0.31.1" \
 yarn test-svm-gateway
 ```
 
-`SVM_GATEWAY_CHECKOUT` may point to an existing clean checkout at the exact pin to avoid another clone. Builds still
-run; arbitrary prebuilt binaries are not accepted as conformance evidence. Dependency downloads and local validator
-ports require network permission in sandboxed environments.
+Both runners use `scripts/svm/localValidator.ts` for clean pinned checkouts, local ports, validator startup and cleanup.
+Gateway clones use SSH; `SVM_GATEWAY_CHECKOUT` avoids cloning when a clean checkout at the exact pin is available.
+Readiness requires a confirmed slot above 10, with bounded RPC requests. The validator is stopped and signal listeners
+are removed on startup failure and after the test callback, including failures. The focused helper tests run with
+`NODE_OPTIONS=--no-experimental-strip-types yarn ts-mocha -p tsconfig.test.json -t 15000 test/svm/Scripts.LocalValidator.ts`.
+
+Builds still run with existing checkouts; arbitrary prebuilt binaries are not accepted as conformance evidence.
+Dependency downloads and local validator ports require network permission in sandboxed environments.
 Pass Mocha filters through the runner, e.g. `yarn test-svm-gateway --grep 'JIT Raydium'`, for focused validation.
 
 The current runner needs access to the pinned `solana-v5` checkout, so run this lane locally with existing repository
@@ -45,7 +173,7 @@ verified-build and ordinary SVM lanes remain separate requirements.
 
 Ordinary Gateway/Prefunded instructions use Anchor builders and IDLs generated from the same pinned checkout as the
 binaries. These IDLs stay in the temporary run directory, passed to the suite via `SVM_GATEWAY_IDL_DIR`; no private
-artifacts are checked in. `reference.ts` encodes opaque Gateway tape/amount/meta/JIT/buffer payloads. Spoke deposit/fill
+artifacts are checked in. `wire.ts` encodes opaque Gateway tape/amount/meta/JIT/buffer payloads, re-exported by `reference.ts`. Spoke deposit/fill
 layouts are shared with the mock suites in `test/svm/v5Encoding.ts`; golden-vector derivations remain independent.
 All command accounts are committed or explicit injected slots; the outer remaining-account list is only a lookup
 pool. Status and payer slots are injected
