@@ -1,4 +1,10 @@
 {
+  "agave_release_sha256": {
+    "linux_x86_64": "5991d027a686eb419a709a479178b33eb83501e8a2bfbf599a81a286bfcbf770"
+  },
+  "anchor_cli_sha256": {
+    "linux_x86_64": "fdea9979629e9416e5f5e5622ff6c11b8c691d1e559581ece368e903c0c980c1"
+  },
   "solana_verify_version": "0.5.1",
   "solana_verify_sha256": {
     "linux": "b101230b26d5f75d17d931e5056d1a6253904f65649abe7bedb7b81dd38df114",

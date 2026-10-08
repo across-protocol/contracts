@@ -29,6 +29,8 @@ Use Node 22 for SVM development. `Anchor.toml` pins Anchor 1.1.2 and Agave 4.1.2
 install these versions instead of selecting a moving `latest` toolchain.
 The generated Anchor client types now use `@anchor-lang/core` 1.1.2. Consumers updating this package
 should replace their `@coral-xyz/anchor` imports where they exchange Anchor providers or program types.
+For the 6.0.0 release, coordinate the SDK/relayer package updates and Anchor import changes with the
+program and canonical IDL upgrade. Legacy `Program.at`/`fetchIdl` readers do not follow the new metadata address.
 Artifact generation restores the canonical event-authority PDA seeds omitted by Anchor 1.1's IDL output,
 preserving typed account resolution and Codama async builders. This metadata does not change program bytes.
 
@@ -47,6 +49,10 @@ matches). Bump the pin by editing that file.
 SVM local, verified, and real-Gateway builds fail on stack-overflow diagnostics even when the compiler exits
 successfully. The shared guard is `scripts/svm/buildHelpers/runSbfBuild.sh`; run `yarn test-svm-build-guard` to test it
 without a validator or Rust build. CI invalidates cached SVM builds when these build helpers change.
+Host IDL generation and Rust tests use Rust 1.97.1, pinned in the SVM setup action; use that version locally
+when reproducing CI artifacts. The action verifies the Linux x86_64 Agave/Anchor release assets against
+the SHA-256 pins in `verified-build.json`, including cache hits. These host tools are separate from the
+release image's SBF compiler.
 
 ## Test
 
@@ -137,6 +143,9 @@ its IDL now exposes all four ranges from one enum. Sponsored CCTP's formerly ove
 now use Common 6000–6002, SVM 7000–7010 and CCTP 8000–8002. This changes error numbers in a **new**
 Sponsored CCTP build, not its existing deployment. Upgrading the source does not require redeploying
 retiring Sponsored CCTP or multicall programs.
+The bundled Sponsored CCTP IDL/client error tables describe that new build, not the existing deployment.
+For live or historical transactions from the old deployment, use the error name in the program logs and
+the matching release artifacts; numeric codes alone are ambiguous across its old enums.
 
 Before an audited release, build from a clean checkout of the reviewed commit and record the commit,
 `Cargo.lock`, `verified-build.json`, enabled features (none for production), program IDs and executable
@@ -298,6 +307,22 @@ wallet above. The vault separately funds any canonical metadata account rent, so
 SOL. The command creates the canonical metadata account if absent, including the first upgrade from
 Anchor 0.31, or updates it if it already exists.
 
+For the **first upgrade from Anchor 0.31**, also prepare closure of the old canonical IDL while the
+old binary still supports its dispatcher. Check its authority with the old CLI; it must match the
+Squads vault used below. The legacy IDL authority is independent of the program upgrade authority.
+
+```shell
+export LEGACY_ANCHOR="$HOME/.avm/bin/anchor-0.31.1"
+"$LEGACY_ANCHOR" idl authority --provider.cluster "$RPC_URL" "$PROGRAM_ID"
+export LEGACY_IDL_REFUND_RECIPIENT= # Set the reviewed recipient of the old canonical IDL's rent
+yarn ts-node scripts/svm/squadsIdlUpgrade.ts --programId "$PROGRAM_ID" --multisig "$MULTISIG" --closeIdl --closeRecipient "$LEGACY_IDL_REFUND_RECIPIENT"
+```
+
+This helper prints a single unsigned Base58 message containing only the legacy IDL close instruction.
+Import it **before the binary upgrade instruction in the same Squads transaction**. It closes the old
+canonical account, not the new Program Metadata buffer. Skip this step when no legacy IDL exists.
+Coordinate client updates first: old `@coral-xyz/anchor` readers stop fetching that IDL after closure.
+
 In Squads, use **Developers → Transaction Builder → Create Transaction → Add Instruction → Import as
 Base58** to import each printed transaction. Review the program ID, canonical metadata account, vault
 signer and buffer-rent recipient. Include the final IDL write and buffer closure with the binary upgrade
@@ -320,8 +345,10 @@ diff -u /tmp/release-idl.sorted.json /tmp/deployed-idl.sorted.json
 Do not run `anchor idl write-buffer` directly from the operator wallet after Squads takes authority;
 the vault must authorize that write. `scripts/svm/squadsIdlUpgrade.ts` encodes the old Anchor 0.31
 dispatcher instructions and remains usable only for legacy deployments with Anchor 0.31.1. It does not
-update Program Metadata accounts. There is no need to close the old legacy IDL account to publish the new
-canonical IDL.
+update Program Metadata accounts. Leaving the old IDL open does not block publication of the new one,
+but old clients continue reading stale data. The upgraded binary has no legacy IDL dispatcher, so it
+cannot update or close that account or recover its rent; doing so later would require another program
+upgrade restoring that functionality. The sequence above avoids leaving that stale account behind.
 
 #### Verify
 

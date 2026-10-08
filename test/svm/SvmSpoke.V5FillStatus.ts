@@ -171,7 +171,7 @@ describe("svm_spoke V5 fill-status payer", () => {
           .testCreateV5FillStatus([...relayHash], deadline)
           .accountsPartial({ submitter: owner.publicKey, payer, fillStatus: status })
           .signers([owner])
-          .rpc({ commitment: "confirmed" });
+          .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
       }
     }
     const target = { submitter: submitter.publicKey };

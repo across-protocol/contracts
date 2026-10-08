@@ -25,6 +25,9 @@ the cross-repository credential restriction below also applies here.
 Builds pin platform-tools v1.44 for legacy, v1.54 for V5 Spoke and Gateway. Legacy built with v1.52 can emit
 oversized fill stack frames despite exiting successfully; the runner rejects stack diagnostics. These are integration
 builds with Spoke's `test` feature, not verified production binaries. Compiler differences are part of this comparison.
+The release recipe in `verified-build.json` uses platform-tools v1.53; the V5 benchmark and real-Gateway runner
+use v1.54. Their measured CU savings include compiler effects that have not been measured with the release
+compiler. Use the release compiler recipe for deployment CU estimates.
 Builds run sequentially because the SBF tools update a shared Rust toolchain link. `SVM_CU_SBF` selects the
 `cargo-build-sbf` executable; `SVM_CU_BUILD_ROOT` relocates the default `target/cu-builds` compiler caches. Programs
 are rebuilt on every run, including when caches are present.

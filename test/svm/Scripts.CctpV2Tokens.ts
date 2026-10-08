@@ -62,7 +62,7 @@ describe("CCTP V2 script token delivery", () => {
         localTokenMint: mint,
         program: program.programId,
       })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
     const tokenPair = pda("token_pair", Buffer.from("0"), remoteToken.toBuffer());
     await program.methods
       .linkTokenPair({ remoteDomain: 0, remoteToken, localToken })
@@ -72,7 +72,7 @@ describe("CCTP V2 script token delivery", () => {
         tokenPair,
         program: program.programId,
       })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
     await mintTo(connection, payer, mint, custody, payer, 100000n, [], { commitment: "confirmed" });
     vault = (
       await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true, "confirmed", {

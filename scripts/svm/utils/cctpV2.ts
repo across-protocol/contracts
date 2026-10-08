@@ -189,7 +189,7 @@ async function receiveCctpV2Message(
         program: messageTransmitterProgram.programId,
       })
       .remainingAccounts(remainingAccounts)
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
   } catch (error) {
     if (await alreadyProcessed()) return null;
     throw error;
