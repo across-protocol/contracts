@@ -1,4 +1,4 @@
-import { provider } from "../svm/provider";
+import { getConfirmedTransaction, provider } from "../svm/provider";
 import { BN, Program } from "@anchor-lang/core";
 import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { expect } from "chai";
@@ -18,8 +18,8 @@ describe("svm_spoke verified production binary", () => {
     const blockhash = await provider.connection.getLatestBlockhash();
     const tx = await provider.wallet.signTransaction(new Transaction({ ...blockhash, feePayer: signer }).add(ix));
     const signature = await provider.connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
-    const result = await provider.connection.confirmTransaction({ ...blockhash, signature }, "confirmed");
-    expect(result.value.err).to.deep.equal({ InstructionError: [0, { Custom: code }] });
+    const result = await getConfirmedTransaction(signature);
+    expect(result.meta?.err).to.deep.equal({ InstructionError: [0, { Custom: code }] });
   }
 
   it("rejects nonzero state seeds and initializes the production state at seed zero", async () => {
@@ -61,19 +61,11 @@ describe("svm_spoke verified production binary", () => {
       .pauseDeposits(true)
       .accountsPartial({ state, signer })
       .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
-    let tx;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      tx = await provider.connection.getTransaction(signature, {
-        commitment: "confirmed",
-        maxSupportedTransactionVersion: 0,
-      });
-      if (tx) break;
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    expect(tx?.meta?.err).to.equal(null);
-    const inner = tx!.meta!.innerInstructions!.flatMap((group) => group.instructions);
+    const tx = await getConfirmedTransaction(signature);
+    expect(tx.meta?.err).to.equal(null);
+    const inner = tx.meta!.innerInstructions!.flatMap((group) => group.instructions);
     const events = inner.filter((ix) =>
-      tx!.transaction.message.getAccountKeys().get(ix.programIdIndex)!.equals(program.programId)
+      tx.transaction.message.getAccountKeys().get(ix.programIdIndex)!.equals(program.programId)
     );
     expect(events).to.have.length(1);
     const event = program.coder.events.decode(Buffer.from(bs58.decode(events[0].data)).subarray(8).toString("base64"));

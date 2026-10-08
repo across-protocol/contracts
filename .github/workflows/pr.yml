@@ -178,6 +178,10 @@ jobs:
         env:
           IS_TEST: true
         run: yarn build-svm-solana-verify
+      # Docker may create deploy/ as root. The later production build must be able to remove stale test binaries.
+      - name: Restore verified artifact ownership
+        if: steps.filter.outputs.svm == 'true'
+        run: sudo chown -R "$(id -u):$(id -g)" target/deploy
       - name: Archive verified test build (for caching)
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-test-binaries.tar target/deploy

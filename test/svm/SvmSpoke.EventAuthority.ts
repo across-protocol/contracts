@@ -1,4 +1,4 @@
-import { provider } from "./provider";
+import { getConfirmedTransaction, provider } from "./provider";
 import { workspace } from "@anchor-lang/core";
 import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { expect } from "chai";
@@ -24,8 +24,8 @@ describe("svm_spoke.event_authority", () => {
       );
       const signed = await provider.wallet.signTransaction(transaction);
       const signature = await provider.connection.sendRawTransaction(signed.serialize(), { skipPreflight: true });
-      const result = await provider.connection.confirmTransaction({ ...blockhash, signature }, "confirmed");
-      expect(result.value.err).to.deep.equal({ InstructionError: [0, { Custom: code }] });
+      const result = await getConfirmedTransaction(signature);
+      expect(result.meta?.err).to.deep.equal({ InstructionError: [0, { Custom: code }] });
     });
   }
 });
