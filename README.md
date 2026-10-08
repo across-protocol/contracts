@@ -266,7 +266,7 @@ solana program set-buffer-authority \
   --new-buffer-authority $MULTISIG
 ```
 
-Add the program ID to Squads multisig (`https://devnet.squads.so/` for devnet and `https://app.squads.so/` for mainnet) in the Developers/Programs section. Then add the upgrade filling in the buffer address and buffer refund. After creating the upgrade verify the buffer authority as prompted and proceed with initiating the upgrade. Once all required signers have approved, execute the upgrade in the transactions section.
+Add the program ID to Squads multisig (`https://devnet.squads.so/` for devnet and `https://app.squads.so/` for mainnet) in the Developers/Programs section. Prepare the upgrade with the binary buffer address and refund recipient, and verify the buffer authority as prompted. Prepare the IDL update below before approving and executing the release.
 
 Prepare an Anchor 1.1.2 Program Metadata buffer and transfer its authority to the Squads vault:
 
@@ -283,13 +283,45 @@ anchor idl set-buffer-authority \
   $IDL_BUFFER
 ```
 
-The vault must then authorize the Program Metadata write from that buffer to the program's canonical
-`idl` metadata account, and optionally close the buffer to a reviewed rent recipient. Include these
-instructions in the reviewed Squads upgrade transaction where possible. The wallet CLI equivalent is
-`anchor idl write-buffer --buffer "$IDL_BUFFER" --close-buffer "$PROGRAM_ID"`; an operator wallet cannot
-sign this canonical write after Squads takes authority. `scripts/svm/squadsIdlUpgrade.ts` is a **legacy
-Anchor 0.31 IDL dispatcher encoder** and cannot construct this Program Metadata transaction. Do not use it
-for upgraded programs. Existing legacy deployments can continue to use the old encoder with Anchor 0.31.1.
+Export the canonical IDL update using the official [Program Metadata CLI](https://github.com/solana-program/program-metadata#squads-multisig).
+This replaces `scripts/svm/squadsIdlUpgrade.ts` for Anchor 1.1.2 programs:
+
+```shell
+export IDL_REFUND_RECIPIENT=$(solana-keygen pubkey "$KEYPAIR") # Refund the operator that funded the IDL buffer
+npx --yes @solana-program/program-metadata@0.10.0 write idl "$PROGRAM_ID" --rpc "$RPC_URL" --buffer "$IDL_BUFFER" --export "$MULTISIG" --export-encoding base58 --tx-version legacy --single-extend-per-tx --close-buffer "$IDL_REFUND_RECIPIENT"
+```
+
+`--export` prints unsigned transactions without submitting them. `$MULTISIG` must be the **Squads vault
+PDA that holds program and buffer authority**, not the Squads multisig account. Transferring buffer
+authority does not reimburse the operator: `--close-buffer` returns that buffer's rent to the operator
+wallet above. The vault separately funds any canonical metadata account rent, so it needs sufficient
+SOL. The command creates the canonical metadata account if absent, including the first upgrade from
+Anchor 0.31, or updates it if it already exists.
+
+In Squads, use **Developers → Transaction Builder → Create Transaction → Add Instruction → Import as
+Base58** to import each printed transaction. Review the program ID, canonical metadata account, vault
+signer and buffer-rent recipient. Include the final IDL write and buffer closure with the binary upgrade
+in one reviewed transaction where possible. Extra transactions can be needed to create or grow the
+destination account; the uploaded buffer data does not need to be uploaded again. If the CLI prints
+multiple transactions, retain their order; `--single-extend-per-tx` limits account growth to 10 KiB per
+Squads execution. Execute any preparatory allocation/growth transactions before the final write, and do not combine those exports into
+one transaction. Then collect the required approvals and execute the release. If the binary upgrade and
+final IDL write must be separate, execute the IDL write immediately after the binary upgrade.
+
+After execution, fetch the canonical IDL and compare its JSON content with the release artifact:
+
+```shell
+anchor idl fetch --provider.cluster "$RPC_URL" --commitment finalized --out /tmp/deployed-idl.json "$PROGRAM_ID"
+jq -S . "target/idl/$PROGRAM.json" > /tmp/release-idl.sorted.json
+jq -S . /tmp/deployed-idl.json > /tmp/deployed-idl.sorted.json
+diff -u /tmp/release-idl.sorted.json /tmp/deployed-idl.sorted.json
+```
+
+Do not run `anchor idl write-buffer` directly from the operator wallet after Squads takes authority;
+the vault must authorize that write. `scripts/svm/squadsIdlUpgrade.ts` encodes the old Anchor 0.31
+dispatcher instructions and remains usable only for legacy deployments with Anchor 0.31.1. It does not
+update Program Metadata accounts. There is no need to close the old legacy IDL account to publish the new
+canonical IDL.
 
 #### Verify
 
