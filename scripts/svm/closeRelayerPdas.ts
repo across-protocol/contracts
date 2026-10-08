@@ -36,7 +36,7 @@ export async function closeExpiredFillStatuses(
       const tx = await program.methods
         .closeFillPda()
         .accountsPartial({ state, rentRecipient: account.rentRecipient, fillStatus })
-        .rpc({ commitment: "confirmed" });
+        .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
       console.log(`Closed ${fillStatus.toBase58()}: ${tx}`);
       closed++;
     } catch (error) {

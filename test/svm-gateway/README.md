@@ -75,9 +75,9 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | ---------------- | ------------------------: | ------------------------: | --------------------: |
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
-| v5-deposit       |                    73,440 |                    67,440 |                80,079 |
-| v5-external-fill |                    84,515 |                    78,515 |                90,844 |
-| v5-inplace-fill  |                    89,726 |                    85,226 |                97,555 |
+| v5-deposit       |                    67,432 |                    61,432 |                74,071 |
+| v5-external-fill |                    78,508 |                    72,508 |                84,837 |
+| v5-inplace-fill  |                    83,719 |                    79,219 |                91,548 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -120,6 +120,10 @@ enforce a regression threshold. After reviewing the provenance and changes, rege
 different `SVM_CU_OUTPUT` directories and compare `measurements` and program/runtime hashes. Transaction signatures,
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
+
+For the constant-delegate optimization's per-fixture CU comparison, see
+[PR #1573](https://github.com/across-protocol/contracts/pull/1573)
+([issue #1569](https://github.com/across-protocol/contracts/issues/1569)).
 
 For the validated-vault optimization's per-fixture CU comparison, see
 [PR #1575](https://github.com/across-protocol/contracts/pull/1575)
