@@ -130,6 +130,12 @@ For the configured Spoke program, `v5_deposit_delegate` derives
 `8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
 target and the supplied deposit delegate account.
 
+The V5-specific [transfer helper](src/v5/transfer.rs) selects the deposit or fill delegate's constant address, seed and
+bump as one internal combination. It checks the supplied authority against that address and signs the token CPI with
+its canonical seeds, without searching for the PDA again. Both combinations are tested against derivation under the
+configured Spoke program ID; program-ID changes must update those constants together. No caller-supplied bump is
+accepted.
+
 The `v5_fill_delegate` PDA derives `D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1` with bump 252. Builders must use it
 as both the approval target and the supplied fill delegate account for every fill, including self-transfers.
 Both deposits and fills rely on the token program to validate delegate authority and allowance during
@@ -243,6 +249,9 @@ tokens, finalizes V5 fill status, and constructs the canonical events. The entry
 and fill modules, each owning its execution and account loading. Both loaders use `V5TokenAccounts::load` in
 `instructions/v5_adapter/token.rs` to validate the mint, token program, and canonical Gateway vault before their
 branch-specific recipient and delegate checks.
+When the committed fill recipient is `GATEWAY_VAULT_AUTHORITY`, the fill loader reuses that validated writable account
+instead of deriving, finding, and parsing the same ATA again. This reuse is confined to account loading before any
+CPI; external recipient validation and the token program's self-transfer checks remain unchanged.
 Every successful fill emits `FastFill` with the original recipient and output amount in its execution info.
 Each execution handler performs validation, delivery, and event emission directly; fills also create and finalize
 their V5 fill status in that handler.

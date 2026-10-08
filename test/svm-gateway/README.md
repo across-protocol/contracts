@@ -92,7 +92,7 @@ the following sum from `execution`:
 | legacy-fill      | `d(statusBump) + d(delegateBump) + d(recipientAtaBump)` |
 | v5-deposit       | `d(fundingBump) + 2*d(vaultBump) + d(spokeVaultBump)`   |
 | v5-external-fill | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
-| v5-inplace-fill  | `d(statusBump) + 3*d(vaultBump) + d(recipientAtaBump)`  |
+| v5-inplace-fill  | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
 
 State bumps are already 255 in every fixture. Fixed program/submitter authority costs remain included. Normalize
 V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
@@ -124,6 +124,15 @@ enforce a regression threshold. After reviewing the provenance and changes, rege
 different `SVM_CU_OUTPUT` directories and compare `measurements` and program/runtime hashes. Transaction signatures,
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
+
+For the constant-delegate optimization's per-fixture CU comparison, see
+[PR #1573](https://github.com/across-protocol/contracts/pull/1573)
+([issue #1569](https://github.com/across-protocol/contracts/issues/1569)).
+
+For the validated-vault optimization's per-fixture CU comparison, see
+[PR #1575](https://github.com/across-protocol/contracts/pull/1575)
+([issue #1570](https://github.com/across-protocol/contracts/issues/1570)). Reusing the validated vault removes one
+vault ATA derivation from self-transfer fills; remaining derivations still contribute address-dependent costs.
 
 ## Conformance suite
 
