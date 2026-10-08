@@ -122,32 +122,6 @@ different `SVM_CU_OUTPUT` directories and compare `measurements` and program/run
 slots and temporary paths in raw receipts naturally vary. Before committing an updated snapshot, run
 `yarn prettier --write test/svm-gateway/cu/baseline.json`.
 
-### Anchor 1.1.2 upgrade comparison
-
-Two upgraded runs reproduce all 25 measurements exactly, including program binary/IDL hashes, runtime hashes
-and all 15 inner event-call costs. The checked-in snapshot records the committed source used for the final run.
-
-Compared with the pre-upgrade CU branch at `5136d0238fc7e18489413b16d783db10b04fa8e6`, the upgraded
-Spoke reduces execution CU by the same amount in each of the five fixtures for a flow:
-
-| Flow             | Before median | After median | Saving per fixture |
-| ---------------- | ------------: | -----------: | -----------------: |
-| v5-deposit       |        73,440 |       63,498 |              9,942 |
-| v5-external-fill |        84,495 |       74,368 |             10,127 |
-| v5-inplace-fill  |        91,772 |       81,638 |             10,134 |
-
-The inner Spoke event self-CPI falls from **5,119 to 520 CU** in every V5 fixture, a measured saving of
-4,599 CU. Anchor 1.1.2 uses the compile-time `EVENT_AUTHORITY_AND_BUMP.0` for both outer account validation
-and inner event-dispatch validation, removing both runtime PDA searches while retaining the signer check.
-The overall execution deltas also include other Anchor/SDK/compiler changes; they do not isolate the outer
-PDA optimization. Event instruction tags, discriminators and payload schemas remain unchanged, and the
-validator suites check decoded events plus rejection of unsigned canonical and signed noncanonical authorities.
-
-Legacy and Gateway binaries/IDLs and the runtime feature/token-program hashes remain identical across the
-comparison. V5 changes from Anchor 0.31.1/platform-tools 1.52 to Anchor 1.1.2/platform-tools 1.54. The fixture
-identities, balances, account order, bump distribution and upload policy are unchanged. These test-feature
-measurements are separate from the digest-pinned platform-tools 1.53 production builds.
-
 ## Conformance suite
 
 Run `yarn test-svm-gateway`. It builds Gateway, PrefundedAdapter and AuthorityRequirementPlanner from `GATEWAY_COMMIT` in
