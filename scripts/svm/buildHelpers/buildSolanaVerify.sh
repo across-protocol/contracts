@@ -12,7 +12,7 @@ else
 fi
 
 # Solana SDK crate versions no longer identify the compiler/image version.
-# Match solana-v5's reviewed release recipe independently of the test validator.
+# Pin the release compiler independently of the test validator.
 BUILD_IMAGE=$(node -p 'require("./verified-build.json").image')
 BUILD_ARCH=$(node -p 'require("./verified-build.json").arch')
 VERIFY_VERSION=$(node -p 'require("./verified-build.json").solana_verify_version')

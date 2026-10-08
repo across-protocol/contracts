@@ -25,8 +25,8 @@ The latest contract deployments can be found in `/broadcast/deployed-addresses.j
 
 This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 22.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
 
-Use Node 22 for SVM development. `Anchor.toml` pins Anchor 1.1.2 and Agave 4.1.2, matching
-`solana-v5`; install these versions instead of selecting a moving `latest` toolchain.
+Use Node 22 for SVM development. `Anchor.toml` pins Anchor 1.1.2 and Agave 4.1.2;
+install these versions instead of selecting a moving `latest` toolchain.
 The generated Anchor client types now use `@anchor-lang/core` 1.1.2. Consumers updating this package
 should replace their `@coral-xyz/anchor` imports where they exchange Anchor providers or program types.
 Artifact generation restores the canonical event-authority PDA seeds omitted by Anchor 1.1's IDL output,
@@ -121,7 +121,7 @@ Use `solana-verify` 0.5.1, matching CI, to build the verified Docker binaries. T
 previous binary before compilation and rejects missing or empty output; failed builds must not be used for deployment.
 Keep the stack-diagnostic guard enabled, since SBF compilers can report stack overflows with a successful exit status.
 
-`verified-build.json` matches the `solana-v5` release image by immutable digest: Agave 4.0.3,
+`verified-build.json` pins the release image by immutable digest: Agave 4.0.3,
 `cargo-build-sbf` 4.0.0, platform-tools 1.53, and SBF architecture `v0`. This release recipe is separate
 from the Agave 4.1.2 validator/development toolchain. It was selected because the pinned verifier's
 0.5.1 image registry did not include Agave 4.1.2. Newer upstream images exist; updating this recipe
@@ -140,10 +140,10 @@ retiring Sponsored CCTP or multicall programs.
 
 Before an audited release, build from a clean checkout of the reviewed commit and record the commit,
 `Cargo.lock`, `verified-build.json`, enabled features (none for production), program IDs and executable
-hashes. Release Cargo profiles match `solana-v5` (`lto = "fat"`, one codegen unit, overflow checks).
-The lockfile aligns the Spoke's SBF dependency graph with the target workspace, including split
-Solana hash/secp256k1 crates. A later repository migration still needs executable-hash comparison:
-matching CLI versions alone does not prove byte-identical builds.
+hashes. Release Cargo profiles use `lto = "fat"`, one codegen unit, and overflow checks.
+The lockfile pins the SBF dependency graph, including the Solana hash/secp256k1 crates.
+Verify reproducibility by comparing executable hashes; matching CLI versions alone does not prove
+byte-identical builds.
 
 ```shell
 unset IS_TEST # Ensures the production build is used (not the test feature)
