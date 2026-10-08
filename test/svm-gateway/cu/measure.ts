@@ -495,9 +495,9 @@ async function main() {
       const filled = spoke.coder.accounts.decode(
         "fillStatusAccount",
         (await connection.getAccountInfo(status))!.data
-      ) as { status: object; relayer: PublicKey };
+      ) as { status: object; rentRecipient: PublicKey };
       assert("filled" in filled.status);
-      assert(filled.relayer.equals(fillPayer));
+      assert(filled.rentRecipient.equals(fillPayer));
       assert.equal((await getAccount(connection, recipientAta)).amount, AMOUNT);
       assert.equal((await getAccount(connection, vault)).delegatedAmount, 0n);
       assert.equal(
