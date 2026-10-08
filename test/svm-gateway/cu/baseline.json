@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "fixture": "across-cu-v1",
-  "head": "e280850cbe6e9374ba1f2e52223bb692acc874c0",
+  "head": "51ad68a618cdf06dd50cf291dd7bdadc6b556190",
   "legacy": "7445f72de17900544605c7e6706c5fb3b3784738",
   "gateway": "e2b91eb0454136773728f941b33163346e039aa4",
   "trackedDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -10,7 +10,7 @@
   "node": "v22.22.0",
   "spokeFeatures": ["test"],
   "sbfVersion": "cargo-build-sbf 4.1.0\nplatform-tools v1.54\nrustc 1.89.0",
-  "fixtureSha256": "754f866d2f596e1c24d59f394773b5bbda33cf6f84ba50c46024367080e4008d",
+  "fixtureSha256": "2905b842ffa91bbff13f6fa09d1dd591ff591cb18188ee3128d0394011704f40",
   "programs": {
     "legacy": {
       "tools": "v1.44",
@@ -19,8 +19,8 @@
     },
     "v5": {
       "tools": "v1.52",
-      "binarySha256": "a479ae65061feb46ba87119f0a6816407dd0dc321ed4893c4b0d03409d721f09",
-      "idlSha256": "6e94ecbbabb1addc2bd31ab5e01c6d4fd3455f35098540cad989479b50d7800f"
+      "binarySha256": "6c67d3e87c98a23192504d9ab6342c89e3ee6ec253a7c0c9e5369eaf8302a9b2",
+      "idlSha256": "a27b64e27256f93a18fc72839df176c4e96bb2de01155c8cda149438bf40e6ab"
     },
     "gateway": {
       "tools": "v1.54",
@@ -251,10 +251,10 @@
     {
       "case": "v5-deposit",
       "sample": 0,
-      "execution": 79516,
+      "execution": 79440,
       "approval": 310,
       "buffer": 16829,
-      "total": 96655,
+      "total": 96579,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -275,10 +275,10 @@
     {
       "case": "v5-external-fill",
       "sample": 0,
-      "execution": 84564,
+      "execution": 84495,
       "approval": 0,
       "buffer": 16829,
-      "total": 101393,
+      "total": 101324,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -299,10 +299,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 0,
-      "execution": 97841,
+      "execution": 97772,
       "approval": 0,
       "buffer": 25829,
-      "total": 123670,
+      "total": 123601,
       "fixture": {
         "mint": "FZu8w2JrRknMk4DvJzDqGw6JbFh9vb2u9Wfnvv3ysKKH",
         "recipient": "BYSvw1rB2C4v21cNhBePjXGanLdEkGzRsKL7LG2MF6qq",
@@ -323,10 +323,10 @@
     {
       "case": "v5-deposit",
       "sample": 1,
-      "execution": 73516,
+      "execution": 73440,
       "approval": 310,
       "buffer": 12329,
-      "total": 86155,
+      "total": 86079,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -347,10 +347,10 @@
     {
       "case": "v5-external-fill",
       "sample": 1,
-      "execution": 80064,
+      "execution": 79995,
       "approval": 0,
       "buffer": 16829,
-      "total": 96893,
+      "total": 96824,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -371,10 +371,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 1,
-      "execution": 91841,
+      "execution": 91772,
       "approval": 0,
       "buffer": 30329,
-      "total": 122170,
+      "total": 122101,
       "fixture": {
         "mint": "G1RDS7BUu3o44dn9n2rvPRiMxHV3JW5pttUVnqCmxvWj",
         "recipient": "7BbHvDipEPd5218REkXmXEQNYexzd4rXaCqMEiMyeQuM",
@@ -395,10 +395,10 @@
     {
       "case": "v5-deposit",
       "sample": 2,
-      "execution": 73516,
+      "execution": 73440,
       "approval": 310,
       "buffer": 12329,
-      "total": 86155,
+      "total": 86079,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -419,10 +419,10 @@
     {
       "case": "v5-external-fill",
       "sample": 2,
-      "execution": 83064,
+      "execution": 82995,
       "approval": 0,
       "buffer": 21329,
-      "total": 104393,
+      "total": 104324,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -443,10 +443,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 2,
-      "execution": 91841,
+      "execution": 91772,
       "approval": 0,
       "buffer": 12329,
-      "total": 104170,
+      "total": 104101,
       "fixture": {
         "mint": "5NbJxnHiu5JLwTbHzbtG4cMEJ5gcNF7tksMx6MEaj2LM",
         "recipient": "7DVqsRqrj1h4WAEXXRh1e2YUa6SH847NDuegJsZSmywr",
@@ -467,10 +467,10 @@
     {
       "case": "v5-deposit",
       "sample": 3,
-      "execution": 82516,
+      "execution": 82440,
       "approval": 310,
       "buffer": 12329,
-      "total": 95155,
+      "total": 95079,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -491,10 +491,10 @@
     {
       "case": "v5-external-fill",
       "sample": 3,
-      "execution": 93564,
+      "execution": 93495,
       "approval": 0,
       "buffer": 12329,
-      "total": 105893,
+      "total": 105824,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -515,10 +515,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 3,
-      "execution": 111341,
+      "execution": 111272,
       "approval": 0,
       "buffer": 21329,
-      "total": 132670,
+      "total": 132601,
       "fixture": {
         "mint": "G2n91G9XUuvPndgLFmw8pEjqSwCR42tiJzHYYneKdR4",
         "recipient": "7jE49cXqdd16u1uZHttCb2xuXiovvP7nvc8kJnqsydAk",
@@ -539,10 +539,10 @@
     {
       "case": "v5-deposit",
       "sample": 4,
-      "execution": 67516,
+      "execution": 67440,
       "approval": 310,
       "buffer": 16829,
-      "total": 84655,
+      "total": 84579,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -563,10 +563,10 @@
     {
       "case": "v5-external-fill",
       "sample": 4,
-      "execution": 86064,
+      "execution": 85995,
       "approval": 0,
       "buffer": 16829,
-      "total": 102893,
+      "total": 102824,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
@@ -587,10 +587,10 @@
     {
       "case": "v5-inplace-fill",
       "sample": 4,
-      "execution": 87341,
+      "execution": 87272,
       "approval": 0,
       "buffer": 12329,
-      "total": 99670,
+      "total": 99601,
       "fixture": {
         "mint": "25LCkapYb2Tv5v4o1ZFGddVeG9wxTjfSkz8zG6JCNdfJ",
         "recipient": "DxXyhbzw1VkfFdb8grv5JzkARztEi71ju9CP7xBnwZ1s",
