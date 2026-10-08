@@ -1,6 +1,16 @@
 import { assert } from "chai";
 import { spawnSync } from "child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
 import { tmpdir } from "os";
 import path from "path";
 
@@ -101,6 +111,7 @@ esac
 `,
         { mode: 0o755 }
       );
+      if (mode === "unwritable") chmodSync(path.join(work, "target/deploy"), 0o555);
       const result = spawnSync("bash", [helper], {
         cwd: work,
         encoding: "utf8",
@@ -117,12 +128,23 @@ esac
       return {
         ...result,
         binary: existsSync(binary) ? readFileSync(binary, "utf8") : undefined,
-        calls: readFileSync(path.join(work, "calls"), "utf8"),
+        calls: existsSync(path.join(work, "calls")) ? readFileSync(path.join(work, "calls"), "utf8") : "",
       };
     } finally {
+      chmodSync(path.join(work, "target/deploy"), 0o755);
       rmSync(work, { recursive: true, force: true });
     }
   }
+
+  it("rejects an unwritable output directory before removing artifacts or invoking the build", function () {
+    if (process.getuid?.() === 0) this.skip(); // Root bypasses directory write permissions.
+    const result = runBuild("unwritable");
+    assert.equal(result.status, 1);
+    assert.include(result.stderr, "write and search permissions on target/deploy");
+    assert.include(result.stderr, 'sudo chown -R "$(id -u):$(id -g)" target/deploy');
+    assert.equal(result.binary, "stale binary");
+    assert.equal(result.calls, "");
+  });
 
   for (const [mode, status] of [
     ["swallowed", 1],

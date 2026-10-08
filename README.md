@@ -126,6 +126,8 @@ If either program ID changes, update its dependent PDA constants and run `cargo 
 Use `solana-verify` 0.5.1, matching CI, to build the verified Docker binaries. The build removes each
 previous binary before compilation and rejects missing or empty output; failed builds must not be used for deployment.
 Keep the stack-diagnostic guard enabled, since SBF compilers can report stack overflows with a successful exit status.
+On Linux, Docker can leave `target/deploy` owned by root. If the next verified build reports a permissions error,
+restore ownership from the repository root with `sudo chown -R "$(id -u):$(id -g)" target/deploy`, then rerun the build.
 
 `verified-build.json` pins the release image by immutable digest: Agave 4.0.3,
 `cargo-build-sbf` 4.0.0, platform-tools 1.53, and SBF architecture `v0`. This release recipe is separate

@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -d target/deploy && ( ! -w target/deploy || ! -x target/deploy ) ]]; then
+  echo "Verified build requires write and search permissions on target/deploy; no binaries were removed." >&2
+  echo "If a previous Docker build left root-owned outputs on Linux, run from the repository root:" >&2
+  echo 'sudo chown -R "$(id -u):$(id -g)" target/deploy' >&2
+  exit 1
+fi
+
 # The reviewed image/compiler recipe targets Linux x86_64, including on ARM hosts.
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
