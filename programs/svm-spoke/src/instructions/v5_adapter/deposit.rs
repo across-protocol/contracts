@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::get_associated_token_address_with_program_id,
-    token_interface::{TokenAccount, TransferChecked},
-};
+use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
     constants::{
@@ -39,9 +36,9 @@ pub(super) fn execute_v5_deposit<'info>(
     } else {
         (params.output_amount, params.exclusive_relayer)
     };
-    let (accounts, source) =
+    let (accounts, gateway_vault_balance) =
         V5DepositAccounts::load(ctx.remaining_accounts, ctx.accounts.state.key(), params.input_token)?;
-    let input_amount = resolve_v5_input_amount(deposit.input_amount_mode, params.input_amount, source.amount)?;
+    let input_amount = resolve_v5_input_amount(deposit.input_amount_mode, params.input_amount, gateway_vault_balance)?;
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
@@ -99,11 +96,7 @@ struct V5DepositAccounts<'info> {
 }
 
 impl<'info> V5DepositAccounts<'info> {
-    fn load(
-        remaining_accounts: &[AccountInfo<'info>],
-        state: Pubkey,
-        input_token: Pubkey,
-    ) -> Result<(Self, TokenAccount)> {
+    fn load(remaining_accounts: &[AccountInfo<'info>], state: Pubkey, input_token: Pubkey) -> Result<(Self, u64)> {
         let token_accounts = V5TokenAccounts::load(remaining_accounts, &input_token)?;
         let spoke_vault =
             get_associated_token_address_with_program_id(&state, &input_token, token_accounts.token_program.key);
@@ -123,7 +116,7 @@ impl<'info> V5DepositAccounts<'info> {
                 token_program: token_accounts.token_program,
                 mint_decimals: token_accounts.mint_decimals,
             },
-            token_accounts.source,
+            token_accounts.gateway_vault_balance,
         ))
     }
 }

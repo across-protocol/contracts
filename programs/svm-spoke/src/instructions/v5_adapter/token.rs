@@ -12,11 +12,11 @@ use crate::{constants::GATEWAY_VAULT_AUTHORITY, error::V5Error, v5::accounts::fi
 
 /// Validated mint, token program, and canonical Gateway vault shared by deposits and fills.
 pub(super) struct V5TokenAccounts<'info> {
-    pub mint: AccountInfo<'info>,
     pub token_program: AccountInfo<'info>,
+    pub mint: AccountInfo<'info>,
     pub mint_decimals: u8,
     pub gateway_vault: AccountInfo<'info>,
-    pub source: TokenAccount,
+    pub gateway_vault_balance: u64,
 }
 
 impl<'info> V5TokenAccounts<'info> {
@@ -35,14 +35,15 @@ impl<'info> V5TokenAccounts<'info> {
         let gateway_vault =
             get_associated_token_address_with_program_id(&GATEWAY_VAULT_AUTHORITY, mint, &token_program_id);
         let gateway_vault_info = find_v5_account(remaining_accounts, &gateway_vault, true)?;
-        let source = load_token_account(gateway_vault_info, &token_program_id, mint, &GATEWAY_VAULT_AUTHORITY)?;
+        let gateway_vault_account =
+            load_token_account(gateway_vault_info, &token_program_id, mint, &GATEWAY_VAULT_AUTHORITY)?;
 
         Ok(Self {
-            mint: mint_info.clone(),
             token_program: token_program.clone(),
+            mint: mint_info.clone(),
             mint_decimals,
             gateway_vault: gateway_vault_info.clone(),
-            source,
+            gateway_vault_balance: gateway_vault_account.amount,
         })
     }
 }
