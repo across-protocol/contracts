@@ -171,7 +171,7 @@ describe("svm_spoke V5 fill-status payer", () => {
           .testCreateV5FillStatus([...relayHash], deadline)
           .accountsPartial({ submitter: owner.publicKey, payer, fillStatus: status })
           .signers([owner])
-          .rpc({ commitment: "confirmed" });
+          .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
       }
     }
     const target = { submitter: submitter.publicKey };
@@ -181,7 +181,10 @@ describe("svm_spoke V5 fill-status payer", () => {
     assert.equal(await connection.getBalance(fillPayer(submitter.publicKey)), rent);
     assert.equal(await closeExpiredFillStatuses(cleanupProgram, state, target, currentTime), 0);
 
-    await common.setCurrentTime(program, state, Keypair.generate(), new BN(currentTime + 2));
+    await program.methods
+      .setCurrentTime(currentTime + 2)
+      .accountsPartial({ state, signer: providerPayer.publicKey })
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
     assert.equal(await closeExpiredFillStatuses(cleanupProgram, state, target, currentTime + 2), 2);
     assert.equal(await connection.getBalance(fillPayer(submitter.publicKey)), rent * 3);
     assert.isNotNull(await connection.getAccountInfo(statuses[3]));
