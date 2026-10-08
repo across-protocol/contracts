@@ -18,10 +18,17 @@ pub(crate) enum V5TransferDelegate {
 }
 
 impl V5TransferDelegate {
-    fn pda(self) -> (Pubkey, &'static [u8], u8) {
+    const fn address(self) -> Pubkey {
         match self {
-            Self::Deposit => (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_SEED, V5_DEPOSIT_DELEGATE_BUMP),
-            Self::Fill => (V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_FILL_DELEGATE_BUMP),
+            Self::Deposit => V5_DEPOSIT_DELEGATE,
+            Self::Fill => V5_FILL_DELEGATE,
+        }
+    }
+
+    const fn signer_seeds(self) -> [&'static [u8]; 2] {
+        match self {
+            Self::Deposit => [V5_DEPOSIT_DELEGATE_SEED, &[V5_DEPOSIT_DELEGATE_BUMP]],
+            Self::Fill => [V5_FILL_DELEGATE_SEED, &[V5_FILL_DELEGATE_BUMP]],
         }
     }
 }
@@ -33,16 +40,15 @@ pub(crate) fn transfer_from<'info>(
     mint_decimals: u8,
     delegate: V5TransferDelegate,
 ) -> Result<()> {
-    let (delegate, delegate_seed, bump) = delegate.pda();
-    if delegate != accounts.authority.key() {
+    if delegate.address() != accounts.authority.key() {
         return err!(SvmError::InvalidDelegatePda);
     }
 
-    let bump_seed = [bump];
-    let signer_seeds: &[&[u8]] = &[delegate_seed, &bump_seed];
-    let signer_seeds = [signer_seeds];
-
-    transfer_checked(CpiContext::new_with_signer(token_program, accounts, &signer_seeds), amount, mint_decimals)
+    transfer_checked(
+        CpiContext::new_with_signer(token_program, accounts, &[&delegate.signer_seeds()]),
+        amount,
+        mint_decimals,
+    )
 }
 
 #[cfg(test)]
@@ -51,11 +57,10 @@ mod tests {
 
     #[test]
     fn transfer_delegate_variants_select_their_expected_pdas() {
-        assert_eq!(
-            V5TransferDelegate::Deposit.pda(),
-            (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_SEED, V5_DEPOSIT_DELEGATE_BUMP)
-        );
-        assert_eq!(V5TransferDelegate::Fill.pda(), (V5_FILL_DELEGATE, V5_FILL_DELEGATE_SEED, V5_FILL_DELEGATE_BUMP));
+        assert_eq!(V5TransferDelegate::Deposit.address(), V5_DEPOSIT_DELEGATE);
+        assert_eq!(V5TransferDelegate::Fill.address(), V5_FILL_DELEGATE);
+        assert_eq!(V5TransferDelegate::Deposit.signer_seeds(), [V5_DEPOSIT_DELEGATE_SEED, &[V5_DEPOSIT_DELEGATE_BUMP]]);
+        assert_eq!(V5TransferDelegate::Fill.signer_seeds(), [V5_FILL_DELEGATE_SEED, &[V5_FILL_DELEGATE_BUMP]]);
     }
 
     #[test]
@@ -63,7 +68,7 @@ mod tests {
         for delegate in [V5TransferDelegate::Deposit, V5TransferDelegate::Fill] {
             // Include the other canonical delegate: a valid Spoke PDA is insufficient for the wrong operation.
             for authority in [Pubkey::new_unique(), V5_DEPOSIT_DELEGATE, V5_FILL_DELEGATE] {
-                if authority == delegate.pda().0 {
+                if authority == delegate.address() {
                     continue;
                 }
                 let mut lamports = 0;
