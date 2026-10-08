@@ -26,6 +26,8 @@ fn u64_to_evm_uint(value: u64) -> [u8; 32] {
 
 /// `syntheticNonce = keccak256(submitter || pathId || uint256(depositNonce))` then
 /// `depositId = keccak256(executorProgramId || depositor || syntheticNonce)`.
+/// Like EVM `unsafeDeposit`, this does not consume the ID: newly funded source orders
+/// must use a fresh path salt or deposit nonce. Destination roots may be reused.
 pub fn derive_v5_deposit_id(
     executor_program_id: &Pubkey,
     submitter: &Pubkey,

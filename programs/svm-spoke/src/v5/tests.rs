@@ -1,13 +1,14 @@
 use anchor_lang::{prelude::*, solana_program::keccak, Discriminator};
 
-use super::{codec::*, jit::*, pda::*};
+use super::{accounts::*, codec::*, jit::*};
 use crate::{
     constants::{
-        BIPS_DENOMINATOR, GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, GATEWAY_DISPATCH_AUTHORITY,
-        GATEWAY_DISPATCH_AUTHORITY_BUMP, GATEWAY_DISPATCH_AUTHORITY_SEED, GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY,
-        GATEWAY_VAULT_AUTHORITY_BUMP, GATEWAY_VAULT_AUTHORITY_SEED, V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP,
-        V5_FILL_DELEGATE_SEED, V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP, V5_SOURCE_DELEGATE_SEED,
+        BIPS_DENOMINATOR, GATEWAY_DISPATCH_AUTHORITY, GATEWAY_DISPATCH_AUTHORITY_BUMP, GATEWAY_DISPATCH_AUTHORITY_SEED,
+        GATEWAY_PROGRAM_ID, GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP, GATEWAY_VAULT_AUTHORITY_SEED,
+        V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP, V5_DEPOSIT_DELEGATE_SEED, V5_FILL_DELEGATE,
+        V5_FILL_DELEGATE_BUMP, V5_FILL_DELEGATE_SEED,
     },
+    instruction::AdapterExecuteAcrossV5,
     ID,
 };
 use serde_json::Value;
@@ -40,7 +41,7 @@ fn assert_error_name<T>(result: Result<T>, expected: &str) {
 
 #[test]
 fn adapter_discriminator_matches_gateway_abi() {
-    assert_eq!(GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR, crate::instruction::AdapterExecuteAcrossV5::DISCRIMINATOR,);
+    assert_eq!(AdapterExecuteAcrossV5::DISCRIMINATOR, bytes(&fixture(), "/dispatch/discriminator"));
 }
 
 #[test]
@@ -79,10 +80,6 @@ fn gateway_path_root_and_witness_match_cross_vm_fixture() {
 #[test]
 fn v1_wire_and_gateway_dispatch_match_golden_fixture() {
     let fixture = fixture();
-    assert_eq!(
-        GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR,
-        anchor_lang::solana_program::hash::hash(b"global:adapter_execute_across_v5").to_bytes()[..8]
-    );
     let input_bytes = bytes(&fixture, "/wire/depositInput");
     let jit_bytes = bytes(&fixture, "/wire/depositJit");
     let input = decode_v5_adapter_input(&input_bytes).unwrap();
@@ -117,7 +114,7 @@ fn v1_wire_and_gateway_dispatch_match_golden_fixture() {
     assert_eq!(serialize(&ctx), bytes(&fixture, "/context/borsh"));
 
     // Local mirror of Gateway `encode_dispatch_data`: discriminator || context || two Borsh byte vectors.
-    let mut dispatch = GATEWAY_ADAPTER_EXECUTE_V5_DISCRIMINATOR.to_vec();
+    let mut dispatch = AdapterExecuteAcrossV5::DISCRIMINATOR.to_vec();
     dispatch.extend(serialize(&ctx));
     dispatch.extend((input_bytes.len() as u32).to_le_bytes());
     dispatch.extend(&input_bytes);
@@ -200,7 +197,7 @@ fn pda_domains_match_golden_fixture() {
     let cases = [
         ((GATEWAY_DISPATCH_AUTHORITY, GATEWAY_DISPATCH_AUTHORITY_BUMP), "/pdas/dispatchAuthority"),
         ((GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP), "/pdas/gatewayVaultAuthority"),
-        ((V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP), "/pdas/sourceDelegate"),
+        ((V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP), "/pdas/depositDelegate"),
         ((V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP), "/pdas/fillDelegate"),
         (derive_v5_fill_payer(&submitter), "/pdas/fillPayer"),
         (derive_fill_status(&relay_hash), "/pdas/fillStatus"),
@@ -222,8 +219,8 @@ fn hardcoded_v5_authorities_match_canonical_pdas() {
         (GATEWAY_VAULT_AUTHORITY, GATEWAY_VAULT_AUTHORITY_BUMP)
     );
     assert_eq!(
-        Pubkey::find_program_address(&[V5_SOURCE_DELEGATE_SEED], &ID),
-        (V5_SOURCE_DELEGATE, V5_SOURCE_DELEGATE_BUMP)
+        Pubkey::find_program_address(&[V5_DEPOSIT_DELEGATE_SEED], &ID),
+        (V5_DEPOSIT_DELEGATE, V5_DEPOSIT_DELEGATE_BUMP)
     );
     assert_eq!(Pubkey::find_program_address(&[V5_FILL_DELEGATE_SEED], &ID), (V5_FILL_DELEGATE, V5_FILL_DELEGATE_BUMP));
 }

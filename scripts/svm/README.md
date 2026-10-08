@@ -81,6 +81,33 @@ and is not a production bundle-construction script. It does not create an Across
 
 There are no HubPool-to-spoke rebalance scripts because Solana is a light chain. Independent token transfers are supported: `SponsoredCctpSrc/*` uses CCTP V2 and provides deposit-for-burn, EVM receive, event-account reclamation and nonce/rent operations.
 
+## Reclaim fill-status rent
+
+`closeRelayerPdas.ts` is a reference cleanup script, separate from the production SDK/relayer runner. It discovers
+current fill-status accounts and closes those whose recorded fill deadline has passed:
+
+```sh
+anchor run closeRelayerPdas -- --seed 0 --submitter SOLANA_V5_SUBMITTER_PUBLIC_KEY
+anchor run closeRelayerPdas -- --seed 0 --relayer LEGACY_RELAYER_OR_REQUESTER_PUBLIC_KEY
+```
+
+Supply exactly one of `--submitter` or `--relayer`. V5 discovery derives the submitter's `v5_fill_payer` PDA and
+filters by that recorded rent recipient. Use the Solana submitter key, not the repayment address in `FilledRelay`.
+Legacy discovery matches the relayer or slow-fill requester directly, including historical requests that never filled.
+Both paths scan program accounts with the fill-status discriminator, account size and recipient filters; they do not
+replay events or require transaction history. The RPC must support `getProgramAccounts`.
+
+Existing legacy cleanup clients remain compatible when their wallet matches the recorded recipient. The production
+monitor's event-based discovery omits never-filled requests; this is a pre-existing limitation. Future backend V5
+integration must supply the recorded payer PDA when closing V5 accounts. That work is not required for legacy rent
+reclaim, and expired legacy accounts need not be closed before V5 enablement.
+
+The Anchor wallet pays transaction fees and may differ from the selected submitter/legacy recipient. Rent always
+returns to the recipient recorded on-chain. V5 rent replenishes the payer PDA; withdrawing that float is a separate,
+submitter-authorized operation. The script compares deadlines with confirmed block time, and the program enforces
+expiry again when closing. Re-running skips already-closed accounts. Other close failures are reported and produce
+a nonzero exit status after processing the remaining accounts.
+
 ## Tests
 
 `test/svm/Scripts.CctpV2.ts` covers attestation polling and error handling without public transactions. `test/svm/SvmSpoke.HandleReceiveMessage.ts` exercises the shared script finalizer against the local validator and CCTP V2 program, including root/admin calls, already-delivered messages and failed-message recovery. `test/svm/Scripts.CctpV2Tokens.ts` covers the token receiver against Circle's local programs: fee deductions, finalized/unfinalized thresholds, expected recipient enforcement, used-nonce recovery and retry after on-chain rejection.

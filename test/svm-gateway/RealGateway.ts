@@ -99,7 +99,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   const gatewayEvent = pda(GATEWAY, Buffer.from("__event_authority"));
   const dispatch = pda(GATEWAY, Buffer.from("dispatch_authority"), spoke.programId.toBuffer());
   const event = pda(spoke.programId, Buffer.from("__event_authority"));
-  const sourceDelegate = pda(spoke.programId, Buffer.from("v5_source_delegate"));
+  const depositDelegate = pda(spoke.programId, Buffer.from("v5_deposit_delegate"));
   const fillDelegate = pda(spoke.programId, Buffer.from("v5_fill_delegate"));
   const fillPayer = pda(spoke.programId, Buffer.from("v5_fill_payer"), owner.toBuffer());
   const prefundedConfig = pda(PREFUNDED, Buffer.from("config"));
@@ -159,14 +159,15 @@ describe("SVM V5 with the pinned real Gateway", () => {
     meta(tokenProgram),
     meta(vault, true),
     meta(spokeVault, true),
-    meta(sourceDelegate),
+    meta(depositDelegate),
   ];
   const fillMetas = (inPlace: boolean): Meta[] => [
     ...baseMetas(),
     meta(mint),
     meta(tokenProgram),
     meta(vault, true),
-    ...(!inPlace ? [meta(recipientAta, true), meta(fillDelegate)] : []),
+    ...(!inPlace ? [meta(recipientAta, true)] : []),
+    meta(fillDelegate),
     injected(),
     injected(),
     meta(SystemProgram.programId),
@@ -178,7 +179,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   const destination = (inPlace = true): Path =>
     path(
       inPlace
-        ? canonicalInPlace(fillCommand(), mint, amount, recipient)
+        ? canonicalInPlace(fillCommand(), mint, fillDelegate, amount, recipient)
         : [approve(mint, fillDelegate), fillCommand(false)]
     );
   const remaining = (relays: RelayData[] = []): AccountMeta[] => [
@@ -193,7 +194,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     writable(userAta),
     writable(recipientAta),
     readonly(vaultAuthority),
-    readonly(sourceDelegate),
+    readonly(depositDelegate),
     readonly(fillDelegate),
     writable(fillPayer),
     readonly(SystemProgram.programId),
@@ -320,7 +321,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   async function filled(r: RelayData) {
     const account = await spoke.account.fillStatusAccount.fetch(status(r));
     assert.hasAnyKeys(account.status, ["filled"]);
-    assert.equal(account.relayer.toBase58(), fillPayer.toBase58());
+    assert.equal(account.rentRecipient.toBase58(), fillPayer.toBase58());
   }
   async function origin(root: Buffer, inPlace = true, prefunded = false, outputAmount = amount): Promise<RelayData> {
     const d: Deposit = {
@@ -337,7 +338,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       dstStepId: root,
     };
     const deposit: Command = { op: OP.ADAPTER_CALL, input: call(spoke.programId, sourceMetas(), depositInput(d)) };
-    const commands = [approve(mint, sourceDelegate), deposit];
+    const commands = [approve(mint, depositDelegate), deposit];
     const extra: AccountMeta[] = [];
     let jit: Buffer[] = [],
       funds: Buffer[] = [];
@@ -529,7 +530,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   }
   const sourcePath = (failAfter = false) =>
     path([
-      approve(mint, sourceDelegate),
+      approve(mint, depositDelegate),
       {
         op: OP.ADAPTER_CALL,
         input: call(
@@ -877,7 +878,9 @@ describe("SVM V5 with the pinned real Gateway", () => {
       const minimum = (amount * 9n) / 10n;
       const impossible = 2_000_000_000n;
       const dst = path([
+        approve(mint, fillDelegate),
         fillCommand(),
+        // Replaces the self-transfer's unconsumed fill allowance with the swap allowance.
         approve(mint, executorAuthority),
         await fixture.swap(failure === "swap" ? impossible : 0n),
         floor(fixture.outputMint, failure === "floor" ? impossible : minimum),
@@ -956,7 +959,9 @@ describe("SVM V5 with the pinned real Gateway", () => {
     const quality = (amount * 99n) / 100n;
     const impossible = 2_000_000_000n;
     const dst = path([
+      approve(mint, fillDelegate),
       fillCommand(),
+      approve(mint, fillDelegate, 0n),
       { op: OP.PLAN_FROM_JIT | OP.JIT, input: Buffer.alloc(0) },
       floor(fixture.outputMint, minimum),
       {
@@ -1137,7 +1142,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await setCurrentTime(spoke, state, Keypair.generate(), new BN(relay.fillDeadline + 1));
     await spoke.methods
       .closeFillPda()
-      .accountsPartial({ state, signer: fillPayer, fillStatus: status(relay) })
+      .accountsPartial({ state, rentRecipient: fillPayer, fillStatus: status(relay) })
       .rpc();
     assert.equal(await connection.getBalance(fillPayer), payerBefore);
     await spoke.methods
@@ -1145,6 +1150,49 @@ describe("SVM V5 with the pinned real Gateway", () => {
       .accountsPartial({ submitter: owner, payer: fillPayer })
       .rpc();
     assert.equal(await connection.getBalance(fillPayer), 0);
+  });
+  for (const wrongApproval of [false, true]) {
+    it(`rejects ${wrongApproval ? "wrong" : "missing"} deposit approval with the correct deposit-delegate account supplied`, async () => {
+      const d: Deposit = {
+        depositor: owner,
+        recipient,
+        inputToken: mint,
+        outputToken: mint,
+        inputAmount: amount,
+        outputAmount: amount,
+        destinationChainId: BigInt(chainId.toString()),
+        nonce: 1n,
+        quoteTimestamp: now,
+        fillDeadline: now + 600,
+        dstStepId: pathId(destination(false)),
+      };
+      const deposit: Command = { op: OP.ADAPTER_CALL, input: call(spoke.programId, sourceMetas(), depositInput(d)) };
+      const src = path(wrongApproval ? [approve(mint, fillDelegate), deposit] : [deposit]);
+      const watched = [userAta, vault, spokeVault, state];
+      const before = await connection.getMultipleAccountsInfo(watched);
+      const { failedReceipt } = await execute(src, { funds: [funding(userAta, mint, amount)], failed: true });
+      assert.include(failedReceipt!.logs, `Program ${tokenProgram} failed: custom program error: 0x4`);
+      assert.deepEqual(await connection.getMultipleAccountsInfo(watched), before);
+    });
+  }
+  it("rejects approval to a different delegate even when the correct fill-delegate account is supplied", async () => {
+    const dst = path([approve(mint, depositDelegate), fillCommand(false)]);
+    const relay = await origin(pathId(dst), false);
+    const payerBefore = await connection.getBalance(fillPayer);
+    const userBefore = (await getAccount(connection, userAta)).amount;
+    const { failedReceipt } = await execute(dst, {
+      relays: [relay],
+      funds: [funding(userAta, mint, amount)],
+      failed: true,
+    });
+    assert.include(failedReceipt!.logs, `Program ${tokenProgram} failed: custom program error: 0x4`);
+    assert.isNull(await connection.getAccountInfo(status(relay)));
+    assert.equal(await connection.getBalance(fillPayer), payerBefore);
+    assert.equal((await getAccount(connection, userAta)).amount, userBefore);
+    const source = await getAccount(connection, vault);
+    assert.equal(source.amount, 0n);
+    assert.isNull(source.delegate);
+    assert.equal((await getAccount(connection, recipientAta)).amount, 0n);
   });
   it("prefunded origin composes with in-place fill and full-balance consumption", async () => {
     const dst = destination();
@@ -1154,7 +1202,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await filled(relay);
     assert.equal((await getAccount(connection, vault)).amount, 0n);
     assert.equal((await getAccount(connection, recipientAta)).amount, amount + 123n);
-    assert.isNull((await getAccount(connection, vault)).delegate, "in-place delivery never approves");
+    assert.equal((await getAccount(connection, vault)).delegatedAmount, 0n, "the tape clears the fill allowance");
   });
   it("rejects a relay committed to another destination step without spending the payer", async () => {
     const relay = await origin(pathId(destination()));
@@ -1240,7 +1288,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     );
   });
   it("rolls back recorded fills, emitted event effects, tokens and rent after a downstream failure", async () => {
-    const dst = path([...canonicalInPlace(fillCommand(), mint, amount, recipient), floor(mint, 1n)]);
+    const dst = path([...canonicalInPlace(fillCommand(), mint, fillDelegate, amount, recipient), floor(mint, 1n)]);
     const relay = await origin(pathId(dst));
     const userBefore = (await getAccount(connection, userAta)).amount;
     const payerBefore = await connection.getBalance(fillPayer);
@@ -1272,7 +1320,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       { metas: fillMetas(true).filter((m) => !m.pubkey.equals(mint)), error: "MissingAccount" },
     ];
     for (const { metas, error } of invalidMetas) {
-      const dst = path(canonicalInPlace(fillCommand(true, metas), mint, amount, recipient));
+      const dst = path(canonicalInPlace(fillCommand(true, metas), mint, fillDelegate, amount, recipient));
       const relay = await origin(pathId(dst));
       await expectFailure(execute(dst, { relays: [relay] }), error);
       assert.isNull(await connection.getAccountInfo(status(relay)));
@@ -1291,7 +1339,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
   it("rejects an optional downstream command and rolls back an already executed fill", async () => {
     const optional = transfer(mint, recipient);
     optional.op |= OP.OPTIONAL;
-    const dst = path([fillCommand(), optional]);
+    const dst = path([approve(mint, fillDelegate), fillCommand(), approve(mint, fillDelegate, 0n), optional]);
     const relay = await origin(pathId(dst));
     await fund();
     await expectFailure(execute(dst, { relays: [relay] }), "AllowRevertUnsupported");
@@ -1303,7 +1351,9 @@ describe("SVM V5 with the pinned real Gateway", () => {
     // These accepted primitive behaviors are NOT route safety guarantees.
     for (const consumed of [0n, amount - 1n]) {
       const dst = path([
+        approve(mint, fillDelegate),
         fillCommand(),
+        approve(mint, fillDelegate, 0n),
         floor(mint, amount),
         ...(consumed ? [transfer(mint, recipient, consumed)] : []),
       ]);
@@ -1320,7 +1370,14 @@ describe("SVM V5 with the pinned real Gateway", () => {
     }
   });
   it("two distinct fills can observe one balance; a fixed min-X floor and full drain cover only X", async () => {
-    const dst = path([fillCommand(), fillCommand(), floor(mint, amount), transfer(mint, recipient)]);
+    const dst = path([
+      approve(mint, fillDelegate),
+      fillCommand(),
+      fillCommand(),
+      approve(mint, fillDelegate, 0n),
+      floor(mint, amount),
+      transfer(mint, recipient),
+    ]);
     const relays = [await origin(pathId(dst)), await origin(pathId(dst))];
     await fund();
     await execute(dst, { relays });
@@ -1330,7 +1387,14 @@ describe("SVM V5 with the pinned real Gateway", () => {
     assert.throws(() => assertAggregateDelivery([amount, amount], amount), "aggregate underdelivery");
   });
   it("a cumulative floor rolls every fill back when short, then covers a concrete aggregate execution", async () => {
-    const dst = path([fillCommand(), fillCommand(), floor(mint, amount * 2n), transfer(mint, recipient)]);
+    const dst = path([
+      approve(mint, fillDelegate),
+      fillCommand(),
+      fillCommand(),
+      approve(mint, fillDelegate, 0n),
+      floor(mint, amount * 2n),
+      transfer(mint, recipient),
+    ]);
     const relays = [await origin(pathId(dst)), await origin(pathId(dst))];
     const payerBefore = await connection.getBalance(fillPayer);
     await fund();
@@ -1344,7 +1408,14 @@ describe("SVM V5 with the pinned real Gateway", () => {
     assertAggregateDelivery([amount, amount], (await getAccount(connection, recipientAta)).amount);
   });
   it("a floor summing committed minima is still unsafe when allowed JIT amounts are larger", async () => {
-    const dst = path([fillCommand(), fillCommand(), floor(mint, amount * 2n), transfer(mint, recipient)]);
+    const dst = path([
+      approve(mint, fillDelegate),
+      fillCommand(),
+      fillCommand(),
+      approve(mint, fillDelegate, 0n),
+      floor(mint, amount * 2n),
+      transfer(mint, recipient),
+    ]);
     const relays = [
       await origin(pathId(dst), true, false, amount * 2n),
       await origin(pathId(dst), true, false, amount * 2n),

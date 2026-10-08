@@ -36,7 +36,7 @@ writable at the transaction level.
 
 Deposit mode resolves the following remaining accounts by key: the committed input mint, its executable token
 program, the canonical Gateway vault ATA, the pre-created canonical SpokePool vault ATA, and
-`["v5_source_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
+`["v5_deposit_delegate"]`. Both vaults must be writable; the adapter creates no accounts and pays no rent.
 
 ## Committed input and JIT wire
 
@@ -67,11 +67,11 @@ values. Vectors use a `u32_le` length. `input_amount_mode` is `Literal = 0` or
 Amount resolution rejects `bips` greater than 10,000; the wire decoder does not. Gateway token vaults are shared per
 mint rather than isolated per execution. `InputVaultBalance` therefore resolves against shared live state, and the
 continuing tape must leave no residual balance or stale approval that a later permissionless execution could consume.
-Gateway does not currently enforce this net-zero settlement invariant. The adapter binds the vault's delegate to
-`v5_source_delegate`, and the token transfer accepts sufficient or maximum approvals rather than requiring equality,
-matching EVM `transferFrom` behavior. Any residual Gateway-vault balance is already movable by a later committed
-Gateway `TRANSFER`; exact allowance would not replace that custody invariant. The SpokePool never delegates its own
-vault.
+Gateway does not currently enforce this net-zero settlement invariant. The adapter signs the transfer as
+`v5_deposit_delegate`; the token program requires that PDA to be the vault's delegate and accepts sufficient or
+maximum approvals rather than requiring equality, matching EVM `transferFrom` behavior. Any residual Gateway-vault
+balance is already movable by a later committed Gateway `TRANSFER`; exact allowance would not replace that custody
+invariant. The SpokePool never delegates its own vault.
 
 Unlike the EVM `inputAmountParam`, `DepositV1` has no set-call-value flag. Native SOL must first be wrapped by the
 ordinary Gateway `WRAP_SOL` command into its canonical WSOL vault; the deposit then consumes WSOL through the same
@@ -109,25 +109,44 @@ secp256k1 `r[32] || s[32] || v[1]`, accept
 only `v` 27 or 28, require low `s`, recover an uncompressed public key, and compare the last 20 bytes of its Keccak
 hash with the committed authority. ERC-1271, Ed25519, EIP-2098, high-`s`, and `v` 0/1 encodings are unsupported.
 
+Like EVM `unsafeDeposit`, source execution does not consume deposit IDs. Re-executing the same source path with
+the same submitter, depositor, and nonce can transfer fresh funds under the same ID; identical relay data can only
+be filled once. Builders must use a fresh source path salt or deposit nonce for each newly funded order.
+Funding authorization replay protection is separate; destination roots may be reused across distinct deposits.
+
 ## PDA and token invariants
 
-- Source delegate: `["v5_source_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
+- Deposit delegate: `["v5_deposit_delegate"]` under `svm_spoke`; a preceding ordinary Gateway `APPROVE` may grant any
   allowance at least the resolved amount, including `u64::MAX`. `svm_spoke` later pulls exactly the resolved amount.
-- External fill delegate: `["v5_fill_delegate"]` under `svm_spoke`; sufficient allowance is accepted and the exact
-  JIT `output_amount` is pulled.
+- Fill delegate: `["v5_fill_delegate"]` under `svm_spoke`; every fill requires sufficient allowance and invokes
+  `transfer_checked` for the exact JIT `output_amount`, including when source and destination are the same account.
 - Gateway vault authority: `["vault_authority"]` under Gateway. A Gateway vault is the canonical ATA of this authority,
   the mint, and the mint's token program.
 - Fill status: the existing `["fills", relay_hash]` PDA under `svm_spoke`, preserving the standard replay namespace.
 - Fill payer float: `["v5_fill_payer", submitter]` under `svm_spoke`. The data-less, system-owned PDA manually pays
   fill-status rent with `invoke_signed`; it is not a forwarded transaction signer.
 
-An external delivery targets the canonical ATA of committed `recipient`, output mint, and token program. A canonical
-Gateway-vault delivery validates that same live vault in place and its amount, records the fill, and performs no token
-self-transfer or approval. This asserts available balance rather than debiting it. A step root may be reused across
-source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor and
-full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before that
-consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed minimum
-for one fill does not prove aggregate delivery.
+For the configured Spoke program, `v5_deposit_delegate` derives
+`8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX` with bump 252. Builders must use this PDA as both the approval
+target and the supplied deposit delegate account.
+
+The `v5_fill_delegate` PDA derives `D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1` with bump 252. Builders must use it
+as both the approval target and the supplied fill delegate account for every fill, including self-transfers.
+Both deposits and fills rely on the token program to validate delegate authority and allowance during
+`transfer_checked`. Sufficient approval must exist when the operation executes. An unset or different delegate
+fails with `OwnerMismatch` (0x4). An insufficient delegate allowance fails with `InsufficientFunds` (0x1), including
+a zeroed allowance for a nonzero transfer. The mint-extension allowlist rejects `PermanentDelegate`, which could
+otherwise authorize a transfer without an ordinary account approval.
+
+Every delivery targets the canonical ATA of committed `recipient`, output mint, and token program. When that ATA is
+the Gateway vault, the same transfer helper performs an SPL self-transfer, validating balance, frozen state, and
+delegate authority/allowance without debiting funds or consuming allowance. Clearing the remaining allowance with
+`APPROVE(..., 0)` is optional cleanup: permissionless Gateway execution already permits fresh approvals and
+owner-authorized transfers, so clearing it does not protect funds left in the shared vault. A step root may be reused
+across source deposits, but canonical builders must either allow at most one in-place fill before a post-fill floor
+and full-balance terminal consumption, or enforce a cumulative floor covering every in-place fill recorded before
+that consumption. The committed terminal outcome must be acceptable to every deposit matching the root. A fixed
+minimum for one fill does not prove aggregate delivery.
 
 The obligation covers **actual JIT output amounts for all allowed executions**, not just the sum of committed
 `min_output_amount` values or the amounts in a sampled quote. Two fills can each accept output `2X` against a shared
@@ -145,10 +164,10 @@ new aggregation support.
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
-fill-status accounts: old clients may continue supplying the recorded relayer signature, but it is no longer required.
-The unchanged `FillStatusAccount.relayer` field stores the payer PDA for V5 fills (historical legacy accounts
-retain their recorded relayer), binding permissionless reclaim to the float that paid the rent without an
-account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
+fill-status accounts: old clients may continue supplying the recorded relayer/requester signature, but it is no
+longer required. The `FillStatusAccount.rent_recipient` field stores the payer PDA for V5 fills (historical legacy
+accounts retain their recorded relayer or slow-fill requester), binding permissionless reclaim to the float that
+paid the rent without an account-layout migration. V5 fills emit the existing `FilledRelay` schema and derive the relay hash
 from the supplied standard `RelayData` and the configured SVM chain ID. Adapter mode uses no callback message; the
 relay witness remains exactly `V5_MAGIC_PREFIX || step_id`. V5 fill status can only transition directly from an
 uninitialized PDA to `Filled`.
@@ -188,15 +207,26 @@ No account-layout or two-root admin-message migration is required. Historical in
 closable by their creator through `close_instruction_params` without decoding the retired parameter types.
 
 After the recorded deadline, anyone may call `close_fill_pda`; rent goes only to the recorded recipient.
+The close instruction's `signer` account and the fill-status account's `relayer` field are now named `rent_recipient`
+(`rentRecipient` in generated TypeScript clients). Account order, privileges, serialized layout, and discriminators
+are unchanged, so clients retaining the old IDL remain compatible. Clients adopting the new IDL must use the new
+property names. Existing legacy cleanup remains compatible when the supplied wallet matches the recorded rent
+recipient. Future V5 cleanup clients must supply the recorded payer PDA instead of assuming the recipient is their
+wallet; reading the fill-status account provides that address. The transaction fee payer remains a separate signer.
+This is part of future backend V5 integration, not a prerequisite for reclaiming legacy rent. The `NotRelayer`
+error name, message, and code 7002 remain unchanged.
 Closing the PDA reclaims rent, not the deposit. Unfilled expired deposits follow the dataworker-driven origin-chain
-refund process; there is no destination slow-fill fallback. `scripts/svm/closeRelayerPdas.ts` discovers only
-`FilledRelay` events, so never-filled requests need separate discovery before submitting the permissionless close.
+refund process; there is no destination slow-fill fallback. The reference script `scripts/svm/closeRelayerPdas.ts`
+discovers live fill-status accounts by recorded rent recipient, including never-filled historical requests.
+Use `--submitter` for V5 payer-PDA rent or `--relayer` for a legacy relayer/slow-fill requester. For V5, supply the
+Solana submitter key, which may differ from the repayment address in `FilledRelay`.
+See the [cleanup script usage](../../scripts/svm/README.md#reclaim-fill-status-rent).
 
 ## Enabled source-deposit behavior
 
 After authenticating the live Gateway dispatch PDA, Deposit mode strictly decodes branch-specific JIT data, resolves
 the input amount against the canonical Gateway vault, and pulls exactly the resolved amount into the pre-created
-SpokePool vault. The token transfer enforces the static source delegate and sufficient allowance. The adapter applies
+SpokePool vault. The token transfer enforces the static deposit delegate and sufficient allowance. The adapter applies
 only signed, committed JIT modifications, derives the final 32-byte deposit ID directly from the Gateway executor
 identity and live context, and emits the standard `FundsDeposited` event with
 `message = V5_MAGIC_PREFIX || dst_step_id`. Any later failure in the same transaction rolls back the approval,
@@ -208,16 +238,25 @@ Fill mode strictly decodes the JIT relay and repayment data, binds the recipient
 exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
 submitter's payer float, and emits the standard `FilledRelay` event with the original witness hash and an empty updated
-message hash. The adapter retains the internal `_fill` core for pause, exclusivity, deadline,
-replay protection and status transition, token delivery, fill-type and message-hash event fields, and canonical event
-construction. The adapter retains its branch-specific account loading and event-emission mechanics. Internal
-legacy branches are left for a follow-up simplification; they have no dispatchable legacy deposit/fill entrypoint.
+message hash. Deposit and fill execution are V5-only: the adapter validates accounts and relay semantics, delivers
+tokens, finalizes V5 fill status, and constructs the canonical events. The entrypoint dispatches to separate deposit
+and fill modules, each owning its execution and account loading. Both loaders use `V5TokenAccounts::load` in
+`instructions/v5_adapter/token.rs` to validate the mint, token program, and canonical Gateway vault before their
+branch-specific recipient and delegate checks.
+Every successful fill emits `FastFill` with the original recipient and output amount in its execution info.
+Each execution handler performs validation, delivery, and event emission directly; fills also create and finalize
+their V5 fill status in that handler.
 
-External delivery requires a sufficient approval to `["v5_fill_delegate"]` and pulls exactly the JIT output amount
-from the canonical Gateway vault into the committed recipient's ATA. When that recipient ATA is the canonical Gateway
-vault itself, the adapter instead authenticates its live balance, records the fill in place, and performs no approval
-or self-transfer. Its safety therefore depends on the proportional or aggregate continuing-path rule above. Any later
-failure rolls back token, fill-status, and payer-float changes together.
+Account resolution, dispatch authentication, and PDA derivation live in `v5/accounts.rs`. Fill-status creation and
+finalization live in `v5/fill_status.rs`, while the persisted account layout lives in `state/fill_status.rs`.
+The `close_fill_pda` and `withdraw_v5_fill_payer` instructions have matching files under `instructions/`; the
+test-only status-creation entrypoint lives with the other test-support handlers in `utils/testable_utils.rs`.
+V5 deposit identity is derived in `v5/jit.rs`. File organization does not change instruction names or persisted layouts.
+
+All fills require a sufficient approval to `["v5_fill_delegate"]` and use the existing `transfer_from` helper for the
+exact JIT output amount. External delivery debits the Gateway vault; delivery to that same vault performs a validated
+self-transfer. The latter still depends on the proportional or aggregate continuing-path rule above; clearing its
+unconsumed allowance is optional cleanup. Any later failure rolls back token, fill-status, and payer-float changes together.
 
 Golden values in `fixtures/v5_adapter_v1.json` are independently re-derived from Rust, TypeScript, and Solidity to
 catch byte-width, packing, and endianness drift. These are cross-language self-consistency vectors, not an invocation
@@ -267,7 +306,8 @@ the removed utility. Admin/root messaging, relayer refunds and claims, token-acc
 management, and fill-status rent reclaim remain available.
 Existing account layouts and event schemas are unchanged; legacy fill-status accounts can still be closed after
 expiry to their recorded rent recipient. Previously prepared fill-parameter buffers can be closed by their creator.
-Simplifying the remaining shared legacy branches and helpers is deferred to a separate change.
+Sequential deposit-ID allocation, legacy fill-status transitions, and V4 delegate-seed helpers are removed from
+the execution code; their historical account fields and event enum slots remain available for decoding.
 
 Public clients expose encoder, decoder, and codec factories for all three V5 payload roots:
 
@@ -305,22 +345,24 @@ Use `yarn generate-svm-artifacts` for public assets and `yarn generate-svm-test-
 A bare `anchor idl build` does not include these extra wire schemas; after a manual Spoke IDL build, run
 `yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts`.
 
-Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `CallDataError` at 8000, and
-`V5Error` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
+Runtime error ranges are distinct: `CommonError` starts at 6000, `SvmError` at 7000, `V5Error` at 8000, and
+`CallDataError` at 9000. Existing `CommonError` codes are unchanged; SVM/CCTP errors are renumbered from their overlapping
 legacy range, and V5 errors are new in this release. The [runtime-code mapping](ERROR_CODES.md) compares this
 release with deployed `v5.0.12-beta.1`, including removed variants and reserved slow-fill slots. V4 retirement removes
 `InvalidRelayHash`, `InconsistentOptionalParameters`, `V5FillOnly`, and `LegacyFillMessageUnsupported`, plus their
 orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
 7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
-Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete and omits `SvmError`. Consumers should
-use runtime log names or the version-appropriate runtime-code mapping; generated error-name tables alone are
-insufficient. Assigning distinct runtime ranges does not fix the generated IDL table.
+Anchor 0.31.1's existing multi-enum IDL error generation remains incomplete, omits `SvmError`, and does not reflect
+the explicit runtime offsets. Consumers should use runtime log names or the version-appropriate runtime-code
+mapping; generated error-name tables alone are insufficient. Assigning distinct runtime ranges does not fix the
+generated IDL table.
 
 V5 keeps the relay witness in `RelayData.message` as exactly `V5_MAGIC_PREFIX || stepId`; `V5FillInput` omits a
-separate callback message. The replacement destination flow is a single in-place Across fill followed by
-Gateway `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed output-mint `BALANCE_REQ`,
-and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the Gateway output vault.
+separate callback message. The replacement destination flow is Gateway `APPROVE(inputMint, v5_fill_delegate, full balance)`,
+a single in-place Across fill, then `APPROVE(inputMint, executor_authority, full balance)`, `CALL(swap)`, a committed
+output-mint `BALANCE_REQ`, and a full-balance `TRANSFER` to the committed recipient. The swap sends output to the
+Gateway output vault.
 The vault owner signs only Gateway token operations; the swap receives its distinct SPL delegate as signer.
 A failed swap or output floor reverts the entire execution, including the fill and payer rent.
 
@@ -370,15 +412,21 @@ Before deploying V4 entrypoint retirement and the error-code migration:
    If fills are unpaused before legacy retirement, refresh the check and resolve any conflict with fixed or
    already-emitted V5 relay hashes before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
-   moves from 6000 to 7000 and `CallDataError` from 6000 to 8000; existing `CommonError` codes are unchanged.
-   Earlier undeployed V5 integrations must use the final 9000 range. Consumers matching runtime log names need no
+   moves from 6000 to 7000 and `CallDataError` from 6000 to 9000; existing `CommonError` codes are unchanged.
+   Earlier undeployed V5 integrations must use the final 8000 range. Consumers matching runtime log names need no
    renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
-5. Deploy with both pause flags still set and verify legacy deposit/fill and slow-fill selectors are absent from
+5. Publish the updated IDL and generated clients with the audited V5 release under a new package version in the
+   planned v6 major release. Any intervening prerelease publication must also use a new prerelease version.
+   The `rentRecipient` renames require consumer source updates when adopting the new clients; existing clients
+   remain binary-compatible with these renames.
+6. Deploy with both pause flags still set and verify legacy deposit/fill and slow-fill selectors are absent from
    the deployed program. Validate replacement V5 route-building and relayer execution support before unpausing
-   deposits/fills and enabling V5 routes. The pause flags are shared by V4 and V5; unpausing before legacy entrypoint
-   retirement would reopen the old paths.
+   deposits/fills and enabling V5 routes. Ensure any enabled cleanup client passes the recorded rent recipient for
+   V5 accounts (the submitter's payer PDA), keeping the transaction fee payer separate. This is a V5 backend
+   readiness requirement; existing legacy rent cleanup does not depend on it. The pause flags are shared by V4
+   and V5; unpausing before legacy entrypoint retirement would reopen the old paths.
 
 After the upgrade, V4 deposits cannot be filled on Solana. Slow fills are also retired;
 any new unsupported V4 deposit follows the normal origin-chain expiry-refund process, not a destination fallback. HubPool chain

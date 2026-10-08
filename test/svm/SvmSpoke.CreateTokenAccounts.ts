@@ -161,8 +161,8 @@ describe("svm_spoke.create_token_accounts", () => {
       { pubkey: associatedTokens[index], isWritable: true, isSigner: false },
     ]);
 
-    // Build and send the transaction with increased CU limit as the default 200k is not sufficient.
-    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 });
+    // Test the instruction-trace limit, allowing headroom for random ATA addresses' variable PDA-search cost.
+    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
     const createTokenAccountsInstruction = await program.methods
       .createTokenAccounts()
       .accounts({ mint, tokenProgram: TOKEN_PROGRAM_ID })
@@ -171,10 +171,7 @@ describe("svm_spoke.create_token_accounts", () => {
     const transaction = new anchor.web3.Transaction();
     transaction.add(computeBudgetInstruction);
     transaction.add(createTokenAccountsInstruction);
-    await connection.sendTransaction(transaction, [payer]);
-
-    // Wait before transaction is processed
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await anchor.web3.sendAndConfirmTransaction(connection, transaction, [payer], { commitment: "confirmed" });
 
     // Verify all accounts were created
     for (const associatedToken of associatedTokens) {

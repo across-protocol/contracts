@@ -62,7 +62,7 @@
   "pdas": {
     "dispatchAuthority": { "address": "28uSGvM8TVkVkAq9LBZASDPEi5t6RFbVekXECbDMqrWs", "bump": 253 },
     "gatewayVaultAuthority": { "address": "D3rtRbTdrBx8x8wp6xmQcUeS6seSt9nBB7DUG5S86HHb", "bump": 254 },
-    "sourceDelegate": { "address": "CVh7qLq3yviU8iGuBmmgipJpfy95p9B81e2YTWDaxCbb", "bump": 255 },
+    "depositDelegate": { "address": "8DWnJFMBTSDYWsUUSqna9tx9LJbU1yUfq7jTiPJDf8sX", "bump": 252 },
     "fillDelegate": { "address": "D27f3mVXRL6N3bgja49UWLQu7kt57sy1aZYy7ZEwdxn1", "bump": 252 },
     "fillPayer": { "address": "Dpq2pxBDexzTiaQ35qoyyH1rF5siNyrSJhrdGMbWdBnF", "bump": 250 },
     "fillStatus": { "address": "2bdk4WnigBmjqwHtp1HQ5DHySvZ9QirEw9c8tWMXkfma", "bump": 255 }

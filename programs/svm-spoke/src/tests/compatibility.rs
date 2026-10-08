@@ -17,14 +17,15 @@ fn custom_error_ranges_are_stable() {
     assert_eq!(u32::from(CommonError::InvalidOutputToken), 6_015);
     assert_eq!(u32::from(SvmError::NotOwner), 7_000);
     assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
+    assert_eq!(u32::from(SvmError::NotRelayer), 7_002);
     assert_eq!(u32::from(SvmError::InvalidDelegatePda), 7_016);
-    assert_eq!(u32::from(CallDataError::InvalidSelector), 8_000);
-    assert_eq!(u32::from(CallDataError::UnsupportedSelector), 8_006);
-    assert_eq!(u32::from(V5Error::InvalidWireFormat), 9_000);
-    assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 9_006);
-    assert_eq!(u32::from(V5Error::InvalidAmountBips), 9_007);
-    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 9_012);
-    assert_eq!(u32::from(V5Error::InsufficientVaultBalance), 9_015);
+    assert_eq!(u32::from(V5Error::InvalidWireFormat), 8_000);
+    assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 8_006);
+    assert_eq!(u32::from(V5Error::InvalidAmountBips), 8_007);
+    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 8_012);
+    assert_eq!(u32::from(V5Error::FillOutputAmountTooLow), 8_014);
+    assert_eq!(u32::from(CallDataError::InvalidSelector), 9_000);
+    assert_eq!(u32::from(CallDataError::UnsupportedSelector), 9_006);
 }
 
 #[test]
@@ -71,7 +72,7 @@ fn historical_status_and_event_slots_remain_readable() {
         bytes.extend_from_slice(&4_000_000_000u32.to_le_bytes());
         let decoded = FillStatusAccount::try_deserialize(&mut bytes.as_slice()).unwrap();
         assert!(decoded.status == status);
-        assert_eq!(decoded.relayer, Pubkey::new_from_array([42; 32]));
+        assert_eq!(decoded.rent_recipient, Pubkey::new_from_array([42; 32]));
         assert_eq!(decoded.fill_deadline, 4_000_000_000);
         let mut encoded = Vec::new();
         decoded.try_serialize(&mut encoded).unwrap();

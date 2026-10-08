@@ -57,8 +57,9 @@ Located in `contracts/periphery/mintburn/`. A modular framework for executing cr
 
 ### SVM Across V5 Gateway integration
 
-`svm_spoke` is a direct Gateway adapter for V5 source deposits and destination fills. External fills transfer tokens;
-in-place fills check the shared vault, leaving downstream delivery to the committed Gateway path. See the
+`svm_spoke` is a direct Gateway adapter for V5 source deposits and destination fills. All fills use the token program
+with sufficient fill-delegate approval; self-transfers validate the shared vault without debiting it, leaving
+downstream delivery to the committed Gateway path. See the
 [adapter spec](programs/svm-spoke/V5_ADAPTER_SPEC.md#pda-and-token-invariants) for authoritative delivery/security rules
 and the [integration guide](test/svm-gateway/README.md) for real-Gateway test execution and coverage.
 
