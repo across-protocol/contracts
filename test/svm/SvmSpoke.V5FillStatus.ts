@@ -160,7 +160,8 @@ describe("svm_spoke V5 fill-status payer", () => {
             lamports: rent * deadlines.length,
           })
         ),
-        [providerPayer]
+        [providerPayer],
+        { commitment: "confirmed", preflightCommitment: "confirmed" }
       );
       for (const deadline of deadlines) {
         const relayHash = randomBytes(32);

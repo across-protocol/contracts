@@ -76,8 +76,8 @@ Every recorded bump is already canonical for its seeds; 255 simply means the fir
 | legacy-deposit   |                    34,707 |                    31,707 |                32,017 |
 | legacy-fill      |                    41,021 |                    38,021 |                38,331 |
 | v5-deposit       |                    67,432 |                    61,432 |                74,071 |
-| v5-external-fill |                    78,488 |                    72,488 |                84,817 |
-| v5-inplace-fill  |                    85,765 |                    81,265 |                93,594 |
+| v5-external-fill |                    78,508 |                    72,508 |                84,837 |
+| v5-inplace-fill  |                    83,719 |                    79,219 |                91,548 |
 
 To reproduce the normalization from each `baseline.json` row, define `d(bump) = 255 - bump` and subtract 1,500 times
 the following sum from `execution`:
@@ -88,13 +88,13 @@ the following sum from `execution`:
 | legacy-fill      | `d(statusBump) + d(delegateBump) + d(recipientAtaBump)` |
 | v5-deposit       | `d(fundingBump) + 2*d(vaultBump) + d(spokeVaultBump)`   |
 | v5-external-fill | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
-| v5-inplace-fill  | `d(statusBump) + 3*d(vaultBump) + d(recipientAtaBump)`  |
+| v5-inplace-fill  | `d(statusBump) + 2*d(vaultBump) + d(recipientAtaBump)`  |
 
 State bumps are already 255 in every fixture. Fixed program/submitter authority costs remain included. Normalize
 V5 `buffer` by subtracting `1,500 * (1 + bufferWrites) * d(bufferBump)`; approvals remain unchanged. Normalized
 totals sum these adjusted components per row.
 
-In this baseline, in-place execution costs 8,777 CU more than external execution after normalization in every
+In this baseline, in-place execution costs 6,711 CU more than external execution after normalization in every
 sample. Raw per-fixture gaps also include the recorded vault and status PDA search costs. Compare per-row totals;
 independently computed component medians need not add to the total median.
 
@@ -124,6 +124,11 @@ slots and temporary paths in raw receipts naturally vary. Before committing an u
 For the constant-delegate optimization's per-fixture CU comparison, see
 [PR #1573](https://github.com/across-protocol/contracts/pull/1573)
 ([issue #1569](https://github.com/across-protocol/contracts/issues/1569)).
+
+For the validated-vault optimization's per-fixture CU comparison, see
+[PR #1575](https://github.com/across-protocol/contracts/pull/1575)
+([issue #1570](https://github.com/across-protocol/contracts/issues/1570)). Reusing the validated vault removes one
+vault ATA derivation from self-transfer fills; remaining derivations still contribute address-dependent costs.
 
 ## Conformance suite
 

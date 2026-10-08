@@ -249,6 +249,9 @@ tokens, finalizes V5 fill status, and constructs the canonical events. The entry
 and fill modules, each owning its execution and account loading. Both loaders use `V5TokenAccounts::load` in
 `instructions/v5_adapter/token.rs` to validate the mint, token program, and canonical Gateway vault before their
 branch-specific recipient and delegate checks.
+When the committed fill recipient is `GATEWAY_VAULT_AUTHORITY`, the fill loader reuses that validated writable account
+instead of deriving, finding, and parsing the same ATA again. This reuse is confined to account loading before any
+CPI; external recipient validation and the token program's self-transfer checks remain unchanged.
 Every successful fill emits `FastFill` with the original recipient and output amount in its execution info.
 Each execution handler performs validation, delivery, and event emission directly; fills also create and finalize
 their V5 fill status in that handler.
