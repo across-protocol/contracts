@@ -1,5 +1,5 @@
 import * as anchor from "@anchor-lang/core";
-import { AnchorProvider, Wallet, Program } from "@anchor-lang/core";
+import { Wallet, Program } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createMint,
@@ -20,7 +20,7 @@ describe("multicall_handler", () => {
 
   let handlerSigner: PublicKey, mint: PublicKey, handlerATA: PublicKey;
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
   const mintDecimals = 6;
   const tokenAmount = 10_000_000_000;
 

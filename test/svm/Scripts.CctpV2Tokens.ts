@@ -1,5 +1,6 @@
+import { provider } from "./provider";
 import { rejects } from "assert";
-import { AnchorProvider, Wallet, workspace } from "@anchor-lang/core";
+import { Wallet, workspace } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { assert } from "chai";
@@ -12,7 +13,6 @@ import { receiveCctpV2Tokens } from "../../scripts/svm/utils/cctpV2";
 
 // The local validator uses Circle's programs with signature threshold 0 and the test wallet as token controller.
 describe("CCTP V2 script token delivery", () => {
-  const provider = AnchorProvider.env();
   const payer = (provider.wallet as Wallet).payer;
   const connection = provider.connection;
   const program = workspace.TokenMessengerMinterV2 as ReturnType<typeof getTokenMessengerMinterV2Program>;

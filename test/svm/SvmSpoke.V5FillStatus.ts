@@ -182,11 +182,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     assert.equal(await connection.getBalance(fillPayer(submitter.publicKey)), rent);
     assert.equal(await closeExpiredFillStatuses(cleanupProgram, state, target, currentTime), 0);
 
-    // The cleanup helper preflights at confirmed, so its clock update must be visible at that commitment.
-    await program.methods
-      .setCurrentTime(currentTime + 2)
-      .accountsPartial({ state, signer: provider.wallet.publicKey })
-      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
+    await common.setCurrentTime(program, state, Keypair.generate(), new BN(currentTime + 2));
     assert.equal(await closeExpiredFillStatuses(cleanupProgram, state, target, currentTime + 2), 2);
     assert.equal(await connection.getBalance(fillPayer(submitter.publicKey)), rent * 3);
     assert.isNotNull(await connection.getAccountInfo(statuses[3]));

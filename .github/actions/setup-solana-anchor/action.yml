@@ -52,7 +52,8 @@ runs:
         fi
         checksum=$(node -p 'require("./verified-build.json").agave_release_sha256.linux_x86_64')
         echo "$checksum  $tools/solana-release.tar.bz2" | sha256sum --check
-        # Re-extract the verified archive on cache hits too, before executing any cached tools.
+        # Discard stale cache contents before extracting the verified archive, including extra executables.
+        rm -rf "$tools/solana-release"
         tar -xjf "$tools/solana-release.tar.bz2" -C "$tools"
         if [ ! -x "$tools/bin/anchor" ]; then
           curl -sSfL --retry 3 "https://github.com/otter-sec/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o "$tools/bin/anchor"

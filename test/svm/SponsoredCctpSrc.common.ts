@@ -1,3 +1,4 @@
+import { provider } from "./provider";
 import * as anchor from "@anchor-lang/core";
 import { BN, Program } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
@@ -5,7 +6,7 @@ import { ethers } from "ethers";
 import { evmAddressToPublicKey } from "../../src/svm/web3-v1";
 import { SponsoredCctpSrcPeriphery } from "../../target/types/sponsored_cctp_src_periphery";
 
-export const provider = anchor.AnchorProvider.env();
+export { provider };
 export const program = anchor.workspace.SponsoredCctpSrcPeriphery as Program<SponsoredCctpSrcPeriphery>;
 export const connection = provider.connection;
 export const owner = provider.wallet.publicKey;

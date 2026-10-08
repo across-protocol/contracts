@@ -1,5 +1,5 @@
 import * as anchor from "@anchor-lang/core";
-import { AnchorError, AnchorProvider, BN, Wallet, web3 } from "@anchor-lang/core";
+import { AnchorError, BN, Wallet, web3 } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
@@ -39,7 +39,7 @@ describe("svm_spoke.refund_claims", () => {
     program: PublicKey;
   };
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   const initializeClaimAccount = async (initializer = claimInitializer) => {

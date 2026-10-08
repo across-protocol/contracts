@@ -1,9 +1,9 @@
-import { AnchorProvider, workspace } from "@anchor-lang/core";
+import { provider } from "./provider";
+import { workspace } from "@anchor-lang/core";
 import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { expect } from "chai";
 
 describe("svm_spoke.event_authority", () => {
-  const provider = AnchorProvider.env();
   const programId = workspace.SvmSpoke.programId as PublicKey;
   const [eventAuthority] = PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], programId);
   // Anchor's event-CPI dispatcher tag, followed by arbitrary event bytes.

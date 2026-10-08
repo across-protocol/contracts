@@ -1,6 +1,6 @@
 import * as anchor from "@anchor-lang/core";
 import { rejects } from "assert";
-import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@anchor-lang/core";
+import { AnchorError, BN, Program, web3, workspace } from "@anchor-lang/core";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
@@ -16,14 +16,13 @@ import { SvmSpoke } from "../../src/svm/assets/svm_spoke";
 import { common } from "./SvmSpoke.common";
 import { receiveCctpV2MessageOnSpoke } from "../../scripts/svm/utils/cctpV2";
 
-const { initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
+const { provider, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
 describe("svm_spoke.handle_receive_finalized_message", () => {
-  anchor.setProvider(AnchorProvider.env());
+  anchor.setProvider(provider);
 
   const program = workspace.SvmSpoke as Program<SvmSpoke>;
   const messageTransmitterProgram = workspace.MessageTransmitterV2 as Program<MessageTransmitterV2>;
-  const provider = AnchorProvider.env();
   const owner = provider.wallet.publicKey;
   let state: web3.PublicKey;
   let seed: BN;
@@ -121,7 +120,6 @@ describe("svm_spoke.handle_receive_finalized_message", () => {
   });
 
   it("Script finalizer delivers all supported calls and safely resumes after delivery", async () => {
-    await waitForConfirmedState();
     const deliver = (built: ReturnType<typeof buildMessage>) =>
       receiveCctpV2MessageOnSpoke(provider, program, state, built.message, attestation, messageTransmitterProgram);
     const pause = buildMessage(encodeCalldata("pauseDeposits", [true]));
@@ -161,7 +159,6 @@ describe("svm_spoke.handle_receive_finalized_message", () => {
   });
 
   it("Script finalizer leaves a failed nonce retryable", async () => {
-    await waitForConfirmedState();
     const built = buildMessage(encodeCalldata("pauseDeposits", [true]));
     const deliver = (message: Buffer) =>
       receiveCctpV2MessageOnSpoke(provider, program, state, message, attestation, messageTransmitterProgram);
@@ -178,7 +175,6 @@ describe("svm_spoke.handle_receive_finalized_message", () => {
   });
 
   it("Script finalizer uses the finalized threshold boundary from message bytes", async () => {
-    await waitForConfirmedState();
     for (const threshold of [1000, 1500, 1999, 2000, 2500]) {
       const built = buildMessage(encodeCalldata("pauseDeposits", [true]), { finalityThresholdExecuted: threshold });
       const delivery = receiveCctpV2MessageOnSpoke(
@@ -193,13 +189,6 @@ describe("svm_spoke.handle_receive_finalized_message", () => {
       else assert.isString(await delivery);
     }
   });
-
-  async function waitForConfirmedState() {
-    // initializeState uses Anchor's processed commitment; operational finalization deliberately reads confirmed state.
-    const { context } = await provider.connection.getAccountInfoAndContext(state, "processed");
-    while ((await provider.connection.getSlot("confirmed")) < context.slot)
-      await new Promise((resolve) => setTimeout(resolve, 100));
-  }
 
   it("Block Unauthorized Message", async () => {
     const unauthorizedSender = Keypair.generate().publicKey;

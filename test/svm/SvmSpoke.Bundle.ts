@@ -1,5 +1,5 @@
 import * as anchor from "@anchor-lang/core";
-import { AnchorProvider, BN, Wallet, web3 } from "@anchor-lang/core";
+import { BN, Wallet, web3 } from "@anchor-lang/core";
 import {
   createMint,
   getAssociatedTokenAddressSync,
@@ -34,7 +34,7 @@ describe("svm_spoke.bundle", () => {
 
   let state: PublicKey, seed: BN, mint: PublicKey, relayerTA: PublicKey, relayerTB: PublicKey, vault: PublicKey;
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   before(async () => {
@@ -1099,11 +1099,7 @@ describe("svm_spoke.bundle", () => {
       instructions.push(executeInstruction);
 
       // Execute using ALT.
-      await sendTransactionWithLookupTable(
-        connection,
-        instructions,
-        (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-      );
+      await sendTransactionWithLookupTable(connection, instructions, (provider.wallet as anchor.Wallet).payer);
 
       // Verify all refund account balances (either token or claim accounts).
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
@@ -1823,16 +1819,12 @@ describe("svm_spoke.bundle", () => {
       if (!testConfig.separatePhases) {
         // Pack all instructions in one transaction.
         if (testConfig.useAddressLookup)
-          await sendTransactionWithLookupTable(
-            connection,
-            instructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-          );
+          await sendTransactionWithLookupTable(connection, instructions, (provider.wallet as anchor.Wallet).payer);
         else
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(...instructions),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }
@@ -1843,23 +1835,19 @@ describe("svm_spoke.bundle", () => {
           await sendTransactionWithLookupTable(
             connection,
             initializeInstructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+            (provider.wallet as anchor.Wallet).payer
           );
           await sendTransactionWithLookupTable(
             connection,
             [executeInstruction],
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+            (provider.wallet as anchor.Wallet).payer
           );
-          await sendTransactionWithLookupTable(
-            connection,
-            claimInstructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-          );
+          await sendTransactionWithLookupTable(connection, claimInstructions, (provider.wallet as anchor.Wallet).payer);
         } else {
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(...initializeInstructions),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }
@@ -1867,7 +1855,7 @@ describe("svm_spoke.bundle", () => {
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(executeInstruction),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }
@@ -1875,7 +1863,7 @@ describe("svm_spoke.bundle", () => {
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(...claimInstructions),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }

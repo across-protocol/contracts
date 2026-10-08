@@ -1,3 +1,4 @@
+import { provider } from "./provider";
 import * as anchor from "@anchor-lang/core";
 import { Program } from "@anchor-lang/core";
 import { Test } from "../../target/types/test";
@@ -28,7 +29,6 @@ export function randomBigInt(bytes = 32, signed = false) {
 }
 
 describe("utils.merkle", () => {
-  const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
   const program = anchor.workspace.Test as Program<Test>;

@@ -1,3 +1,4 @@
+import { provider } from "./provider";
 import * as anchor from "@anchor-lang/core";
 import { Program } from "@anchor-lang/core";
 import { Test } from "../../target/types/test";
@@ -5,10 +6,9 @@ import { assert } from "chai";
 import { SystemProgram } from "@solana/web3.js";
 
 describe("utils.bitmap", () => {
-  anchor.setProvider(anchor.AnchorProvider.env());
+  anchor.setProvider(provider);
 
   const program = anchor.workspace.Test as Program<Test>;
-  const provider = anchor.AnchorProvider.env();
 
   let bitmapAccount: anchor.web3.PublicKey;
   const signer = (provider.wallet as anchor.Wallet).payer;

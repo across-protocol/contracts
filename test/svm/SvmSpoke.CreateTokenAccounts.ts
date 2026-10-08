@@ -1,5 +1,5 @@
 import * as anchor from "@anchor-lang/core";
-import { AnchorError, AnchorProvider, Wallet } from "@anchor-lang/core";
+import { AnchorError, Wallet } from "@anchor-lang/core";
 import { Keypair, PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
 import { assert } from "chai";
 import {
@@ -17,7 +17,7 @@ const { provider, program, connection, assertSE, owner } = common;
 describe("svm_spoke.create_token_accounts", () => {
   anchor.setProvider(provider);
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
 
   let mint: PublicKey;
 

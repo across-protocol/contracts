@@ -1,4 +1,5 @@
-import { AnchorProvider, BN, Program } from "@anchor-lang/core";
+import { provider } from "../svm/provider";
+import { BN, Program } from "@anchor-lang/core";
 import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { expect } from "chai";
 import { createHash } from "crypto";
@@ -8,7 +9,6 @@ import { SvmSpoke } from "../../target/types/svm_spoke";
 import legacyAccount from "../svm/accounts/legacy_requested_slow_fill.json";
 
 describe("svm_spoke verified production binary", () => {
-  const provider = AnchorProvider.env();
   const program = new Program<SvmSpoke>(SvmSpokeIdl, provider);
   const [state] = PublicKey.findProgramAddressSync([Buffer.from("state"), Buffer.alloc(8)], program.programId);
   const signer = provider.wallet.publicKey;

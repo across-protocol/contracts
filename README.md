@@ -138,6 +138,10 @@ and tests seed-zero initialization, disabled test controls, Clock-sysvar expiry 
 in a fresh ledger. Deploy only the latter production artifacts; a test-feature build overwrites
 `target/deploy` and must never be deployed.
 
+Validator tests share `test/svm/provider.ts`, which sets the connection, transaction confirmation and
+preflight commitments to `confirmed`. Use this provider for fixture writes and dependent transactions
+so simulations cannot run against a bank that predates the fixture state.
+
 All workspace programs use Anchor 1.1.2. The Spoke retains the pre-upgrade V5 branch's custom error numbers;
 its IDL now exposes all four ranges from one enum. Sponsored CCTP's formerly overlapping enums
 now use Common 6000–6002, SVM 7000–7010 and CCTP 8000–8002. This changes error numbers in a **new**
