@@ -60,7 +60,7 @@ describe("svm_spoke verified production binary", () => {
     const signature = await program.methods
       .pauseDeposits(true)
       .accountsPartial({ state, signer })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
     let tx;
     for (let attempt = 0; attempt < 20; attempt++) {
       tx = await provider.connection.getTransaction(signature, {
