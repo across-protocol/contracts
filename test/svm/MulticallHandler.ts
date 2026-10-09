@@ -14,8 +14,6 @@ import { common } from "./SvmSpoke.common";
 const { provider, owner, connection, assertSE } = common;
 
 describe("multicall_handler", () => {
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.MulticallHandler as Program<MulticallHandler>;
 
   let handlerSigner: PublicKey, mint: PublicKey, handlerATA: PublicKey;

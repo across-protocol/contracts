@@ -9,7 +9,6 @@ import { getSpokePoolProgram } from "../../src/svm/web3-v1";
 import { closeExpiredFillStatuses } from "../../scripts/svm/closeRelayerPdas";
 
 describe("svm_spoke V5 fill-status payer", () => {
-  anchor.setProvider(common.provider);
   const { connection, provider } = common;
   const program = common.program as Program<SvmSpoke>;
   const providerPayer = (provider.wallet as anchor.Wallet).payer;

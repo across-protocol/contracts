@@ -1,9 +1,5 @@
 name: Setup Solana and Anchor
 inputs:
-  verify_version:
-    description: "Solana verify version to install (leave empty to skip)"
-    required: false
-    default: ""
   node_version:
     description: "Node version to install"
     required: true
@@ -17,61 +13,14 @@ runs:
     # Host Cargo is used for IDLs/unit tests; the verified image pins the SBF compiler.
     - name: Install host Rust
       uses: dtolnay/rust-toolchain@1.97.1
-    - name: Extract Solana versions
-      id: versions
-      shell: bash
-      run: |
-        node <<'NODE' >> "$GITHUB_OUTPUT"
-        const fs = require("fs");
-        const config = fs.readFileSync("Anchor.toml", "utf8");
-        for (const name of ["solana_version", "anchor_version"]) {
-          const match = config.match(new RegExp(`^${name} = "([0-9.]+)"$`, "m"));
-          if (!match) throw new Error(`Missing ${name} in Anchor.toml`);
-          console.log(`${name}=${match[1]}`);
-        }
-        NODE
+    # Keyed on everything the installer reads, so a pin or installer change refetches the tools.
     - name: Cache SVM tools
       uses: actions/cache@v4
       with:
         path: |
           ~/svm-tools
           ~/.cache/solana
-        key: svm-tools-${{ runner.os }}-${{ runner.arch }}-solana-${{ steps.versions.outputs.solana_version }}-anchor-${{ steps.versions.outputs.anchor_version }}-verify-${{ inputs.verify_version }}-${{ hashFiles('verified-build.json', '.github/actions/setup-solana-anchor/action.yml') }}-v2
-    - name: Install pinned Solana and Anchor release binaries
+        key: svm-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Anchor.toml', 'verified-build.json', 'scripts/svm/buildHelpers/installSvmTools.sh') }}
+    - name: Install pinned Solana, Anchor and solana-verify release binaries
       shell: bash
-      env:
-        SOLANA_VERSION: ${{ steps.versions.outputs.solana_version }}
-        ANCHOR_VERSION: ${{ steps.versions.outputs.anchor_version }}
-        VERIFY_VERSION: ${{ inputs.verify_version }}
-      run: |
-        set -euo pipefail
-        tools="$HOME/svm-tools"
-        mkdir -p "$tools/bin"
-        if [ ! -f "$tools/solana-release.tar.bz2" ]; then
-          curl -sSfL --retry 3 "https://github.com/anza-xyz/agave/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2" -o "$tools/solana-release.tar.bz2"
-        fi
-        checksum=$(node -p 'require("./verified-build.json").agave_release_sha256.linux_x86_64')
-        echo "$checksum  $tools/solana-release.tar.bz2" | sha256sum --check
-        # Discard stale cache contents before extracting the verified archive, including extra executables.
-        rm -rf "$tools/solana-release"
-        tar -xjf "$tools/solana-release.tar.bz2" -C "$tools"
-        if [ ! -x "$tools/bin/anchor" ]; then
-          curl -sSfL --retry 3 "https://github.com/otter-sec/anchor/releases/download/v${ANCHOR_VERSION}/anchor-${ANCHOR_VERSION}-x86_64-unknown-linux-gnu" -o "$tools/bin/anchor"
-        fi
-        checksum=$(node -p 'require("./verified-build.json").anchor_cli_sha256.linux_x86_64')
-        echo "$checksum  $tools/bin/anchor" | sha256sum --check
-        chmod +x "$tools/bin/anchor"
-        "$tools/solana-release/bin/solana" --version | grep -F "solana-cli ${SOLANA_VERSION} "
-        test "$("$tools/bin/anchor" --version)" = "anchor-cli ${ANCHOR_VERSION}"
-        if [ -n "$VERIFY_VERSION" ]; then
-          if [ ! -x "$tools/bin/solana-verify" ]; then
-            curl -sSfL --retry 3 "https://github.com/solana-foundation/solana-verifiable-build/releases/download/v${VERIFY_VERSION}/solana-verify-${VERIFY_VERSION}-linux" -o "$tools/bin/solana-verify"
-          fi
-          test "$VERIFY_VERSION" = "$(node -p 'require("./verified-build.json").solana_verify_version')"
-          checksum=$(node -p 'require("./verified-build.json").solana_verify_sha256.linux')
-          echo "$checksum  $tools/bin/solana-verify" | sha256sum --check
-          chmod +x "$tools/bin/solana-verify"
-          test "$("$tools/bin/solana-verify" --version)" = "solana-verify ${VERIFY_VERSION}"
-        fi
-        echo "$tools/solana-release/bin" >> "$GITHUB_PATH"
-        echo "$tools/bin" >> "$GITHUB_PATH"
+      run: bash scripts/svm/buildHelpers/installSvmTools.sh

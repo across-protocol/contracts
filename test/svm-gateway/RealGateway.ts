@@ -80,7 +80,6 @@ import {
 } from "./reference";
 
 describe("SVM V5 with the pinned real Gateway", () => {
-  anchor.setProvider(common.provider);
   const { provider, connection, owner, program: spoke, initializeState, chainId, setCurrentTime } = common;
   const loadProgram = (name: string, expectedAddress?: PublicKey) => {
     const directory = process.env.SVM_GATEWAY_IDL_DIR;

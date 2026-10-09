@@ -5,11 +5,9 @@ import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
 import { requestAndConfirmAirdrop } from "./utils";
 
-const { provider, program, connection, assertSE } = common;
+const { program, connection, assertSE } = common;
 
 describe("svm_spoke.instruction_params", () => {
-  anchor.setProvider(provider);
-
   // We use different caller in each test as instructionData seed is derived from initializer's address.
   let caller: Keypair;
   let instructionParams: PublicKey;
