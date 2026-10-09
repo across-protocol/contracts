@@ -181,6 +181,12 @@ contract SpokePoolPeriphery is
     bytes32 public constant AUTHORIZATION_NONCE_IDENTIFIER = keccak256("AuthorizationNonce");
     bytes32 public constant DEPOSIT_NONCE_IDENTIFIER = keccak256("DepositNonce");
 
+    // One year in seconds, matching SpokePool.MAX_EXCLUSIVITY_PERIOD_SECONDS. `quoteTimestamp` and `fillDeadline`
+    // at or below this threshold are relative offsets, not absolute timestamps; no real timestamp is this small.
+    // They run in opposite directions: `quoteTimestamp` is subtracted (it prices existing HubPool state),
+    // `fillDeadline` is added (it is necessarily in the future).
+    uint32 public constant MAX_RELATIVE_TIME_SECONDS = 31_536_000;
+
     event SwapBeforeBridge(
         address exchange,
         bytes exchangeCalldata,
@@ -199,6 +205,7 @@ contract SpokePoolPeriphery is
     error InvalidMsgValue();
     error InvalidMinExpectedInputAmount();
     error InvalidNonce();
+    error SignatureExpired();
 
     /**
      * @notice Construct a new Periphery contract.
@@ -251,8 +258,8 @@ contract SpokePoolPeriphery is
             outputAmount,
             destinationChainId,
             exclusiveRelayer,
-            quoteTimestamp,
-            fillDeadline,
+            _resolveQuoteTimestamp(quoteTimestamp),
+            _resolveFillDeadline(fillDeadline),
             exclusivityParameter,
             message
         );
@@ -308,6 +315,7 @@ contract SpokePoolPeriphery is
         bytes calldata permitSignature,
         bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
+        _requireSignatureNotExpired(deadline);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
         address _swapToken = swapAndDepositData.swapToken;
@@ -327,7 +335,7 @@ contract SpokePoolPeriphery is
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
-            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
+            PeripherySigningLib.hashSignedSwapAndDepositData(swapAndDepositData, deadline),
             swapAndDepositDataSignature
         );
         _swapAndBridge(swapAndDepositData, PERMIT_NONCE_IDENTIFIER, signatureOwner);
@@ -478,6 +486,7 @@ contract SpokePoolPeriphery is
         bytes calldata permitSignature,
         bytes calldata depositDataSignature
     ) external override nonReentrant {
+        _requireSignatureNotExpired(deadline);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(permitSignature);
         // Load variables used in this function onto the stack.
         address _inputToken = depositData.baseDepositData.inputToken;
@@ -496,7 +505,11 @@ contract SpokePoolPeriphery is
         // Verify and increment nonce to prevent replay attacks.
         _validateAndIncrementNonce(signatureOwner, depositData.nonce);
         // Verify that the signatureOwner signed the input depositData.
-        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
+        _validateSignature(
+            signatureOwner,
+            PeripherySigningLib.hashSignedDepositData(depositData, deadline),
+            depositDataSignature
+        );
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
@@ -753,6 +766,19 @@ contract SpokePoolPeriphery is
     }
 
     /**
+     * @notice Reverts unless the signed payload is still redeemable.
+     * @dev Only the ERC-2612 permit entrypoints need this. There, `permit` is called inside a try/catch, so an
+     * expired permit is silently tolerated and a standing allowance still funds the pull — leaving a payload
+     * with relative timestamps redeemable indefinitely. The deadline is bound into the payload signature via
+     * `hashSignedDepositData`/`hashSignedSwapAndDepositData` so the submitter cannot substitute it. Permit2 and
+     * ERC-3009 bind and enforce their own deadline the same way, so their entrypoints do not call this.
+     * @param signatureDeadline Timestamp after which the signature is no longer valid.
+     */
+    function _requireSignatureNotExpired(uint256 signatureDeadline) private view {
+        if (block.timestamp > signatureDeadline) revert SignatureExpired();
+    }
+
+    /**
      * @notice Validates and increments the user's nonce to prevent replay attacks.
      * @param user The user whose nonce is being validated.
      * @param providedNonce The provided nonce value.
@@ -777,8 +803,10 @@ contract SpokePoolPeriphery is
      * @param destinationChainId The network ID for the destination chain.
      * @param exclusiveRelayer The optional address for an Across relayer which may fill the deposit exclusively.
      * @param depositNonce The nonce for this deposit. If 0, calls regular deposit; if non-zero, calls unsafe deposit.
-     * @param quoteTimestamp The timestamp at which the relay and LP fee was calculated.
-     * @param fillDeadline The timestamp at which the deposit must be filled before it will be refunded by Across.
+     * @param quoteTimestamp The timestamp at which the relay and LP fee was calculated. If at most
+     * MAX_RELATIVE_TIME_SECONDS, this is instead interpreted as an age in seconds subtracted from block.timestamp.
+     * @param fillDeadline The timestamp at which the deposit must be filled before it will be refunded by Across. If
+     * at most MAX_RELATIVE_TIME_SECONDS, this is instead interpreted as an offset added to block.timestamp.
      * @param exclusivityParameter The deadline or offset during which the exclusive relayer has rights to fill the deposit without contention.
      * @param message The message to execute on the destination chain.
      * @param nonceIdentifier The identifier for the nonce type (permit, permit2, or authorization).
@@ -813,8 +841,8 @@ contract SpokePoolPeriphery is
                 outputAmount,
                 destinationChainId,
                 exclusiveRelayer,
-                quoteTimestamp,
-                fillDeadline,
+                _resolveQuoteTimestamp(quoteTimestamp),
+                _resolveFillDeadline(fillDeadline),
                 exclusivityParameter,
                 message
             );
@@ -829,12 +857,32 @@ contract SpokePoolPeriphery is
                 destinationChainId,
                 exclusiveRelayer,
                 _computeDepositNonce(nonceIdentifier, signatureOwner, depositNonce),
-                quoteTimestamp,
-                fillDeadline,
+                _resolveQuoteTimestamp(quoteTimestamp),
+                _resolveFillDeadline(fillDeadline),
                 exclusivityParameter,
                 message
             );
         }
+    }
+
+    /**
+     * @notice Resolves a quoteTimestamp to absolute form, ageing relative values into the past so they name an
+     * already-existing HubPool snapshot. An age of 0 prices the deposit as of the block it lands in.
+     * @param quoteTimestamp An absolute unix timestamp, or an age in seconds if at most MAX_RELATIVE_TIME_SECONDS.
+     * @return The absolute timestamp to forward to the spoke pool.
+     */
+    function _resolveQuoteTimestamp(uint32 quoteTimestamp) private view returns (uint32) {
+        return quoteTimestamp <= MAX_RELATIVE_TIME_SECONDS ? uint32(block.timestamp) - quoteTimestamp : quoteTimestamp;
+    }
+
+    /**
+     * @notice Resolves a fillDeadline to absolute form, projecting relative values into the future so that signed
+     * deposit data keeps a full fill window regardless of when it is submitted.
+     * @param fillDeadline An absolute unix timestamp, or an offset in seconds if at most MAX_RELATIVE_TIME_SECONDS.
+     * @return The absolute timestamp to forward to the spoke pool.
+     */
+    function _resolveFillDeadline(uint32 fillDeadline) private view returns (uint32) {
+        return fillDeadline <= MAX_RELATIVE_TIME_SECONDS ? uint32(block.timestamp) + fillDeadline : fillDeadline;
     }
 
     /**

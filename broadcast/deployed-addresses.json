@@ -227,11 +227,6 @@
           "block_number": 24271862,
           "transaction_hash": "0xbd8b6ea8265f30e94927d081739407540d2d0d0e3df35abb1e17fe28e3f3c69c"
         },
-        "PermissionSplitterProxy": {
-          "address": "0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7",
-          "block_number": 19084679,
-          "transaction_hash": "0xa2a7b2c6812fb8ae34539fb04cd5f2a9112da1c7f6ffce0ddcf1fee7e43acf48"
-        },
         "PermissionedMulticallHandler": {
           "address": "0x64a43393866DBA0044879979fAa7AD3d000622e9",
           "block_number": 24021499,
@@ -1304,6 +1299,15 @@
     "5042": {
       "chain_name": "ARC",
       "contracts": {
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "block_number": 21155012
+        },
+        "AcrossEventEmitter": {
+          "address": "0x446Fe2Be6a8D90fA89F30f3d0A686aAFfe621237",
+          "block_number": 20298840,
+          "transaction_hash": "0xe97628b813d70a4cb7db9b73080bd7dcbb32cbf76bcf2129605aaf7af9b72453"
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 11171675,
@@ -1339,6 +1343,11 @@
           "block_number": 11171550,
           "transaction_hash": "0xd9e3473a8387cb4e9ca8507557d2489dc601748852de3a900d9425e6c189a149"
         },
+        "MulticallHandler": {
+          "address": "0xA07480456C4EbaD7626e4FdF4a180709E238547b",
+          "block_number": 20298820,
+          "transaction_hash": "0xfb97ce0af15b100208ebeb38d462186a6e585fb03038f0667577203b105659bf"
+        },
         "SP1Helios": {
           "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
           "block_number": 4681034,
@@ -1348,6 +1357,11 @@
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 4828640,
           "transaction_hash": "0x1b85cbfcdb96c1c44fa09fb20add19099e5569fee57c326e4431381ab13da747"
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xE791A2669bef779Ff7A4A9CF789F8Ee2CA20a32c",
+          "block_number": 21152202,
+          "transaction_hash": "0xafd59e25211536dba5b5099e1dcb3f62ffab07441e1053f0993e0d7059db5a68"
         },
         "SpokePool": {
           "address": "0x9b4A302A548c7e313c2b74C461db7b84d3074A84",

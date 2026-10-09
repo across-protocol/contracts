@@ -153,6 +153,20 @@ contract HashUtils {
     ) external pure returns (bytes32) {
         return PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
     }
+
+    function hashSignedDepositData(
+        SpokePoolPeripheryInterface.DepositData calldata depositData,
+        uint256 deadline
+    ) external pure returns (bytes32) {
+        return PeripherySigningLib.hashSignedDepositData(depositData, deadline);
+    }
+
+    function hashSignedSwapAndDepositData(
+        SpokePoolPeriphery.SwapAndDepositData calldata swapAndDepositData,
+        uint256 deadline
+    ) external pure returns (bytes32) {
+        return PeripherySigningLib.hashSignedSwapAndDepositData(swapAndDepositData, deadline);
+    }
 }
 
 contract SpokePoolPeripheryTest is Test {
@@ -194,6 +208,10 @@ contract SpokePoolPeripheryTest is Test {
         keccak256(abi.encodePacked(PeripherySigningLib.TOKEN_PERMISSIONS_TYPE));
 
     function setUp() public {
+        // Use a realistic block time so that absolute quoteTimestamp/fillDeadline values exceed the periphery's
+        // MAX_RELATIVE_TIME_SECONDS threshold and are not reinterpreted as relative offsets.
+        vm.warp(1_700_000_000);
+
         hashUtils = new HashUtils();
 
         mockWETH = WETH9Interface(address(new WETH9()));
@@ -278,6 +296,166 @@ contract SpokePoolPeripheryTest is Test {
                 true,
                 0
             )
+        );
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeRelativeTimestamps() public {
+        // At or below MAX_RELATIVE_TIME_SECONDS, a quoteTimestamp is an age subtracted from block.timestamp and a
+        // fillDeadline is an offset added to it. A zero quoteTimestamp therefore resolves to the current block.
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+        swapData.depositData.quoteTimestamp = 0;
+        swapData.depositData.fillDeadline = fillDeadlineBuffer;
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp), // quoteTimestamp resolved from a 0 offset
+            uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline resolved from the buffer offset
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeRelativeQuoteTimestampLag() public {
+        // A non-zero relative quoteTimestamp deliberately lags the priced HubPool snapshot.
+        uint32 quoteAge = 600;
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+        swapData.depositData.quoteTimestamp = quoteAge;
+        swapData.depositData.fillDeadline = fillDeadlineBuffer;
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp) - quoteAge, // quoteTimestamp aged into the past
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeAbsoluteTimestampsUnmodified() public {
+        // Timestamps above MAX_RELATIVE_TIME_SECONDS are forwarded to the spoke pool untouched.
+        uint32 quoteTimestamp = uint32(block.timestamp) - 100;
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+        swapData.depositData.quoteTimestamp = quoteTimestamp;
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            0, // depositId
+            quoteTimestamp,
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testDepositNativeRelativeTimestamps() public {
+        deal(depositor, mintAmount);
+
+        bytes32 inputToken = address(mockWETH).toBytes32();
+        bytes32 depositorBytes32 = depositor.toBytes32();
+
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            inputToken,
+            inputToken,
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositorBytes32,
+            depositorBytes32,
+            bytes32(0), // exclusiveRelayer
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositNative{ value: mintAmount }(
+            address(ethereumSpokePool),
+            depositor,
+            depositorBytes32,
+            address(mockWETH),
+            mintAmount,
+            inputToken,
+            mintAmount,
+            destinationChainId,
+            bytes32(0), // exclusiveRelayer
+            0, // quoteTimestamp offset
+            fillDeadlineBuffer, // fillDeadline offset
+            0,
+            new bytes(0)
         );
         vm.stopPrank();
     }
@@ -663,7 +841,11 @@ contract SpokePoolPeripheryTest is Test {
 
         // Get the deposit data signature.
         bytes32 depositMsgHash = keccak256(
-            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSignedDepositData(depositData, block.timestamp)
+            )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
@@ -704,6 +886,76 @@ contract SpokePoolPeripheryTest is Test {
 
         // Check that fee recipient receives expected amount
         assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testDepositWithPermitRevertsOnceDeadlinePasses() public {
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+        // The guard is the first statement in the entrypoint, so it fires before either signature is read.
+        vm.expectRevert(SpokePoolPeriphery.SignatureExpired.selector);
+        spokePoolPeriphery.depositWithPermit(
+            depositor,
+            depositData,
+            block.timestamp - 1, // deadline
+            new bytes(65),
+            new bytes(65)
+        );
+    }
+
+    function testDepositWithPermitStaleSignatureCannotBeRedeemedLater() public {
+        // Regression test. With relative timestamps nothing in the deposit itself goes stale, and the ERC-2612
+        // permit is called inside a try/catch, so an expired permit is silently tolerated while the standing
+        // allowance from setUp still funds the pull. `deadline` is the only thing bounding the payload.
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+        depositData.baseDepositData.quoteTimestamp = 0;
+        depositData.baseDepositData.fillDeadline = fillDeadlineBuffer;
+
+        uint256 permitDeadline = block.timestamp + 1 hours;
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                uint256(0),
+                permitDeadline
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, mockERC20.hashTypedData(structHash));
+        bytes memory permitSignature = bytes.concat(r, s, bytes1(v));
+
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSignedDepositData(depositData, permitDeadline)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // A month later the payload is still perfectly well-formed; only the deadline stops it.
+        vm.warp(block.timestamp + 30 days);
+
+        vm.expectRevert(SpokePoolPeriphery.SignatureExpired.selector);
+        spokePoolPeriphery.depositWithPermit(
+            depositor,
+            depositData,
+            permitDeadline,
+            permitSignature,
+            depositDataSignature
+        );
     }
 
     function testPermitSwapAndBridgeValidWitness() public {
@@ -748,7 +1000,7 @@ contract SpokePoolPeripheryTest is Test {
             abi.encodePacked(
                 "\x19\x01",
                 spokePoolPeriphery.domainSeparator(),
-                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+                hashUtils.hashSignedSwapAndDepositData(swapAndDepositData, block.timestamp)
             )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
@@ -1949,6 +2201,51 @@ contract SpokePoolPeripheryTest is Test {
         assertEq(mockWETH.balanceOf(relayer), submissionFeeAmount);
     }
 
+    function testPermit2DepositBoundedByItsOwnPermitDeadline() public {
+        // Justifies omitting _requireSignatureNotExpired on the permit2 entrypoints: Permit2 binds its own
+        // deadline alongside the witness and enforces it, with no try/catch to swallow the failure, so the
+        // payload cannot outlive it.
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockWETH),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
+            nonce: 1,
+            deadline: block.timestamp + 100
+        });
+
+        bytes32 typehash = keccak256(
+            abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING)
+        );
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        typehash,
+                        keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted)),
+                        address(spokePoolPeriphery),
+                        permit.nonce,
+                        permit.deadline,
+                        hashUtils.hashDepositData(depositData)
+                    )
+                )
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        vm.warp(permit.deadline + 1);
+
+        vm.expectRevert(MockPermit2.SignatureExpired.selector);
+        spokePoolPeriphery.depositWithPermit2(depositor, depositData, permit, signature);
+    }
+
     function testPermit2SwapAndBridgeValidWitness() public {
         // Signature transfer details
         IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
@@ -2300,7 +2597,7 @@ contract SpokePoolPeripheryTest is Test {
             abi.encodePacked(
                 "\x19\x01",
                 spokePoolPeriphery.domainSeparator(),
-                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+                hashUtils.hashSignedSwapAndDepositData(swapAndDepositData, block.timestamp)
             )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
@@ -2369,7 +2666,11 @@ contract SpokePoolPeripheryTest is Test {
 
         // Get the deposit data signature
         bytes32 depositMsgHash = keccak256(
-            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSignedDepositData(depositData, block.timestamp)
+            )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
@@ -2464,7 +2765,11 @@ contract SpokePoolPeripheryTest is Test {
 
         // Get the deposit data signature.
         bytes32 depositMsgHash = keccak256(
-            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSignedDepositData(depositData, block.timestamp)
+            )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
@@ -2606,7 +2911,11 @@ contract SpokePoolPeripheryTest is Test {
 
         // Get the deposit data signature.
         bytes32 depositMsgHash = keccak256(
-            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSignedDepositData(depositData, block.timestamp)
+            )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
@@ -2671,7 +2980,7 @@ contract SpokePoolPeripheryTest is Test {
             abi.encodePacked(
                 "\x19\x01",
                 spokePoolPeriphery.domainSeparator(),
-                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+                hashUtils.hashSignedSwapAndDepositData(swapAndDepositData, block.timestamp)
             )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);

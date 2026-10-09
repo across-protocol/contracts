@@ -51,9 +51,13 @@ interface SpokePoolPeripheryInterface {
         // The account that can exclusively fill the deposit before the exclusivity parameter.
         bytes32 exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
-        // relative to this chain's current time or deposit will revert.
+        // relative to this chain's current time or deposit will revert. If this value is at most
+        // SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (one year), it is instead interpreted as an age in seconds
+        // which the periphery subtracts from block.timestamp; 0 therefore means "as of the current block".
         uint32 quoteTimestamp;
-        // The timestamp on the destination chain after which this deposit can no longer be filled.
+        // The timestamp on the destination chain after which this deposit can no longer be filled. If this value is
+        // at most SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (one year), it is instead interpreted as an offset
+        // which the periphery adds to block.timestamp.
         uint32 fillDeadline;
         // The timestamp or offset on the destination chain after which anyone can fill the deposit. A detailed description on
         // how the parameter is interpreted by the V3 spoke pool can be found at https://github.com/across-protocol/contracts/blob/fa67f5e97eabade68c67127f2261c2d44d9b007e/contracts/SpokePool.sol#L476
@@ -122,8 +126,10 @@ interface SpokePoolPeripheryInterface {
      * @param exclusiveRelayer Address (as bytes32) of the relayer who has exclusive rights to fill this deposit. Can be set to
      * 0x0 if no period is desired. If so, then must set exclusivityParameter to 0.
      * @param quoteTimestamp Timestamp used by relayers to compute this deposit's realizedLPFeePct which is paid
-     * to LP pool on HubPool.
-     * @param fillDeadline Timestamp after which this deposit can no longer be filled.
+     * to LP pool on HubPool. Values at or below SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (one year) are interpreted as
+     * an age in seconds subtracted from block.timestamp.
+     * @param fillDeadline Timestamp after which this deposit can no longer be filled. Values at or below
+     * SpokePoolPeriphery.MAX_RELATIVE_TIME_SECONDS (one year) are interpreted as an offset added to block.timestamp.
      * @param exclusivityParameter Timestamp or offset, after which any relayer can fill this deposit. Must set
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
@@ -159,6 +165,9 @@ interface SpokePoolPeripheryInterface {
      * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev `deadline` is bound into the swapAndDepositData signature as well as the permit, and is checked here.
+     * `permit` is called inside a try/catch, so an expired ERC-2612 signature alone would not stop a
+     * standing allowance from funding the pull; this check is what bounds the payload's lifetime.
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
      * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
      * incredibly unlikely because this would require:
@@ -248,6 +257,9 @@ interface SpokePoolPeripheryInterface {
      * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev `deadline` is bound into the depositData signature as well as the permit, and is checked here.
+     * `permit` is called inside a try/catch, so an expired ERC-2612 signature alone would not stop a
+     * standing allowance from funding the pull; this check is what bounds the payload's lifetime.
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
      * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
      * incredibly unlikely because this would require:

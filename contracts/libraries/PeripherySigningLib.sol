@@ -9,6 +9,10 @@ library PeripherySigningLib {
         "BaseDepositData(address inputToken,bytes32 outputToken,uint256 outputAmount,address depositor,bytes32 recipient,uint256 destinationChainId,bytes32 exclusiveRelayer,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes message)";
     string internal constant EIP712_DEPOSIT_DATA_TYPE =
         "DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount,address spokePool,uint256 nonce)";
+    string internal constant EIP712_SIGNED_DEPOSIT_DATA_TYPE =
+        "SignedDepositData(DepositData depositData,uint256 deadline)";
+    string internal constant EIP712_SIGNED_SWAP_AND_DEPOSIT_DATA_TYPE =
+        "SignedSwapAndDepositData(SwapAndDepositData swapAndDepositData,uint256 deadline)";
     string internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
         "SwapAndDepositData(Fees submissionFees,BaseDepositData depositData,address swapToken,address exchange,uint8 transferType,uint256 swapTokenAmount,uint256 minExpectedInputTokenAmount,bytes routerCalldata,bool enableProportionalAdjustment,address spokePool,uint256 nonce)";
 
@@ -18,6 +22,24 @@ library PeripherySigningLib {
         keccak256(abi.encodePacked(EIP712_BASE_DEPOSIT_DATA_TYPE));
     bytes32 internal constant EIP712_DEPOSIT_DATA_TYPEHASH =
         keccak256(abi.encodePacked(EIP712_DEPOSIT_DATA_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE));
+    bytes32 internal constant EIP712_SIGNED_DEPOSIT_DATA_TYPEHASH =
+        keccak256(
+            abi.encodePacked(
+                EIP712_SIGNED_DEPOSIT_DATA_TYPE,
+                EIP712_BASE_DEPOSIT_DATA_TYPE,
+                EIP712_DEPOSIT_DATA_TYPE,
+                EIP712_FEES_TYPE
+            )
+        );
+    bytes32 internal constant EIP712_SIGNED_SWAP_AND_DEPOSIT_DATA_TYPEHASH =
+        keccak256(
+            abi.encodePacked(
+                EIP712_SIGNED_SWAP_AND_DEPOSIT_DATA_TYPE,
+                EIP712_BASE_DEPOSIT_DATA_TYPE,
+                EIP712_FEES_TYPE,
+                EIP712_SWAP_AND_DEPOSIT_DATA_TYPE
+            )
+        );
     bytes32 internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPEHASH =
         keccak256(abi.encodePacked(EIP712_SWAP_AND_DEPOSIT_DATA_TYPE, EIP712_BASE_DEPOSIT_DATA_TYPE, EIP712_FEES_TYPE));
 
@@ -124,6 +146,40 @@ library PeripherySigningLib {
                     swapAndDepositData.enableProportionalAdjustment,
                     swapAndDepositData.spokePool,
                     swapAndDepositData.nonce
+                )
+            );
+    }
+
+    /**
+     * @notice Hashes a DepositData together with the deadline the signer authorized it until.
+     * @dev The permit entrypoints verify this rather than the bare DepositData hash, so the deadline cannot be
+     * swapped out by the submitter. Permit2 and ERC-3009 bind their own deadline alongside the witness the same
+     * way, so their entrypoints keep using the bare hash.
+     * @param depositData Input struct whose values are hashed.
+     * @param deadline Timestamp after which the signature is no longer redeemable.
+     */
+    function hashSignedDepositData(
+        SpokePoolPeripheryInterface.DepositData calldata depositData,
+        uint256 deadline
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(EIP712_SIGNED_DEPOSIT_DATA_TYPEHASH, hashDepositData(depositData), deadline));
+    }
+
+    /**
+     * @notice Hashes a SwapAndDepositData together with the deadline the signer authorized it until.
+     * @param swapAndDepositData Input struct whose values are hashed.
+     * @param deadline Timestamp after which the signature is no longer redeemable.
+     */
+    function hashSignedSwapAndDepositData(
+        SpokePoolPeripheryInterface.SwapAndDepositData calldata swapAndDepositData,
+        uint256 deadline
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    EIP712_SIGNED_SWAP_AND_DEPOSIT_DATA_TYPEHASH,
+                    hashSwapAndDepositData(swapAndDepositData),
+                    deadline
                 )
             );
     }
