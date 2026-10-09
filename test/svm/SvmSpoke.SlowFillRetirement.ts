@@ -34,7 +34,6 @@ const legacyRelay: RelayData = {
 
 describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
   const { provider, connection, program, chainId } = common;
-  anchor.setProvider(provider);
   const payer = (provider.wallet as anchor.Wallet).payer;
   const fillStatus = new PublicKey(legacyAccount.pubkey);
   const relayHash = calculateRelayHashUint8Array(legacyRelay, chainId);

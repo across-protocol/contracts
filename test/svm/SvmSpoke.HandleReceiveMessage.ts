@@ -1,4 +1,3 @@
-import * as anchor from "@anchor-lang/core";
 import { rejects } from "assert";
 import { AnchorError, BN, Program, web3, workspace } from "@anchor-lang/core";
 import { Keypair } from "@solana/web3.js";
@@ -19,8 +18,6 @@ import { receiveCctpV2MessageOnSpoke } from "../../scripts/svm/utils/cctpV2";
 const { provider, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
 describe("svm_spoke.handle_receive_finalized_message", () => {
-  anchor.setProvider(provider);
-
   const program = workspace.SvmSpoke as Program<SvmSpoke>;
   const messageTransmitterProgram = workspace.MessageTransmitterV2 as Program<MessageTransmitterV2>;
   const owner = provider.wallet.publicKey;

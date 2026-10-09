@@ -5,8 +5,6 @@ import { expect } from "chai";
 import { Test } from "../../target/types/test";
 
 describe("utils.events", () => {
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.Test as Program<Test>;
 
   const createLargeLog = async (size: number) => {

@@ -6,8 +6,6 @@ import { assert } from "chai";
 import { SystemProgram } from "@solana/web3.js";
 
 describe("utils.bitmap", () => {
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.Test as Program<Test>;
 
   let bitmapAccount: anchor.web3.PublicKey;

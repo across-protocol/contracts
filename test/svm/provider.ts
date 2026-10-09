@@ -8,6 +8,7 @@ export const provider = AnchorProvider.local(url, {
   commitment: "confirmed",
   preflightCommitment: "confirmed",
 });
+// Importing this module registers the provider for anchor.workspace; suites do not call setProvider again.
 setProvider(provider);
 
 // Failed transactions can make web3.js confirmation either reject or return an error, depending on RPC timing.

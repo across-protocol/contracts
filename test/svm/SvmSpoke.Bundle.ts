@@ -25,8 +25,6 @@ import { buildRelayerRefundMerkleTree, randomBigInt, readEvents, readProgramEven
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
 describe("svm_spoke.bundle", () => {
-  anchor.setProvider(provider);
-
   const nonOwner = Keypair.generate();
 
   const relayerA = Keypair.generate();

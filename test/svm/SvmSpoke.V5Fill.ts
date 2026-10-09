@@ -32,7 +32,6 @@ const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
 
 describe("svm_spoke V5 destination fill", () => {
-  anchor.setProvider(common.provider);
   const { connection, owner, provider, chainId, initializeState, program, setCurrentTime } = common;
   const svmSpoke = program as Program<SvmSpoke>;
   const wallet = (provider.wallet as anchor.Wallet).payer;

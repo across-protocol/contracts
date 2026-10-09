@@ -77,7 +77,6 @@ const signJit = (
 };
 
 describe("svm_spoke V5 source deposit", () => {
-  anchor.setProvider(common.provider);
   const { provider, connection, owner, initializeState, program } = common;
   const svmSpoke = program as Program<SvmSpoke>;
   const payer = (provider.wallet as anchor.Wallet).payer;

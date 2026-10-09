@@ -10,7 +10,6 @@ import { evmAddressToPublicKey, intToU8Array32 } from "../../src/svm/web3-v1";
 import { DepositData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
-anchor.setProvider(provider);
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
 const owner = provider.wallet.publicKey;
 const chainId = new BN(420);

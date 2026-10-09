@@ -27,8 +27,6 @@ import {
 import { requestAndConfirmAirdrop } from "./utils";
 
 describe("sponsored_cctp_src_periphery.deposit", () => {
-  anchor.setProvider(provider);
-
   const tokenMessengerMinterV2Program = workspace.TokenMessengerMinterV2 as Program<TokenMessengerMinterV2>;
   const messageTransmitterV2Program = workspace.MessageTransmitterV2 as Program<MessageTransmitterV2>;
 

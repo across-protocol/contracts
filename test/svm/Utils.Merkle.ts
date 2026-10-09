@@ -1,4 +1,4 @@
-import { provider } from "./provider";
+import "./provider";
 import * as anchor from "@anchor-lang/core";
 import { Program } from "@anchor-lang/core";
 import { Test } from "../../target/types/test";
@@ -29,8 +29,6 @@ export function randomBigInt(bytes = 32, signed = false) {
 }
 
 describe("utils.merkle", () => {
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.Test as Program<Test>;
   it("Test merkle proof verification Across", async () => {
     const relayerRefundLeaves: RelayerRefundLeaf[] = [];

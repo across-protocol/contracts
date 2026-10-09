@@ -1,4 +1,3 @@
-import * as anchor from "@anchor-lang/core";
 import { AnchorError, BN, Wallet, web3 } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
@@ -18,8 +17,6 @@ import { loadExecuteRelayerRefundLeafParams, readEventsUntilFound, relayerRefund
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
 describe("svm_spoke.refund_claims", () => {
-  anchor.setProvider(provider);
-
   const claimInitializer = Keypair.generate();
 
   const relayer = Keypair.generate();

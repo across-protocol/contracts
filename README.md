@@ -50,8 +50,9 @@ SVM local, verified, and real-Gateway builds fail on stack-overflow diagnostics 
 successfully. The shared guard is `scripts/svm/buildHelpers/runSbfBuild.sh`; run `yarn test-svm-build-guard` to test it
 without a validator or Rust build. CI invalidates cached SVM builds when these build helpers change.
 Host IDL generation and Rust tests use Rust 1.97.1, pinned in the SVM setup action; use that version locally
-when reproducing CI artifacts. The action verifies the Linux x86_64 Agave/Anchor release assets against
-the SHA-256 pins in `verified-build.json`, including cache hits. These host tools are separate from the
+when reproducing CI artifacts. CI installs Agave, Anchor and `solana-verify` with
+`scripts/svm/buildHelpers/installSvmTools.sh`, which checks the Linux x86_64 release assets against the
+SHA-256 pins in `verified-build.json` on fresh downloads and cache hits alike. These host tools are separate from the
 release image's SBF compiler.
 
 ## Test

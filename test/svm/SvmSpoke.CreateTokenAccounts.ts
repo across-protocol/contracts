@@ -15,8 +15,6 @@ import { common } from "./SvmSpoke.common";
 const { provider, program, connection, assertSE, owner } = common;
 
 describe("svm_spoke.create_token_accounts", () => {
-  anchor.setProvider(provider);
-
   const payer = (provider.wallet as Wallet).payer;
 
   let mint: PublicKey;
