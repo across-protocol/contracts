@@ -1,16 +1,19 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::prelude::*;
+use solana_keccak_hasher as keccak;
 
-use crate::{common::RelayData, error::CommonError, utils::hash_non_empty_message};
+use crate::{common::RelayData, error::CommonError};
 
-pub fn get_relay_hash(relay_data: &RelayData, chain_id: u64) -> [u8; 32] {
-    let mut input = relay_data.try_to_vec().unwrap();
+/// The caller must supply keccak256(relay_data.message), or [0; 32] for an empty message, matching EVM's
+/// _hashNonEmptyMessage. This invariant is not checked here so fills can reuse the hash in their event.
+pub fn get_relay_hash(relay_data: &RelayData, chain_id: u64, message_hash: &[u8; 32]) -> [u8; 32] {
+    let mut input = borsh::to_vec(relay_data).unwrap();
 
     // We have serialized the original RelayData struct above, but we need to replace the message field with its hash,
     // so that relay hash can be reconstructed only from FilledRelay event that does not contain the original message
     // but its hash. Trimming off the serialized message (4 bytes length + message bytes) and appending its hash turns
     // out to be less compute intensive than serializing individual struct fields.
     input.truncate(input.len() - 4 - relay_data.message.len());
-    input.extend_from_slice(&hash_non_empty_message(&relay_data.message));
+    input.extend_from_slice(message_hash);
 
     input.extend_from_slice(&chain_id.to_le_bytes());
     keccak::hash(&input).to_bytes()

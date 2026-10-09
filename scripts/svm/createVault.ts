@@ -2,8 +2,8 @@
 // permissionless operation, only requiring the caller to spend rent-exempt deposit to create the vault account that is
 // not recoverable. Similar to other chains, this enables one to deposit and fill non-whitelisted tokens.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";

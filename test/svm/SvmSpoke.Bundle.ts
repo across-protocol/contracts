@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Wallet, web3 } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Wallet, web3 } from "@anchor-lang/core";
 import {
   createMint,
   getAssociatedTokenAddressSync,
@@ -25,22 +25,14 @@ import { buildRelayerRefundMerkleTree, randomBigInt, readEvents, readProgramEven
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
 describe("svm_spoke.bundle", () => {
-  anchor.setProvider(provider);
-
   const nonOwner = Keypair.generate();
 
   const relayerA = Keypair.generate();
   const relayerB = Keypair.generate();
 
-  let state: PublicKey,
-    seed: BN,
-    mint: PublicKey,
-    relayerTA: PublicKey,
-    relayerTB: PublicKey,
-    vault: PublicKey,
-    transferLiability: PublicKey;
+  let state: PublicKey, seed: BN, mint: PublicKey, relayerTA: PublicKey, relayerTB: PublicKey, vault: PublicKey;
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   before(async () => {
@@ -65,11 +57,6 @@ describe("svm_spoke.bundle", () => {
       BigInt(initialVaultBalance),
       BigInt(initialMintAmount),
       "Initial vault balance should be equal to the minted amount"
-    );
-
-    [transferLiability] = PublicKey.findProgramAddressSync(
-      [Buffer.from("transfer_liability"), mint.toBuffer()],
-      program.programId
     );
   });
 
@@ -196,7 +183,7 @@ describe("svm_spoke.bundle", () => {
       isSolana: true,
       leafId: new BN(0),
       chainId: chainId,
-      amountToReturn: new BN(69420),
+      amountToReturn: new BN(0),
       mintPublicKey: mint,
       refundAddresses: [relayerA.publicKey, relayerB.publicKey],
       refundAmounts: [relayerARefund, relayerBRefund],
@@ -235,7 +222,6 @@ describe("svm_spoke.bundle", () => {
       rootBundle: rootBundle,
       vault: vault,
       mint: mint,
-      transferLiability,
       tokenProgram: TOKEN_PROGRAM_ID,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
@@ -274,14 +260,6 @@ describe("svm_spoke.bundle", () => {
     assert.isFalse(event.deferredRefunds, "deferredRefunds should be false");
     assertSE(event.caller, owner, "caller should match");
 
-    // Verify the tokensBridged event
-    event = events.find((event) => event.name === "tokensBridged")?.data;
-    assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
-    assertSE(event.chainId, chainId, "chainId should match");
-    assertSE(event.leafId, leaf.leafId, "leafId should match");
-    assertSE(event.l2TokenAddress, mint, "l2TokenAddress should match");
-    assertSE(event.caller, owner, "caller should match");
-
     const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
     const fRelayerABal = (await connection.getTokenAccountBalance(relayerTA)).value.amount;
     const fRelayerBBal = (await connection.getTokenAccountBalance(relayerTB)).value.amount;
@@ -301,7 +279,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -374,7 +351,6 @@ describe("svm_spoke.bundle", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -404,7 +380,6 @@ describe("svm_spoke.bundle", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -443,7 +418,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -515,7 +489,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -610,7 +583,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -703,7 +675,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -765,7 +736,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -827,7 +797,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -863,7 +832,6 @@ describe("svm_spoke.bundle", () => {
           vault: vault,
           tokenProgram: TOKEN_PROGRAM_ID,
           mint: mint,
-          transferLiability,
           systemProgram: web3.SystemProgram.programId,
           program: program.programId,
         };
@@ -1077,7 +1045,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         // Appended by Acnhor `event_cpi` macro:
         eventAuthority: PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId)[0],
@@ -1130,11 +1097,7 @@ describe("svm_spoke.bundle", () => {
       instructions.push(executeInstruction);
 
       // Execute using ALT.
-      await sendTransactionWithLookupTable(
-        connection,
-        instructions,
-        (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-      );
+      await sendTransactionWithLookupTable(connection, instructions, (provider.wallet as anchor.Wallet).payer);
 
       // Verify all refund account balances (either token or claim accounts).
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure account balances have been synced.
@@ -1175,72 +1138,61 @@ describe("svm_spoke.bundle", () => {
     });
   });
 
-  it("Increments pending amount to HubPool", async () => {
-    const initialPendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
-
-    const incrementPendingToHubPool = async (amountToReturn: BN) => {
-      const relayerRefundLeaves: RelayerRefundLeafType[] = [];
-      relayerRefundLeaves.push({
-        isSolana: true,
-        leafId: new BN(0),
-        chainId: chainId,
-        amountToReturn,
-        mintPublicKey: mint,
-        refundAddresses: [],
-        refundAmounts: [],
-      });
-      const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
-      const root = merkleTree.getRoot();
-      const proof = merkleTree.getProof(relayerRefundLeaves[0]);
-      const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
-      let stateAccountData = await program.account.state.fetch(state);
-      const rootBundleId = stateAccountData.rootBundleId;
-      const rootBundleIdBuffer = Buffer.alloc(4);
-      rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-      const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
-      const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
-      let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
-      await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
-      const proofAsNumbers = proof.map((p) => Array.from(p));
-      const executeRelayerRefundLeafAccounts = {
-        state: state,
-        rootBundle: rootBundle,
-        signer: owner,
-        vault: vault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        mint: mint,
-        transferLiability,
-        systemProgram: web3.SystemProgram.programId,
-        program: program.programId,
-      };
-      await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
-
-      await program.methods.executeRelayerRefundLeaf().accounts(executeRelayerRefundLeafAccounts).rpc();
+  it("Rejects leaf with non-zero amount to return", async () => {
+    // This Spoke pool never bridges tokens back to the HubPool, so such a leaf must fail before paying any refunds.
+    const relayerRefund = new BN(100000);
+    const relayerRefundLeaves: RelayerRefundLeafType[] = [];
+    relayerRefundLeaves.push({
+      isSolana: true,
+      leafId: new BN(0),
+      chainId: chainId,
+      amountToReturn: new BN(1_000_000),
+      mintPublicKey: mint,
+      refundAddresses: [relayerA.publicKey],
+      refundAmounts: [relayerRefund],
+    });
+    const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
+    const root = merkleTree.getRoot();
+    const proof = merkleTree.getProof(relayerRefundLeaves[0]);
+    const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
+    const stateAccountData = await program.account.state.fetch(state);
+    const rootBundleId = stateAccountData.rootBundleId;
+    const rootBundleIdBuffer = Buffer.alloc(4);
+    rootBundleIdBuffer.writeUInt32LE(rootBundleId);
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
+    const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
+    const proofAsNumbers = proof.map((p) => Array.from(p));
+    const executeRelayerRefundLeafAccounts = {
+      state: state,
+      rootBundle: rootBundle,
+      signer: owner,
+      vault: vault,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      mint: mint,
+      systemProgram: web3.SystemProgram.programId,
+      program: program.programId,
     };
+    await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
-    const zeroAmountToReturn = new BN(0);
-    await incrementPendingToHubPool(zeroAmountToReturn);
-
-    let pendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
-    assert.isTrue(pendingToHubPool.eq(initialPendingToHubPool), "Pending amount should not have changed");
-
-    const firstAmountToReturn = new BN(1_000_000);
-    await incrementPendingToHubPool(firstAmountToReturn);
-
-    pendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
-    assert.isTrue(
-      pendingToHubPool.eq(initialPendingToHubPool.add(firstAmountToReturn)),
-      "Pending amount should be incremented by first amount"
-    );
-
-    const secondAmountToReturn = new BN(2_000_000);
-    await incrementPendingToHubPool(secondAmountToReturn);
-
-    pendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
-    assert.isTrue(
-      pendingToHubPool.eq(initialPendingToHubPool.add(firstAmountToReturn.add(secondAmountToReturn))),
-      "Pending amount should be incremented by second amount"
-    );
+    const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    try {
+      await program.methods
+        .executeRelayerRefundLeaf()
+        .accounts(executeRelayerRefundLeafAccounts)
+        .remainingAccounts([{ pubkey: relayerTA, isWritable: true, isSigner: false }])
+        .rpc();
+      assert.fail("Leaf with non-zero amountToReturn should not be executed");
+    } catch (err: any) {
+      assert.strictEqual(
+        err.error.errorCode.code,
+        "NonZeroAmountToReturn",
+        "Expected error code NonZeroAmountToReturn"
+      );
+    }
+    const fVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
+    assert.strictEqual(fVaultBal, iVaultBal, "Vault balance should be unchanged");
   });
 
   it("Reversed Relayer Leaf Refunds", async () => {
@@ -1292,7 +1244,6 @@ describe("svm_spoke.bundle", () => {
         vault: vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint: mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -1365,7 +1316,6 @@ describe("svm_spoke.bundle", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -1456,7 +1406,6 @@ describe("svm_spoke.bundle", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        transferLiability,
         systemProgram: web3.SystemProgram.programId,
         program: program.programId,
       };
@@ -1538,7 +1487,6 @@ describe("svm_spoke.bundle", () => {
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -1634,7 +1582,6 @@ describe("svm_spoke.bundle", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -1725,7 +1672,6 @@ describe("svm_spoke.bundle", () => {
       vault: vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint: mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -1840,7 +1786,6 @@ describe("svm_spoke.bundle", () => {
         vault,
         tokenProgram: TOKEN_PROGRAM_ID,
         mint,
-        transferLiability,
         program: program.programId,
       };
 
@@ -1853,6 +1798,14 @@ describe("svm_spoke.bundle", () => {
       // Build the instruction to execute relayer refund leaf and write its instruction args to the data account.
       await loadExecuteRelayerRefundLeafParams(program, owner, stateAccountData.rootBundleId, leaf, proofAsNumbers);
 
+      // The loader must return with the full buffer visible to confirmed preflight, including multi-fragment proofs.
+      const confirmedParams = await program.account.executeRelayerRefundLeafParams.fetch(
+        instructionParams,
+        "confirmed"
+      );
+      assert.equal(confirmedParams.rootBundleId, rootBundleId);
+      assert.deepEqual(confirmedParams.proof, proofAsNumbers);
+
       const executeInstruction = await program.methods
         .executeRelayerRefundLeafDeferred()
         .accounts(executeAccounts)
@@ -1864,16 +1817,12 @@ describe("svm_spoke.bundle", () => {
       if (!testConfig.separatePhases) {
         // Pack all instructions in one transaction.
         if (testConfig.useAddressLookup)
-          await sendTransactionWithLookupTable(
-            connection,
-            instructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-          );
+          await sendTransactionWithLookupTable(connection, instructions, (provider.wallet as anchor.Wallet).payer);
         else
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(...instructions),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }
@@ -1884,23 +1833,19 @@ describe("svm_spoke.bundle", () => {
           await sendTransactionWithLookupTable(
             connection,
             initializeInstructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+            (provider.wallet as anchor.Wallet).payer
           );
           await sendTransactionWithLookupTable(
             connection,
             [executeInstruction],
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
+            (provider.wallet as anchor.Wallet).payer
           );
-          await sendTransactionWithLookupTable(
-            connection,
-            claimInstructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
-          );
+          await sendTransactionWithLookupTable(connection, claimInstructions, (provider.wallet as anchor.Wallet).payer);
         } else {
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(...initializeInstructions),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }
@@ -1908,7 +1853,7 @@ describe("svm_spoke.bundle", () => {
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(executeInstruction),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }
@@ -1916,7 +1861,7 @@ describe("svm_spoke.bundle", () => {
           await web3.sendAndConfirmTransaction(
             connection,
             new web3.Transaction().add(...claimInstructions),
-            [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
+            [(provider.wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
             }

@@ -1,4 +1,4 @@
-import { BorshEventCoder, Idl, utils } from "@coral-xyz/anchor";
+import { BorshEventCoder, Idl, utils } from "@anchor-lang/core";
 import web3, { Address, Commitment, GetSignaturesForAddressApi, GetTransactionApi, Signature } from "@solana/kit";
 import { RpcClient } from "./types";
 
