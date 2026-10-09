@@ -1,4 +1,4 @@
-import { provider } from "./provider";
+import "./provider";
 import * as anchor from "@anchor-lang/core";
 import { BorshCoder, EventParser, Program } from "@anchor-lang/core";
 import { expect } from "chai";
