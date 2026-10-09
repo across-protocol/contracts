@@ -9,9 +9,7 @@ contract DeploySolanaAdapterTest is Test {
         DeploySolanaAdapter deployScript = new DeploySolanaAdapter();
         vm.chainId(11155111);
         vm.setEnv("MNEMONIC", "invalid mnemonic");
-        vm.expectRevert(
-            "Solana_Adapter deployment is mainnet only: no compatible Solana devnet Spoke/Gateway is configured"
-        );
+        vm.expectRevert(abi.encodeWithSelector(DeploySolanaAdapter.UnsupportedChain.selector, uint256(11155111)));
         deployScript.run();
     }
 }

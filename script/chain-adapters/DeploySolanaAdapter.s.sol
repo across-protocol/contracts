@@ -10,6 +10,8 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IMessageTransmitterV2, ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // Mainnet only: no compatible V5 Spoke/Gateway deployment is configured on Solana devnet.
+// Stop V1 sends and finalize in-flight V1 messages before upgrading mainnet svm_spoke to the CCTP V2 receiver.
+// Do not wire this adapter into HubPool until that Spoke upgrade is complete.
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
 // 2. forge script script/chain-adapters/DeploySolanaAdapter.s.sol:DeploySolanaAdapter --rpc-url $NODE_URL_1 -vvvv
@@ -18,6 +20,8 @@ import { IMessageTransmitterV2, ITokenMessenger } from "../../contracts/external
 // 5. forge script script/chain-adapters/DeploySolanaAdapter.s.sol:DeploySolanaAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
 contract DeploySolanaAdapter is Script, Test, Constants {
+    error UnsupportedChain(uint256 chainId);
+
     // Solana mainnet addresses decoded from Base58 to bytes32.
     // The vault is the USDC ATA of the spoke state PDA (seed 0).
     // svm_spoke DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru
@@ -30,10 +34,7 @@ contract DeploySolanaAdapter is Script, Test, Constants {
 
     function run() external {
         uint256 chainId = block.chainid;
-        require(
-            chainId == getChainId("MAINNET"),
-            "Solana_Adapter deployment is mainnet only: no compatible Solana devnet Spoke/Gateway is configured"
-        );
+        if (chainId != getChainId("MAINNET")) revert UnsupportedChain(chainId);
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
