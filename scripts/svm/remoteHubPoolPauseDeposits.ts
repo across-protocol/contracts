@@ -1,5 +1,5 @@
 // Send a tokenless CCTP V2 pause/resume message through HubPool, or finish an existing transaction.
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import "dotenv/config";
 import { ethers } from "ethers";

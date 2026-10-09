@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN } from "@anchor-lang/core";
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -80,7 +80,6 @@ import {
 } from "./reference";
 
 describe("SVM V5 with the pinned real Gateway", () => {
-  anchor.setProvider(common.provider);
   const { provider, connection, owner, program: spoke, initializeState, chainId, setCurrentTime } = common;
   const loadProgram = (name: string, expectedAddress?: PublicKey) => {
     const directory = process.env.SVM_GATEWAY_IDL_DIR;

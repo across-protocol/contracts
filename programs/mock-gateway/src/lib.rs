@@ -29,7 +29,7 @@ pub mod mock_gateway {
         let vault_seeds: &[&[u8]] = &[VAULT_AUTHORITY_SEED, &[ctx.bumps.vault_authority]];
         token_interface::approve_checked(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 ApproveChecked {
                     to: ctx.accounts.gateway_vault.to_account_info(),
                     mint: ctx.accounts.mint.to_account_info(),
@@ -104,7 +104,7 @@ pub mod mock_gateway {
         if let Some(amount) = approval_amount {
             token_interface::approve_checked(
                 CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     ApproveChecked {
                         to: ctx.accounts.gateway_vault.to_account_info(),
                         mint: ctx.accounts.mint.to_account_info(),
@@ -173,7 +173,7 @@ pub mod mock_gateway {
         if consume_amount > 0 {
             token_interface::transfer_checked(
                 CpiContext::new_with_signer(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     token_interface::TransferChecked {
                         from: ctx.accounts.gateway_vault.to_account_info(),
                         mint: ctx.accounts.mint.to_account_info(),
@@ -216,7 +216,8 @@ pub struct ExecuteAdapter<'info> {
     #[account(mut, token::mint = mint, token::authority = vault_authority, token::token_program = token_program)]
     pub gateway_vault: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut, token::mint = mint, token::token_program = token_program)]
+    // Let Spoke reject intentional vault aliases in negative test fixtures.
+    #[account(mut, dup, token::mint = mint, token::token_program = token_program)]
     pub spoke_vault: InterfaceAccount<'info, TokenAccount>,
 
     #[account(mint::token_program = token_program)]
@@ -253,7 +254,8 @@ pub struct ExecuteFillAdapter<'info> {
     #[account(mut, token::mint = mint, token::authority = vault_authority, token::token_program = token_program)]
     pub gateway_vault: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut, token::mint = mint, token::token_program = token_program)]
+    // In-place fills alias the Gateway vault; negative fixtures also alias the consumption account.
+    #[account(mut, dup, token::mint = mint, token::token_program = token_program)]
     pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(mut, token::mint = mint, token::token_program = token_program)]

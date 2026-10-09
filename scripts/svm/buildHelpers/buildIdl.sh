@@ -28,10 +28,11 @@ for program in programs/*; do
     --program-name "$program_name" \
     --out "target/idl/$program_name.json" \
     --out-ts "target/types/$program_name.ts" \
-    -- $CARGO_OPTIONS
+    -- --locked $CARGO_OPTIONS
 done
 
 # Include schemas carried inside opaque V5 adapter arguments before publishing IDLs and clients.
+yarn ts-node scripts/svm/buildHelpers/restoreEventAuthorityPdas.ts
 yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts
 
 echo "Generating external program types"

@@ -1,5 +1,5 @@
 // Shared test-only Spoke wire layouts; golden-vector derivations stay independent.
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import { address } from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
 import { RelayData } from "../../src/types/svm";

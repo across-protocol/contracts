@@ -1,7 +1,7 @@
 // This script executes a fake relayer repayment with a generated leaf. Useful for testing.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,

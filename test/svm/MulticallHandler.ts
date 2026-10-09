@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Wallet, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { Wallet, Program } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   createMint,
@@ -14,13 +14,11 @@ import { common } from "./SvmSpoke.common";
 const { provider, owner, connection, assertSE } = common;
 
 describe("multicall_handler", () => {
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.MulticallHandler as Program<MulticallHandler>;
 
   let handlerSigner: PublicKey, mint: PublicKey, handlerATA: PublicKey;
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
   const mintDecimals = 6;
   const tokenAmount = 10_000_000_000;
 

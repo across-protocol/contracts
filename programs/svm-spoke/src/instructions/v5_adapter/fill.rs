@@ -1,5 +1,6 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
+use solana_keccak_hasher as keccak;
 
 use crate::{
     constants::{GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_MAGIC_PREFIX},
@@ -20,7 +21,7 @@ use super::{
 };
 
 pub(super) fn execute_v5_fill<'info>(
-    ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+    ctx: Context<'info, AdapterExecuteAcrossV5<'info>>,
     ctx_values: GatewayContextV1,
     fill_input: V5FillInput,
     jit_data: &[u8],
@@ -183,7 +184,6 @@ mod tests {
             Box::leak(data.into_boxed_slice()),
             Box::leak(Box::new(owner)),
             false,
-            0,
         )
     }
 

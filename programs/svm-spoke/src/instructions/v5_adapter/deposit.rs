@@ -20,7 +20,7 @@ use super::{
 };
 
 pub(super) fn execute_v5_deposit<'info>(
-    ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+    ctx: Context<'info, AdapterExecuteAcrossV5<'info>>,
     ctx_values: GatewayContextV1,
     deposit: AcrossDepositInput,
     jit_data: &[u8],

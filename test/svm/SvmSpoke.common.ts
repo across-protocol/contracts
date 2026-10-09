@@ -1,5 +1,6 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import { provider } from "./provider";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program } from "@anchor-lang/core";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 import { Keypair, PublicKey, Signer } from "@solana/web3.js";
 import { assert } from "chai";
@@ -9,8 +10,6 @@ import { evmAddressToPublicKey, intToU8Array32 } from "../../src/svm/web3-v1";
 import { DepositData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
-const provider = anchor.AnchorProvider.env();
-anchor.setProvider(provider);
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
 const owner = provider.wallet.publicKey;
 const chainId = new BN(420);

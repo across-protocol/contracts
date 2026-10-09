@@ -1,4 +1,4 @@
-import { Idl } from "@coral-xyz/anchor";
+import { Idl } from "@anchor-lang/core";
 import { execFileSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { isDeepStrictEqual } from "util";
@@ -8,10 +8,14 @@ import { isDeepStrictEqual } from "util";
 const idlPath = "target/idl/svm_spoke.json";
 const idl: Idl = JSON.parse(readFileSync(idlPath, "utf8"));
 const types: NonNullable<Idl["types"]> = JSON.parse(
-  execFileSync("cargo", ["run", "--quiet", "-p", "svm-spoke", "--bin", "export_v5_types", "--features", "idl-build"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "inherit"],
-  }),
+  execFileSync(
+    "cargo",
+    ["run", "--quiet", "--locked", "-p", "svm-spoke", "--bin", "export_v5_types", "--features", "idl-build"],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    }
+  ),
   // Strip Rust qualification from every string-valued `name`, including type definitions and references.
   // This matches Anchor's unqualified type names; reject conflicting type definitions below.
   (key, value) => (key === "name" && typeof value === "string" ? value.split("::").pop() : value)

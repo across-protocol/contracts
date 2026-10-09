@@ -4,14 +4,21 @@ CCTP operational scripts use CCTP V2 with Anchor / `@solana/web3.js` v1. Solana 
 
 ## Prerequisites
 
-Install dependencies with `yarn install --frozen-lockfile`, build with `yarn build-svm`, and generate current IDLs/types with `yarn generate-svm-artifacts`. Use the Anchor version matching the programs (0.31.1). Also run `yarn build-evm-foundry` for the pause and sponsored scripts, which import shared EVM helpers.
+Install dependencies with `yarn install --frozen-lockfile`, build with `yarn build-svm`, and generate current IDLs/types with `yarn generate-svm-artifacts`. Use Anchor 1.1.2 and Agave 4.1.2 from `Anchor.toml`. Validator tests use `--validator legacy` to retain `solana-test-validator`. Also run `yarn build-evm-foundry` for the pause and sponsored scripts, which import shared EVM helpers.
+
+The current clients use `@anchor-lang/core`. Circle types are generated from the reviewed snapshots in
+`idls/`, without fetching from devnet or requiring a legacy Anchor client. Update those snapshots explicitly
+when adopting a Circle interface change. Upgraded programs publish IDLs through
+Anchor 1.1.2's Program Metadata path. `squadsIdlUpgrade.ts` encodes the old in-program IDL dispatcher
+and is only suitable for legacy deployments; it must not be used for programs rebuilt with Anchor 1.1.2.
+Recompiling legacy programs does not require redeploying them during the V5 release.
 
 Set `ANCHOR_PROVIDER_URL` to the desired Solana RPC and `ANCHOR_WALLET` to a funded Solana keypair file, or supply Anchor's `--provider.cluster` and `--provider.wallet` options. The existing network resolver expects `devnet` or `mainnet` in the RPC URL; it selects the corresponding deployed program IDs and Circle Iris endpoint. Use the upgraded CCTP V2 spoke deployment. The production state seed is `0`.
 
 V5 Spoke/Gateway flows have no configured public-devnet deployment or supporting offchain infrastructure. The retained
 devnet Spoke address is a legacy deployment, not a V5 target. These scripts resolve addresses from the deployment registry
 independently of `Anchor.toml`; removing its devnet Spoke entry does not disable devnet script access. Other devnet tooling,
-including sponsored CCTP scripts and Circle IDL fetching, is retained.
+including sponsored CCTP scripts, is retained.
 
 ## Finalize an existing root/admin message or token transfer
 

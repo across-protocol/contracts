@@ -1,5 +1,5 @@
 // Finalize an existing EVM -> Solana admin/root message or token transfer. Requires only a funded Solana wallet.
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import "dotenv/config";
 import yargs from "yargs";

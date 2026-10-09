@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program } from "@anchor-lang/core";
 import {
   TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -32,7 +32,6 @@ const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
   Buffer.concat([stepId, pathId, submitter.toBuffer()]);
 
 describe("svm_spoke V5 destination fill", () => {
-  anchor.setProvider(common.provider);
   const { connection, owner, provider, chainId, initializeState, program, setCurrentTime } = common;
   const svmSpoke = program as Program<SvmSpoke>;
   const wallet = (provider.wallet as anchor.Wallet).payer;

@@ -43,7 +43,7 @@ pub(crate) fn transfer_from<'info>(
     require_keys_eq!(accounts.authority.key(), delegate.address(), SvmError::InvalidDelegatePda);
 
     transfer_checked(
-        CpiContext::new_with_signer(token_program, accounts, &[&delegate.signer_seeds()]),
+        CpiContext::new_with_signer(token_program.key(), accounts, &[&delegate.signer_seeds()]),
         amount,
         mint_decimals,
     )
@@ -71,7 +71,7 @@ mod tests {
                 }
                 let mut lamports = 0;
                 let owner = Pubkey::default();
-                let info = AccountInfo::new(&authority, false, false, &mut lamports, &mut [], &owner, false, 0);
+                let info = AccountInfo::new(&authority, false, false, &mut lamports, &mut [], &owner, false);
                 let accounts = TransferChecked {
                     from: info.clone(),
                     mint: info.clone(),

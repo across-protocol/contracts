@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program } from "@anchor-lang/core";
 import {
   ExtensionType,
   TOKEN_2022_PROGRAM_ID,
@@ -77,7 +77,6 @@ const signJit = (
 };
 
 describe("svm_spoke V5 source deposit", () => {
-  anchor.setProvider(common.provider);
   const { provider, connection, owner, initializeState, program } = common;
   const svmSpoke = program as Program<SvmSpoke>;
   const payer = (provider.wallet as anchor.Wallet).payer;

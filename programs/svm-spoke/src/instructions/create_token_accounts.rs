@@ -21,7 +21,7 @@ pub struct CreateTokenAccounts<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn create_token_accounts<'info>(ctx: Context<'_, '_, '_, 'info, CreateTokenAccounts<'info>>) -> Result<()> {
+pub fn create_token_accounts<'info>(ctx: Context<'info, CreateTokenAccounts<'info>>) -> Result<()> {
     // Remaining accounts must be passed in pairs of owner and ATA accounts.
     if ctx.remaining_accounts.len() % 2 != 0 {
         return err!(SvmError::InvalidATACreationAccounts);
@@ -32,7 +32,7 @@ pub fn create_token_accounts<'info>(ctx: Context<'_, '_, '_, 'info, CreateTokenA
         let authority = &accounts[0];
         let associated_token = &accounts[1];
 
-        let cpi_program = ctx.accounts.associated_token_program.to_account_info();
+        let cpi_program = ctx.accounts.associated_token_program.key();
         let cpi_accounts = associated_token::Create {
             payer: ctx.accounts.signer.to_account_info(),
             associated_token: associated_token.to_account_info(),

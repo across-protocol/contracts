@@ -23,9 +23,16 @@ The latest contract deployments can be found in `/broadcast/deployed-addresses.j
 
 ## Requirements
 
-This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 16.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
+This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 22.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
 
-Note if you get build issues on the initial `yarn` command try downgrading to node 20.17 (`nvm use 20.17`). If you've never used anchor before you might need to run `avm use latest` as well.
+Use Node 22 for SVM development. `Anchor.toml` pins Anchor 1.1.2 and Agave 4.1.2;
+install these versions instead of selecting a moving `latest` toolchain.
+The generated Anchor client types now use `@anchor-lang/core` 1.1.2. Consumers updating this package
+should replace their `@coral-xyz/anchor` imports where they exchange Anchor providers or program types.
+For the 6.0.0 release, coordinate the SDK/relayer package updates and Anchor import changes with the
+program and canonical IDL upgrade. Legacy `Program.at`/`fetchIdl` readers do not follow the new metadata address.
+Artifact generation restores the canonical event-authority PDA seeds omitted by Anchor 1.1's IDL output,
+preserving typed account resolution and Codama async builders. This metadata does not change program bytes.
 
 ## Build
 
@@ -42,6 +49,11 @@ matches). Bump the pin by editing that file.
 SVM local, verified, and real-Gateway builds fail on stack-overflow diagnostics even when the compiler exits
 successfully. The shared guard is `scripts/svm/buildHelpers/runSbfBuild.sh`; run `yarn test-svm-build-guard` to test it
 without a validator or Rust build. CI invalidates cached SVM builds when these build helpers change.
+Host IDL generation and Rust tests use Rust 1.97.1, pinned in the SVM setup action; use that version locally
+when reproducing CI artifacts. CI installs Agave, Anchor and `solana-verify` with
+`scripts/svm/buildHelpers/installSvmTools.sh`, which checks the Linux x86_64 release assets against the
+SHA-256 pins in `verified-build.json` on fresh downloads and cache hits alike. These host tools are separate from the
+release image's SBF compiler.
 
 ## Test
 
@@ -115,6 +127,39 @@ If either program ID changes, update its dependent PDA constants and run `cargo 
 Use `solana-verify` 0.5.1, matching CI, to build the verified Docker binaries. The build removes each
 previous binary before compilation and rejects missing or empty output; failed builds must not be used for deployment.
 Keep the stack-diagnostic guard enabled, since SBF compilers can report stack overflows with a successful exit status.
+On Linux, Docker can leave `target/deploy` owned by root. If the next verified build reports a permissions error,
+restore ownership from the repository root with `sudo chown -R "$(id -u):$(id -g)" target/deploy`, then rerun the build.
+
+`verified-build.json` pins the release image by immutable digest: Agave 4.0.3,
+`cargo-build-sbf` 4.0.0, platform-tools 1.53, and SBF architecture `v0`. This release recipe is separate
+from the Agave 4.1.2 validator/development toolchain. It was selected because the pinned verifier's
+0.5.1 image registry did not include Agave 4.1.2. Newer upstream images exist; updating this recipe
+requires rebuilding and testing the release binaries. Never infer the image from Solana SDK crate versions.
+`yarn test-svm-solana-verify` runs the full suite against **test-feature** binaries: it retains the
+mocked clock and per-test state seeds. `yarn test-svm-production` then rebuilds without that feature
+and tests seed-zero initialization, disabled test controls, Clock-sysvar expiry and event self-CPI
+in a fresh ledger. Deploy only the latter production artifacts; a test-feature build overwrites
+`target/deploy` and must never be deployed.
+
+Validator tests share `test/svm/provider.ts`, which sets the connection, transaction confirmation and
+preflight commitments to `confirmed`. Use this provider for fixture writes and dependent transactions
+so simulations cannot run against a bank that predates the fixture state.
+
+All workspace programs use Anchor 1.1.2. The Spoke retains the pre-upgrade V5 branch's custom error numbers;
+its IDL now exposes all four ranges from one enum. Sponsored CCTP's formerly overlapping enums
+now use Common 6000–6002, SVM 7000–7010 and CCTP 8000–8002. This changes error numbers in a **new**
+Sponsored CCTP build, not its existing deployment. Upgrading the source does not require redeploying
+retiring Sponsored CCTP or multicall programs.
+The bundled Sponsored CCTP IDL/client error tables describe that new build, not the existing deployment.
+For live or historical transactions from the old deployment, use the error name in the program logs and
+the matching release artifacts; numeric codes alone are ambiguous across its old enums.
+
+Before an audited release, build from a clean checkout of the reviewed commit and record the commit,
+`Cargo.lock`, `verified-build.json`, enabled features (none for production), program IDs and executable
+hashes. Release Cargo profiles use `lto = "fat"`, one codegen unit, and overflow checks.
+The lockfile pins the SBF dependency graph, including the Solana hash/secp256k1 crates.
+Verify reproducibility by comparing executable hashes; matching CLI versions alone does not prove
+byte-identical builds.
 
 ```shell
 unset IS_TEST # Ensures the production build is used (not the test feature)
@@ -130,7 +175,7 @@ export KEYPAIR=~/.config/solana/dev-wallet.json
 export PROGRAM=svm_spoke # Also repeat the deployment process for multicall_handler
 export PROGRAM_ID=$(cat target/idl/$PROGRAM.json | jq -r ".address")
 export MULTISIG= # Export the Squads vault, not the multisig address!
-export SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+export BUILD_IMAGE=$(node -p 'require("./verified-build.json").image')
 ```
 
 For the initial deployment also need these:
@@ -157,6 +202,11 @@ solana program deploy \
   --max-sign-attempts 100 \
   --use-rpc \
   target/deploy/$PROGRAM.so
+anchor idl init \
+  --provider.cluster $RPC_URL \
+  --provider.wallet $KEYPAIR \
+  --filepath target/idl/$PROGRAM.json \
+  $PROGRAM_ID
 solana program set-upgrade-authority \
   --url $RPC_URL \
   --keypair $KEYPAIR \
@@ -167,20 +217,10 @@ solana program set-upgrade-authority \
 
 Update and commit `deployments/legacy-addresses.json` with the deployed program ID and deployment slot.
 
-Upload the IDL and set the upgrade authority to the multisig:
-
-```shell
-anchor idl init \
-  --provider.cluster $RPC_URL \
-  --provider.wallet $KEYPAIR \
-  --filepath target/idl/$PROGRAM.json \
-  $PROGRAM_ID
-anchor idl set-authority \
-  --provider.cluster $RPC_URL \
-  --provider.wallet $KEYPAIR \
-  --program-id $PROGRAM_ID \
-  --new-authority $MULTISIG
-```
+Anchor 1.1.2 stores canonical IDLs in the separate Program Metadata program. Its authority follows the
+program upgrade authority; there is no separate `anchor idl set-authority` step. The sequence above initializes
+the canonical IDL before transferring program authority. If Squads already holds authority,
+perform the canonical metadata write through Squads as described below.
 
 `svm_spoke` also requires initialization and transfer of ownership on the first deployment:
 
@@ -242,34 +282,80 @@ solana program set-buffer-authority \
   --new-buffer-authority $MULTISIG
 ```
 
-Add the program ID to Squads multisig (`https://devnet.squads.so/` for devnet and `https://app.squads.so/` for mainnet) in the Developers/Programs section. Then add the upgrade filling in the buffer address and buffer refund. After creating the upgrade verify the buffer authority as prompted and proceed with initiating the upgrade. Once all required signers have approved, execute the upgrade in the transactions section.
+Add the program ID to Squads multisig (`https://devnet.squads.so/` for devnet and `https://app.squads.so/` for mainnet) in the Developers/Programs section. Prepare the upgrade with the binary buffer address and refund recipient, and verify the buffer authority as prompted. Prepare the IDL update below before approving and executing the release.
 
-Start the IDL upgrade by writing it to the buffer:
+Prepare an Anchor 1.1.2 Program Metadata buffer and transfer its authority to the Squads vault:
 
 ```shell
-anchor idl write-buffer \
+anchor idl create-buffer \
   --provider.cluster $RPC_URL \
   --provider.wallet $KEYPAIR \
-  --filepath target/idl/$PROGRAM.json \
-  $PROGRAM_ID
-export IDL_BUFFER= # Export the logged IDL buffer address from the command above
-anchor idl set-authority \
+  --filepath target/idl/$PROGRAM.json
+export IDL_BUFFER= # Export the logged metadata buffer address
+anchor idl set-buffer-authority \
   --provider.cluster $RPC_URL \
   --provider.wallet $KEYPAIR \
-  --program-id $PROGRAM_ID \
   --new-authority $MULTISIG \
   $IDL_BUFFER
 ```
 
-Construct the multisig transaction for finalizing the IDL upgrade. Copy the printed base58 encoded transaction from below command and import it into the Squads multisig for approval and execution:
+Export the canonical IDL update using the official [Program Metadata CLI](https://github.com/solana-program/program-metadata#squads-multisig).
+This replaces `scripts/svm/squadsIdlUpgrade.ts` for Anchor 1.1.2 programs:
 
 ```shell
-anchor run squadsIdlUpgrade -- \
-  --programId $PROGRAM_ID \
-  --idlBuffer $IDL_BUFFER \
-  --multisig $MULTISIG \
-  --closeRecipient $(solana address --keypair $KEYPAIR)
+export IDL_REFUND_RECIPIENT=$(solana-keygen pubkey "$KEYPAIR") # Refund the operator that funded the IDL buffer
+npx --yes @solana-program/program-metadata@0.10.0 write idl "$PROGRAM_ID" --rpc "$RPC_URL" --buffer "$IDL_BUFFER" --export "$MULTISIG" --export-encoding base58 --tx-version legacy --single-extend-per-tx --close-buffer "$IDL_REFUND_RECIPIENT"
 ```
+
+`--export` prints unsigned transactions without submitting them. `$MULTISIG` must be the **Squads vault
+PDA that holds program and buffer authority**, not the Squads multisig account. Transferring buffer
+authority does not reimburse the operator: `--close-buffer` returns that buffer's rent to the operator
+wallet above. The vault separately funds any canonical metadata account rent, so it needs sufficient
+SOL. The command creates the canonical metadata account if absent, including the first upgrade from
+Anchor 0.31, or updates it if it already exists.
+
+For the **first upgrade from Anchor 0.31**, also prepare closure of the old canonical IDL while the
+old binary still supports its dispatcher. Check its authority with the old CLI; it must match the
+Squads vault used below. The legacy IDL authority is independent of the program upgrade authority.
+
+```shell
+export LEGACY_ANCHOR="$HOME/.avm/bin/anchor-0.31.1"
+"$LEGACY_ANCHOR" idl authority --provider.cluster "$RPC_URL" "$PROGRAM_ID"
+export LEGACY_IDL_REFUND_RECIPIENT= # Set the reviewed recipient of the old canonical IDL's rent
+yarn ts-node scripts/svm/squadsIdlUpgrade.ts --programId "$PROGRAM_ID" --multisig "$MULTISIG" --closeIdl --closeRecipient "$LEGACY_IDL_REFUND_RECIPIENT"
+```
+
+This helper prints a single unsigned Base58 message containing only the legacy IDL close instruction.
+Import it **before the binary upgrade instruction in the same Squads transaction**. It closes the old
+canonical account, not the new Program Metadata buffer. Skip this step when no legacy IDL exists.
+Coordinate client updates first: old `@coral-xyz/anchor` readers stop fetching that IDL after closure.
+
+In Squads, use **Developers → Transaction Builder → Create Transaction → Add Instruction → Import as
+Base58** to import each printed transaction. Review the program ID, canonical metadata account, vault
+signer and buffer-rent recipient. Include the final IDL write and buffer closure with the binary upgrade
+in one reviewed transaction where possible. Extra transactions can be needed to create or grow the
+destination account; the uploaded buffer data does not need to be uploaded again. If the CLI prints
+multiple transactions, retain their order; `--single-extend-per-tx` limits account growth to 10 KiB per
+Squads execution. Execute any preparatory allocation/growth transactions before the final write, and do not combine those exports into
+one transaction. Then collect the required approvals and execute the release. If the binary upgrade and
+final IDL write must be separate, execute the IDL write immediately after the binary upgrade.
+
+After execution, fetch the canonical IDL and compare its JSON content with the release artifact:
+
+```shell
+anchor idl fetch --provider.cluster "$RPC_URL" --commitment finalized --out /tmp/deployed-idl.json "$PROGRAM_ID"
+jq -S . "target/idl/$PROGRAM.json" > /tmp/release-idl.sorted.json
+jq -S . /tmp/deployed-idl.json > /tmp/deployed-idl.sorted.json
+diff -u /tmp/release-idl.sorted.json /tmp/deployed-idl.sorted.json
+```
+
+Do not run `anchor idl write-buffer` directly from the operator wallet after Squads takes authority;
+the vault must authorize that write. `scripts/svm/squadsIdlUpgrade.ts` encodes the old Anchor 0.31
+dispatcher instructions and remains usable only for legacy deployments with Anchor 0.31.1. It does not
+update Program Metadata accounts. Leaving the old IDL open does not block publication of the new one,
+but old clients continue reading stale data. The upgraded binary has no legacy IDL dispatcher, so it
+cannot update or close that account or recover its rent; doing so later would require another program
+upgrade restoring that functionality. The sequence above avoids leaving that stale account behind.
 
 #### Verify
 
@@ -280,7 +366,7 @@ solana-verify verify-from-repo \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
    --library-name $PROGRAM \
-   --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
+   --base-image "$BUILD_IMAGE" \
   https://github.com/across-protocol/contracts
 ```
 
@@ -291,7 +377,7 @@ solana-verify export-pda-tx \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
   --library-name $PROGRAM  \
-  --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
+  --base-image "$BUILD_IMAGE" \
   --uploader $MULTISIG \
   https://github.com/across-protocol/contracts
 ```

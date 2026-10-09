@@ -1,5 +1,6 @@
+import { provider } from "./provider";
 import { rejects } from "assert";
-import { AnchorProvider, Wallet, workspace } from "@coral-xyz/anchor";
+import { Wallet, workspace } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { assert } from "chai";
@@ -12,7 +13,6 @@ import { receiveCctpV2Tokens } from "../../scripts/svm/utils/cctpV2";
 
 // The local validator uses Circle's programs with signature threshold 0 and the test wallet as token controller.
 describe("CCTP V2 script token delivery", () => {
-  const provider = AnchorProvider.env();
   const payer = (provider.wallet as Wallet).payer;
   const connection = provider.connection;
   const program = workspace.TokenMessengerMinterV2 as ReturnType<typeof getTokenMessengerMinterV2Program>;
@@ -62,7 +62,7 @@ describe("CCTP V2 script token delivery", () => {
         localTokenMint: mint,
         program: program.programId,
       })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
     const tokenPair = pda("token_pair", Buffer.from("0"), remoteToken.toBuffer());
     await program.methods
       .linkTokenPair({ remoteDomain: 0, remoteToken, localToken })
@@ -72,7 +72,7 @@ describe("CCTP V2 script token delivery", () => {
         tokenPair,
         program: program.programId,
       })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
     await mintTo(connection, payer, mint, custody, payer, 100000n, [], { commitment: "confirmed" });
     vault = (
       await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true, "confirmed", {

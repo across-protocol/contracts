@@ -1,5 +1,5 @@
 // Raydium CPMM source fixture. No mainnet state or privileged production keys.
-import { AnchorProvider, BN, BorshAccountsCoder, Idl, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, BorshAccountsCoder, Idl, Program } from "@anchor-lang/core";
 import {
   AccountLayout,
   ASSOCIATED_TOKEN_PROGRAM_ID,

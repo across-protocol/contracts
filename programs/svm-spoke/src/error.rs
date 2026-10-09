@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 
-// Common Errors with EVM SpokePool.
+// Anchor 1.1 requires one IDL error enum. Preserve the existing runtime ranges.
 #[error_code(offset = 6000)]
-pub enum CommonError {
+pub enum SpokeError {
+    // Common errors with EVM SpokePool (6000–6015).
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
     #[msg("Invalid fill deadline!")]
@@ -37,13 +38,9 @@ pub enum CommonError {
     InvalidExclusiveRelayer,
     #[msg("Invalid output token!")]
     InvalidOutputToken,
-}
-
-// SVM specific errors.
-#[error_code(offset = 7000)]
-pub enum SvmError {
+    // SVM specific errors (7000–7016).
     #[msg("Only the owner can call this function!")]
-    NotOwner,
+    NotOwner = 1000,
     #[msg("The fill deadline has not passed!")]
     CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
     #[msg("The caller is not the relayer!")]
@@ -76,13 +73,9 @@ pub enum SvmError {
     InvalidATACreationAccounts,
     #[msg("Invalid delegate PDA!")]
     InvalidDelegatePda,
-}
-
-// Across V5 adapter specific errors.
-#[error_code(offset = 8000)]
-pub enum V5Error {
+    // Across V5 adapter specific errors (8000–8014).
     #[msg("Malformed Across V5 wire data!")]
-    InvalidWireFormat,
+    InvalidWireFormat = 2000,
     #[msg("Invalid Across V5 parameter modification signature!")]
     InvalidParamModificationSignature,
     #[msg("Missing required Across V5 account!")]
@@ -111,13 +104,9 @@ pub enum V5Error {
     FillCommitmentMismatch,
     #[msg("Across V5 fill output amount is below the committed floor!")]
     FillOutputAmountTooLow,
-}
-
-// CCTP specific errors.
-#[error_code(offset = 9000)]
-pub enum CallDataError {
+    // CCTP specific errors (9000–9006).
     #[msg("Invalid solidity selector")]
-    InvalidSelector,
+    InvalidSelector = 3000,
     #[msg("Invalid solidity argument")]
     InvalidArgument,
     #[msg("Invalid solidity bool argument")]
@@ -131,3 +120,9 @@ pub enum CallDataError {
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
 }
+
+// Retain the existing call-site names while publishing one complete IDL error table.
+pub use SpokeError as CommonError;
+pub use SpokeError as SvmError;
+pub use SpokeError as V5Error;
+pub use SpokeError as CallDataError;

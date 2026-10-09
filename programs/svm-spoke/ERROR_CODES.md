@@ -17,8 +17,10 @@ Enum membership does not imply reachability: the old `CommonError` slow-fill slo
 Use the mapping for the program version being queried. Historical transaction errors retain the old codes;
 do not relabel them using the new table. Legacy
 numbers overlap across enums, so a number alone cannot identify a historical error. Runtime log names distinguish
-the enums. Anchor 0.31.1's generated IDL error table remains incomplete and does not reflect the explicit runtime
-offsets; use the runtime mappings below.
+the original enums. Anchor 1.1.2 uses one `SpokeError` enum with explicit range boundaries and retains
+the old group names as Rust aliases. Its generated IDL now contains all 55 errors with their correct runtime
+codes. Older Anchor 0.31.1 IDLs were incomplete and did not reflect the explicit offsets; use the mappings
+below when decoding historical errors.
 
 Before upgrading, inspect off-chain numeric-code maps and update affected consumers; stale maps can silently
 mislabel errors. See [deployment sequencing](V5_ADAPTER_SPEC.md#deployment-sequencing).

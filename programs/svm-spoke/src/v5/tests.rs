@@ -1,4 +1,5 @@
-use anchor_lang::{prelude::*, solana_program::keccak, Discriminator};
+use anchor_lang::{prelude::*, Discriminator};
+use solana_keccak_hasher as keccak;
 
 use super::{accounts::*, codec::*, jit::*};
 use crate::{

@@ -120,7 +120,6 @@ jobs:
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
-          verify_version: 0.5.1
           node_version: ${{ env.NODE_VERSION }}
 
       - name: Create verified production build
@@ -143,7 +142,6 @@ jobs:
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
-          verify_version: 0.5.1
           node_version: ${{ env.NODE_VERSION }}
 
       - name: Create verified test build

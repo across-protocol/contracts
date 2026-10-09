@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program } from "@anchor-lang/core";
 import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { assert } from "chai";
 import { randomBytes } from "crypto";
@@ -9,7 +9,6 @@ import { getSpokePoolProgram } from "../../src/svm/web3-v1";
 import { closeExpiredFillStatuses } from "../../scripts/svm/closeRelayerPdas";
 
 describe("svm_spoke V5 fill-status payer", () => {
-  anchor.setProvider(common.provider);
   const { connection, provider } = common;
   const program = common.program as Program<SvmSpoke>;
   const providerPayer = (provider.wallet as anchor.Wallet).payer;
@@ -182,10 +181,7 @@ describe("svm_spoke V5 fill-status payer", () => {
     assert.equal(await connection.getBalance(fillPayer(submitter.publicKey)), rent);
     assert.equal(await closeExpiredFillStatuses(cleanupProgram, state, target, currentTime), 0);
 
-    await program.methods
-      .setCurrentTime(currentTime + 2)
-      .accountsPartial({ state, signer: providerPayer.publicKey })
-      .rpc({ commitment: "confirmed", preflightCommitment: "confirmed" });
+    await common.setCurrentTime(program, state, Keypair.generate(), new BN(currentTime + 2));
     assert.equal(await closeExpiredFillStatuses(cleanupProgram, state, target, currentTime + 2), 2);
     assert.equal(await connection.getBalance(fillPayer(submitter.publicKey)), rent * 3);
     assert.isNotNull(await connection.getAccountInfo(statuses[3]));

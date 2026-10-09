@@ -26,7 +26,7 @@ pub struct AdapterExecuteAcrossV5<'info> {
 }
 
 pub fn adapter_execute_across_v5<'info>(
-    ctx: Context<'_, '_, '_, 'info, AdapterExecuteAcrossV5<'info>>,
+    ctx: Context<'info, AdapterExecuteAcrossV5<'info>>,
     ctx_values: GatewayContextV1,
     input: Vec<u8>,
     jit_data: Vec<u8>,
