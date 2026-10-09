@@ -46,6 +46,7 @@ contract Constants is Script {
         address cctpTokenMessenger;
         address cctpV2TokenMessenger;
         address cctpMessageTransmitter;
+        address cctpV2MessageTransmitter;
         address lineaMessageService;
         address lineaTokenBridge;
         address adapterStore;
@@ -109,6 +110,10 @@ contract Constants is Script {
                     cctpMessageTransmitter: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpMessageTransmitter")
+                    ),
+                    cctpV2MessageTransmitter: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpV2MessageTransmitter")
                     ),
                     lineaMessageService: vm.parseJsonAddress(
                         file,
