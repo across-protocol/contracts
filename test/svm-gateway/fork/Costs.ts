@@ -11,7 +11,7 @@ import {
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
-import { gunzipSync } from "zlib";
+import { gunzipSync, gzipSync } from "zlib";
 import { createHash } from "crypto";
 import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -44,7 +44,7 @@ describe("Fork cost accounting", () => {
       },
     ]);
   });
-  it("uses nearest-rank percentiles including zeros and preserves byte-identical compressed evidence", () => {
+  it("uses nearest-rank percentiles including zeros and hashes evidence independently of gzip encoding", () => {
     const rates = distribution([...Array(95).fill(0), 5, 10, 20, 100, 1000]);
     assert.equal(rates.p95, 0);
     assert.equal(rates.p99, 100);
@@ -59,8 +59,23 @@ describe("Fork cost accounting", () => {
       assert.equal(first.file, "fee-evidence.json.gz");
       const bytes = readFileSync(path.join(dir, first.file));
       assert.equal(createHash("sha256").update(bytes).digest("hex"), first.sha256);
+      assert.equal(bytes[9], 255);
+      const json = Buffer.from(JSON.stringify(input) + "\n");
+      assert.equal(createHash("sha256").update(json).digest("hex"), first.jsonSha256);
+      assert.equal(first.jsonBytes, json.length);
+      for (const os of [3, 19, 10]) {
+        const platformBytes = Buffer.from(bytes);
+        platformBytes[9] = os;
+        assert.equal(createHash("sha256").update(gunzipSync(platformBytes)).digest("hex"), first.jsonSha256);
+      }
+      const otherEncoding = gzipSync(json, { level: 1 });
+      assert.notDeepEqual(otherEncoding, bytes);
+      assert.equal(createHash("sha256").update(gunzipSync(otherEncoding)).digest("hex"), first.jsonSha256);
       assert.deepEqual(JSON.parse(gunzipSync(bytes).toString()), input);
       assert.deepEqual(writeEvidence(dir, input), first);
+      const plain = writeEvidence(dir, { small: true });
+      assert.equal(plain.file, "fee-evidence.json");
+      assert.equal(plain.jsonSha256, plain.sha256);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

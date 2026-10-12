@@ -163,7 +163,7 @@ export async function measure(
       return address;
     };
     if (fill) searched("v5_fill_payer", SPOKE, [Buffer.from("v5_fill_payer"), owner.toBuffer()], ["execution"]);
-    if (fill && flow !== "fill-external")
+    if (fill)
       searched(
         "recipient_ata",
         ASSOCIATED_TOKEN_PROGRAM_ID,

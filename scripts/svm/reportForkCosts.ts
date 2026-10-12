@@ -38,10 +38,12 @@ export function writeEvidence(output: string, evidence: unknown) {
   const compressed = json.length > 1_000_000;
   const file = compressed ? "fee-evidence.json.gz" : "fee-evidence.json";
   const bytes = compressed ? gzipSync(json, { level: 9 }) : json;
+  if (compressed) bytes[9] = 255; // Unknown OS; compression versions may still produce different bytes.
   writeFileSync(path.join(output, file), bytes);
   return {
     file,
     sha256: createHash("sha256").update(bytes).digest("hex"),
+    jsonSha256: createHash("sha256").update(json).digest("hex"),
     bytes: bytes.length,
     jsonBytes: json.length,
   };
@@ -592,7 +594,8 @@ export async function report(
     ),
     "",
     `See [${evidenceArtifact.file}](${evidenceArtifact.file}) for account mappings, all derived observations, timestamp-matched prices/base fees, CU fixtures and raw extrema witnesses.`,
-    `Evidence SHA-256: \`${evidenceArtifact.sha256}\` (${evidenceArtifact.bytes} bytes).`,
+    `Evidence JSON SHA-256 (reference, before compression): \`${evidenceArtifact.jsonSha256}\` (${evidenceArtifact.jsonBytes} bytes).`,
+    `Artifact SHA-256: \`${evidenceArtifact.sha256}\` (${evidenceArtifact.bytes} bytes).`,
     "",
   ].join("\n");
   const percentiles = [

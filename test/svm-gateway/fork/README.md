@@ -184,10 +184,14 @@ Commit the generated evidence alongside the checked-in result snapshot (named
 `<date>-fee-evidence.json`, or `.json.gz`). Update the existing study file when
 extending this draft's window; Git retains prior versions. Do not create a new
 full dated copy for each refresh or downsample away brief spikes. Above 1 MB,
-the reporter automatically uses deterministic gzip compression. Keep the generated
+the reporter automatically uses gzip compression with a normalized OS header.
+Deflate output can vary between zlib versions, so the uncompressed JSON SHA-256
+(`jsonSha256`) is the reference for comparing regenerated evidence. Keep the generated
 bytes unchanged: these files are excluded from Prettier, and the report records
-the exact artifact SHA-256 and byte length. `costs.json.evidenceArtifact` records
-the filename, hash, compressed bytes and original JSON bytes.
+both the JSON reference hash and the exact artifact SHA-256 and byte lengths.
+`costs.json.evidenceArtifact` records the filename, both hashes, artifact bytes
+and original JSON bytes. For compressed files, hash the output of `gzip -dc`
+to check the JSON reference; hash the file itself to check artifact integrity.
 
 The portable artifact contains the exact account sets, all derived per-cycle fee
 rates and matching prices/base fees, CU/signature/rent inputs, PDA bump
@@ -275,17 +279,32 @@ PDA bump searches explain an important source of seed-dependent variation:
 | Recipient ATA    | recipient and mint           | Spoke external-fill validation, or Gateway terminal transfer in in-place/swap fills |
 
 `rows[].pdaSearches` records bumps and `255 - bump` extra candidate attempts for
-the order-, submitter- and recipient-dependent accounts; it is not a syscall trace or a complete inventory
-of all program PDAs. The evidence also derives `fixtures[].tokenAccountPdas` from confirmed token-balance
-metadata and resolved account keys. This includes the external-fill recipient ATA,
-whose bump is not in the runner's selected `pdaSearches` list. Presence in the ATA
-inventory does not mean every program searches that ATA; use the phase table above.
-Shared-PDA seeds remain fixed in this study. The observed
-1,500-CU increments are consistent with additional PDA search attempts, but three
-fixtures do not characterize the tail. Simulate the actual transaction and apply
-the configured padding. If choosing fixed CU reservations later, first measure
-adversarial low-bump seeds and specify an allowance per searched PDA; do not use
-the highest observed value as a bound or assume 10% protects unseen orders.
+the order-, submitter- and recipient-dependent accounts, including external-fill
+recipient validation. It is not a syscall trace or an inventory of shared PDAs,
+whose seeds remain fixed in this study. The evidence also derives
+`fixtures[].tokenAccountPdas` from confirmed token-balance metadata and resolved
+account keys. Presence in that broader ATA inventory does not mean every program
+searches that ATA; use the phase table above.
+
+The observed execution-CU differences are exactly 1,500 times the difference in
+summed execution-phase `extraAttempts`. Three fixtures do not characterize the
+tail. For random seeds, model each candidate as off-curve with probability about
+one half: `P(extraAttempts >= k) ≈ 2^-k`. At least eight extra attempts occur
+about 0.39% of the time per searched PDA. An allowance of eight extra attempts
+(12,000 CU) is **exceeded** about 0.20% (`2^-9`). These are model probabilities, not measured failure rates;
+selected/adversarial seeds need not follow this distribution.
+
+The variable execution searches are zero for co-signed and swap deposits, one
+for StepDelegate deposits, and three for each fill flow (fill status, fill payer,
+recipient ATA). Buffer initialization and each write search one variable PDA.
+With an eight-attempt allowance for each of `n` searches, the union bound on
+exceeding the total allowance is at most approximately `n / 512` under that model
+(about 0.59% for three searches); it is conservative because unused allowances
+can offset extra attempts elsewhere. Add allowances to a baseline with zero
+extra variable attempts, not to an unadjusted sample maximum. This only models
+bump-search variation in the tested paths. Simulate the actual transaction and
+apply the configured padding whenever possible; neither the highest observed
+CU nor 10% padding on an old fixture is a bound for unseen orders.
 
 ## Interpreting distributions and bidding
 
