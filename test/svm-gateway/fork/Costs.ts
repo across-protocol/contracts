@@ -1,6 +1,6 @@
 import { strict as assert } from "assert";
 import { combinedRate, priorityLamports, rentFromReceipts, report } from "../../../scripts/svm/reportForkCosts";
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 
@@ -89,10 +89,29 @@ describe("Fork cost accounting", () => {
       assert.equal(flow.observed.networkUsd.max, 0.101); // High fee paired with $100, not $200.
       assert.equal(flow.baseline.networkLamports.min, 15050);
       assert.equal(first.archive.ignoredTrailingBytes, 8);
+      const evidence = JSON.parse(readFileSync(path.join(dir, "first/fee-evidence.json"), "utf8"));
+      assert.deepEqual(evidence.observations, [
+        [1000, 5000, 100, 0, 10000000],
+        [2000, 5000, 200, 0, 0],
+        [3000, 5000, 200, 0, null],
+      ]);
+      assert.equal(evidence.flows.fixture.executionSeries, "execution-1");
+      assert.equal(evidence.fixtures[0].transactions[1].computeUnitLimit, 100000);
+      for (const witness of evidence.extremaWitnesses) {
+        const observations = witness.markets.map((m: any) => ({
+          name: m.name,
+          error: m.failed ? "failed" : null,
+          samples: m.samples?.map(([slot, prioritizationFee]: number[]) => ({ slot, prioritizationFee })) ?? null,
+        }));
+        const derived = evidence.observations.find((r: number[]) => r[0] === witness.finishedAtMs);
+        assert.equal(combinedRate(evidence.series[0].components, observations), derived[4]);
+      }
+      assert(!JSON.stringify(evidence).includes(dir), "Review evidence must not contain local paths");
       appendFileSync(archive, '"snapshot"}\n');
       const replay = await report(measurements, archive, path.join(dir, "replay"), Buffer.byteLength(prefix));
       assert.deepEqual(replay.flows, first.flows);
       assert.equal(replay.archive.sha256, first.archive.sha256);
+      assert.deepEqual(JSON.parse(readFileSync(path.join(dir, "replay/fee-evidence.json"), "utf8")), evidence);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

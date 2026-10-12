@@ -188,6 +188,12 @@ export async function report(
     ended = false;
   const archiveHash = createHash("sha256");
   const prices: Record<string, Range> = {};
+  const series = [
+    ...new Map<string, string[]>(models.map((m: any) => [m.markets.join(","), m.markets as string[]])).values(),
+  ].map((components, i) => ({ id: `execution-${i + 1}`, components }));
+  const evidenceRows: (number | null)[][] = [];
+  const witnesses = new Map<string, unknown>();
+  const requiredMarkets = new Set<string>(models.flatMap((m: any) => m.markets));
   function consume(line: string) {
     const record = JSON.parse(line);
     if (record.kind === "run") {
@@ -281,6 +287,35 @@ export async function report(
         }
       }
     }
+    evidenceRows.push([
+      at,
+      baseOk ? base : null,
+      priced ? price.usd_per_sol : null,
+      global,
+      ...series.map((s) => rates.get(s.components.join(",")) ?? null),
+    ]);
+    const extremaTimes = new Set(
+      [...Object.values(prices), ...Object.values(flows).flatMap((f) => Object.values(f.observed))].flatMap((r) => [
+        r.minAt.at,
+        r.maxAt.at,
+      ])
+    );
+    const timestamp = new Date(at).toISOString();
+    if (extremaTimes.has(timestamp))
+      witnesses.set(timestamp, {
+        finishedAtMs: at,
+        baseLamportsPerSignature: baseOk ? base : null,
+        solUsd: priced ? price : null,
+        markets: record.markets
+          .filter((m: Observation) => requiredMarkets.has(m.name))
+          .map((m: Observation) => ({
+            name: m.name,
+            failed: m.error !== null,
+            // Tuples preserve the complete returned RPC windows without repeating field names.
+            samples: m.samples?.map((s) => [s.slot, s.prioritizationFee]) ?? null,
+          })),
+      });
+    for (const key of witnesses.keys()) if (!extremaTimes.has(key)) witnesses.delete(key);
   }
   // Freeze a byte prefix while the collector keeps appending. Ignore only the final unterminated line.
   let pending = "";
@@ -377,6 +412,56 @@ export async function report(
   };
   mkdirSync(output, { recursive: true });
   writeFileSync(path.join(output, "costs.json"), JSON.stringify(result, null, 2) + "\n");
+  const evidence = {
+    schema: 1,
+    units: { rates: "micro-lamports per CU", baseFee: "lamports per signature", price: "USD per SOL" },
+    archive: {
+      runId: result.archive.runId,
+      revision: result.archive.revision,
+      bytes: archiveBytes,
+      sha256: result.archive.sha256,
+      first: result.archive.first,
+      last: result.archive.last,
+      snapshots,
+      ignoredTrailingBytes: result.archive.ignoredTrailingBytes,
+    },
+    reportSourceSha256: result.reportSourceSha256,
+    inputHashes: hashes,
+    estimator: header.estimator,
+    baseline: result.baseline,
+    markets: header.manifest.markets.filter((m: Market) => requiredMarkets.has(m.name)),
+    series,
+    flows: Object.fromEntries(
+      Object.entries(flows).map(([name, flow]) => [
+        name,
+        {
+          executionSeries: series.find((s) => s.components.join(",") === flow.markets.join(","))!.id,
+          auxiliarySeries: "global",
+          missingFeeSnapshots: flow.missingFeeSnapshots,
+          missingUsdSnapshots: flow.missingUsdSnapshots,
+          executionRange: flow.observed.executionRate,
+          auxiliaryRange: flow.observed.auxiliaryRate,
+        },
+      ])
+    ),
+    columns: ["finishedAtMs", "baseLamportsPerSignature", "solUsd", "global", ...series.map((s) => s.id)],
+    observations: evidenceRows,
+    extremaWitnesses: [...witnesses.values()],
+    fixtures: models.map((m: any) => ({
+      flow: m.flow,
+      sample: m.sample,
+      rent: m.rent,
+      transactions: [...m.transactions, ...m.setup].map((tx: TxMeasurement) => ({
+        phase: tx.phase,
+        computeUnitLimit: tx.computeUnitLimit,
+        signatureCount: tx.signatureCount,
+      })),
+    })),
+    interpretation:
+      "Derived observations preserve every collected cycle, including null missing values; ranges count CU fixtures as well as cycles. Witnesses contain the raw RPC windows at the reported rate/cost/price extrema. These selected witnesses cannot independently prove the absence of a larger value elsewhere in the full archive. The archive prefix hash identifies that full local source. No RPC URLs, credentials or local filesystem paths are exported.",
+  };
+  // Compact tuple arrays keep the review artifact small enough to commit and refresh.
+  writeFileSync(path.join(output, "fee-evidence.json"), JSON.stringify(evidence) + "\n");
   const fmt = (r: Range, divisor: number, digits: number) => {
     const lo = (r.min / divisor).toFixed(digits),
       hi = (r.max / divisor).toFixed(digits);
@@ -391,6 +476,21 @@ export async function report(
           `| ${name} | ${fmt(f.baseline[metric + "Lamports"], 1e9, 9)} | $${fmt(f.baseline[metric + "Usd"], 1, 6)} | ${fmt(f.observed[metric + "Lamports"], 1e9, 9)} | $${fmt(f.observed[metric + "Usd"], 1, 6)} |`
       ),
     ].join("\n");
+  const rateTable = [
+    "## Priority-fee estimator ranges",
+    "",
+    "Rates are micro-lamports/CU. Approval, buffer and lookup-table setup use the global series. The fixed baseline is 50,000 for every transaction.",
+    "",
+    "| Flow | Execution minimum | Execution maximum | Auxiliary minimum | Auxiliary maximum | Missing fee snapshots |",
+    "|---|---:|---:|---:|---:|---:|",
+    ...Object.entries(flows).map(
+      ([name, f]) =>
+        `| ${name} | ${f.observed.executionRate.min} | ${f.observed.executionRate.max} | ${f.observed.auxiliaryRate.min} | ${f.observed.auxiliaryRate.max} | ${f.missingFeeSnapshots} |`
+    ),
+    "",
+    "See [fee-evidence.json](fee-evidence.json) for account mappings, all derived observations, timestamp-matched prices/base fees, CU fixtures and raw extrema witnesses.",
+    "",
+  ].join("\n");
   const md = `# V5 flow SOL/USD costs\n\nArchive: ${result.archive.first} – ${result.archive.last}; ${snapshots} complete snapshots.\nBaseline price: $${latestPrice.usd_per_sol}/SOL (${new Date(latestPrice.fetched_at_ms).toISOString()}, ${latestPrice.source}); base fee ${latestBase.lamports} lamports/signature.\n\n## Network fees, including approval and buffer transactions\n\n${table("network")}\n\n## Network fees plus newly locked fill-status rent\n\n${table("outlay")}\n\n## Refundable capital and optional setup\n\n| Flow | Temporary buffer SOL (returned) | Fill-status SOL (retained until close) | Fresh lookup table SOL rent | Fresh-table 50k fees + retained rent SOL |\n|---|---:|---:|---:|---:|\n${Object.entries(
     flows
   )
@@ -401,7 +501,7 @@ export async function report(
     .join(
       "\n"
     )}\n\n## Interpretation\n\n${result.assumptions.map((s) => `- ${s}`).join("\n")}\n\nSee costs.json for per-transaction baseline costs, exact extrema timestamps/sample IDs, component mappings, missing observations, optional setup costs in SOL/USD and input hashes.\n`;
-  writeFileSync(path.join(output, "costs.md"), md);
+  writeFileSync(path.join(output, "costs.md"), md.replace("## Network fees,", rateTable + "\n## Network fees,"));
   return result;
 }
 if (require.main === module) {

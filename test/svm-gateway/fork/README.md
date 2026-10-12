@@ -166,9 +166,22 @@ yarn report-svm-fork-costs target/fork-cu-20261012-final ../jussi/measurements/c
 ```
 
 Choose a new output directory each time. Repeating the command with the growing
-archive includes the additional snapshots. It writes `costs.md` and `costs.json`.
-The latter includes per-transaction baseline fees, CU sample IDs and timestamps
+archive includes the additional snapshots. It writes `costs.md`, `costs.json`,
+and `fee-evidence.json`. The full JSON includes per-transaction baseline fees, CU sample IDs and timestamps
 for extrema, component sets, missing-data counts, prices, and input hashes.
+
+Commit `fee-evidence.json` alongside each checked-in result snapshot (named
+`<date>-fee-evidence.json`). This portable review artifact contains the exact
+account sets, all derived per-cycle fee rates and corresponding prices/base fees,
+the CU/signature/rent inputs, and full raw RPC windows for the rate/cost/price
+extrema. `columns` describes each compact observation row; `series` and `flows`
+map execution rates to account components. Rates are micro-lamports/CU. `null`
+means missing, not zero. Paths, RPC endpoints and credentials are excluded.
+
+These inputs let reviewers recalculate the cost tables without the local archive
+and inspect how the extreme rates were derived. Selected raw witnesses do not
+independently prove that no larger value existed elsewhere in the full archive;
+its exact prefix hash remains the reference for a full audit.
 
 The report freezes the archive's byte length at startup and processes complete
 newline-terminated records within that prefix, so the collector can keep running.
