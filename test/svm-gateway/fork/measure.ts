@@ -4,6 +4,7 @@ import { AddressLookupTableProgram, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKE
 import {
   NATIVE_MINT,
   TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   getAccount,
   getAssociatedTokenAddressSync,
   createApproveCheckedInstruction,
@@ -155,6 +156,20 @@ export async function measure(
       : [];
     let commands: Command[],
       jit: Buffer[] = [];
+    const pdaSearches: { name: string; address: string; bump: number; extraAttempts: number; phases: string[] }[] = [];
+    const searched = (name: string, program: PublicKey, seeds: Buffer[], phases: string[]) => {
+      const [address, bump] = PublicKey.findProgramAddressSync(seeds, program);
+      pdaSearches.push({ name, address: address.toBase58(), bump, extraAttempts: 255 - bump, phases });
+      return address;
+    };
+    if (fill) searched("v5_fill_payer", SPOKE, [Buffer.from("v5_fill_payer"), owner.toBuffer()], ["execution"]);
+    if (fill && flow !== "fill-external")
+      searched(
+        "recipient_ata",
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+        [recipientKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), outputMint.toBuffer()],
+        ["execution"]
+      );
     let status: PublicKey | undefined;
     if (!fill) {
       const input = spoke.coder.types.encode("v5AdapterInput", {
@@ -240,7 +255,7 @@ export async function measure(
       const digest = hash(
         Buffer.concat([bytes.subarray(0, bytes.length - 4 - relay.message.length), hash(relay.message), u64(chainId)])
       );
-      status = pda(SPOKE, Buffer.from("fills"), digest);
+      status = searched("fills", SPOKE, [Buffer.from("fills"), digest], ["execution"]);
       const value = spoke.coder.types.encode("v5FillJit", {
         relayData: relay,
         repaymentChainId: new BN(1),
@@ -250,7 +265,12 @@ export async function measure(
     }
     const deadline = flow === "deposit-step-delegate" ? BigInt(now + 600) : undefined;
     const funder = deadline
-      ? pda(GATEWAY, Buffer.from("step_funding"), pathId(selected), inputMint.toBuffer(), u64(deadline))
+      ? searched(
+          "step_funding",
+          GATEWAY,
+          [Buffer.from("step_funding"), pathId(selected), inputMint.toBuffer(), u64(deadline)],
+          ["execution"]
+        )
       : undefined;
     if (funder)
       await recorder.send(flow, "approval", [
@@ -259,7 +279,12 @@ export async function measure(
     const params = executeParams(selected, pathId(selected), [], jit, [funding(source, inputMint, amount, deadline)]);
     const disc = gateway.idl.accounts!.find((x) => x.name === "executeParamsAccount")!.discriminator;
     const digest = Buffer.from(sha256(Buffer.concat([Buffer.from(disc), params])), "hex");
-    const buffer = pda(GATEWAY, Buffer.from("execute_params"), owner.toBuffer(), digest);
+    const buffer = searched(
+      "execute_params",
+      GATEWAY,
+      [Buffer.from("execute_params"), owner.toBuffer(), digest],
+      ["buffer-init", "buffer-write"]
+    );
     await recorder.send(flow, "buffer-init", [
       await gateway.methods
         .initializeExecuteParams([...digest], params.length)
@@ -316,8 +341,18 @@ export async function measure(
       recentSlot: slot,
     });
     await recorder.send(flow, "setup-alt", [create]);
+    // A shared table cannot assume any particular order, wallet, or recipient was preloaded.
+    const staticKeys = new Set(
+      [buffer, status, funder, source, recipientAta, fillPayer]
+        .filter((k): k is PublicKey => !!k)
+        .map((k) => k.toBase58())
+    );
     const addresses = [
-      ...new Map(instruction.keys.filter((k) => !k.isSigner).map((k) => [k.pubkey.toBase58(), k.pubkey])).values(),
+      ...new Map(
+        instruction.keys
+          .filter((k) => !k.isSigner && !staticKeys.has(k.pubkey.toBase58()))
+          .map((k) => [k.pubkey.toBase58(), k.pubkey])
+      ).values(),
     ];
     for (let i = 0; i < addresses.length; i += 20)
       await recorder.send(flow, "setup-alt", [
@@ -367,6 +402,11 @@ export async function measure(
       amount: amount.toString(),
       delivered: delivered.toString(),
       pathId: pathId(selected).toString("hex"),
+      pdaSearches,
+      lookupTable: {
+        policy: "shared accounts only; order and wallet accounts static",
+        addresses: addresses.map((k) => k.toBase58()),
+      },
       paramsBytes: params.length,
       bufferFragmentBytes: BUFFER_FRAGMENT_BYTES,
       execution: tx.consumedCu,

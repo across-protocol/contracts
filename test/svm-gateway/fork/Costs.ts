@@ -1,10 +1,70 @@
 import { strict as assert } from "assert";
-import { combinedRate, priorityLamports, rentFromReceipts, report } from "../../../scripts/svm/reportForkCosts";
+import {
+  combinedRate,
+  distribution,
+  tokenAccountPdas,
+  writeEvidence,
+  priorityLamports,
+  rentFromReceipts,
+  report,
+} from "../../../scripts/svm/reportForkCosts";
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
+import { gunzipSync } from "zlib";
+import { createHash } from "crypto";
+import { PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { recipient, USDC } from "./config";
 
 describe("Fork cost accounting", () => {
+  it("derives ATA bumps from confirmed token owners and resolves lookup keys without labelling arbitrary token accounts as ATAs", () => {
+    const owner = recipient(2).publicKey;
+    const address = getAssociatedTokenAddressSync(USDC, owner).toBase58();
+    const receipt = {
+      transaction: { message: { staticAccountKeys: [PublicKey.default.toBase58()] } },
+      meta: {
+        loadedAddresses: { writable: [address], readonly: [] },
+        preTokenBalances: [0, 1].map((accountIndex) => ({
+          accountIndex,
+          owner: owner.toBase58(),
+          mint: USDC.toBase58(),
+          programId: TOKEN_PROGRAM_ID.toBase58(),
+        })),
+      },
+    };
+    assert.deepEqual(tokenAccountPdas(receipt), [
+      {
+        address,
+        owner: owner.toBase58(),
+        mint: USDC.toBase58(),
+        tokenProgram: TOKEN_PROGRAM_ID.toBase58(),
+        bump: 254,
+        extraAttempts: 1,
+      },
+    ]);
+  });
+  it("uses nearest-rank percentiles including zeros and preserves byte-identical compressed evidence", () => {
+    const rates = distribution([...Array(95).fill(0), 5, 10, 20, 100, 1000]);
+    assert.equal(rates.p95, 0);
+    assert.equal(rates.p99, 100);
+    assert.equal(rates.zeroPercent, 95);
+    assert.throws(() => distribution([]));
+    const dir = mkdtempSync(path.join(tmpdir(), "fee-evidence-"));
+    try {
+      const input = {
+        observations: Array.from({ length: 30000 }, (_, i) => [i, 5000, 110, 0, 0, 0, 1000000, 1000000]),
+      };
+      const first = writeEvidence(dir, input);
+      assert.equal(first.file, "fee-evidence.json.gz");
+      const bytes = readFileSync(path.join(dir, first.file));
+      assert.equal(createHash("sha256").update(bytes).digest("hex"), first.sha256);
+      assert.deepEqual(JSON.parse(gunzipSync(bytes).toString()), input);
+      assert.deepEqual(writeEvidence(dir, input), first);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("pairs prices with fee observations and reproduces a frozen archive prefix while it grows", async () => {
     const dir = mkdtempSync(path.join(tmpdir(), "fork-costs-"));
     try {
@@ -89,6 +149,11 @@ describe("Fork cost accounting", () => {
       assert.equal(flow.observed.networkUsd.max, 0.101); // High fee paired with $100, not $200.
       assert.equal(flow.baseline.networkLamports.min, 15050);
       assert.equal(first.archive.ignoredTrailingBytes, 8);
+      const d = first.distributions.fixture;
+      assert.equal(d.executionRate.count, 2);
+      assert.equal(d.executionRate.zeroPercent, 50);
+      assert.equal(d.fixtures[0].networkUsd.p50, 0.002);
+      assert.equal(d.fixtures[0].networkUsd.p99, 0.101);
       const evidence = JSON.parse(readFileSync(path.join(dir, "first/fee-evidence.json"), "utf8"));
       assert.deepEqual(evidence.observations, [
         [1000, 5000, 100, 0, 10000000],

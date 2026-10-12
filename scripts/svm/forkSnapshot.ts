@@ -122,7 +122,14 @@ export async function captureSnapshot(url: string, output: string): Promise<Snap
     };
     writeFileSync(output, JSON.stringify(snapshot, null, 2) + "\n");
     return snapshot;
-  } catch {
+  } catch (error) {
+    // Locally generated assertions/layout errors contain public account data only.
+    // Provider/SDK errors may echo credentials separately from their URL: keep them opaque.
+    if (
+      error instanceof assert.AssertionError ||
+      (error instanceof Error && error.message === "Unexpected CPMM pool layout")
+    )
+      throw error;
     throw new Error(
       "Mainnet snapshot capture failed (RPC details redacted); check provider access and expected account layouts"
     );

@@ -55,7 +55,7 @@
     "bench-svm-cu": "NODE_OPTIONS=--no-experimental-strip-types ts-node scripts/svm/benchmarkCu.ts",
     "estimate-svm-fork-cu": "NODE_OPTIONS=--no-experimental-strip-types ts-node scripts/svm/estimateForkCu.ts",
     "report-svm-fork-costs": "NODE_OPTIONS=--no-experimental-strip-types ts-node scripts/svm/reportForkCosts.ts",
-    "test-svm-gateway-vectors": "NODE_OPTIONS=--no-experimental-strip-types ts-mocha -p tsconfig.json -t 10000 test/svm-gateway/PathVectors.ts",
+    "test-svm-gateway-vectors": "NODE_OPTIONS=--no-experimental-strip-types ts-mocha -p tsconfig.json -t 10000 test/svm-gateway/PathVectors.ts test/svm-gateway/fork/Estimator.ts test/svm-gateway/fork/Costs.ts",
     "test-svm-solana-verify": "IS_TEST=true yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn generate-svm-test-idls && anchor test --skip-build --validator legacy",
     "test": "yarn test-evm && yarn test-svm",
     "test-verified": "yarn test-evm && yarn test-svm-solana-verify",

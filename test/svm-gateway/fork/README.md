@@ -11,6 +11,16 @@ snapshot after extending the fee-collection window using the cost-report command
 below; a new validator run is needed only when changing the CU workload or its
 program/runtime inputs.
 
+## Collector source
+
+The fee collector, Dockerfile, and `examples/svm-fees/spoke-components.json`
+are published in [Jussi PR #525](https://github.com/across-protocol/jussi/pull/525),
+pinned at [`7962291b881eaa82a8b181b03a3cbb8799652581`](https://github.com/across-protocol/jussi/tree/7962291b881eaa82a8b181b03a3cbb8799652581).
+Follow its `docs/svm-fee-measurement.md` to collect from a clean revision.
+The original 881-cycle archive records its pre-publication dirty revision;
+that provenance is retained. Subsequent collection uses a separate archive
+with the clean collector commit and the same account manifest.
+
 ## Programs and artifacts
 
 The default lane **does not build Spoke**. It reads the production Spoke SHA-256
@@ -167,21 +177,29 @@ yarn report-svm-fork-costs target/fork-cu-20261012-final ../jussi/measurements/c
 
 Choose a new output directory each time. Repeating the command with the growing
 archive includes the additional snapshots. It writes `costs.md`, `costs.json`,
-and `fee-evidence.json`. The full JSON includes per-transaction baseline fees, CU sample IDs and timestamps
+and `fee-evidence.json` (or `fee-evidence.json.gz` above 1 MB of compact JSON). The full JSON includes per-transaction baseline fees, CU sample IDs and timestamps
 for extrema, component sets, missing-data counts, prices, and input hashes.
 
-Commit `fee-evidence.json` alongside each checked-in result snapshot (named
-`<date>-fee-evidence.json`). This portable review artifact contains the exact
-account sets, all derived per-cycle fee rates and corresponding prices/base fees,
-the CU/signature/rent inputs, and full raw RPC windows for the rate/cost/price
-extrema. `columns` describes each compact observation row; `series` and `flows`
-map execution rates to account components. Rates are micro-lamports/CU. `null`
-means missing, not zero. Paths, RPC endpoints and credentials are excluded.
+Commit the generated evidence alongside the checked-in result snapshot (named
+`<date>-fee-evidence.json`, or `.json.gz`). Update the existing study file when
+extending this draft's window; Git retains prior versions. Do not create a new
+full dated copy for each refresh or downsample away brief spikes. Above 1 MB,
+the reporter automatically uses deterministic gzip compression. Keep the generated
+bytes unchanged: these files are excluded from Prettier, and the report records
+the exact artifact SHA-256 and byte length. `costs.json.evidenceArtifact` records
+the filename, hash, compressed bytes and original JSON bytes.
 
-These inputs let reviewers recalculate the cost tables without the local archive
-and inspect how the extreme rates were derived. Selected raw witnesses do not
-independently prove that no larger value existed elsewhere in the full archive;
-its exact prefix hash remains the reference for a full audit.
+The portable artifact contains the exact account sets, all derived per-cycle fee
+rates and matching prices/base fees, CU/signature/rent inputs, PDA bump
+metadata and shared lookup-table addresses (for refreshed CU runs), and full raw
+RPC windows at the rate/cost/price extrema. `columns` describes each compact row;
+`series` and `flows` map execution rates to components. Rates are micro-lamports/CU.
+`null` means missing, not zero. Paths, RPC endpoints and credentials are excluded.
+
+Reviewers can recalculate the tables without the local archive and inspect how
+extreme rates were derived. Selected raw witnesses do not independently prove
+that no larger value existed elsewhere in the full archive; the prefix hash
+identifies that full source. For compressed evidence, use `gzip -dc <file>`.
 
 The report freezes the archive's byte length at startup and processes complete
 newline-terminated records within that prefix, so the collector can keep running.
@@ -236,3 +254,52 @@ Cost-accounting tests:
 ```sh
 NODE_OPTIONS=--no-experimental-strip-types yarn ts-mocha -p tsconfig.json test/svm-gateway/fork/Costs.ts
 ```
+
+## CU variation and transaction layout
+
+The reusable lookup table holds shared programs, mints, vaults, state, delegates
+and pool accounts. Parameter buffers, fill-status PDAs, StepDelegate funding PDAs,
+source/recipient ATAs and the submitter's fill payer remain static keys. The actual
+submitted transaction uses this layout; `transactions[].bytes` records its packet
+size and the runner enforces 1232 bytes. Fresh-table fees/rent use this same table.
+
+CU extrema are the lowest/highest **observed** values, not production constants.
+PDA bump searches explain an important source of seed-dependent variation:
+
+| Account          | Seed variation               | Search phases                                                                       |
+| ---------------- | ---------------------------- | ----------------------------------------------------------------------------------- |
+| `execute_params` | submitter and parameter hash | buffer initialization and each write; execution verifies the stored bump            |
+| `step_funding`   | step, mint and deadline      | StepDelegate deposit execution                                                      |
+| `fills`          | relay hash                   | fill execution                                                                      |
+| `v5_fill_payer`  | submitter                    | fill execution; varies across sampled wallets                                       |
+| Recipient ATA    | recipient and mint           | Spoke external-fill validation, or Gateway terminal transfer in in-place/swap fills |
+
+`rows[].pdaSearches` records bumps and `255 - bump` extra candidate attempts for
+the order-, submitter- and recipient-dependent accounts; it is not a syscall trace or a complete inventory
+of all program PDAs. The evidence also derives `fixtures[].tokenAccountPdas` from confirmed token-balance
+metadata and resolved account keys. This includes the external-fill recipient ATA,
+whose bump is not in the runner's selected `pdaSearches` list. Presence in the ATA
+inventory does not mean every program searches that ATA; use the phase table above.
+Shared-PDA seeds remain fixed in this study. The observed
+1,500-CU increments are consistent with additional PDA search attempts, but three
+fixtures do not characterize the tail. Simulate the actual transaction and apply
+the configured padding. If choosing fixed CU reservations later, first measure
+adversarial low-bump seeds and specify an allowance per searched PDA; do not use
+the highest observed value as a bound or assume 10% protects unseen orders.
+
+## Interpreting distributions and bidding
+
+The reporter uses nearest-rank p50/p90/p95/p99, including zero rates and excluding
+cycles missing a base fee or required rate. USD statistics additionally require a
+valid same-cycle quote. Cost percentiles are calculated separately for each CU
+fixture, then displayed as the minimum/maximum of those fixture percentiles.
+They do not multiply a rate percentile by a recent SOL price. Cycles receive equal
+weight; overlapping RPC windows are correlated and are not independent slots or
+observed transaction landing probabilities.
+
+Jussi's `with_bid_volatility_margin` adjusts priority rates only when bidding,
+using its configured per-chain percentage (or global default). These reports
+exclude that margin. For a bid comparison, apply the actual configured margin to
+the rate before per-transaction priority-fee rounding; do not multiply signature
+fees or rent, or apply another CU margin. A zero rate stays zero. The fixed 50k
+scenario remains the explicitly requested baseline, independent of bidding policy.

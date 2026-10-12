@@ -3,6 +3,9 @@ import { strict as assert } from "assert";
 import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
 import { createHash } from "crypto";
 import path from "path";
+import { gzipSync } from "zlib";
+import { PublicKey } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { TxMeasurement } from "../../test/svm-gateway/fork/recorder";
 
 type Market = { name: string; writable_accounts: string[] };
@@ -14,6 +17,35 @@ type Observation = {
 type Point = { sample: number; at: string; solUsd?: number; executionRate?: number; globalRate?: number };
 type Range = { count: number; min: number; max: number; minAt: Point; maxAt: Point };
 const safe = (n: number) => assert(Number.isSafeInteger(n) && n >= 0, "Expected nonnegative safe integer");
+// Nearest-rank quantiles; observations are equally weighted polling cycles, not independent slots.
+export function distribution(values: number[]) {
+  assert(values.length > 0 && values.every((v) => Number.isFinite(v) && v >= 0));
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (p: number) => sorted[Math.ceil((p / 100) * sorted.length) - 1];
+  return {
+    count: sorted.length,
+    zeroPercent: (100 * sorted.filter((v) => v === 0).length) / sorted.length,
+    min: sorted[0],
+    p50: at(50),
+    p90: at(90),
+    p95: at(95),
+    p99: at(99),
+    max: sorted[sorted.length - 1],
+  };
+}
+export function writeEvidence(output: string, evidence: unknown) {
+  const json = Buffer.from(JSON.stringify(evidence) + "\n");
+  const compressed = json.length > 1_000_000;
+  const file = compressed ? "fee-evidence.json.gz" : "fee-evidence.json";
+  const bytes = compressed ? gzipSync(json, { level: 9 }) : json;
+  writeFileSync(path.join(output, file), bytes);
+  return {
+    file,
+    sha256: createHash("sha256").update(bytes).digest("hex"),
+    bytes: bytes.length,
+    jsonBytes: json.length,
+  };
+}
 export function priorityLamports(limit: number, rate: number) {
   safe(limit);
   safe(rate);
@@ -71,6 +103,34 @@ function fee(tx: TxMeasurement, base: number, rate: number) {
   const total = base * tx.signatureCount + priorityLamports(tx.computeUnitLimit, rate);
   safe(total);
   return total;
+}
+// Supplement runner diagnostics from confirmed account metadata, including external-fill recipients.
+// An ATA being present does not imply every program searches its bump; see the phase inventory.
+export function tokenAccountPdas(receipt: any) {
+  const keys = [
+    ...receipt.transaction.message.staticAccountKeys,
+    ...receipt.meta.loadedAddresses.writable,
+    ...receipt.meta.loadedAddresses.readonly,
+  ];
+  return (receipt.meta.preTokenBalances ?? []).flatMap((balance: any) => {
+    if (!balance.owner || !balance.programId) return [];
+    const [address, bump] = PublicKey.findProgramAddressSync(
+      [balance.owner, balance.programId, balance.mint].map((key) => new PublicKey(key).toBuffer()),
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+    return address.toBase58() === keys[balance.accountIndex]
+      ? [
+          {
+            address: address.toBase58(),
+            owner: balance.owner,
+            mint: balance.mint,
+            tokenProgram: balance.programId,
+            bump,
+            extraAttempts: 255 - bump,
+          },
+        ]
+      : [];
+  });
 }
 export function rentFromReceipts(receipts: any[]) {
   let buffer = 0,
@@ -153,6 +213,9 @@ export async function report(
       transactions: row.transactions as TxMeasurement[],
       setup: receipts.filter((t) => t.phase === "setup-alt") as TxMeasurement[],
       rent: rentFromReceipts(receipts),
+      tokenAccountPdas: tokenAccountPdas(receipts.find((t) => t.phase === "execution").receipt),
+      pdaSearches: measured.rows.find((r: any) => r.flow === row.flow && r.sample === row.sample)?.pdaSearches,
+      lookupTable: measured.rows.find((r: any) => r.flow === row.flow && r.sample === row.sample)?.lookupTable,
     };
   });
   const flows: Record<
@@ -374,6 +437,36 @@ export async function report(
         .digest("hex"),
     ])
   );
+  const distributions = Object.fromEntries(
+    Object.entries(flows).map(([name, flow]) => {
+      const index = 4 + series.findIndex((s) => s.components.join(",") === flow.markets.join(","));
+      const valid = evidenceRows.filter((r) => r[1] !== null && r[3] !== null && r[index] !== null);
+      const fixtures = models
+        .filter((m: any) => m.flow === name)
+        .map((m: any) => {
+          const costs = valid.map((r) => ({
+            lamports: m.transactions.reduce(
+              (sum: number, tx: TxMeasurement) => sum + fee(tx, r[1]!, tx.phase === "execution" ? r[index]! : r[3]!),
+              0
+            ),
+            price: r[2],
+          }));
+          return {
+            sample: m.sample,
+            networkSol: distribution(costs.map((c) => c.lamports / 1e9)),
+            networkUsd: distribution(costs.filter((c) => c.price !== null).map((c) => (c.lamports / 1e9) * c.price!)),
+          };
+        });
+      return [
+        name,
+        {
+          executionRate: distribution(valid.map((r) => r[index]!)),
+          auxiliaryRate: distribution(valid.map((r) => r[3]!)),
+          fixtures,
+        },
+      ];
+    })
+  );
   const result = {
     schema: 1,
     generatedAt: new Date().toISOString(),
@@ -400,6 +493,7 @@ export async function report(
     prices,
     flows,
     baselineFixtures,
+    distributions,
     assumptions: [
       "Fixed 50k applies to every transaction; snapshot rates use global for approval/buffer/ALT and global plus matched shared components for execution.",
       "Combine raw rates by common slot maximum, then latest 25 slots, drop zero rates, integer mean; missing observations are not zero.",
@@ -407,11 +501,13 @@ export async function report(
       `Submitted CU limits already include the measured ${measured.provenance.marginBps} bps simulation margin. Round priority fees up separately for every transaction.`,
       "Existing source/recipient ATAs and reusable lookup tables are assumed for primary totals. Fresh-table totals include measured setup fees and locked rent.",
       "Outlay adds retained fill-status rent to network fees. Buffer rent is fully refunded by execution and shown only as temporary capital. Principal transfers, swap slippage/protocol fees, tips, retries and later account-close fees are excluded.",
+      "Jussi applies its configured per-chain bid volatility margin to priority rates when bidding; these raw estimates and the fixed 50k scenario exclude that margin. Base signature fees and rent are not multiplied. Zero priority rates remain zero.",
+      "Percentiles use nearest rank across cost-eligible polling cycles, with zeros included and missing base/rates excluded; USD additionally requires a valid same-cycle quote. Cost percentiles are calculated per CU fixture, then shown as the range across fixtures. Overlapping slot windows are correlated; percentiles are not landing probabilities.",
       "Shared-account history excludes synthetic/user-specific wallet activity. Historical minima/estimator ranges are observations, not landing guarantees.",
     ],
   };
   mkdirSync(output, { recursive: true });
-  writeFileSync(path.join(output, "costs.json"), JSON.stringify(result, null, 2) + "\n");
+
   const evidence = {
     schema: 1,
     units: { rates: "micro-lamports per CU", baseFee: "lamports per signature", price: "USD per SOL" },
@@ -447,21 +543,28 @@ export async function report(
     columns: ["finishedAtMs", "baseLamportsPerSignature", "solUsd", "global", ...series.map((s) => s.id)],
     observations: evidenceRows,
     extremaWitnesses: [...witnesses.values()],
+    distributions,
     fixtures: models.map((m: any) => ({
       flow: m.flow,
       sample: m.sample,
       rent: m.rent,
+      pdaSearches: m.pdaSearches,
+      tokenAccountPdas: m.tokenAccountPdas,
+      lookupTable: m.lookupTable,
       transactions: [...m.transactions, ...m.setup].map((tx: TxMeasurement) => ({
         phase: tx.phase,
         computeUnitLimit: tx.computeUnitLimit,
         signatureCount: tx.signatureCount,
+        bytes: tx.bytes,
+        consumedCu: tx.consumedCu,
       })),
     })),
     interpretation:
       "Derived observations preserve every collected cycle, including null missing values; ranges count CU fixtures as well as cycles. Witnesses contain the raw RPC windows at the reported rate/cost/price extrema. These selected witnesses cannot independently prove the absence of a larger value elsewhere in the full archive. The archive prefix hash identifies that full local source. No RPC URLs, credentials or local filesystem paths are exported.",
   };
   // Compact tuple arrays keep the review artifact small enough to commit and refresh.
-  writeFileSync(path.join(output, "fee-evidence.json"), JSON.stringify(evidence) + "\n");
+  const evidenceArtifact = writeEvidence(output, evidence);
+  writeFileSync(path.join(output, "costs.json"), JSON.stringify({ ...result, evidenceArtifact }, null, 2) + "\n");
   const fmt = (r: Range, divisor: number, digits: number) => {
     const lo = (r.min / divisor).toFixed(digits),
       hi = (r.max / divisor).toFixed(digits);
@@ -488,7 +591,39 @@ export async function report(
         `| ${name} | ${f.observed.executionRate.min} | ${f.observed.executionRate.max} | ${f.observed.auxiliaryRate.min} | ${f.observed.auxiliaryRate.max} | ${f.missingFeeSnapshots} |`
     ),
     "",
-    "See [fee-evidence.json](fee-evidence.json) for account mappings, all derived observations, timestamp-matched prices/base fees, CU fixtures and raw extrema witnesses.",
+    `See [${evidenceArtifact.file}](${evidenceArtifact.file}) for account mappings, all derived observations, timestamp-matched prices/base fees, CU fixtures and raw extrema witnesses.`,
+    `Evidence SHA-256: \`${evidenceArtifact.sha256}\` (${evidenceArtifact.bytes} bytes).`,
+    "",
+  ].join("\n");
+  const percentiles = [
+    "## Priority-fee distribution",
+    "",
+    "Nearest-rank rates in micro-lamports/CU, one observation per cost-eligible cycle; zeros included.",
+    "",
+    "| Flow | Cycles | Zero % | p50 | p90 | p95 | p99 | Maximum |",
+    "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ...Object.entries(distributions).map(([name, d]) => {
+      const r = d.executionRate;
+      return `| ${name} | ${r.count} | ${r.zeroPercent.toFixed(2)} | ${r.p50} | ${r.p90} | ${r.p95} | ${r.p99} | ${r.max} |`;
+    }),
+    "",
+    "## Network-fee percentiles",
+    "",
+    "Each cell spans the per-fixture percentiles across the measured CU fixtures. USD costs use the quote from the same cycle. Base fees remain payable when priority rates are zero. These overlapping observations do not measure landing probabilities.",
+    "",
+    "| Flow | Unit | p50 | p90 | p95 | p99 |",
+    "|---|---|---:|---:|---:|---:|",
+    ...Object.entries(distributions).flatMap(([name, d]) =>
+      (["Sol", "Usd"] as const).map((unit) => {
+        const cells = [50, 90, 95, 99].map((p) => {
+          const v = d.fixtures.map((f: any) => f[`network${unit}`][`p${p}`]);
+          const lo = Math.min(...v).toFixed(unit === "Sol" ? 9 : 6),
+            hi = Math.max(...v).toFixed(unit === "Sol" ? 9 : 6);
+          return lo === hi ? lo : `${lo}–${hi}`;
+        });
+        return `| ${name} | ${unit.toUpperCase()} | ${cells.join(" | ")} |`;
+      })
+    ),
     "",
   ].join("\n");
   const md = `# V5 flow SOL/USD costs\n\nArchive: ${result.archive.first} – ${result.archive.last}; ${snapshots} complete snapshots.\nBaseline price: $${latestPrice.usd_per_sol}/SOL (${new Date(latestPrice.fetched_at_ms).toISOString()}, ${latestPrice.source}); base fee ${latestBase.lamports} lamports/signature.\n\n## Network fees, including approval and buffer transactions\n\n${table("network")}\n\n## Network fees plus newly locked fill-status rent\n\n${table("outlay")}\n\n## Refundable capital and optional setup\n\n| Flow | Temporary buffer SOL (returned) | Fill-status SOL (retained until close) | Fresh lookup table SOL rent | Fresh-table 50k fees + retained rent SOL |\n|---|---:|---:|---:|---:|\n${Object.entries(
@@ -501,7 +636,10 @@ export async function report(
     .join(
       "\n"
     )}\n\n## Interpretation\n\n${result.assumptions.map((s) => `- ${s}`).join("\n")}\n\nSee costs.json for per-transaction baseline costs, exact extrema timestamps/sample IDs, component mappings, missing observations, optional setup costs in SOL/USD and input hashes.\n`;
-  writeFileSync(path.join(output, "costs.md"), md.replace("## Network fees,", rateTable + "\n## Network fees,"));
+  writeFileSync(
+    path.join(output, "costs.md"),
+    md.replace("## Network fees,", rateTable + "\n" + percentiles + "\n## Network fees,")
+  );
   return result;
 }
 if (require.main === module) {
