@@ -233,7 +233,13 @@ recalculates execution CU attribution, costs, missing-data counts, rates and per
 summaries and raw extrema witnesses, and verifies the document including its
 evidence hashes. Measurement provenance and interpretation are embedded in the
 evidence, so there is no hand-assembled report header. CI runs this check through
-`test-svm-gateway-vectors` and checks the exporter/replay source hashes.
+`test-svm-gateway-vectors`. Exporter/replay source hashes identify the code used
+for the historical export; they are provenance, not a requirement that the current
+tools remain byte-identical. After a renderer change, regenerate the Markdown from
+the committed evidence without re-exporting the raw archive.
+Replay requires at least one raw witness at each flow's cost-eligible minimum and
+maximum execution rate, global rate and SOL/USD price. Ties need only one witness;
+missing fee/price observations cannot satisfy the corresponding extrema check.
 Selected witnesses still cannot prove completeness of the full raw archive.
 
 ## Recalculate SOL/USD costs from a growing Jussi archive

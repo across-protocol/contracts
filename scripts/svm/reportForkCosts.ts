@@ -264,6 +264,7 @@ export async function report(
     ended = false;
   const archiveHash = createHash("sha256");
   const prices: Record<string, Range> = {};
+  const eligiblePrices: Record<string, Range> = {};
   const series = [
     ...new Map<string, string[]>(models.map((m: any) => [m.markets.join(","), m.markets as string[]])).values(),
   ].map((components, i) => ({ id: `execution-${i + 1}`, components }));
@@ -335,6 +336,7 @@ export async function report(
         continue;
       }
       if (!priced) flow.missingUsdSnapshots++;
+      else add(eligiblePrices, name, price.usd_per_sol, { sample: -1, at: new Date(at).toISOString() });
       for (const model of models.filter((m: any) => m.flow === name)) {
         const point = {
           sample: model.sample,
@@ -371,10 +373,11 @@ export async function report(
       ...series.map((s) => rates.get(s.components.join(",")) ?? null),
     ]);
     const extremaTimes = new Set(
-      [...Object.values(prices), ...Object.values(flows).flatMap((f) => Object.values(f.observed))].flatMap((r) => [
-        r.minAt.at,
-        r.maxAt.at,
-      ])
+      [
+        ...Object.values(prices),
+        ...Object.values(eligiblePrices),
+        ...Object.values(flows).flatMap((f) => Object.values(f.observed)),
+      ].flatMap((r) => [r.minAt.at, r.maxAt.at])
     );
     const timestamp = new Date(at).toISOString();
     if (extremaTimes.has(timestamp))

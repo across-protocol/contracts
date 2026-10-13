@@ -204,6 +204,26 @@ export function verifyEvidence(e: FeeEvidence) {
   assert.equal(observations.get(e.baseline.baseFee.at)?.[1], e.baseline.baseFee.lamports);
   assert.equal(e.observations.filter((r) => r[2] !== null).slice(-1)[0]?.[2], e.baseline.solUsd.usd_per_sol);
   assert.equal(new Set(e.fixtures.map((f) => `${f.flow}:${f.sample}`)).size, e.fixtures.length);
+  const witnessed = new Set(e.extremaWitnesses.map((w) => w.finishedAtMs));
+  assert.equal(witnessed.size, e.extremaWitnesses.length, "Duplicate extrema witness");
+  const requireWitnesses = (rows: (number | null)[][], column: number, label: string) => {
+    const present = rows.filter((r) => r[column] !== null);
+    assert(present.length > 0, `No eligible observations for ${label}`);
+    let min = Infinity,
+      max = -Infinity;
+    for (const row of present) {
+      min = Math.min(min, row[column]!);
+      max = Math.max(max, row[column]!);
+    }
+    for (const [kind, value] of [
+      ["minimum", min],
+      ["maximum", max],
+    ] as const)
+      assert(
+        present.some((r) => r[column] === value && witnessed.has(r[0]!)),
+        `Missing ${kind} witness for ${label}`
+      );
+  };
   for (const f of e.fixtures) {
     assert(e.flows[f.flow], "Unknown fixture flow");
     Object.values(f.rent).forEach(integer);
@@ -240,6 +260,9 @@ export function verifyEvidence(e: FeeEvidence) {
     const fixtures = e.fixtures.filter((f) => f.flow === name);
     assert(fixtures.length > 0);
     const valid = e.observations.filter((r) => r[1] !== null && r[3] !== null && r[index] !== null);
+    requireWitnesses(valid, index, `${name} execution rate`);
+    requireWitnesses(valid, 3, `${name} global rate`);
+    requireWitnesses(valid, 2, `${name} SOL/USD`);
     const result: (typeof flows)[string] = (flows[name] = {
       baseline: {},
       observed: {},
@@ -359,30 +382,36 @@ export function loadEvidence(file: string, expectedJsonHash?: string) {
 
 export async function renderEvidenceReport(e: FeeEvidence, artifact: Artifact) {
   const { flows, distributions } = verifyEvidence(e);
+  const number = (value: number, digits = 0) =>
+    value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
   const range = (b: Pick<Bounds, "min" | "max">, scale = 1, digits = 6) => {
-    const lo = (b.min / scale).toFixed(digits),
-      hi = (b.max / scale).toFixed(digits);
+    const lo = number(b.min / scale, digits),
+      hi = number(b.max / scale, digits);
     return lo === hi ? lo : `${lo}–${hi}`;
   };
   const table = (head: string[], rows: (string | number)[][]) =>
-    [head, head.map(() => "---"), ...rows].map((r) => `| ${r.join(" | ")} |`).join("\n");
+    [head, head.map((h) => (["Flow", "Unit"].includes(h) ? "---" : "---:")), ...rows]
+      .map((r) => `| ${r.map((cell) => (typeof cell === "number" ? number(cell) : cell)).join(" | ")} |`)
+      .join("\n");
   const names = Object.keys(flows),
     m = e.measurement;
   const sections = [
     "# V5 Spoke CU and SOL/USD cost study",
-    `Status: **${e.archive.ended ? "Collection ended" : "Interim — collection in progress at this cutoff"}**. Observation window: **${e.archive.first} – ${e.archive.last}**; ${e.archive.snapshots} snapshots.`,
+    `Status: **${e.archive.ended ? "Collection ended" : "Interim — collection in progress at this cutoff"}**. Observation window: **${e.archive.first} – ${e.archive.last}**; ${number(e.archive.snapshots)} snapshots.`,
     "## Provenance and reproduction",
-    `- Collector commit: [\`${e.archive.revision}\`](https://github.com/across-protocol/jussi/tree/${e.archive.revision}).\n- Archive prefix: ${e.archive.bytes} bytes; SHA-256 \`${e.archive.sha256}\`.\n- Exporter SHA-256: \`${e.reportSourceSha256}\`.\n- Replay/renderer SHA-256: \`${e.replaySourceSha256}\`.\n- Maximum sampling gap: ${e.archive.maxGapMs / 1000} seconds; ignored trailing bytes: ${e.archive.ignoredTrailingBytes}.`,
-    ...(m.sourceCommit
-      ? [
-          `- Spoke source: \`${m.sourceCommit}\`; [verified CI](https://github.com/across-protocol/contracts/actions/runs/${m.ciRun}).\n- Spoke binary SHA-256: \`${m.spokeBinarySha256}\`.\n- Mainnet snapshot slot: ${m.snapshotSlot}; validator: ${m.validator}.`,
-        ]
-      : []),
-    `Evidence: [${artifact.file}](${artifact.file}). JSON reference SHA-256: \`${artifact.jsonSha256}\` (${artifact.jsonBytes} bytes). Artifact SHA-256: \`${artifact.sha256}\` (${artifact.bytes} bytes).`,
+    [
+      `- Collector commit: [\`${e.archive.revision}\`](https://github.com/across-protocol/jussi/tree/${e.archive.revision}).\n- Archive prefix: ${number(e.archive.bytes)} bytes; SHA-256 \`${e.archive.sha256}\`.\n- Exporter SHA-256: \`${e.reportSourceSha256}\`.\n- Replay/renderer SHA-256: \`${e.replaySourceSha256}\`.\n- Maximum sampling gap: ${e.archive.maxGapMs / 1000} seconds; ignored trailing bytes: ${number(e.archive.ignoredTrailingBytes)}.`,
+      ...(m.sourceCommit
+        ? [
+            `- Spoke source: \`${m.sourceCommit}\`; [verified CI](https://github.com/across-protocol/contracts/actions/runs/${m.ciRun}).\n- Spoke binary SHA-256: \`${m.spokeBinarySha256}\`.\n- Mainnet snapshot slot: ${m.snapshotSlot === undefined ? "not recorded" : number(m.snapshotSlot)}; validator: ${m.validator}.`,
+          ]
+        : []),
+    ].join("\n"),
+    `Evidence: [${artifact.file}](${artifact.file}). JSON reference SHA-256: \`${artifact.jsonSha256}\` (${number(artifact.jsonBytes)} bytes). Artifact SHA-256: \`${artifact.sha256}\` (${number(artifact.bytes)} bytes).`,
     `From the repository root, regenerate this document with \`yarn replay-svm-fork-costs <evidence.json[.gz]> <report.md>\`; add \`--check\` to verify it without writing. See the [run guide](../README.md) for collection and refresh instructions.`,
     e.interpretation,
     "## Execution CU and packet size",
-    `${e.fixtures.length} execution fixtures; ${e.fixtures.reduce((n, f) => n + f.transactions.length, 0)} total transaction receipts. CU extrema are observed samples, not fixed reservation bounds. See the [PDA search model](../README.md#cu-variation-and-transaction-layout).`,
+    `${number(e.fixtures.length)} execution fixtures; ${number(e.fixtures.reduce((n, f) => n + f.transactions.length, 0))} total transaction receipts. CU extrema are observed samples, not fixed reservation bounds. See the [PDA search model](../README.md#cu-variation-and-transaction-layout).`,
     table(
       ["Flow", "Lowest observed CU", "Highest observed CU", "Execution packet bytes"],
       names.map((name) => {
@@ -499,7 +528,7 @@ export async function renderEvidenceReport(e: FeeEvidence, artifact: Artifact) {
         ])
       )
     ),
-    `Fixed baseline: 50,000 micro-lamports/CU on every transaction; ${e.baseline.baseFee.lamports} lamports/signature; $${e.baseline.solUsd.usd_per_sol}/SOL (${new Date(e.baseline.solUsd.fetched_at_ms).toISOString()}, ${e.baseline.solUsd.source}).`,
+    `Fixed baseline: 50,000 micro-lamports/CU on every transaction; ${number(e.baseline.baseFee.lamports)} lamports/signature; $${e.baseline.solUsd.usd_per_sol}/SOL (${new Date(e.baseline.solUsd.fetched_at_ms).toISOString()}, ${e.baseline.solUsd.source}).`,
     ...(["network", "outlay"] as const).flatMap((metric) => [
       metric === "network"
         ? "## Network fees, including approval and buffer transactions"

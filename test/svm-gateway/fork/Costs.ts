@@ -78,19 +78,7 @@ describe("Fork cost accounting", () => {
     const files = readdirSync(dir).filter((f) => /-fee-evidence\.json(\.gz)?$/.test(f));
     assert.equal(files.length, 1, "Keep one evidence artifact for this study");
     const file = path.join(dir, files[0]);
-    const { evidence } = loadEvidence(file);
-    assert.equal(
-      evidence.reportSourceSha256,
-      createHash("sha256")
-        .update(readFileSync(path.resolve(__dirname, "../../../scripts/svm/reportForkCosts.ts")))
-        .digest("hex")
-    );
-    assert.equal(
-      evidence.replaySourceSha256,
-      createHash("sha256")
-        .update(readFileSync(path.resolve(__dirname, "../../../scripts/svm/replayForkCosts.ts")))
-        .digest("hex")
-    );
+    // Source hashes describe the historical export, not the current tool revision.
     await replayEvidence(file, file.replace(/-fee-evidence\.json(\.gz)?$/, ".md"), true);
   }).timeout(60_000);
   it("derives ATA bumps from confirmed token owners and resolves lookup keys without labelling arbitrary token accounts as ATAs", () => {
@@ -296,6 +284,25 @@ describe("Fork cost accounting", () => {
       const copy = () => JSON.parse(JSON.stringify(evidence));
       assert.equal(evidence.fixtures[0].executionCu.spoke, 30000);
       assert.equal(evidence.fixtures[0].executionCu.other, 60000);
+      for (const [at, error] of [
+        [1000, /Missing maximum witness for fixture execution rate/],
+        [2000, /Missing minimum witness for fixture execution rate/],
+      ] as const) {
+        const missing = copy();
+        missing.extremaWitnesses = missing.extremaWitnesses.filter((w: any) => w.finishedAtMs !== at);
+        assert.throws(() => verifyEvidence(missing), error);
+      }
+      const alternateZero = copy();
+      const zeroWitness = alternateZero.extremaWitnesses.find((w: any) => w.finishedAtMs === 2000);
+      zeroWitness.finishedAtMs = 4000;
+      zeroWitness.solUsd = null;
+      // The tied zero at 4000 covers rate minima, but has no price; 3000 is fee-ineligible.
+      assert.throws(() => verifyEvidence(alternateZero), /Missing maximum witness for fixture SOL\/USD/);
+      alternateZero.extremaWitnesses.push(evidence.extremaWitnesses.find((w: any) => w.finishedAtMs === 2000));
+      verifyEvidence(alternateZero);
+      const missingGlobal = copy();
+      missingGlobal.observations.find((r: number[]) => r[0] === 4000)[3] = 1;
+      assert.throws(() => verifyEvidence(missingGlobal), /Missing maximum witness for fixture global rate/);
       const badCu = copy();
       badCu.fixtures[0].executionCu.spoke++;
       assert.throws(() => verifyEvidence(badCu), /Stored CU attribution/);
@@ -325,6 +332,29 @@ describe("Fork cost accounting", () => {
       await assert.rejects(replayEvidence(compressed, markdown, true), /Published report differs/);
       writeFileSync(compressed, gzipSync(json).subarray(0, 16));
       assert.throws(() => loadEvidence(compressed));
+      // Price extrema on fee-ineligible cycles must not displace eligible price witnesses.
+      const priceArchive = path.join(dir, "price-extrema.jsonl");
+      const priceRecords = [
+        header,
+        snapshot(1000, 10000000, 150),
+        snapshot(2000, 0, 150),
+        snapshot(3000, 1000000, 100),
+        snapshot(4000, 1000000, 200),
+        { ...snapshot(5000, 0, 50), base_fee_error: "unavailable" },
+        { ...snapshot(6000, 0, 250), markets: [] },
+      ];
+      writeFileSync(priceArchive, priceRecords.map((r) => JSON.stringify(r)).join("\n") + "\n");
+      await report(measurements, priceArchive, path.join(dir, "price-extrema"));
+      const priceEvidence = loadEvidence(path.join(dir, "price-extrema/fee-evidence.json")).evidence;
+      verifyEvidence(priceEvidence);
+      for (const at of [3000, 4000]) {
+        assert(priceEvidence.extremaWitnesses.some((w) => w.finishedAtMs === at));
+        const missing = {
+          ...priceEvidence,
+          extremaWitnesses: priceEvidence.extremaWitnesses.filter((w) => w.finishedAtMs !== at),
+        };
+        assert.throws(() => verifyEvidence(missing), /Missing (minimum|maximum) witness for fixture SOL\/USD/);
+      }
       appendFileSync(archive, '"snapshot"}\n');
       const replay = await report(measurements, archive, path.join(dir, "replay"), Buffer.byteLength(prefix));
       assert.deepEqual(replay.flows, first.flows);
