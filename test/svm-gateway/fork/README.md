@@ -34,18 +34,23 @@ receive a new tag and commit pin so existing archives stay reproducible.
 
 ## Programs and artifacts
 
-The default lane **does not build Spoke**. It reads the production Spoke SHA-256
-from a successful CI job's `Production Spoke SHA-256` log line, checks the existing
-`target/deploy/svm_spoke.so` against it, and downloads that run's production IDL.
-It also rejects differences in program sources, Cargo dependencies, Anchor config,
-verified-build recipe, or build helpers relative to the CI source commit.
+The default lane **downloads Spoke; no local build is needed**. It uses
+[`v6.0.0-beta.3`](https://github.com/across-protocol/contracts/releases/tag/v6.0.0-beta.3):
+the production `.so` from the GitHub release archive and the production IDL from
+the exact-version npm package. [spoke-release.json](spoke-release.json) pins the
+release commit, successful build run, archive URLs, archive SHA-256 hashes and
+extracted binary/IDL hashes. Downloads never follow `latest` or the npm `beta` tag.
+Only the required archive members are extracted, directly into the run directory.
 
-Contracts CI uploads IDLs/generated clients, not production `.so` files. Supply an
-existing matching verified binary with `SVM_FORK_SPOKE_BINARY` if it is elsewhere.
-If no matching binary is available, build it using the repository's verified
-production build workflow first; this estimator will not silently substitute a
-test-feature or different-compiler binary. The initial validated source is epic
-commit `7df8c6fd445b4ec7fd74f6d1d983e5378139c3d4`, CI run `37975260687`.
+The runner rejects differences in program sources, Cargo dependencies, Anchor
+config, verified-build recipe or build helpers relative to the release commit.
+It fetches that commit from the public contracts repository if missing locally.
+If the sources or build inputs change, publish a matching release and update the
+complete release pin before measuring. There is no local-build or CI-artifact fallback.
+
+Beta.3's production binary and IDL exactly match the artifacts used in the existing
+study (source `7df8c6fd445b4ec7fd74f6d1d983e5378139c3d4`, CI run `37975260687`).
+Those historical measurement records remain unchanged; no CU rerun is needed.
 The measured Spoke is prospective V5 code; the paused deployed Spoke is not used.
 
 Gateway, SPL Token, Associated Token, Raydium CPMM executables, Gateway config,
@@ -57,14 +62,14 @@ bank context. Executable hashes are checked again on the local validator.
 
 ## Run
 
-Use Node 22, installed locked Yarn dependencies, Agave 4.1.2, and authenticated
-GitHub CLI. The first run needs GitHub and a mainnet RPC. `SVM_FEE_RPC_URL` is the
+Use Node 22, installed locked Yarn dependencies, Agave 4.1.2, Git, curl and tar.
+The first run needs public GitHub/npm downloads and a mainnet RPC; GitHub CLI
+authentication and existing `target/deploy` binaries are unnecessary. `SVM_FEE_RPC_URL` is the
 same secret environment variable used by the fee collector; it is never written
-to the output. `SVM_FORK_CI_RUN` defaults to a successful Checks run at HEAD;
-select an earlier compatible run after committing tooling-only changes.
+to the output.
 
 ```sh
-SVM_FORK_CI_RUN=37975260687 SVM_FORK_FEE_MANIFEST=../jussi/examples/svm-fees/spoke-components.json yarn estimate-svm-fork-cu
+SVM_FORK_FEE_MANIFEST=../jussi/examples/svm-fees/spoke-components.json yarn estimate-svm-fork-cu
 ```
 
 `SVM_FORK_OUTPUT` must be a new directory (default `target/fork-cu-<timestamp>`).
@@ -76,16 +81,18 @@ Set `SVM_FORK_FLOWS` to a comma-separated selection of `deposit-cosigned`,
 `deposit-step-delegate`, `fill-external`, `fill-inplace`, `swap-deposit`,
 `fill-swap`, and `fill-jit-swap` to run only those flows in the specified order.
 
-A completed or partially completed run can supply artifacts and its saved snapshot
-for offline replay, without fetching CI or mainnet and without rebuilding:
+A saved mainnet account snapshot can be reused without fetching mainnet again.
+The runner still downloads and verifies the pinned release artifacts:
 
 ```sh
-SVM_FORK_ARTIFACTS=/absolute/previous/run SVM_FORK_SNAPSHOT=/absolute/previous/run/mainnet-snapshot.json SVM_FORK_OUTPUT=/absolute/new/run yarn estimate-svm-fork-cu
+SVM_FORK_SNAPSHOT=/absolute/previous/run/mainnet-snapshot.json SVM_FORK_OUTPUT=/absolute/new/run yarn estimate-svm-fork-cu
 ```
 
-The offline path rechecks binary/IDL hashes and source compatibility. Keep the
-artifact manifest from the verified online run with those files; it is the trusted
-provenance input. No production signing keys or Docker service are needed.
+Each run records the release tag, commit, download URLs and hashes in
+`spoke-artifact.json`, which is also included in the measurement provenance.
+No production signing keys or Docker service are needed. Recalculating the
+published cost report from portable evidence remains entirely offline and
+does not use binary artifacts.
 
 ## Matrix and measurement
 

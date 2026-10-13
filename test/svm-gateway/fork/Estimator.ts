@@ -1,12 +1,64 @@
 import { strict as assert } from "assert";
-import { mkdtempSync, readFileSync, rmSync } from "fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { execFileSync } from "child_process";
 import { tmpdir } from "os";
 import path from "path";
 import { AccountLayout, NATIVE_MINT, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { paddedLimit, assertLoopback } from "./recorder";
-import { genesis, Snapshot } from "../../../scripts/svm/forkSnapshot";
+import { genesis, sha256, Snapshot } from "../../../scripts/svm/forkSnapshot";
+import { extractReleaseFile, verifySpokeSources } from "../../../scripts/svm/forkArtifacts";
 import { STATE, SPOKE, MAINNET_GENESIS, VAULT_AUTHORITY, LOADER, GATEWAY } from "./config";
 describe("Fork CU estimator boundaries", () => {
+  it("verifies both the release archive and the selected member before using it", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "fork-release-test-"));
+    try {
+      const bytes = Buffer.from([0, 255, 128, 42]);
+      writeFileSync(path.join(dir, "svm_spoke.so"), bytes);
+      const archive = path.join(dir, "production.tar.gz");
+      execFileSync("tar", ["-czf", archive, "-C", dir, "svm_spoke.so"]);
+      const pin = { sha256: sha256(readFileSync(archive)), member: "svm_spoke.so" };
+      assert.deepEqual(extractReleaseFile(archive, pin, sha256(bytes)), bytes);
+      assert.throws(() => extractReleaseFile(archive, { ...pin, sha256: "wrong" }, sha256(bytes)), /archive hash/);
+      assert.throws(() => extractReleaseFile(archive, pin, sha256("test-feature binary")), /member hash/);
+      assert.throws(() => extractReleaseFile(archive, { ...pin, member: "missing.so" }, sha256(bytes)), /tar failed/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("requires a matching release when program sources or build inputs change", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "fork-artifact-test-"));
+    try {
+      const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+      git("init", "--quiet");
+      mkdirSync(path.join(root, "programs"));
+      writeFileSync(path.join(root, "programs", "source.rs"), "original");
+      git("add", "programs");
+      git(
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.com",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "commit",
+        "--quiet",
+        "-m",
+        "fixture"
+      );
+      const commit = git("rev-parse", "HEAD");
+      assert.doesNotThrow(() => verifySpokeSources(root, commit));
+      writeFileSync(path.join(root, "programs", "source.rs"), "modified");
+      assert.throws(() => verifySpokeSources(root, commit), /publish a matching release/);
+      writeFileSync(path.join(root, "programs", "source.rs"), "original");
+      writeFileSync(path.join(root, "Cargo.lock"), "changed dependency");
+      git("add", "Cargo.lock");
+      assert.throws(() => verifySpokeSources(root, commit), /publish a matching release/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
   it("rejects invalid CU estimates and does not silently cap an insufficient budget", () => {
     assert.equal(paddedLimit(100001, 1000), 110002);
     for (const units of [0, -1, NaN, Infinity, 1.5, 1400000]) assert.throws(() => paddedLimit(units, 1000));
