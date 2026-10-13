@@ -1,4 +1,8 @@
 {
   "genesis_0.2.1-alpha.1_amd64_linux": "27cbc793343b0834792e27840ab7c2da01b4b1ed7e07aff870ffa3de8ccf94a2",
-  "genesis_0.2.1-alpha.1_arm64_darwin": "8dd493c08bebeb4aa21720d5ac9127abff13a74faa4761b2f7279b9cb189eed7"
+  "genesis_0.2.1-alpha.1_arm64_darwin": "8dd493c08bebeb4aa21720d5ac9127abff13a74faa4761b2f7279b9cb189eed7",
+  "genesis_0.2.2-alpha.1_amd64_linux": "2aa4940861ef0f8f2e4bc3451a9dc4684e84c7cee2a2fbf6175396d6508ad36c",
+  "genesis_0.2.2-alpha.1_arm64_darwin": "cd92c574fee076cc7811312005a44786fcfd2ffdafa77d988163c019144dbf88",
+  "genesis_0.4.0-alpha.1_amd64_linux": "f949b507ee74a095d363622f2938c232c8c8ddb2238e4e6c6636cfe340f69c5a",
+  "genesis_0.4.0-alpha.1_arm64_darwin": "4596fc9f3d8d5d2028021d139d747249f6a583aec953ff66ba88edd0e0d98305"
 }

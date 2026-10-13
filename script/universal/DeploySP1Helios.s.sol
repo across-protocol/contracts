@@ -17,6 +17,8 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 /// 1. Set environment variables in .env:
 ///    - MNEMONIC - To derive the private key for the deployer
 ///    - SP1_CONSENSUS_RPCS_LIST - Comma-separated list of consensus RPC URLs
+///    - SP1_SOURCE_EXECUTION_RPC_URL - Execution RPC for the source chain (must serve eth_getProof at finalized blocks)
+///    - SP1_SOURCE_CHAIN_ID - Source chain the light client syncs from. Optional; defaults to 1 (mainnet)
 ///    - SP1_RELEASE - Genesis binary version (e.g., "0.1.0-alpha.17")
 ///    - SP1_PROVER_MODE - SP1 prover type: "mock", "cpu", "cuda", or "network"
 ///    - SP1_VERIFIER_ADDRESS - SP1 verifier contract address
@@ -33,6 +35,9 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 contract DeploySP1Helios is Script {
     // GitHub release URL pattern for the genesis binary
     string internal constant GITHUB_RELEASE_URL = "https://github.com/across-protocol/sp1-helios/releases";
+
+    // Where the genesis binary writes genesis.json (relative to the project root)
+    string internal constant GENESIS_PATH = "script/universal/genesis.json";
 
     /// @notice Main entry point for deploying SP1Helios
     /// @return The address of the deployed SP1Helios contract
@@ -53,47 +58,50 @@ contract DeploySP1Helios is Script {
         // Download and run the genesis binary to create/update genesis.json
         downloadAndRunGenesisBinary(version, sp1Prover);
 
-        // Read the genesis config from genesis.json
-        SP1Helios.InitParams memory params = readGenesisConfig();
-
-        // If the verifier address is set to 0, deploy a mock verifier
-        if (params.verifier == address(0)) {
-            console.log("Deploying SP1MockVerifier (verifier was address(0))...");
-            params.verifier = address(new SP1MockVerifier());
-            console.log("SP1MockVerifier deployed to:", params.verifier);
-        }
-
-        // Deploy the SP1 Helios contract
-        console.log("Deploying SP1Helios...");
-        SP1Helios helios = new SP1Helios(params);
-        console.log("SP1Helios deployed to:", address(helios));
-
-        // Log configuration
-        console.log("Genesis Time:", params.genesisTime);
-        console.log("Head:", params.head);
-        console.log("Seconds Per Slot:", params.secondsPerSlot);
-        console.log("Slots Per Epoch:", params.slotsPerEpoch);
-        console.log("Slots Per Period:", params.slotsPerPeriod);
-        console.log("Verifier:", params.verifier);
-        console.log("VKey Updater:", params.vkeyUpdater);
-        console.log("State Updaters:");
-        for (uint256 i = 0; i < params.updaters.length; i++) {
-            console.log("  ", params.updaters[i]);
-        }
+        // Deploy from the genesis.json the binary just wrote
+        address helios = deployFromGenesis(readGenesisConfig(GENESIS_PATH));
 
         vm.stopBroadcast();
 
         console.log("");
         console.log("NOTE: Run 'yarn extract-addresses' after this script completes to update deployed-addresses.json");
 
+        return helios;
+    }
+
+    /// @notice Deploys SP1Helios from parsed genesis params, first deploying SP1MockVerifier if `params.verifier` is zero
+    /// @dev Must be called inside an active broadcast.
+    function deployFromGenesis(SP1Helios.InitParams memory params) internal returns (address) {
+        if (params.verifier == address(0)) {
+            console.log("Deploying SP1MockVerifier (verifier was address(0))...");
+            params.verifier = address(new SP1MockVerifier());
+            console.log("SP1MockVerifier deployed to:", params.verifier);
+        }
+
+        console.log("Deploying SP1Helios...");
+        SP1Helios helios = new SP1Helios(params);
+        console.log("SP1Helios deployed to:", address(helios));
+
+        console.log("Genesis Time:", params.genesisTime);
+        console.log("Head:", params.head);
+        console.log("Header:", vm.toString(params.header));
+        console.log("Seconds Per Slot:", params.secondsPerSlot);
+        console.log("Slots Per Epoch:", params.slotsPerEpoch);
+        console.log("Slots Per Period:", params.slotsPerPeriod);
+        console.log("Verifier:", params.verifier);
+        console.log("VKey:", vm.toString(params.heliosProgramVkey));
+        console.log("VKey Updater:", params.vkeyUpdater);
+        console.log("State Updaters:");
+        for (uint256 i = 0; i < params.updaters.length; i++) {
+            console.log("  ", params.updaters[i]);
+        }
         return address(helios);
     }
 
-    /// @notice Reads the genesis configuration from genesis.json
-    function readGenesisConfig() public view returns (SP1Helios.InitParams memory params) {
-        string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/script/universal/genesis.json");
-        string memory json = vm.readFile(path);
+    /// @notice Reads the genesis configuration from a genesis.json file
+    /// @param genesisPath Path relative to the project root (must be inside it; see fs_permissions in foundry.toml)
+    function readGenesisConfig(string memory genesisPath) public view returns (SP1Helios.InitParams memory params) {
+        string memory json = vm.readFile(string.concat(vm.projectRoot(), "/", genesisPath));
 
         // Parse each field from the JSON
         params.executionStateRoot = vm.parseJsonBytes32(json, ".executionStateRoot");
@@ -124,6 +132,9 @@ contract DeploySP1Helios is Script {
         string memory stateUpdaters = vm.envString("SP1_STATE_UPDATERS");
         string memory vkeyUpdater = vm.envString("SP1_VKEY_UPDATER");
         string memory consensusRpcsList = vm.envString("SP1_CONSENSUS_RPCS_LIST");
+        string memory executionRpcUrl = vm.envString("SP1_SOURCE_EXECUTION_RPC_URL");
+        string memory sourceChainId = vm.envOr("SP1_SOURCE_CHAIN_ID", string("1"));
+        console.log("SOURCE_CHAIN_ID:", sourceChainId);
         console.log("SP1_VERIFIER_ADDRESS:", sp1VerifierAddress);
         console.log("STATE_UPDATERS:", stateUpdaters);
         console.log("VKEY_UPDATER:", vkeyUpdater);
@@ -171,18 +182,19 @@ contract DeploySP1Helios is Script {
         // Run the genesis binary with all required env vars passed directly
         // Use --out to specify output directory for genesis.json
         string memory outputDir = string.concat(vm.projectRoot(), "/script/universal");
-        string[] memory runCmd = new string[](11);
+        string[] memory runCmd = new string[](12);
         runCmd[0] = "env";
-        runCmd[1] = "SOURCE_CHAIN_ID=1";
+        runCmd[1] = string.concat("SOURCE_CHAIN_ID=", sourceChainId);
         runCmd[2] = string.concat("SP1_PROVER=", sp1Prover);
         runCmd[3] = string.concat("PRIVATE_KEY=", privateKeyHex);
         runCmd[4] = string.concat("SP1_VERIFIER_ADDRESS=", sp1VerifierAddress);
         runCmd[5] = string.concat("UPDATERS=", stateUpdaters);
         runCmd[6] = string.concat("VKEY_UPDATER=", vkeyUpdater);
         runCmd[7] = string.concat("CONSENSUS_RPCS_LIST=", consensusRpcsList);
-        runCmd[8] = binaryPath;
-        runCmd[9] = "--out";
-        runCmd[10] = outputDir;
+        runCmd[8] = string.concat("SOURCE_EXECUTION_RPC_URL=", executionRpcUrl);
+        runCmd[9] = binaryPath;
+        runCmd[10] = "--out";
+        runCmd[11] = outputDir;
         vm.ffi(runCmd);
 
         console.log("Genesis config updated successfully");

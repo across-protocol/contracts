@@ -2165,6 +2165,15 @@
           "address": "0x9b2c2f3fD98cF8468715Be31155cc053C56f822A",
           "block_number": 8409722
         },
+        "SP1Helios": {
+          "address": "0x14f9CAfe72F49E3D71a7F8047bc5799109bb2Ff4",
+          "block_number": 11902991,
+          "transaction_hash": "0xe15e183c6d87950294ba1ba9ef6a74b19fd468ae7ef81267e104bb4505e558f3"
+        },
+        "SP1MockVerifier": {
+          "address": "0x94430dcc52f6bb3Cd98E4fDddfd150C1f13f91b3",
+          "transaction_hash": "0x94c8197a6b593cae7f2664ab821116aaa8f6c4cec45f1f88b71c2966a2c7cadd"
+        },
         "SpokePoolPeriphery": {
           "address": "0x10D8b8DaA26d307489803e10477De69C0492B610",
           "block_number": 10392324,

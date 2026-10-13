@@ -59,7 +59,7 @@ src/svm/clients/*
 
 # SP1Helios deploy artifacts
 script/universal/genesis-binary
-script/universal/genesis.json
+script/universal/genesis*.json
 script/tron/universal/genesis-binary
 script/tron/universal/genesis.json
 

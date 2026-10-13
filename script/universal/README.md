@@ -20,16 +20,18 @@ The SP1Helios contract has a constant `MAX_SLOT_AGE = 7 days`, which is the uppe
 
 Create a `.env` file with the following variables:
 
-| Variable                  | Description                                                                                                 |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `MNEMONIC`                | BIP-39 mnemonic to derive the deployer's private key (uses index 0)                                         |
-| `GATEWAY_ADDRESS`         | Across V5 Gateway address wired into the SpokePool. Optional; defaults to `0x0` (V5 Gateway flows disabled) |
-| `SP1_RELEASE`             | Genesis binary version (e.g., `0.1.0-alpha.20`)                                                             |
-| `SP1_PROVER_MODE`         | SP1 prover type: `mock`, `cpu`, `cuda`, or `network`                                                        |
-| `SP1_VERIFIER_ADDRESS`    | Address of the SP1 verifier contract (use `0x0` to auto-deploy a mock verifier)                             |
-| `SP1_STATE_UPDATERS`      | Comma-separated list of addresses authorized to submit state updates                                        |
-| `SP1_VKEY_UPDATER`        | Address authorized to update the verification key                                                           |
-| `SP1_CONSENSUS_RPCS_LIST` | Comma-separated list of Ethereum consensus (beacon) RPC URLs                                                |
+| Variable                       | Description                                                                                                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MNEMONIC`                     | BIP-39 mnemonic to derive the deployer's private key (uses index 0)                                                                                                     |
+| `GATEWAY_ADDRESS`              | Across V5 Gateway address wired into the SpokePool. Optional; defaults to `0x0` (V5 Gateway flows disabled)                                                             |
+| `SP1_RELEASE`                  | Genesis binary version (e.g., `0.1.0-alpha.20`)                                                                                                                         |
+| `SP1_PROVER_MODE`              | SP1 prover type: `mock`, `cpu`, `cuda`, or `network`                                                                                                                    |
+| `SP1_VERIFIER_ADDRESS`         | Address of the SP1 verifier contract (use `0x0` to auto-deploy a mock verifier)                                                                                         |
+| `SP1_STATE_UPDATERS`           | Comma-separated list of addresses authorized to submit state updates                                                                                                    |
+| `SP1_VKEY_UPDATER`             | Address authorized to update the verification key                                                                                                                       |
+| `SP1_CONSENSUS_RPCS_LIST`      | Comma-separated list of Ethereum consensus (beacon) RPC URLs                                                                                                            |
+| `SP1_SOURCE_EXECUTION_RPC_URL` | Execution JSON-RPC URL for the source chain; must serve `eth_getProof` at finalized blocks (required by genesis binaries >= 0.4.0 for the Gloas execution header fetch) |
+| `SP1_SOURCE_CHAIN_ID`          | Source chain the light client syncs from. Optional; defaults to `1` (mainnet). Use `11155111` for Sepolia testing                                                       |
 
 ---
 
@@ -42,6 +44,7 @@ There are three scripts in this directory:
 | `DeploySP1HeliosAndUniversalSpokePool.s.sol` | **Combined orchestrator** — runs Steps 1–3 below in sequence via FFI, plus optional Etherscan verification |
 | `DeploySP1Helios.s.sol`                      | Deploys the SP1Helios light client (downloads genesis binary via FFI, verifies checksum, deploys contract) |
 | `DeployUniversalSpokePool.s.sol`             | Deploys the Universal_SpokePool behind an ERC1967 proxy using DeploymentUtils                              |
+| `DeploySP1HeliosFromGenesis.s.sol`           | Deploys a standalone SP1Helios from an existing genesis.json (test deployments, pre-release binaries)      |
 
 ---
 
@@ -102,6 +105,27 @@ forge script script/universal/DeploySP1Helios.s.sol \
 ```
 
 The `--ffi` flag is required for the genesis binary download and execution. The script returns the deployed SP1Helios address.
+
+### DeploySP1HeliosFromGenesis.s.sol
+
+Deploys only SP1Helios from a genesis.json you already have, skipping the binary download and checksum gate. Use it to test an unreleased or pre-release sp1-helios build (e.g. against Sepolia as the source chain) before promoting it. No Universal SpokePool is deployed and no roles are transferred: the deployer keeps `DEFAULT_ADMIN_ROLE`, and the state updaters are whatever genesis.json lists, so a test wallet can call `update()` directly.
+
+Generate genesis.json with the sp1-helios CLI from the branch under test, then copy it inside this repo (`vm.readFile` cannot read outside the project root). Any `script/universal/genesis*.json` is gitignored. A zero `verifier` (what the CLI writes for `SP1_PROVER=mock`) deploys `SP1MockVerifier`, which accepts empty proof bytes.
+
+```bash
+# in sp1-helios
+cargo run --bin genesis -- --env-file .env.sepolia --out .
+cp genesis.json ../contracts/script/universal/genesis.sepolia-mock.json
+
+# in this repo
+forge script script/universal/DeploySP1HeliosFromGenesis.s.sol \
+  --sig "run(string)" script/universal/genesis.sepolia-mock.json \
+  --rpc-url <RPC_URL> \
+  --broadcast \
+  -vvvv
+```
+
+The 7-day `MAX_SLOT_AGE` limit above applies: an `update()` must land within a week of the genesis head or the contract bricks. Don't commit the resulting `broadcast/DeploySP1HeliosFromGenesis.s.sol/` directory or run `yarn extract-addresses` for a test deployment; the extractor would register it in `deployed-addresses.json`.
 
 ### DeployUniversalSpokePool.s.sol
 

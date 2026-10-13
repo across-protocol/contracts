@@ -640,6 +640,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Polygon_Adapter     | [0x540029039E493b1B843653f93C3064A956931747](https://sepolia.etherscan.io/address/0x540029039E493b1B843653f93C3064A956931747) |
 | PolygonTokenBridger | [0x4e3737679081c4D3029D88cA560918094f2e0284](https://sepolia.etherscan.io/address/0x4e3737679081c4D3029D88cA560918094f2e0284) |
 | Solana_Adapter      | [0x9b2c2f3fD98cF8468715Be31155cc053C56f822A](https://sepolia.etherscan.io/address/0x9b2c2f3fD98cF8468715Be31155cc053C56f822A) |
+| SP1Helios           | [0x14f9CAfe72F49E3D71a7F8047bc5799109bb2Ff4](https://sepolia.etherscan.io/address/0x14f9CAfe72F49E3D71a7F8047bc5799109bb2Ff4) |
+| SP1MockVerifier     | [0x94430dcc52f6bb3Cd98E4fDddfd150C1f13f91b3](https://sepolia.etherscan.io/address/0x94430dcc52f6bb3Cd98E4fDddfd150C1f13f91b3) |
 | SpokePool           | [0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662](https://sepolia.etherscan.io/address/0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662) |
 | SpokePoolPeriphery  | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://sepolia.etherscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 
