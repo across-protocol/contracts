@@ -14,9 +14,23 @@ program/runtime inputs.
 ## Collector source
 
 The fee collector, Dockerfile, and `examples/svm-fees/spoke-components.json`
-are published in [Jussi PR #525](https://github.com/across-protocol/jussi/pull/525),
-pinned at [`7962291b881eaa82a8b181b03a3cbb8799652581`](https://github.com/across-protocol/jussi/tree/7962291b881eaa82a8b181b03a3cbb8799652581).
-Follow its `docs/svm-fee-measurement.md` to collect from a clean revision.
+are preserved under Jussi tag
+[`measurements/svm-fees-2026-10-12`](https://github.com/across-protocol/jussi/tree/measurements/svm-fees-2026-10-12),
+pinned to commit [`7962291b881eaa82a8b181b03a3cbb8799652581`](https://github.com/across-protocol/jussi/tree/7962291b881eaa82a8b181b03a3cbb8799652581).
+This is standalone measurement tooling maintained on `reinis/svm-fee-measurement`;
+it does not depend on merging the collector into production Jussi.
+
+For a fresh sibling checkout from the contracts root:
+
+```sh
+git clone --branch measurements/svm-fees-2026-10-12 --single-branch https://github.com/across-protocol/jussi.git ../jussi
+git -C ../jussi rev-parse HEAD
+```
+
+Verify the commit above, then follow the pinned
+[collector run guide](https://github.com/across-protocol/jussi/blob/7962291b881eaa82a8b181b03a3cbb8799652581/docs/svm-fee-measurement.md)
+to collect from a clean revision. Keep the tag fixed; collector changes should
+receive a new tag and commit pin so existing archives stay reproducible.
 The original 881-cycle archive records its pre-publication dirty revision;
 that provenance is retained. Subsequent collection uses a separate archive
 with the clean collector commit and the same account manifest.
