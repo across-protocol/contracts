@@ -1,5 +1,11 @@
 import { strict as assert } from "assert";
-import { loadEvidence, verifyEvidence, replayEvidence } from "../../../scripts/svm/replayForkCosts";
+import {
+  CU_PROGRAMS,
+  executionCuBreakdown,
+  loadEvidence,
+  verifyEvidence,
+  replayEvidence,
+} from "../../../scripts/svm/replayForkCosts";
 import {
   combinedRate,
   distribution,
@@ -16,9 +22,57 @@ import { gunzipSync, gzipSync } from "zlib";
 import { createHash } from "crypto";
 import { PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { recipient, USDC } from "./config";
+import { recipient, USDC, SPOKE, CPMM, GATEWAY } from "./config";
 
 describe("Fork cost accounting", () => {
+  it("attributes inclusive program CU without counting nested calls twice and rejects incomplete logs", () => {
+    assert.equal(CU_PROGRAMS.spoke, SPOKE.toBase58());
+    assert.equal(CU_PROGRAMS.raydium, CPMM.toBase58());
+    const logs = [
+      `Program ${GATEWAY} invoke [1]`,
+      `Program ${SPOKE} invoke [2]`,
+      `Program ${TOKEN_PROGRAM_ID} invoke [3]`,
+      `Program ${TOKEN_PROGRAM_ID} consumed 7 of 100 compute units`,
+      `Program ${TOKEN_PROGRAM_ID} success`,
+      `Program ${SPOKE} invoke [3]`,
+      `Program ${SPOKE} consumed 3 of 90 compute units`,
+      `Program ${SPOKE} success`,
+      `Program ${SPOKE} consumed 30 of 100 compute units`,
+      `Program ${SPOKE} success`,
+      `Program ${CPMM} invoke [2]`,
+      `Program ${CPMM} consumed 20 of 60 compute units`,
+      `Program ${CPMM} success`,
+      `Program ${SPOKE} invoke [2]`,
+      `Program ${SPOKE} consumed 10 of 40 compute units`,
+      `Program ${SPOKE} success`,
+      `Program ${GATEWAY} consumed 98 of 100 compute units`,
+      `Program ${GATEWAY} success`,
+    ];
+    assert.deepEqual(executionCuBreakdown(logs, 100), { spoke: 40, raydium: 20, other: 40 });
+    assert.throws(() => executionCuBreakdown([], 100), /Missing execution logs/);
+    assert.throws(() => executionCuBreakdown([...logs, "Log truncated"], 100), /Truncated/);
+    assert.throws(() => executionCuBreakdown(logs.slice(0, -1), 100), /Incomplete/);
+    assert.throws(
+      () =>
+        executionCuBreakdown(
+          logs.filter((l) => !l.includes("consumed 30")),
+          100
+        ),
+      /Missing target/
+    );
+    assert.throws(
+      () =>
+        executionCuBreakdown(
+          logs.map((l) => l.replace("invoke [2]", "invoke [4]")),
+          100
+        ),
+      /depth/
+    );
+    assert.throws(() => executionCuBreakdown([...logs, `Program ${SPOKE} failed: custom error`], 100), /Failed/);
+    assert.throws(() => executionCuBreakdown(logs, 50), /Invalid attributed/);
+    const overlap = logs.map((l, i) => (i >= 5 && i <= 7 ? l.replace(SPOKE.toBase58(), CPMM.toBase58()) : l));
+    assert.throws(() => executionCuBreakdown(overlap, 100), /Overlapping/);
+  });
   it("reproduces the committed report from portable evidence without local receipts or RPC access", async () => {
     const dir = path.join(__dirname, "results");
     const files = readdirSync(dir).filter((f) => /-fee-evidence\.json(\.gz)?$/.test(f));
@@ -143,6 +197,17 @@ describe("Fork cost accounting", () => {
           transaction: { message: { staticAccountKeys: ["payer", "buffer"] } },
           meta: {
             err: null,
+            computeUnitsConsumed: t.consumedCu,
+            logMessages: i
+              ? [
+                  `Program ${GATEWAY} invoke [1]`,
+                  `Program ${SPOKE} invoke [2]`,
+                  `Program ${SPOKE} consumed 30000 of 90000 compute units`,
+                  `Program ${SPOKE} success`,
+                  `Program ${GATEWAY} consumed 89700 of 99700 compute units`,
+                  `Program ${GATEWAY} success`,
+                ]
+              : [],
             loadedAddresses: { writable: [], readonly: [] },
             preBalances: i ? [85000, 10000] : [100000, 0],
             postBalances: i ? [90000, 0] : [85000, 10000],
@@ -229,6 +294,14 @@ describe("Fork cost accounting", () => {
           assert.equal(bounds.count, flow[mode][key].count);
         }
       const copy = () => JSON.parse(JSON.stringify(evidence));
+      assert.equal(evidence.fixtures[0].executionCu.spoke, 30000);
+      assert.equal(evidence.fixtures[0].executionCu.other, 60000);
+      const badCu = copy();
+      badCu.fixtures[0].executionCu.spoke++;
+      assert.throws(() => verifyEvidence(badCu), /Stored CU attribution/);
+      const missingLogs = copy();
+      missingLogs.fixtures[0].executionCu.logMessages.pop();
+      assert.throws(() => verifyEvidence(missingLogs), /Incomplete execution logs/);
       const badSummary = copy();
       badSummary.distributions.fixture.executionRate.p99++;
       assert.throws(() => verifyEvidence(badSummary), /Stored distributions/);

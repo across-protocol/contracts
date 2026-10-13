@@ -6,7 +6,7 @@ import path from "path";
 import { gzipSync } from "zlib";
 import { PublicKey } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { renderEvidenceReport, FeeEvidence, Witness } from "./replayForkCosts";
+import { renderEvidenceReport, executionCuBreakdown, FeeEvidence, Witness } from "./replayForkCosts";
 import { TxMeasurement } from "../../test/svm-gateway/fork/recorder";
 
 type Market = { name: string; writable_accounts: string[] };
@@ -201,7 +201,16 @@ export async function report(
     for (const tx of row.transactions) {
       const actual = receipts.find((t) => t.signature === tx.signature);
       assert(actual && actual.computeUnitLimit === tx.computeUnitLimit && actual.signatureCount === tx.signatureCount);
+      assert.equal(actual.receipt.meta.computeUnitsConsumed, tx.consumedCu, "Receipt CU differs from measurement");
     }
+    const executions = receipts.filter((t) => t.phase === "execution");
+    assert.equal(executions.length, 1, "Expected one execution receipt per fixture");
+    const execution = executions[0];
+    const executionCu = {
+      signature: execution.signature as string,
+      logMessages: execution.receipt.meta.logMessages as string[],
+      ...executionCuBreakdown(execution.receipt.meta.logMessages, execution.receipt.meta.computeUnitsConsumed),
+    };
     const markets = [
       ...new Set<string>([
         "global",
@@ -212,6 +221,7 @@ export async function report(
     return {
       flow: row.flow as string,
       sample: row.sample as number,
+      executionCu,
       markets,
       transactions: row.transactions as TxMeasurement[],
       setup: receipts.filter((t) => t.phase === "setup-alt") as TxMeasurement[],
@@ -512,7 +522,7 @@ export async function report(
   mkdirSync(output, { recursive: true });
 
   const evidence: FeeEvidence = {
-    schema: 2,
+    schema: 3,
     units: { rates: "micro-lamports per CU", baseFee: "lamports per signature", price: "USD per SOL" },
     archive: {
       runId: result.archive.runId,
@@ -565,6 +575,7 @@ export async function report(
       flow: m.flow,
       sample: m.sample,
       rent: m.rent,
+      executionCu: m.executionCu,
       pdaSearches: m.pdaSearches,
       tokenAccountPdas: m.tokenAccountPdas,
       lookupTable: m.lookupTable,

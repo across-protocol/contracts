@@ -11,6 +11,39 @@ snapshot after extending the fee-collection window using the cost-report command
 below; a new validator run is needed only when changing the CU workload or its
 program/runtime inputs.
 
+## Understanding CU versus priority-fee costs
+
+The generated study separates execution CU into **Spoke**, **Raydium CPMM**, and
+**Gateway/other**, alongside Spoke's percentage of total execution CU. The exporter
+derives this from confirmed execution logs; the portable evidence includes those
+logs and the offline replay command recalculates the attribution. Nested token,
+system and event CPIs are included in their caller's consumption. Only outermost
+Spoke/Raydium invocations are counted, so self-CPI events are not added twice.
+Gateway/other is the residual, including Gateway validation, funding/delivery,
+other calls, CPI dispatch and compute-budget overhead. Approval, buffer and
+lookup-table setup transactions are outside this execution-only breakdown.
+
+In the pinned study, Spoke contributes about **29k CU to deposits** and **33–42k CU
+to fills**, including its nested calls. That is roughly **40–50% of plain execution
+CU** and **26–32% with a swap**. Swap→deposit consumes about **1.65×** the execution
+CU of a co-signed deposit; Spoke's deposit consumption is unchanged. This is an
+attribution of the measured transaction, not a counterfactual estimate of how much
+CU removing Spoke would save.
+
+Compare the report's **fixed 50k** network-fee column with its **snapshot ranges**:
+the former holds the rate constant to expose differences in transaction work and
+signature counts. The large swap-cost tail in the current observations is driven
+mainly by higher account-associated priority-rate estimates, rather than a
+similarly large increase in CU. The peak-rate/baseline ratio is regenerated from
+the fee evidence as the collection window grows. Those estimates are historical
+observations, not proven required landing bids.
+
+One priority rate applies to the **whole requested transaction CU limit**, including
+the safety margin. A swap-associated rate therefore also prices the Spoke and
+Gateway work at that rate. The per-program CU shares do not split the transaction
+into separately billed fee markets; base signature fees, rent and auxiliary
+transactions remain separate.
+
 ## Collector source
 
 The fee collector, Dockerfile, and `examples/svm-fees/spoke-components.json`
@@ -175,7 +208,7 @@ shared-account rate. Combine matching components' raw rates by slot, as the Juss
 collector report does, before deriving an estimate. Missing coverage is not zero.
 
 Outputs: `results.json`, `sample-N.json`, `receipts-N.jsonl`, `fee-inputs.json`,
-`provenance.json`, `spoke-artifact.json`, raw snapshot, genesis patches, CI log,
+`provenance.json`, `spoke-artifact.json`, raw snapshot, genesis patches, release archives,
 IDLs/binaries, and validator logs/ledgers. Ledgers are retained for debugging.
 
 Focused boundary checks:
@@ -193,10 +226,10 @@ yarn replay-svm-fork-costs test/svm-gateway/fork/results/2026-10-12-fee-evidence
 ```
 
 Omit `--check` to write the report. The same command accepts `.json.gz` evidence.
-It accepts the schema-2 evidence produced by the exporter below and needs only
+It accepts the schema-3 evidence produced by the exporter below and needs only
 the checkout and locked Node dependencies, without local receipts,
 an RPC connection, a validator or the raw collector archive. It independently
-recalculates costs, missing-data counts, rates and percentiles, checks the stored
+recalculates execution CU attribution, costs, missing-data counts, rates and percentiles, checks the stored
 summaries and raw extrema witnesses, and verifies the document including its
 evidence hashes. Measurement provenance and interpretation are embedded in the
 evidence, so there is no hand-assembled report header. CI runs this check through
@@ -214,7 +247,7 @@ yarn report-svm-fork-costs <CU-run-directory> <snapshots.jsonl> <new-output-dire
 
 Choose a new output directory each time. Repeating the command with the growing
 archive includes the additional snapshots. It writes `costs.md`, `costs.json`,
-and `fee-evidence.json` (or `fee-evidence.json.gz` above 1 MB of compact JSON). The full JSON includes per-transaction baseline fees, CU sample IDs and timestamps
+and `fee-evidence.json` (or `fee-evidence.json.gz` above 1 MB of compact JSON). The portable evidence includes execution signatures, logs and per-program CU attribution. The full JSON includes per-transaction baseline fees, CU sample IDs and timestamps
 for extrema, component sets, missing-data counts, prices, and input hashes.
 
 Copy the generated evidence to the study's existing `<date>-fee-evidence.json`

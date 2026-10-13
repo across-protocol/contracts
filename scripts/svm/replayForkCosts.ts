@@ -17,6 +17,53 @@ type Rent = {
   lookupTableLamports: number;
 };
 type Quote = { usd_per_sol: number; fetched_at_ms: number; source: string };
+export const CU_PROGRAMS = {
+  spoke: "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru",
+  raydium: "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
+};
+type ExecutionCu = { signature: string; logMessages: string[]; spoke: number; raydium: number; other: number };
+
+// Program consumption includes its nested CPIs. Attribute only the outermost
+// invocation of each target, so self-CPI event emission is not counted twice.
+export function executionCuBreakdown(logs: string[], total: number) {
+  assert(Array.isArray(logs) && logs.length > 0, "Missing execution logs");
+  assert(Number.isSafeInteger(total) && total > 0, "Invalid execution CU");
+  const stack: { program: string; consumed?: number }[] = [];
+  const units = { spoke: 0, raydium: 0 };
+  for (const line of logs) {
+    assert(typeof line === "string" && !line.includes("Log truncated"), "Truncated execution logs");
+    assert(!/^Program \S+ failed:/.test(line), "Failed execution logs");
+    const invoke = /^Program (\S+) invoke \[(\d+)\]$/.exec(line);
+    if (invoke) {
+      assert.equal(Number(invoke[2]), stack.length + 1, "Invalid invocation depth");
+      stack.push({ program: invoke[1] });
+    }
+    const consumed = /^Program (\S+) consumed (\d+) of (\d+) compute units$/.exec(line);
+    if (consumed) {
+      const frame = stack[stack.length - 1];
+      assert(frame?.program === consumed[1] && frame.consumed === undefined, "Invalid consumption log");
+      frame.consumed = Number(consumed[2]);
+      assert(Number.isSafeInteger(frame.consumed) && frame.consumed <= Number(consumed[3]));
+    }
+    const success = /^Program (\S+) success$/.exec(line);
+    if (success) {
+      const frame = stack.pop();
+      assert(frame?.program === success[1], "Unbalanced execution logs");
+      for (const key of ["spoke", "raydium"] as const) {
+        if (frame.program !== CU_PROGRAMS[key]) continue;
+        assert(frame.consumed !== undefined, "Missing target program consumption");
+        assert(
+          !stack.some((f) => Object.values(CU_PROGRAMS).includes(f.program) && f.program !== frame.program),
+          "Overlapping attributed programs"
+        );
+        if (!stack.some((f) => f.program === frame.program)) units[key] += frame.consumed;
+      }
+    }
+  }
+  assert.equal(stack.length, 0, "Incomplete execution logs");
+  assert(units.spoke > 0 && units.spoke + units.raydium <= total, "Invalid attributed execution CU");
+  return { ...units, other: total - units.spoke - units.raydium };
+}
 export type Witness = {
   finishedAtMs: number;
   baseLamportsPerSignature: number | null;
@@ -71,6 +118,7 @@ export type FeeEvidence = {
   fixtures: {
     flow: string;
     sample: number;
+    executionCu: ExecutionCu;
     rent: Rent;
     pdaSearches?: unknown;
     tokenAccountPdas?: unknown;
@@ -119,7 +167,7 @@ function sameBounds(actual: Bounds, expected: Bounds) {
 
 // Deliberately independent arithmetic from the archive exporter, so replay checks its summaries.
 export function verifyEvidence(e: FeeEvidence) {
-  assert.equal(e.schema, 2, "Use schema-2 portable evidence exported with measurement provenance");
+  assert.equal(e.schema, 3, "Use schema-3 portable evidence exported with execution logs");
   assert.equal(e.estimator, "solana_rpc_latest25_nonzero_mean");
   assert.deepEqual(e.columns, [
     "finishedAtMs",
@@ -161,6 +209,14 @@ export function verifyEvidence(e: FeeEvidence) {
     Object.values(f.rent).forEach(integer);
     assert.equal(f.rent.temporaryBufferLamports, f.rent.refundedBufferLamports);
     assert.equal(f.transactions.filter((t) => t.phase === "execution").length, 1);
+    const execution = f.transactions.find((t) => t.phase === "execution")!;
+    const cu = f.executionCu;
+    assert(cu && typeof cu.signature === "string" && cu.signature.length > 0, "Missing execution CU witness");
+    assert.deepEqual(
+      executionCuBreakdown(cu.logMessages, execution.consumedCu),
+      { spoke: cu.spoke, raydium: cu.raydium, other: cu.other },
+      "Stored CU attribution differs from execution logs"
+    );
     for (const t of f.transactions) {
       [t.computeUnitLimit, t.signatureCount, t.bytes, t.consumedCu].forEach(integer);
       assert(t.signatureCount > 0 && t.bytes > 0 && t.bytes <= 1232);
@@ -341,6 +397,48 @@ export async function renderEvidenceReport(e: FeeEvidence, artifact: Artifact) {
         ];
       })
     ),
+    "## Execution CU attribution",
+    "Computed from the saved execution transaction logs, retained in the portable evidence. Spoke and Raydium figures include their nested CPIs; only outermost invocations are counted, so self-CPI events are not counted twice. Gateway/other is the transaction total minus those two components: Gateway logic, funding/delivery, other calls, CPI dispatch and compute-budget overhead. Approval, buffer and lookup-table transactions are excluded. Ranges span fixtures; independently selected extrema need not add to the same total.",
+    table(
+      ["Flow", "Total CU", "Spoke CU", "Raydium CU", "Gateway/other CU", "Spoke share %"],
+      names.map((name) => {
+        const fixtures = e.fixtures.filter((f) => f.flow === name);
+        const totals = fixtures.map((f) => f.transactions.find((t) => t.phase === "execution")!.consumedCu);
+        const span = (values: number[], digits = 0) =>
+          range({ min: Math.min(...values), max: Math.max(...values) }, 1, digits);
+        return [
+          name,
+          span(totals),
+          span(fixtures.map((f) => f.executionCu.spoke)),
+          span(fixtures.map((f) => f.executionCu.raydium)),
+          span(fixtures.map((f) => f.executionCu.other)),
+          span(
+            fixtures.map((f, i) => (100 * f.executionCu.spoke) / totals[i]),
+            1
+          ),
+        ];
+      })
+    ),
+    "This is compute attribution, not separate program billing or a measurement of the cost saved by removing an adapter. Priority fees use the whole transaction's requested CU limit (including its safety margin) at one rate. A higher rate associated with swap accounts therefore also prices the Spoke and Gateway work at that rate. Compare the fixed-50k cost column with the snapshot ranges to distinguish transaction work from fee-market variation. Base signature fees, auxiliary transactions and rent are separate from these CU shares.",
+    ...(names.includes("deposit-cosigned") && names.includes("swap-deposit")
+      ? [
+          (() => {
+            const plain = e.fixtures.filter((f) => f.flow === "deposit-cosigned");
+            const swaps = e.fixtures.filter((f) => f.flow === "swap-deposit");
+            const ratios = swaps.map((f) => {
+              const base = plain.find((p) => p.sample === f.sample)!;
+              return (
+                f.transactions.find((t) => t.phase === "execution")!.consumedCu /
+                base.transactions.find((t) => t.phase === "execution")!.consumedCu
+              );
+            });
+            const peak = Math.max(
+              ...names.filter((n) => n.includes("swap")).map((n) => distributions[n].executionRate.max)
+            );
+            return `In these fixtures, swap→deposit uses ${range({ min: Math.min(...ratios), max: Math.max(...ratios) }, 1, 2)}× the execution CU of a co-signed deposit. The largest swap-associated estimated rate in this window is ${peak.toLocaleString("en-US")} micro-lamports/CU (${(peak / e.baseline.microLamportsPerCu).toFixed(1)}× the fixed 50k baseline). These are distinct compute and rate effects; historical rate estimates do not establish required landing bids.`;
+          })(),
+        ]
+      : []),
     "## Priority-fee distribution",
     "Rates are micro-lamports/CU. Nearest-rank percentiles include zeros and exclude cycles missing base fees or required rates. Counts are overlapping polling cycles, not independent events or landing probabilities.",
     table(
