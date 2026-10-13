@@ -172,7 +172,7 @@ NODE_OPTIONS=--no-experimental-strip-types yarn ts-mocha -p tsconfig.json test/s
 Docker restart, mainnet RPC, or new CU measurement is needed. Use Node 22:
 
 ```sh
-yarn report-svm-fork-costs target/fork-cu-20261012-final ../jussi/measurements/chainstack-20261012T132536Z-coverage/snapshots.jsonl target/fork-costs-new
+yarn report-svm-fork-costs target/fork-cu-20261012-review-followups ../jussi/measurements/chainstack-20261012T154128Z-clean/snapshots.jsonl target/fork-costs-new
 ```
 
 Choose a new output directory each time. Repeating the command with the growing
