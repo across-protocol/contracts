@@ -46,6 +46,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Polygon_Adapter                        | [0x537abE038C223066B50312474409924487D2E655](https://etherscan.io/address/0x537abE038C223066B50312474409924487D2E655) |
 | PolygonTokenBridger                    | [0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57](https://etherscan.io/address/0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57) |
 | Safe                                   | [0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01](https://etherscan.io/address/0x4c45F70B1d9a7A6D1984daccAd74D0E973B73F01) |
+| Safe_Product                           | [0xE9619c0450Fd890E28a5baA09Ab2e83e6A02C3fD](https://etherscan.io/address/0xE9619c0450Fd890E28a5baA09Ab2e83e6A02C3fD) |
 | Scroll_Adapter                         | [0x2DA799c2223c6ffB595e578903AE6b95839160d8](https://etherscan.io/address/0x2DA799c2223c6ffB595e578903AE6b95839160d8) |
 | Solana_Adapter                         | [0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3](https://etherscan.io/address/0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3) |
 | SpokePool                              | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
@@ -370,6 +371,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler                       | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | PermissionedMulticallHandler_CCTP_USDC | [0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4](https://basescan.org/address/0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4) |
 | Safe                                   | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://basescan.org/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| Safe_Product                           | [0x3078c9b6ACAA960E6Ff0549A03C0Bb1b8c6823E7](https://basescan.org/address/0x3078c9b6ACAA960E6Ff0549A03C0Bb1b8c6823E7) |
 | SpokePool                              | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery                     | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://basescan.org/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
 | SpokePoolVerifier                      | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://basescan.org/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
@@ -391,6 +393,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositSpokePool | [0xcD73a05979a1Ff8Ca444558BDA60E54161117EE2](https://plasmascan.to/address/0xcD73a05979a1Ff8Ca444558BDA60E54161117EE2) |
 | MulticallHandler               | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://plasmascan.to/address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://plasmascan.to/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
+| Safe_Product                   | [0x3078c9b6ACAA960E6Ff0549A03C0Bb1b8c6823E7](https://plasmascan.to/address/0x3078c9b6ACAA960E6Ff0549A03C0Bb1b8c6823E7) |
 | SP1Helios                      | [0x6f1Cd5f317a7228269EaB2b496313862de712CCb](https://plasmascan.to/address/0x6f1Cd5f317a7228269EaB2b496313862de712CCb) |
 | SpokePool                      | [0x50039fAEfebef707cFD94D6d462fE6D10B39207a](https://plasmascan.to/address/0x50039fAEfebef707cFD94D6d462fE6D10B39207a) |
 | SpokePoolPeriphery             | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://plasmascan.to/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
