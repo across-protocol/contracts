@@ -4,21 +4,38 @@ TypeScript helpers for deterministic Safe deployments that still emit Foundry-st
 
 ## Files
 
-- `deploySafe.ts` - Deploys a Safe using the committed chain config and writes `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`
-- `config.json` - Global Safe owners, threshold, and salt nonce
+- `deploySafe.ts` - Deploys the named multisig's Safe using its committed config and writes a Foundry-style broadcast artifact
+- `config/<name>.json` - Owners, threshold, and salt nonce for each multisig (`operations.json`, `product.json`, ...)
 - `canonicalSafeInfraAddresses.json` - Canonical Safe v1.4.1 contract addresses (SafeL2 singleton) for chains missing from the safe-deployments registry
 - `broadcast.ts` - Foundry-style broadcast writer for the Safe deployment transaction
 
 ## Usage
 
 ```bash
-yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id 1
+# Operations multisig (the default)
+yarn deploy-safe --chain-id 1
+
+# Product multisig
+yarn deploy-safe --chain-id 1 --name product
 
 # For chains not in protocol-kit's safe-deployments registry (e.g. Arc):
-yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id 5042 --use-canonical-infra
+yarn deploy-safe --chain-id 5042 --use-canonical-infra
 ```
 
-The script always reads `script/safe-multisig/config.json` and loads `MNEMONIC`, `NODE_URL_<chainId>`, and `CUSTOM_NODE_URL` from the repo `.env`.
+`--name` selects the multisig to deploy (default `operations`). The script reads `script/safe-multisig/config/<name>.json` and loads `MNEMONIC`, `NODE_URL_<chainId>`, and `CUSTOM_NODE_URL` from the repo `.env`.
+
+## Multisig names and artifacts
+
+Each multisig has its own config, broadcast folder, and `deployed-addresses.json` key, so deploying one never overwrites another:
+
+| `--name`     | Config                   | Broadcast folder                               | Address key    |
+| ------------ | ------------------------ | ---------------------------------------------- | -------------- |
+| `operations` | `config/operations.json` | `broadcast/DeploySafe.s.sol/<chainId>`         | `Safe`         |
+| `product`    | `config/product.json`    | `broadcast/DeploySafe_Product.s.sol/<chainId>` | `Safe_Product` |
+
+The operations Safe keeps the unsuffixed names for backwards compatibility (e.g. `CheckCounterfactualDeployments.s.sol` reads `Safe`). Any other name maps to `DeploySafe_<PascalName>.s.sol` and `Safe_<PascalName>`, which `yarn extract-addresses` recognises automatically. To add a multisig, drop a new `config/<name>.json` in place; no code changes are needed.
+
+Because the Safe address is CREATE2 over owners, threshold, and salt nonce, different multisigs land at different addresses even with the same `saltNonce`.
 
 ## Config
 

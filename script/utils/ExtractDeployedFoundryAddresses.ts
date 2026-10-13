@@ -454,7 +454,13 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             }
           }
 
-          if (broadcastFile.scriptName === "DeployDstHandler.s.sol") {
+          // Safes deployed by script/safe-multisig/deploySafe.ts: the operations Safe (DeploySafe.s.sol) keeps
+          // the `Safe` key; any other multisig role (DeploySafe_<Name>.s.sol) becomes `Safe_<Name>` so it never
+          // displaces the operations address.
+          const safeRole = broadcastFile.scriptName.match(/^DeploySafe_(.+)\.s\.sol$/);
+          if (safeRole) {
+            contractName += `_${safeRole[1]}`;
+          } else if (broadcastFile.scriptName === "DeployDstHandler.s.sol") {
             contractName += "_OFT_USDT";
           } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeriphery.s.sol") {
             contractName += "_CCTP_USDC";
