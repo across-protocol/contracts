@@ -6,6 +6,7 @@ import path from "path";
 import { gzipSync } from "zlib";
 import { PublicKey } from "@solana/web3.js";
 import { ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { renderEvidenceReport, FeeEvidence, Witness } from "./replayForkCosts";
 import { TxMeasurement } from "../../test/svm-gateway/fork/recorder";
 
 type Market = { name: string; writable_accounts: string[] };
@@ -257,7 +258,7 @@ export async function report(
     ...new Map<string, string[]>(models.map((m: any) => [m.markets.join(","), m.markets as string[]])).values(),
   ].map((components, i) => ({ id: `execution-${i + 1}`, components }));
   const evidenceRows: (number | null)[][] = [];
-  const witnesses = new Map<string, unknown>();
+  const witnesses = new Map<string, Witness>();
   const requiredMarkets = new Set<string>(models.flatMap((m: any) => m.markets));
   function consume(line: string) {
     const record = JSON.parse(line);
@@ -510,8 +511,8 @@ export async function report(
   };
   mkdirSync(output, { recursive: true });
 
-  const evidence = {
-    schema: 1,
+  const evidence: FeeEvidence = {
+    schema: 2,
     units: { rates: "micro-lamports per CU", baseFee: "lamports per signature", price: "USD per SOL" },
     archive: {
       runId: result.archive.runId,
@@ -522,8 +523,22 @@ export async function report(
       last: result.archive.last,
       snapshots,
       ignoredTrailingBytes: result.archive.ignoredTrailingBytes,
+      maxGapMs,
+      ended,
     },
+    measurement: {
+      sourceCommit: measured.provenance.spokeArtifact?.sourceCommit,
+      ciRun: measured.provenance.spokeArtifact?.ciRun,
+      spokeBinarySha256: measured.provenance.spokeBinarySha256,
+      snapshotSlot: measured.provenance.snapshotSlot,
+      validator: measured.provenance.validator,
+      marginBps: measured.provenance.marginBps,
+    },
+    assumptions: result.assumptions,
     reportSourceSha256: result.reportSourceSha256,
+    replaySourceSha256: createHash("sha256")
+      .update(readFileSync(path.join(__dirname, "replayForkCosts.ts")))
+      .digest("hex"),
     inputHashes: hashes,
     estimator: header.estimator,
     baseline: result.baseline,
@@ -567,82 +582,7 @@ export async function report(
   // Compact tuple arrays keep the review artifact small enough to commit and refresh.
   const evidenceArtifact = writeEvidence(output, evidence);
   writeFileSync(path.join(output, "costs.json"), JSON.stringify({ ...result, evidenceArtifact }, null, 2) + "\n");
-  const fmt = (r: Range, divisor: number, digits: number) => {
-    const lo = (r.min / divisor).toFixed(digits),
-      hi = (r.max / divisor).toFixed(digits);
-    return lo === hi ? lo : `${lo}–${hi}`;
-  };
-  const table = (metric: "network" | "outlay") =>
-    [
-      "| Flow | Fixed 50k SOL | Fixed 50k USD | Snapshot SOL range | Snapshot USD range |",
-      "|---|---:|---:|---:|---:|",
-      ...Object.entries(flows).map(
-        ([name, f]) =>
-          `| ${name} | ${fmt(f.baseline[metric + "Lamports"], 1e9, 9)} | $${fmt(f.baseline[metric + "Usd"], 1, 6)} | ${fmt(f.observed[metric + "Lamports"], 1e9, 9)} | $${fmt(f.observed[metric + "Usd"], 1, 6)} |`
-      ),
-    ].join("\n");
-  const rateTable = [
-    "## Priority-fee estimator ranges",
-    "",
-    "Rates are micro-lamports/CU. Approval, buffer and lookup-table setup use the global series. The fixed baseline is 50,000 for every transaction.",
-    "",
-    "| Flow | Execution minimum | Execution maximum | Auxiliary minimum | Auxiliary maximum | Missing fee snapshots |",
-    "|---|---:|---:|---:|---:|---:|",
-    ...Object.entries(flows).map(
-      ([name, f]) =>
-        `| ${name} | ${f.observed.executionRate.min} | ${f.observed.executionRate.max} | ${f.observed.auxiliaryRate.min} | ${f.observed.auxiliaryRate.max} | ${f.missingFeeSnapshots} |`
-    ),
-    "",
-    `See [${evidenceArtifact.file}](${evidenceArtifact.file}) for account mappings, all derived observations, timestamp-matched prices/base fees, CU fixtures and raw extrema witnesses.`,
-    `Evidence JSON SHA-256 (reference, before compression): \`${evidenceArtifact.jsonSha256}\` (${evidenceArtifact.jsonBytes} bytes).`,
-    `Artifact SHA-256: \`${evidenceArtifact.sha256}\` (${evidenceArtifact.bytes} bytes).`,
-    "",
-  ].join("\n");
-  const percentiles = [
-    "## Priority-fee distribution",
-    "",
-    "Nearest-rank rates in micro-lamports/CU, one observation per cost-eligible cycle; zeros included.",
-    "",
-    "| Flow | Cycles | Zero % | p50 | p90 | p95 | p99 | Maximum |",
-    "|---|---:|---:|---:|---:|---:|---:|---:|",
-    ...Object.entries(distributions).map(([name, d]) => {
-      const r = d.executionRate;
-      return `| ${name} | ${r.count} | ${r.zeroPercent.toFixed(2)} | ${r.p50} | ${r.p90} | ${r.p95} | ${r.p99} | ${r.max} |`;
-    }),
-    "",
-    "## Network-fee percentiles",
-    "",
-    "Each cell spans the per-fixture percentiles across the measured CU fixtures. USD costs use the quote from the same cycle. Base fees remain payable when priority rates are zero. These overlapping observations do not measure landing probabilities.",
-    "",
-    "| Flow | Unit | p50 | p90 | p95 | p99 |",
-    "|---|---|---:|---:|---:|---:|",
-    ...Object.entries(distributions).flatMap(([name, d]) =>
-      (["Sol", "Usd"] as const).map((unit) => {
-        const cells = [50, 90, 95, 99].map((p) => {
-          const v = d.fixtures.map((f: any) => f[`network${unit}`][`p${p}`]);
-          const lo = Math.min(...v).toFixed(unit === "Sol" ? 9 : 6),
-            hi = Math.max(...v).toFixed(unit === "Sol" ? 9 : 6);
-          return lo === hi ? lo : `${lo}–${hi}`;
-        });
-        return `| ${name} | ${unit.toUpperCase()} | ${cells.join(" | ")} |`;
-      })
-    ),
-    "",
-  ].join("\n");
-  const md = `# V5 flow SOL/USD costs\n\nArchive: ${result.archive.first} – ${result.archive.last}; ${snapshots} complete snapshots.\nBaseline price: $${latestPrice.usd_per_sol}/SOL (${new Date(latestPrice.fetched_at_ms).toISOString()}, ${latestPrice.source}); base fee ${latestBase.lamports} lamports/signature.\n\n## Network fees, including approval and buffer transactions\n\n${table("network")}\n\n## Network fees plus newly locked fill-status rent\n\n${table("outlay")}\n\n## Refundable capital and optional setup\n\n| Flow | Temporary buffer SOL (returned) | Fill-status SOL (retained until close) | Fresh lookup table SOL rent | Fresh-table 50k fees + retained rent SOL |\n|---|---:|---:|---:|---:|\n${Object.entries(
-    flows
-  )
-    .map(
-      ([n, f]) =>
-        `| ${n} | ${fmt(f.rent.temporaryBufferLamports, 1e9, 9)} | ${fmt(f.rent.retainedFillStatusLamports, 1e9, 9)} | ${fmt(f.rent.lookupTableLamports, 1e9, 9)} | ${fmt(f.baseline.freshLookupTableOutlayLamports, 1e9, 9)} |`
-    )
-    .join(
-      "\n"
-    )}\n\n## Interpretation\n\n${result.assumptions.map((s) => `- ${s}`).join("\n")}\n\nSee costs.json for per-transaction baseline costs, exact extrema timestamps/sample IDs, component mappings, missing observations, optional setup costs in SOL/USD and input hashes.\n`;
-  writeFileSync(
-    path.join(output, "costs.md"),
-    md.replace("## Network fees,", rateTable + "\n" + percentiles + "\n## Network fees,")
-  );
+  writeFileSync(path.join(output, "costs.md"), await renderEvidenceReport(evidence, evidenceArtifact));
   return result;
 }
 if (require.main === module) {

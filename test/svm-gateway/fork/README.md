@@ -5,8 +5,8 @@ account-snapshot replay, not a full historical bank fork or a transaction landin
 experiment. Mainnet access only reads accounts and deployed IDL data. All
 transactions use deterministic test-only keys and a loopback validator.
 
-The [initial CU and SOL/USD cost snapshot](results/2026-10-12.md) records the
-current measured ranges, archive cutoff and binary provenance. Refresh that
+The [CU and SOL/USD cost study](results/2026-10-12.md) records the
+measured ranges, archive cutoff, collection status and binary provenance. Refresh that
 snapshot after extending the fee-collection window using the cost-report command
 below; a new validator run is needed only when changing the CU workload or its
 program/runtime inputs.
@@ -31,9 +31,6 @@ Verify the commit above, then follow the pinned
 [collector run guide](https://github.com/across-protocol/jussi/blob/7962291b881eaa82a8b181b03a3cbb8799652581/docs/svm-fee-measurement.md)
 to collect from a clean revision. Keep the tag fixed; collector changes should
 receive a new tag and commit pin so existing archives stay reproducible.
-The original 881-cycle archive records its pre-publication dirty revision;
-that provenance is retained. Subsequent collection uses a separate archive
-with the clean collector commit and the same account manifest.
 
 ## Programs and artifacts
 
@@ -180,13 +177,32 @@ Focused boundary checks:
 NODE_OPTIONS=--no-experimental-strip-types yarn ts-mocha -p tsconfig.json test/svm-gateway/fork/Estimator.ts
 ```
 
+## Verify and reproduce the published study
+
+The portable evidence is sufficient to regenerate the complete published report:
+
+```sh
+yarn replay-svm-fork-costs test/svm-gateway/fork/results/2026-10-12-fee-evidence.json test/svm-gateway/fork/results/2026-10-12.md --check
+```
+
+Omit `--check` to write the report. The same command accepts `.json.gz` evidence.
+It accepts the schema-2 evidence produced by the exporter below and needs only
+the checkout and locked Node dependencies, without local receipts,
+an RPC connection, a validator or the raw collector archive. It independently
+recalculates costs, missing-data counts, rates and percentiles, checks the stored
+summaries and raw extrema witnesses, and verifies the document including its
+evidence hashes. Measurement provenance and interpretation are embedded in the
+evidence, so there is no hand-assembled report header. CI runs this check through
+`test-svm-gateway-vectors` and checks the exporter/replay source hashes.
+Selected witnesses still cannot prove completeness of the full raw archive.
+
 ## Recalculate SOL/USD costs from a growing Jussi archive
 
 `yarn report-svm-fork-costs` prices the saved CU results offline. No validator,
 Docker restart, mainnet RPC, or new CU measurement is needed. Use Node 22:
 
 ```sh
-yarn report-svm-fork-costs target/fork-cu-20261012-review-followups ../jussi/measurements/chainstack-20261012T154128Z-clean/snapshots.jsonl target/fork-costs-new
+yarn report-svm-fork-costs <CU-run-directory> <snapshots.jsonl> <new-output-directory>
 ```
 
 Choose a new output directory each time. Repeating the command with the growing
@@ -194,10 +210,14 @@ archive includes the additional snapshots. It writes `costs.md`, `costs.json`,
 and `fee-evidence.json` (or `fee-evidence.json.gz` above 1 MB of compact JSON). The full JSON includes per-transaction baseline fees, CU sample IDs and timestamps
 for extrema, component sets, missing-data counts, prices, and input hashes.
 
-Commit the generated evidence alongside the checked-in result snapshot (named
-`<date>-fee-evidence.json`, or `.json.gz`). Update the existing study file when
-extending this draft's window; Git retains prior versions. Do not create a new
-full dated copy for each refresh or downsample away brief spikes. Above 1 MB,
+Copy the generated evidence to the study's existing `<date>-fee-evidence.json`
+path (or `.json.gz`), then run `replay-svm-fork-costs` with that path and the
+existing `<date>.md` path to regenerate the report. Commit both files together.
+If compression changes the extension, remove the superseded evidence file and
+use the new extension in the command. Keep one study and evidence artifact;
+do not create a full dated copy for each refresh or downsample away brief spikes.
+The generated report records whether collection had ended at its cutoff.
+Above 1 MB,
 the reporter automatically uses gzip compression with a normalized OS header.
 Deflate output can vary between zlib versions, so the uncompressed JSON SHA-256
 (`jsonSha256`) is the reference for comparing regenerated evidence. Keep the generated
@@ -209,7 +229,7 @@ to check the JSON reference; hash the file itself to check artifact integrity.
 
 The portable artifact contains the exact account sets, all derived per-cycle fee
 rates and matching prices/base fees, CU/signature/rent inputs, PDA bump
-metadata and shared lookup-table addresses (for refreshed CU runs), and full raw
+metadata, shared lookup-table addresses, measurement provenance and full raw
 RPC windows at the rate/cost/price extrema. `columns` describes each compact row;
 `series` and `flows` map execution rates to components. Rates are micro-lamports/CU.
 `null` means missing, not zero. Paths, RPC endpoints and credentials are excluded.

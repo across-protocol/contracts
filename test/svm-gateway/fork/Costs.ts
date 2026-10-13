@@ -1,4 +1,5 @@
 import { strict as assert } from "assert";
+import { loadEvidence, verifyEvidence, replayEvidence } from "../../../scripts/svm/replayForkCosts";
 import {
   combinedRate,
   distribution,
@@ -8,7 +9,7 @@ import {
   rentFromReceipts,
   report,
 } from "../../../scripts/svm/reportForkCosts";
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import { gunzipSync, gzipSync } from "zlib";
@@ -18,6 +19,26 @@ import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-tok
 import { recipient, USDC } from "./config";
 
 describe("Fork cost accounting", () => {
+  it("reproduces the committed report from portable evidence without local receipts or RPC access", async () => {
+    const dir = path.join(__dirname, "results");
+    const files = readdirSync(dir).filter((f) => /-fee-evidence\.json(\.gz)?$/.test(f));
+    assert.equal(files.length, 1, "Keep one evidence artifact for this study");
+    const file = path.join(dir, files[0]);
+    const { evidence } = loadEvidence(file);
+    assert.equal(
+      evidence.reportSourceSha256,
+      createHash("sha256")
+        .update(readFileSync(path.resolve(__dirname, "../../../scripts/svm/reportForkCosts.ts")))
+        .digest("hex")
+    );
+    assert.equal(
+      evidence.replaySourceSha256,
+      createHash("sha256")
+        .update(readFileSync(path.resolve(__dirname, "../../../scripts/svm/replayForkCosts.ts")))
+        .digest("hex")
+    );
+    await replayEvidence(file, file.replace(/-fee-evidence\.json(\.gz)?$/, ".md"), true);
+  }).timeout(60_000);
   it("derives ATA bumps from confirmed token owners and resolves lookup keys without labelling arbitrary token accounts as ATAs", () => {
     const owner = recipient(2).publicKey;
     const address = getAssociatedTokenAddressSync(USDC, owner).toBase58();
@@ -91,11 +112,21 @@ describe("Fork cost accounting", () => {
         { name: "shared", writable_accounts: ["vault"] },
       ];
       const transactions = [
-        { phase: "buffer-init", signature: "init", computeUnitLimit: 1000, signatureCount: 1, matchedComponents: [] },
+        {
+          phase: "buffer-init",
+          signature: "init",
+          computeUnitLimit: 1000,
+          signatureCount: 1,
+          bytes: 100,
+          consumedCu: 900,
+          matchedComponents: [],
+        },
         {
           phase: "execution",
           signature: "execute",
           computeUnitLimit: 100000,
+          bytes: 200,
+          consumedCu: 90000,
           signatureCount: 1,
           matchedComponents: ["shared"],
         },
@@ -152,12 +183,14 @@ describe("Fork cost accounting", () => {
         snapshot(1000, 10000000, 100),
         snapshot(2000, 0, 200),
         { ...failed, markets: [failed.markets[0]] },
+        { ...snapshot(4000, 0, 200), price_error: "unavailable" },
       ];
       const prefix = records.map((r) => JSON.stringify(r)).join("\n") + '\n{"kind":';
       writeFileSync(archive, prefix);
       const first = await report(measurements, archive, path.join(dir, "first"));
       const flow = first.flows.fixture;
       assert.equal(flow.missingFeeSnapshots, 1);
+      assert.equal(flow.missingUsdSnapshots, 1);
       assert.equal(flow.observed.networkLamports.min, 10000);
       assert.equal(flow.observed.networkLamports.max, 1010000);
       assert.equal(flow.observed.networkUsd.min, 0.002);
@@ -165,8 +198,8 @@ describe("Fork cost accounting", () => {
       assert.equal(flow.baseline.networkLamports.min, 15050);
       assert.equal(first.archive.ignoredTrailingBytes, 8);
       const d = first.distributions.fixture;
-      assert.equal(d.executionRate.count, 2);
-      assert.equal(d.executionRate.zeroPercent, 50);
+      assert.equal(d.executionRate.count, 3);
+      assert.equal(d.executionRate.zeroPercent, 200 / 3);
       assert.equal(d.fixtures[0].networkUsd.p50, 0.002);
       assert.equal(d.fixtures[0].networkUsd.p99, 0.101);
       const evidence = JSON.parse(readFileSync(path.join(dir, "first/fee-evidence.json"), "utf8"));
@@ -174,6 +207,7 @@ describe("Fork cost accounting", () => {
         [1000, 5000, 100, 0, 10000000],
         [2000, 5000, 200, 0, 0],
         [3000, 5000, 200, 0, null],
+        [4000, 5000, null, 0, 0],
       ]);
       assert.equal(evidence.flows.fixture.executionSeries, "execution-1");
       assert.equal(evidence.fixtures[0].transactions[1].computeUnitLimit, 100000);
@@ -187,6 +221,37 @@ describe("Fork cost accounting", () => {
         assert.equal(combinedRate(evidence.series[0].components, observations), derived[4]);
       }
       assert(!JSON.stringify(evidence).includes(dir), "Review evidence must not contain local paths");
+      const verified = verifyEvidence(evidence);
+      for (const mode of ["baseline", "observed", "rent"] as const)
+        for (const [key, bounds] of Object.entries(verified.flows.fixture[mode])) {
+          assert.equal(bounds.min, flow[mode][key].min);
+          assert.equal(bounds.max, flow[mode][key].max);
+          assert.equal(bounds.count, flow[mode][key].count);
+        }
+      const copy = () => JSON.parse(JSON.stringify(evidence));
+      const badSummary = copy();
+      badSummary.distributions.fixture.executionRate.p99++;
+      assert.throws(() => verifyEvidence(badSummary), /Stored distributions/);
+      const badWitness = copy();
+      badWitness.extremaWitnesses[0].markets[1].samples[0][1]++;
+      // Change every nonzero slot so integer averaging cannot conceal the mutation.
+      badWitness.extremaWitnesses[0].markets[1].samples.forEach((s: number[]) => (s[1] += 1000000));
+      assert.throws(() => verifyEvidence(badWitness), /Raw witness disagrees/);
+      const badOrder = copy();
+      badOrder.observations.reverse();
+      assert.throws(() => verifyEvidence(badOrder), /timestamps must increase/);
+      const json = readFileSync(path.join(dir, "first/fee-evidence.json"));
+      const compressed = path.join(dir, "evidence.json.gz"),
+        markdown = path.join(dir, "report.md");
+      writeFileSync(compressed, gzipSync(json));
+      assert.deepEqual(loadEvidence(compressed, createHash("sha256").update(json).digest("hex")).evidence, evidence);
+      assert.throws(() => loadEvidence(compressed, "wrong"), /hash mismatch/);
+      await replayEvidence(compressed, markdown);
+      await replayEvidence(compressed, markdown, true);
+      appendFileSync(markdown, "stale manual edit\n");
+      await assert.rejects(replayEvidence(compressed, markdown, true), /Published report differs/);
+      writeFileSync(compressed, gzipSync(json).subarray(0, 16));
+      assert.throws(() => loadEvidence(compressed));
       appendFileSync(archive, '"snapshot"}\n');
       const replay = await report(measurements, archive, path.join(dir, "replay"), Buffer.byteLength(prefix));
       assert.deepEqual(replay.flows, first.flows);
