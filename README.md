@@ -42,9 +42,10 @@ The npm package exposes these stable JSON paths for downstream Anchor clients an
 @across-protocol/contracts/svm/idl/svm_spoke.json
 @across-protocol/contracts/svm/idl/multicall_handler.json
 @across-protocol/contracts/svm/idl/sponsored_cctp_src_periphery.json
-@across-protocol/contracts/svm/idl/message_transmitter_v2.json
-@across-protocol/contracts/svm/idl/token_messenger_minter_v2.json
 ```
+
+`svm_spoke` is the V5 interface. `multicall_handler` and `sponsored_cctp_src_periphery` are legacy
+compatibility interfaces for existing quote construction and event indexing; they are not used by V5 flows.
 
 For example, load an IDL without loading the package's runtime clients:
 
@@ -60,14 +61,21 @@ installing a package does not deploy or upgrade programs.
 
 The Spoke IDL includes the Rust-derived `V5AdapterInput`, `AcrossDepositJitParams`, and `V5FillJit` schemas
 carried inside opaque instruction bytes. Event-authority PDA seeds are preserved for account resolution.
-The Circle V2 IDLs come from the reviewed snapshots in `idls/`, rather than a live RPC fetch.
+Circle owns the MessageTransmitterV2 and TokenMessengerMinterV2 schemas. They have no stable `/svm/idl/`
+exports here; downstream generators should use reviewed, commit-pinned IDLs from
+[Circle's repository](https://github.com/circlefin/solana-cctp-contracts/tree/master/examples/target/idl),
+with the source revision recorded and compatibility checked against the intended deployment.
+The reviewed Circle V2 snapshots in `idls/` remain available through the existing legacy IDL/client exports
+during migration. SDK owns the downstream Circle client generation; this does not remove CCTP support.
 Existing generated clients, runtime helpers, legacy IDL deep imports, and EVM/shared exports remain available
-during downstream migration; new generators should use the stable JSON paths above.
+during downstream migration. `MulticallHandlerCoder` is a handwritten compilation helper, not generated from
+the program IDL; migrating it requires moving its logic downstream separately from IDL-based client generation.
 
 For maintainers, `yarn generate-svm-artifacts` always generates production interfaces, even with `IS_TEST=true`.
 `yarn generate-svm-test-idls` writes test-feature and mock interfaces only under `target/`.
-The explicit `/svm/idl/` entries in `package.json` allowlist production assets. `yarn build-ts` exports those JSON
-files to both the stable paths and the legacy `dist` paths; `npm pack` and `npm publish` run the same `prepack`
+The explicit `/svm/idl/` entries in `package.json` allowlist the public Across IDLs. `yarn build-ts` exports those JSON
+files to both the stable paths and the legacy `dist` paths, and retains Circle V2 JSON only in the legacy paths.
+`npm pack` and `npm publish` run the same `prepack`
 build, including EVM artifact export. Generate production artifacts first (and build EVM artifacts with
 `yarn build-evm-foundry`). Run `yarn test-svm-idl-package` to inspect a real tarball and generate/compile clients
 in an external fixture using only its IDLs. This check requires no validator or network access.

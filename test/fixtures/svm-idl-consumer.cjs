@@ -8,13 +8,7 @@ const { renderVisitor } = require("@codama/renderers-js");
 const { address, getProgramDerivedAddress } = require("@solana/kit");
 
 async function main() {
-  const names = [
-    "svm_spoke",
-    "multicall_handler",
-    "sponsored_cctp_src_periphery",
-    "message_transmitter_v2",
-    "token_messenger_minter_v2",
-  ];
+  const names = ["svm_spoke", "multicall_handler", "sponsored_cctp_src_periphery"];
   for (const name of names) {
     const idl = require(`@across-protocol/contracts/svm/idl/${name}.json`);
     assert.deepEqual(idl, require(`@across-protocol/contracts/dist/src/svm/assets/idl/${name}.json`));
@@ -117,12 +111,22 @@ async function main() {
     discriminator: spoke.FILL_STATUS_ACCOUNT_DISCRIMINATOR,
     ...fillStatus,
   });
-  assert.equal(typeof require("./compiled/message_transmitter_v2").getMessageTransmitterDecoder, "function");
-  assert.equal(typeof require("./compiled/token_messenger_minter_v2").getDepositForBurnInstruction, "function");
   assert.equal(typeof require("./compiled/multicall_handler").getHandleV3AcrossMessageInstruction, "function");
   assert.equal(typeof require("./compiled/sponsored_cctp_src_periphery").getDepositForBurnInstruction, "function");
   assert.equal(typeof require("@across-protocol/contracts/dist/utils/MerkleTree").MerkleTree, "function");
   const contracts = require("@across-protocol/contracts");
+  for (const [name, exportName] of [
+    ["message_transmitter_v2", "MessageTransmitterV2Idl"],
+    ["token_messenger_minter_v2", "TokenMessengerMinterV2Idl"],
+  ]) {
+    assert.throws(() => require.resolve(`@across-protocol/contracts/svm/idl/${name}.json`), {
+      code: "MODULE_NOT_FOUND",
+    });
+    assert.deepEqual(contracts[exportName], require(`@across-protocol/contracts/dist/src/svm/assets/idl/${name}.json`));
+  }
+  assert.equal(typeof contracts.MessageTransmitterV2Client.getMessageTransmitterDecoder, "function");
+  assert.equal(typeof contracts.TokenMessengerMinterV2Client.getDepositForBurnInstruction, "function");
+  assert.equal(typeof contracts.MulticallHandlerCoder, "function");
   for (const name of [
     "SvmSpokeClient",
     "MulticallHandlerClient",
@@ -132,7 +136,7 @@ async function main() {
   ])
     assert.equal(typeof contracts[name], "object");
   assert.equal(typeof contracts.getDeployedAddress, "function");
-  console.log("Packed IDLs: all five clients compile; V5 input/JIT codecs and event-authority resolution pass.");
+  console.log("Packed IDLs: three public clients compile; Circle compatibility exports, V5 codecs and PDAs pass.");
 }
 main().catch((error) => {
   console.error(error);

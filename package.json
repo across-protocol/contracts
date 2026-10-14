@@ -15,9 +15,7 @@
     "/dist/**/*",
     "/svm/idl/svm_spoke.json",
     "/svm/idl/multicall_handler.json",
-    "/svm/idl/sponsored_cctp_src_periphery.json",
-    "/svm/idl/message_transmitter_v2.json",
-    "/svm/idl/token_messenger_minter_v2.json"
+    "/svm/idl/sponsored_cctp_src_periphery.json"
   ],
   "types": "dist/index.d.ts",
   "main": "dist/index.js",

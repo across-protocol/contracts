@@ -3,7 +3,7 @@ import { execFileSync } from "child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
-import { productionIdlNames } from "../../scripts/svm/buildHelpers/productionIdls";
+import { productionIdlNames, publicIdlNames } from "../../scripts/svm/buildHelpers/productionIdls";
 
 describe("Production IDL package", function () {
   this.timeout(120000);
@@ -38,6 +38,10 @@ describe("Production IDL package", function () {
 
   it("cleans stale test/mock/V1 artifacts and exports only approved production JSON", () => {
     prepareAssets();
+    // A rebuild must also remove Circle JSON left by an older public export list.
+    mkdirSync(path.join(work, "svm/idl"), { recursive: true });
+    for (const name of ["message_transmitter_v2", "token_messenger_minter_v2"])
+      writeFileSync(path.join(work, `svm/idl/${name}.json`), "{}");
     for (const name of ["test", "mock_gateway", "message_transmitter", "unexpected_program"]) {
       for (const dir of ["target/idl", "src/svm/assets/idl", "svm/idl", "dist/src/svm/assets/idl"]) {
         mkdirSync(path.join(work, dir), { recursive: true });
@@ -52,7 +56,7 @@ describe("Production IDL package", function () {
         readdirSync(path.join(work, dir))
           .filter((name) => name.endsWith(".json"))
           .sort(),
-        productionIdlNames.map((name) => `${name}.json`).sort()
+        (dir === "svm/idl" ? publicIdlNames : productionIdlNames).map((name) => `${name}.json`).sort()
       );
     assert(!readFileSync(path.join(work, "src/svm/assets/index.ts"), "utf8").includes("TestAnchor"));
     assert(!readdirSync(path.join(work, "src/svm/assets")).includes("test.ts"));
@@ -129,7 +133,7 @@ describe("Production IDL package", function () {
     for (const prefix of ["svm/idl/", "dist/src/svm/assets/idl/"])
       assert.deepEqual(
         paths.filter((file) => file.startsWith(prefix) && file.endsWith(".json")).sort(),
-        productionIdlNames.map((name) => `${prefix}${name}.json`).sort()
+        (prefix === "svm/idl/" ? publicIdlNames : productionIdlNames).map((name) => `${prefix}${name}.json`).sort()
       );
     assert(!paths.some((file) => /(?:^|\/)(?:test|mock_gateway)\.(?:json|js|d\.ts)$/.test(file)));
     for (const file of [

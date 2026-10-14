@@ -4,10 +4,11 @@ import path from "path";
 import { strict as assert } from "assert";
 import { files } from "../../../package.json";
 
-// The npm files list is the explicit public IDL allowlist. Keep legacy assets on the same surface.
-export const productionIdlNames = files
+// Stable public paths cover Across-owned programs; Circle snapshots remain compatibility assets.
+export const publicIdlNames = files
   .filter((file) => file.startsWith("/svm/idl/"))
   .map((file) => path.basename(file, ".json"));
+export const productionIdlNames = [...publicIdlNames, "message_transmitter_v2", "token_messenger_minter_v2"];
 
 export function readProductionIdls(directory: string): Map<string, string> {
   return new Map(
