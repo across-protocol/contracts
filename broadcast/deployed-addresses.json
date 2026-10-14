@@ -1173,6 +1173,10 @@
           "block_number": 32295215,
           "transaction_hash": "0xdcc187a002d5c44b54d0e2eec582086c979edef77be28638257cda588085f777"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 44118954
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 30771795,

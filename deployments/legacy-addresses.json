@@ -242,7 +242,8 @@
   "4217": {
     "SpokePool": { "address": "0x2d4710F04Da90184255782d3715224A6C776955D", "blockNumber": 4341825 },
     "MulticallHandler": { "address": "0x7d6adcbb51ea70c134d7b0b96aa9af50fe504d90", "blockNumber": 4035390 },
-    "SpokePoolPeriphery": { "address": "0x1cFC76f039e01970355Cf73a37B785A81847796C", "blockNumber": 4035644 }
+    "SpokePoolPeriphery": { "address": "0x1cFC76f039e01970355Cf73a37B785A81847796C", "blockNumber": 4035644 },
+    "AcrossEventEmitter": { "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034", "blockNumber": 44118954 }
   },
   "4326": {
     "SpokePool": { "address": "0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E", "blockNumber": 5450616 },

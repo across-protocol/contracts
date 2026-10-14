@@ -300,6 +300,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                            |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://explore.mainnet.tempo.xyz/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager           | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://explore.mainnet.tempo.xyz/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explore.mainnet.tempo.xyz/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explore.mainnet.tempo.xyz/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
