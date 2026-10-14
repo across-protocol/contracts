@@ -1,18 +1,13 @@
 // This script finds the fillStatus (fillStatus + event) from a provided fillStatusPda.
-import * as anchor from "@anchor-lang/core";
-import { AnchorProvider, BN, Program } from "@anchor-lang/core";
-import { address, createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
+import { AnchorProvider, Program } from "@anchor-lang/core";
+import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { SvmSpokeIdl } from "../../src/svm";
+import { SvmSpokeIdl, SvmSpokeAnchor } from "../../src/svm/assets";
+import { stringifyCpiEvent } from "../../src/svm/web3-v1";
+import { readFillEventFromFillStatusPda } from "./utils/events";
 
-import { readFillEventFromFillStatusPda } from "../../src/svm/web3-v2/solanaProgramUtils";
-import { program } from "@anchor-lang/core/dist/cjs/native/system";
-import { SvmSpoke } from "../../target/types/svm_spoke";
-
-// Set up the provider
 const provider = AnchorProvider.env();
-anchor.setProvider(provider);
 
 const argv = yargs(hideBin(process.argv))
   .option("fillStatusPda", { type: "string", demandOption: true, describe: "Fill Status PDA" })
@@ -20,47 +15,26 @@ const argv = yargs(hideBin(process.argv))
 
 async function findFillStatusFromFillStatusPda(): Promise<void> {
   const resolvedArgv = await argv;
-  const fillStatusPda = address(resolvedArgv.fillStatusPda);
-
-  console.log(`Looking for Fill Event for Fill Status PDA: ${fillStatusPda.toString()}`);
-  const { rpcEndpoint } = provider.connection;
-  const rpc = createSolanaRpc(rpcEndpoint);
-  const rpcSubscriptions = createSolanaRpcSubscriptions(
-    rpcEndpoint.replace(/^http(s?):\/\//i, (_m, s) => `ws${s ?? ""}://`)
+  const fillStatusPda = new PublicKey(resolvedArgv.fillStatusPda);
+  const program = new Program<SvmSpokeAnchor>(
+    { ...SvmSpokeIdl, address: new PublicKey(resolvedArgv.programId).toBase58() },
+    provider
   );
-
-  const { event, slot } = await readFillEventFromFillStatusPda(
-    { rpc, rpcSubscriptions },
-    fillStatusPda,
-    address(resolvedArgv.programId),
-    SvmSpokeIdl
-  );
+  console.log(`Looking for Fill Event for Fill Status PDA: ${fillStatusPda.toBase58()}`);
+  const event = await readFillEventFromFillStatusPda(provider.connection, program, fillStatusPda);
   if (!event) {
     console.log("No fill events found");
     return;
   }
 
-  console.table(
-    Object.entries(event.data).map(([key, value]) => {
-      if (key === "relay_execution_info") {
-        const info = value as any;
-        return { Property: key, Value: `relayer: ${info.relayer}, executionTimestamp: ${info.executionTimestamp}` };
-      }
-      return { Property: key, Value: (value as any).toString() };
-    })
-  );
-
-  const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
-  let fillStatus;
-  try {
-    const fillStatusResponse = await program.account.fillStatusAccount.fetch(fillStatusPda);
-    fillStatus = Object.keys(fillStatusResponse.status)[0];
-  } catch (error) {
-    fillStatus = "filled";
-  }
-
-  console.log("fillStatus", fillStatus);
-  console.log("slot", slot);
+  console.log(JSON.stringify(stringifyCpiEvent(event.data, event.name), null, 2));
+  const account = await program.account.fillStatusAccount.fetchNullable(fillStatusPda, "confirmed");
+  // Missing accounts can follow rent reclaim; RPC/decoding failures must still propagate.
+  console.log("fillStatus", account ? Object.keys(account.status)[0] : "closed (historical fill)");
+  console.log("slot", event.slot);
 }
 
-findFillStatusFromFillStatusPda();
+findFillStatusFromFillStatusPda().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

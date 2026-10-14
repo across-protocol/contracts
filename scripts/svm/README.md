@@ -117,6 +117,20 @@ a nonzero exit status after processing the remaining accounts.
 
 ## Tests
 
+`queryEventsV2` and `findFillStatusFromFillStatusPda` retain their CLI names and use Anchor/web3.js v1 with the
+explicit `--programId`. Their internal event reader paginates confirmed history and validates the CPI prefix,
+program and event authority, ignoring failed transactions and malformed payloads. `queryEventsV2` retains its
+PascalCase event filters; printed event fields now use Anchor's camelCase names. Fill lookup searches for a
+`FilledRelay` event rather than assuming the oldest signature created the fill. A missing fill-status account
+after a historical fill is reported as closed; RPC or decoding failures propagate. These are inspection tools,
+not a production indexer: results depend on the RPC's retained history, and a transaction containing several
+fills requires inspecting its events to disambiguate them.
+
+`test/svm/Scripts.Events.ts` covers the query helpers without network access. `yarn typecheck-svm-scripts` checks
+the retained scripts. They do not import contracts-generated clients or the SDK. See the
+[coverage and ownership map](../../test/svm-gateway/README.md#local-clients-and-coverage-ownership) for the program
+test migration and the separate packed-IDL consumer check.
+
 `test/svm/Scripts.CctpV2.ts` covers attestation polling and error handling without public transactions. `test/svm/SvmSpoke.HandleReceiveMessage.ts` exercises the shared script finalizer against the local validator and CCTP V2 program, including root/admin calls, already-delivered messages and failed-message recovery. `test/svm/Scripts.CctpV2Tokens.ts` covers the token receiver against Circle's local programs: fee deductions, finalized/unfinalized thresholds, expected recipient enforcement, used-nonce recovery and retry after on-chain rejection.
 
 Run these with the repository's SVM suite (`yarn test-svm`); the attestation tests can also run alone with `yarn ts-mocha -p tsconfig.json -t 10000 test/svm/Scripts.CctpV2.ts`. Local fixtures bypass Circle signature verification; they do not validate production attestations or deployed configuration.

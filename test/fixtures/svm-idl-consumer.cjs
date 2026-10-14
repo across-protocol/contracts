@@ -23,6 +23,26 @@ async function main() {
   );
   execFileSync(process.execPath, [require.resolve("typescript/bin/tsc"), "-p", "tsconfig.json"], { stdio: "inherit" });
   const spoke = require("./compiled/svm_spoke");
+  // Generated API conformance formerly exercised in the program suites. Keep it at the
+  // publication boundary; SDK-owned generation must retain these cases in ACP-234.
+  for (const name of [
+    "Deposit",
+    "DepositNow",
+    "UnsafeDeposit",
+    "FillRelay",
+    "GetUnsafeDepositId",
+    "RequestSlowFill",
+    "ExecuteSlowRelayLeaf",
+  ]) {
+    assert.equal(spoke[`get${name}Instruction`], undefined);
+    assert.equal(spoke[`get${name}InstructionAsync`], undefined);
+  }
+  assert.equal(typeof spoke.getAdapterExecuteAcrossV5Instruction, "function");
+  for (const suffix of ["Encoder", "Decoder", "Codec"]) {
+    assert.equal(spoke[`getFillRelayParams${suffix}`], undefined);
+    for (const name of ["V5AdapterInput", "AcrossDepositJitParams", "RelayData", "V5FillJit"])
+      assert.equal(typeof spoke[`get${name}${suffix}`], "function");
+  }
   const idl = require("@across-protocol/contracts/svm/idl/svm_spoke.json");
   assert.deepEqual(
     (await import("@across-protocol/contracts/svm/idl/svm_spoke.json", { with: { type: "json" } })).default,
@@ -104,6 +124,7 @@ async function main() {
   const authorityIndex = instruction.accounts.findIndex((account) => account.name === "event_authority");
   assert(authorityIndex >= 0, "Missing event_authority account in adapter IDL");
   assert.equal(ix.accounts[authorityIndex].address, authority);
+  assert.equal(ix.accounts[authorityIndex].role, 0); // Readonly, not a transaction signer.
   assert.deepEqual([...ix.data.slice(0, 8)], instruction.discriminator);
   assert.equal(typeof spoke.getStateDecoder, "function");
   const fillStatus = { status: spoke.FillStatus.Filled, rentRecipient: zero, fillDeadline: 42 };

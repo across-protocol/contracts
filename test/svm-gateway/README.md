@@ -1,5 +1,39 @@
 # SVM V5 real-Gateway conformance
 
+## Local clients and coverage ownership
+
+Program tests and operational/PoC scripts use Anchor 1.1.2 and `@solana/web3.js` 1.98.4. The shared
+[Spoke encoders](../svm/v5Encoding.ts) use the enriched production JSON IDL's Borsh types, with Anchor `BN`,
+`PublicKey` and enum values. Generate those assets with `yarn generate-svm-artifacts`, then run
+`yarn generate-svm-test-idls` for the ordinary validator suite. Test-only interfaces stay in `target/`.
+The real-Gateway runner builds its own test Spoke and pinned foreign programs; it also needs the enriched
+production assets for the shared encoders. No program test or operational script imports Kit or generated clients.
+Retained production client generation still runs as part of artifact generation until downstream migration completes.
+
+Coverage retained by [ACP-235](https://linear.app/uma/issue/ACP-235):
+
+| Case                                                                                                           | Retained location                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| DepositV1 literal/balance-relative enum tags, FillV1, fixed 65-byte deposit signature, RelayData and V5FillJit | [V5Codecs](../svm/SvmSpoke.V5Codecs.ts): Anchor encoding and decoding against frozen Rust bytes                                     |
+| Direct caller, malformed wire, incorrect delegate/vault, allowance and signed JIT failures                     | [V5Source](../svm/SvmSpoke.V5Source.ts): Anchor instruction builder plus mock-Gateway execution                                     |
+| Removed raw selectors, historical events/status, expiry rent reclaim                                           | [SlowFillRetirement](../svm/SvmSpoke.SlowFillRetirement.ts): IDL assertions and validator execution with frozen historical accounts |
+| Canonical readonly event-authority resolution                                                                  | [PathVectors](PathVectors.ts): Anchor account resolution; external consumer fixture also checks Codama resolution                   |
+| Independent adapter bytes, tape/path hash, sorted sibling root and witness                                     | [PathVectors](PathVectors.ts), frozen `programs/svm-spoke/fixtures/*.json` and independent [wire helpers](wire.ts)                  |
+| Token account setup, wrapped SOL, Token-2022, replay and rollback                                              | [RealGateway](RealGateway.ts): Anchor `createTokenAccounts` with ordered remaining owner/ATA pairs                                  |
+| Generated builder/codec API availability and retired API absence                                               | [Packed-IDL consumer](../fixtures/svm-idl-consumer.cjs): generates and compiles its own clients outside this checkout               |
+| Query pagination, event authority/prefix, failed transactions and malformed events                             | [Scripts.Events](../svm/Scripts.Events.ts): offline RPC fixtures for internal script helpers                                        |
+
+`yarn test-svm-idl-package` and its CI lane remain required. The fixture's Codama/Kit dependencies are an explicit
+publication-boundary exception, including after package cleanup. It consumes the real packed JSON paths; it does
+not replace the independent golden-byte tests. SDK generation in [ACP-234](https://linear.app/uma/issue/ACP-234)
+must carry the generated API assertions, golden codec vectors, account resolution and production event-security
+regressions into its own suite. This change does not establish downstream readiness: runtime export removal stays
+gated in [ACP-240](https://linear.app/uma/issue/ACP-240).
+
+Run offline checks with `yarn test-svm-gateway-vectors`, `yarn typecheck-tests` and `yarn typecheck-svm-scripts`.
+`yarn test-svm` runs the ordinary codec/source/fill/retirement suites; `yarn test-svm-gateway` runs the separate real
+Gateway suite described below. The fixture expectations are frozen independently of the Anchor encoder under test.
+
 ## Reproducible CU comparison
 
 `yarn bench-svm-cu` builds the legacy Spoke at `7445f72de17900544605c7e6706c5fb3b3784738`, this checkout's V5 Spoke,
@@ -313,7 +347,7 @@ validation, regardless of message contents or instruction-parameter buffers. All
 to the delivery requirements above.
 
 The ordinary SVM suite's [retirement tests](../svm/SvmSpoke.SlowFillRetirement.ts) check removed selectors with empty
-and padded payloads, unchanged account/token state on rejection, IDL/client exports, historical event decoding,
+and padded payloads, unchanged account/token state on rejection, IDL interfaces, historical event decoding,
 and expiry rent reclaim. The [V5 source tests](../svm/SvmSpoke.V5Source.ts) cover authenticated deposits and source
 validation; the [V5 fill tests](../svm/SvmSpoke.V5Fill.ts) cover delivery, witness/commitment checks, replay protection,
 and downstream rollback. [RealGateway.ts](RealGateway.ts) covers the committed destination swap described above.
