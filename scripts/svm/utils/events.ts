@@ -1,6 +1,7 @@
 // Internal operational inspection helpers. Production indexing belongs in the SDK.
-import { Program, utils } from "@anchor-lang/core";
+import { BN, Program, utils } from "@anchor-lang/core";
 import { Connection, PublicKey, VersionedTransactionResponse } from "@solana/web3.js";
+import { calculateRelayEventHashUint8Array } from "../../../src/svm/web3-v1";
 
 const CPI_EVENT_PREFIX = Buffer.from("e445a52e51cb9a1d", "hex");
 
@@ -40,7 +41,10 @@ export async function* readEventsForAddress(connection: Connection, program: Pro
         commitment: "confirmed",
         maxSupportedTransactionVersion: 0,
       });
-      if (!tx) continue;
+      if (!tx || !tx.meta) {
+        console.warn(`Incomplete history: transaction ${signature.signature} or its metadata is unavailable.`);
+        continue;
+      }
       for (const event of decodeCpiEvents(tx, program))
         yield { ...event, signature: signature.signature, slot: tx.slot };
     }
@@ -49,10 +53,20 @@ export async function* readEventsForAddress(connection: Connection, program: Pro
   }
 }
 
-export async function readFillEventFromFillStatusPda(connection: Connection, program: Program<any>, pda: PublicKey) {
-  // A close, failed fill, historical slow-fill request, or unrelated transaction can precede the fill in history.
+export async function readFillEventFromFillStatusPda(
+  connection: Connection,
+  program: Program<any>,
+  pda: PublicKey,
+  chainId: BN
+) {
+  // One transaction can reference this PDA while filling other relays. Match the event's own relay identity.
   for await (const event of readEventsForAddress(connection, program, pda)) {
-    if (event.name === "filledRelay") return event;
+    if (event.name !== "filledRelay") continue;
+    const [derived] = PublicKey.findProgramAddressSync(
+      [Buffer.from("fills"), calculateRelayEventHashUint8Array(event.data, chainId)],
+      program.programId
+    );
+    if (derived.equals(pda)) return event;
   }
   return null;
 }

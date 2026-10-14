@@ -21,7 +21,7 @@ Coverage and owning suites:
 | Independent adapter bytes, tape/path hash, sorted sibling root and witness                                     | [PathVectors](PathVectors.ts), frozen `programs/svm-spoke/fixtures/*.json` and independent [wire helpers](wire.ts)                  |
 | Token account setup, wrapped SOL, Token-2022, replay and rollback                                              | [RealGateway](RealGateway.ts): Anchor `createTokenAccounts` with ordered remaining owner/ATA pairs                                  |
 | Generated builder/codec API availability and retired API absence                                               | [Packed-IDL consumer](../fixtures/svm-idl-consumer.cjs): generates and compiles its own clients outside this checkout               |
-| Query pagination, event authority/prefix, failed transactions and malformed events                             | [Scripts.Events](../svm/Scripts.Events.ts): offline RPC fixtures for internal script helpers                                        |
+| Query pagination, exact fill/PDA matching, incomplete history, current status and streaming output             | [Scripts.Events](../svm/Scripts.Events.ts): offline RPC fixtures, including event authority/prefix and malformed events             |
 
 Run offline checks with `yarn test-svm-gateway-vectors`, `yarn typecheck-tests` and `yarn typecheck-svm-scripts`.
 `yarn test-svm` runs the ordinary codec/source/fill/retirement suites; `yarn test-svm-gateway` runs the separate real

@@ -120,11 +120,20 @@ a nonzero exit status after processing the remaining accounts.
 `queryEventsV2` and `findFillStatusFromFillStatusPda` retain their CLI names and use Anchor/web3.js v1 with the
 explicit `--programId`. Their internal event reader paginates confirmed history and validates the CPI prefix,
 program and event authority, ignoring failed transactions and malformed payloads. `queryEventsV2` retains its
-PascalCase event filters; printed event fields now use Anchor's camelCase names. Fill lookup searches for a
-`FilledRelay` event rather than assuming the oldest signature created the fill. A missing fill-status account
-after a historical fill is reported as closed; RPC or decoding failures propagate. These are inspection tools,
-not a production indexer: results depend on the RPC's retained history, and a transaction containing several
-fills requires inspecting its events to disambiguate them.
+PascalCase event filters; printed event fields use Anchor's camelCase names. Its default output remains a JSON
+array collected from the full available history. Pass `--jsonl` to print each matching event as it arrives, with
+`name`, `signature`, `slot` and `data` fields; this avoids buffering the full result but does not limit the scan.
+
+Fill lookup reads the destination chain ID from the deployment's State account (`--seed`, default `0`) and derives
+each `FilledRelay` event's fill-status PDA to require an exact match. This handles multiple fills in one transaction
+and later transactions that merely reference the requested PDA. It prints the current account status before scanning
+history, even if no matching event can be recovered. An absent account is described as closed only after finding
+its matching historical fill; the matched event's signature and slot are also printed.
+
+Both scripts warn on stderr when a listed transaction or its metadata is unavailable, and continue through available
+history. A lookup with no match reports "No matching fill event found in available history." Thrown RPC errors and
+account decoding failures propagate. These are inspection tools, not a production indexer: even a scan with no missing
+receipts cannot prove that the RPC retained the deployment's complete signature history.
 
 `test/svm/Scripts.Events.ts` covers the query helpers without network access. `yarn typecheck-svm-scripts` checks
 the retained scripts. They do not import contracts-generated clients or the SDK. See the
