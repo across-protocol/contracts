@@ -7,6 +7,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                          | Address                                                                                                               |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | AcrossConfigStore                      | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
+| AcrossEventEmitter                     | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://etherscan.io/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AcrossMerkleDistributor                | [0xE50b2cEAC4f60E840Ae513924033E753e2366487](https://etherscan.io/address/0xE50b2cEAC4f60E840Ae513924033E753e2366487) |
 | AdapterStore                           | [0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b](https://etherscan.io/address/0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b) |
 | AdminWithdrawManager                   | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://etherscan.io/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
@@ -73,6 +74,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                    | Address                                                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge              | [0x3E7448657409278C9d6E192b92F2b69B234FCc42](https://optimistic.etherscan.io/address/0x3E7448657409278C9d6E192b92F2b69B234FCc42) |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://optimistic.etherscan.io/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AcrossMerkleDistributor          | [0xc8b31410340d57417bE62672f6B53dfB9de30aC2](https://optimistic.etherscan.io/address/0xc8b31410340d57417bE62672f6B53dfB9de30aC2) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://optimistic.etherscan.io/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://optimistic.etherscan.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
@@ -96,6 +98,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                              |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://bscscan.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager           | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://bscscan.com/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://bscscan.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://bscscan.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -113,6 +116,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                                              |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://uniscan.xyz/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://uniscan.xyz/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://uniscan.xyz/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://uniscan.xyz/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -136,6 +140,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 1inch_SwapAndBridge              | [0xaBa0F11D55C5dDC52cD0Cb2cd052B621d45159d5](https://polygonscan.com/address/0xaBa0F11D55C5dDC52cD0Cb2cd052B621d45159d5) |
 | 1inch_UniversalSwapAndBridge     | [0xF9735e425A36d22636EF4cb75c7a6c63378290CA](https://polygonscan.com/address/0xF9735e425A36d22636EF4cb75c7a6c63378290CA) |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://polygonscan.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://polygonscan.com/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://polygonscan.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://polygonscan.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -162,6 +167,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://monadvision.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://monadvision.com/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://monadvision.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://monadvision.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -183,6 +189,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                    |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://explorer.lens.xyz/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | MulticallHandler   | [0x1Ed0D59019a52870337b51DEe8190486a8663037](https://explorer.lens.xyz/address/0x1Ed0D59019a52870337b51DEe8190486a8663037) |
 | Safe               | [0x396eC04b105587E9DC1a13D27F28D99262f74910](https://explorer.lens.xyz/address/0x396eC04b105587E9DC1a13D27F28D99262f74910) |
 | SpokePool          | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
@@ -199,6 +206,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                     |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://explorer.zksync.io/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager           | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://explorer.zksync.io/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.zksync.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.zksync.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -215,6 +223,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://worldchain-mainnet-explorer.alchemy.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://worldchain-mainnet-explorer.alchemy.com/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://worldchain-mainnet-explorer.alchemy.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://worldchain-mainnet-explorer.alchemy.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -234,6 +243,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                          | Address                                                                                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter                     | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://hyperevmscan.io//address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager                   | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://hyperevmscan.io//address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon                   | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://hyperevmscan.io//address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit                  | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://hyperevmscan.io//address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -268,6 +278,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                      |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://blockscout.lisk.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://blockscout.lisk.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool          | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
@@ -278,6 +289,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://soneium.blockscout.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://soneium.blockscout.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://soneium.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
@@ -288,6 +300,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                            |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://explore.mainnet.tempo.xyz/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager           | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://explore.mainnet.tempo.xyz/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explore.mainnet.tempo.xyz/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explore.mainnet.tempo.xyz/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -323,6 +336,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                                |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://robinhoodchain.blockscout.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager           | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://robinhoodchain.blockscout.com/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://robinhoodchain.blockscout.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://robinhoodchain.blockscout.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -359,6 +373,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                          | Address                                                                                                               |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge                    | [0x7CFaBF2eA327009B39f40078011B0Fb714b65926](https://basescan.org/address/0x7CFaBF2eA327009B39f40078011B0Fb714b65926) |
+| AcrossEventEmitter                     | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://basescan.org/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager                   | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://basescan.org/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon                   | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://basescan.org/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit                  | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://basescan.org/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -383,6 +398,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                  | Address                                                                                                                |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://plasmascan.to/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager           | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://plasmascan.to/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon           | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://plasmascan.to/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit          | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://plasmascan.to/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -401,6 +417,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| AcrossEventEmitter | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://explorer.mode.network/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.mode.network/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://explorer.mode.network/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePoolPeriphery | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://explorer.mode.network/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
@@ -411,6 +428,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                    | Address                                                                                                              |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge              | [0xC456398D5eE3B93828252e48beDEDbc39e03368E](https://arbiscan.io/address/0xC456398D5eE3B93828252e48beDEDbc39e03368E) |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://arbiscan.io/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://arbiscan.io/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://arbiscan.io/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://arbiscan.io/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -458,6 +476,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                                                          |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://explorer.inkonchain.com/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://explorer.inkonchain.com/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://explorer.inkonchain.com/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://explorer.inkonchain.com/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -479,6 +498,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                                                                                                  |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| AcrossEventEmitter               | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://lineascan.build/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | AdminWithdrawManager             | [0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00](https://lineascan.build/address/0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00) |
 | CounterfactualBeacon             | [0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133](https://lineascan.build/address/0xB7eBaD46Ae4Ccbd0d9676ee1A34Ceb0136388133) |
 | CounterfactualDeposit            | [0xD4FdB0930AE127721379D128d9896c88526371E2](https://lineascan.build/address/0xD4FdB0930AE127721379D128d9896c88526371E2) |
@@ -522,6 +542,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                               |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter | [0xBF75133b48b0a42AB9374027902E83C5E2949034](https://zorascan.xyz/address/0xBF75133b48b0a42AB9374027902E83C5E2949034) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://zorascan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://zorascan.xyz/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool          | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
