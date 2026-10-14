@@ -67,9 +67,13 @@ exports here; downstream generators should use reviewed, commit-pinned IDLs from
 with the source revision recorded and compatibility checked against the intended deployment.
 The reviewed Circle V2 snapshots in `idls/` remain available through the existing legacy IDL/client exports
 during migration. SDK owns the downstream Circle client generation; this does not remove CCTP support.
-Existing generated clients, runtime helpers, legacy IDL deep imports, and EVM/shared exports remain available
+Existing production generated clients, runtime helpers, legacy IDL deep imports, and EVM/shared exports remain available
 during downstream migration. `MulticallHandlerCoder` is a handwritten compilation helper, not generated from
 the program IDL; migrating it requires moving its logic downstream separately from IDL-based client generation.
+
+Compatibility change from `6.0.0-beta.3`: the test program's root `TestIdl` and `TestAnchor` exports and
+`dist/src/svm/assets/idl/test.json`, `dist/src/svm/assets/test.js` and `dist/src/svm/assets/test.d.ts` are removed.
+Tests that need these interfaces must generate them from the matching source tag; they are not production APIs.
 
 For maintainers, `yarn generate-svm-artifacts` always generates production interfaces, even with `IS_TEST=true`.
 `yarn generate-svm-test-idls` writes test-feature and mock interfaces only under `target/`.

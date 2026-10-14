@@ -100,11 +100,11 @@ async function main() {
     programAddress: program,
     seeds: [Buffer.from("__event_authority")],
   });
-  assert.equal(ix.accounts[2].address, authority);
-  assert.deepEqual(
-    [...ix.data.slice(0, 8)],
-    idl.instructions.find((ix) => ix.name === "adapter_execute_across_v5").discriminator
-  );
+  const instruction = idl.instructions.find((ix) => ix.name === "adapter_execute_across_v5");
+  const authorityIndex = instruction.accounts.findIndex((account) => account.name === "event_authority");
+  assert(authorityIndex >= 0, "Missing event_authority account in adapter IDL");
+  assert.equal(ix.accounts[authorityIndex].address, authority);
+  assert.deepEqual([...ix.data.slice(0, 8)], instruction.discriminator);
   assert.equal(typeof spoke.getStateDecoder, "function");
   const fillStatus = { status: spoke.FillStatus.Filled, rentRecipient: zero, fillDeadline: 42 };
   assert.deepEqual(spoke.getFillStatusAccountDecoder().decode(spoke.getFillStatusAccountEncoder().encode(fillStatus)), {

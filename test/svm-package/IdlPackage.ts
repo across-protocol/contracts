@@ -97,6 +97,18 @@ describe("Production IDL package", function () {
     });
   }
 
+  it("rejects a test-feature sponsored CCTP layout alongside production Spoke", () => {
+    prepareAssets();
+    for (const dir of ["target/idl", "src/svm/assets/idl"]) {
+      const file = path.join(work, dir, "sponsored_cctp_src_periphery.json");
+      const idl = JSON.parse(readFileSync(file, "utf8"));
+      idl.types.find((type: any) => type.name === "State").type.fields.push({ name: "current_time", type: "u64" });
+      writeFileSync(file, JSON.stringify(idl));
+    }
+    for (const helper of ["generateSvmAssets", "exportIdl"])
+      assert.throws(() => runHelper(helper), /Test-only current_time field in sponsored CCTP State/);
+  });
+
   it("rejects missing approved IDLs and changes to reviewed Circle snapshots", () => {
     prepareAssets();
     const circle = path.join(work, "src/svm/assets/idl/message_transmitter_v2.json");

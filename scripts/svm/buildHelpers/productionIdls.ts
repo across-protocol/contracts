@@ -34,6 +34,14 @@ export function readProductionIdls(directory: string): Map<string, string> {
             `Missing V5 schema: ${type}`
           );
       }
+      if (name === "sponsored_cctp_src_periphery") {
+        const state = idl.types?.find(({ name }) => name === "State")?.type;
+        assert(state?.kind === "struct", "Missing sponsored CCTP State schema");
+        assert(
+          !state.fields?.some((field) => typeof field === "object" && "name" in field && field.name === "current_time"),
+          "Test-only current_time field in sponsored CCTP State"
+        );
+      }
       if (name === "message_transmitter_v2" || name === "token_messenger_minter_v2")
         assert.equal(
           contents,
