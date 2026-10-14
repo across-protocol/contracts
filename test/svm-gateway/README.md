@@ -23,15 +23,29 @@ Coverage and owning suites:
 | Generated builder/codec API availability and retired API absence                                               | [Packed-IDL consumer](../fixtures/svm-idl-consumer.cjs): generates and compiles its own clients outside this checkout               |
 | Query pagination, event authority/prefix, failed transactions and malformed events                             | [Scripts.Events](../svm/Scripts.Events.ts): offline RPC fixtures for internal script helpers                                        |
 
-`yarn test-svm-idl-package` and its CI lane remain required. The fixture's Codama/Kit dependencies are an explicit
-publication-boundary exception, including after package cleanup. It consumes the real packed JSON paths; it does
-not replace the independent golden-byte tests. SDK-owned generation must carry the generated API assertions,
-golden codec vectors, account resolution and production event-security regressions into its own suite.
-Runtime exports must remain until downstream consumers have migrated and validated that coverage.
-
 Run offline checks with `yarn test-svm-gateway-vectors`, `yarn typecheck-tests` and `yarn typecheck-svm-scripts`.
 `yarn test-svm` runs the ordinary codec/source/fill/retirement suites; `yarn test-svm-gateway` runs the separate real
 Gateway suite described below. The fixture expectations are frozen independently of the Anchor encoder under test.
+
+### Why Codama and Kit are retained
+
+Migrating local program tests and operational scripts to Anchor does not remove these two uses:
+
+- **Existing package exports:** `src/svm/index.ts` still exports generated clients and `web3-v2` helpers that use
+  `@solana/kit`. `yarn generate-svm-artifacts` still calls `generate-svm-clients`, which uses `codama`,
+  `@codama/nodes-from-anchor` and `@codama/renderers-js`. Kit remains a runtime dependency for those exports;
+  the Codama packages remain development dependencies for generation.
+- **Packed-IDL consumer check:** `yarn test-svm-idl-package` packs the real npm package and runs
+  [the consumer fixture](../fixtures/svm-idl-consumer.cjs) outside the checkout. The fixture reads the three public
+  `svm/idl/*.json` paths, generates fresh clients with Codama, compiles them, and uses Kit to check codecs and account
+  resolution. This proves published IDLs work as inputs to downstream client generation. It does not use the
+  contracts-generated clients for those checks or replace the independent golden-byte tests.
+
+Runtime exports must remain until downstream consumers have migrated. SDK-owned generation must carry the
+generated API assertions, golden codec vectors, account resolution and production event-security regressions into
+its own validated suite. Removing the exports can then remove their runtime dependency on Kit, but the packed-IDL
+check and its CI lane must remain. Its Codama/Kit tooling must still be available as development or fixture
+dependencies, even after contracts stops publishing generated clients.
 
 ## Reproducible CU comparison
 
