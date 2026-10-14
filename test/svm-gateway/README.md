@@ -10,7 +10,7 @@ The real-Gateway runner builds its own test Spoke and pinned foreign programs; i
 production assets for the shared encoders. No program test or operational script imports Kit or generated clients.
 Retained production client generation still runs as part of artifact generation until downstream migration completes.
 
-Coverage retained by [ACP-235](https://linear.app/uma/issue/ACP-235):
+Coverage and owning suites:
 
 | Case                                                                                                           | Retained location                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -25,10 +25,9 @@ Coverage retained by [ACP-235](https://linear.app/uma/issue/ACP-235):
 
 `yarn test-svm-idl-package` and its CI lane remain required. The fixture's Codama/Kit dependencies are an explicit
 publication-boundary exception, including after package cleanup. It consumes the real packed JSON paths; it does
-not replace the independent golden-byte tests. SDK generation in [ACP-234](https://linear.app/uma/issue/ACP-234)
-must carry the generated API assertions, golden codec vectors, account resolution and production event-security
-regressions into its own suite. This change does not establish downstream readiness: runtime export removal stays
-gated in [ACP-240](https://linear.app/uma/issue/ACP-240).
+not replace the independent golden-byte tests. SDK-owned generation must carry the generated API assertions,
+golden codec vectors, account resolution and production event-security regressions into its own suite.
+Runtime exports must remain until downstream consumers have migrated and validated that coverage.
 
 Run offline checks with `yarn test-svm-gateway-vectors`, `yarn typecheck-tests` and `yarn typecheck-svm-scripts`.
 `yarn test-svm` runs the ordinary codec/source/fill/retirement suites; `yarn test-svm-gateway` runs the separate real

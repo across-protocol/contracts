@@ -23,8 +23,8 @@ async function main() {
   );
   execFileSync(process.execPath, [require.resolve("typescript/bin/tsc"), "-p", "tsconfig.json"], { stdio: "inherit" });
   const spoke = require("./compiled/svm_spoke");
-  // Generated API conformance formerly exercised in the program suites. Keep it at the
-  // publication boundary; SDK-owned generation must retain these cases in ACP-234.
+  // Check generated API conformance at the publication boundary. SDK-owned generation
+  // must retain these cases in its own suite.
   for (const name of [
     "Deposit",
     "DepositNow",
