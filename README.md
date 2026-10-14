@@ -34,6 +34,51 @@ program and canonical IDL upgrade. Legacy `Program.at`/`fetchIdl` readers do not
 Artifact generation restores the canonical event-authority PDA seeds omitted by Anchor 1.1's IDL output,
 preserving typed account resolution and Codama async builders. This metadata does not change program bytes.
 
+## SVM JSON interfaces
+
+The npm package exposes these stable JSON paths for downstream Anchor clients and Codama generation:
+
+```text
+@across-protocol/contracts/svm/idl/svm_spoke.json
+@across-protocol/contracts/svm/idl/multicall_handler.json
+@across-protocol/contracts/svm/idl/sponsored_cctp_src_periphery.json
+@across-protocol/contracts/svm/idl/message_transmitter_v2.json
+@across-protocol/contracts/svm/idl/token_messenger_minter_v2.json
+```
+
+For example, load an IDL without loading the package's runtime clients:
+
+```js
+const spokeIdl = require("@across-protocol/contracts/svm/idl/svm_spoke.json")
+```
+
+Pin an exact contracts package version and commit your lockfile, together with compatible versions of your
+client generator and runtime. IDLs are versioned with the npm package; `metadata.version` identifies the program's
+declared version and is not the npm release version. Consumers can generate clients from the installed JSON without
+a contracts checkout or Rust, Anchor CLI, or Foundry. Select the deployed program address for your environment;
+installing a package does not deploy or upgrade programs.
+
+The Spoke IDL includes the Rust-derived `V5AdapterInput`, `AcrossDepositJitParams`, and `V5FillJit` schemas
+carried inside opaque instruction bytes. Event-authority PDA seeds are preserved for account resolution.
+The Circle V2 IDLs come from the reviewed snapshots in `idls/`, rather than a live RPC fetch.
+Existing generated clients, runtime helpers, legacy IDL deep imports, and EVM/shared exports remain available
+during downstream migration; new generators should use the stable JSON paths above.
+
+For maintainers, `yarn generate-svm-artifacts` always generates production interfaces, even with `IS_TEST=true`.
+`yarn generate-svm-test-idls` writes test-feature and mock interfaces only under `target/`.
+The explicit `/svm/idl/` entries in `package.json` allowlist production assets. `yarn build-ts` exports those JSON
+files to both the stable paths and the legacy `dist` paths; `npm pack` and `npm publish` run the same `prepack`
+build, including EVM artifact export. Generate production artifacts first (and build EVM artifacts with
+`yarn build-evm-foundry`). Run `yarn test-svm-idl-package` to inspect a real tarball and generate/compile clients
+in an external fixture using only its IDLs. This check requires no validator or network access.
+
+SVM binaries are a separate [GitHub Releases](https://github.com/across-protocol/contracts/releases) channel:
+`svm-verified-test-binaries.tar.gz` contains test-feature binaries for downstream integration tests;
+`svm-verified-production-binaries.tar.gz` contains production binaries. Both archives contain `target/deploy`.
+Pin the release tag corresponding to the npm package version when pairing interfaces and binaries.
+Test-only IDLs and mock interfaces are not npm exports; tests needing those interfaces must generate them
+from the matching source tag. Test binaries must never be used for production deployment.
+
 ## Build
 
 ```shell
