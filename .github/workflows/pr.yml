@@ -117,9 +117,7 @@ jobs:
           fi
   test-svm-verified:
     name: Test verified SVM build
-    needs:
-      - upload-svm-artifacts
-      - upload-evm-artifacts
+    needs: upload-svm-artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -162,17 +160,10 @@ jobs:
           name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Generate test-feature IDLs
         run: yarn generate-svm-test-idls
-      # Cross-chain operational scripts import Foundry ABIs (for example HubPool).
-      - name: Download EVM artifacts for script typechecking
-        uses: actions/download-artifact@v4
-        with:
-          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test Gateway hash vectors (no private dependency)
         run: yarn test-svm-gateway-vectors
       - name: Typecheck TypeScript tests
         run: yarn typecheck-tests
-      - name: Typecheck SVM scripts
-        run: yarn typecheck-svm-scripts
       # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
       # manually cache the verified build binaries if the program source code has not changed.
       - name: Cache verified test build binaries
@@ -225,6 +216,9 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Build and test packed IDL interfaces
         run: yarn test-svm-idl-package
+      # Cross-chain operational scripts import Foundry ABIs (for example HubPool).
+      - name: Typecheck SVM scripts
+        run: yarn typecheck-svm-scripts
   test-evm:
     name: EVM Tests
     needs: upload-evm-artifacts
