@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${IS_TEST:-}" == "true" ]]; then
-  CARGO_OPTIONS="--features test"
-else
-  CARGO_OPTIONS=""
-fi
+# Package artifacts always describe production, even after an IS_TEST build.
+# Generate test-feature interfaces separately with buildTestIdls.sh.
 
 # Create required directories.
 mkdir -p target/idl
@@ -18,7 +15,7 @@ for program in programs/*; do
   program_name=${dir_name//-/_}
 
   # Test-only programs must not become public package IDLs or TypeScript exports.
-  if [[ "$program_name" == "mock_gateway" && "${IS_TEST:-}" != "true" ]]; then
+  if [[ "$program_name" == "mock_gateway" ]]; then
     rm -f "target/idl/$program_name.json" "target/types/$program_name.ts"
     continue
   fi
@@ -28,7 +25,7 @@ for program in programs/*; do
     --program-name "$program_name" \
     --out "target/idl/$program_name.json" \
     --out-ts "target/types/$program_name.ts" \
-    -- --locked $CARGO_OPTIONS
+    -- --locked
 done
 
 # Include schemas carried inside opaque V5 adapter arguments before publishing IDLs and clients.

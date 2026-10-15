@@ -214,8 +214,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
-      - name: Build TypeScript
-        run: yarn build-ts
+      - name: Build and test packed IDL interfaces
+        run: yarn test-svm-idl-package
   test-evm:
     name: EVM Tests
     needs: upload-evm-artifacts
