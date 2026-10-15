@@ -117,6 +117,29 @@ a nonzero exit status after processing the remaining accounts.
 
 ## Tests
 
+`queryEventsV2` and `findFillStatusFromFillStatusPda` retain their CLI names and use Anchor/web3.js v1 with the
+explicit `--programId`. Their internal event reader paginates confirmed history and validates the CPI prefix,
+program and event authority, ignoring failed transactions and malformed payloads. `queryEventsV2` retains its
+PascalCase event filters; printed event fields use Anchor's camelCase names. Its default output remains a JSON
+array collected from the full available history. Pass `--jsonl` to print each matching event as it arrives, with
+`name`, `signature`, `slot` and `data` fields; this avoids buffering the full result but does not limit the scan.
+
+Fill lookup reads the destination chain ID from the deployment's State account (`--seed`, default `0`) and derives
+each `FilledRelay` event's fill-status PDA to require an exact match. This handles multiple fills in one transaction
+and later transactions that merely reference the requested PDA. It prints the current account status before scanning
+history, even if no matching event can be recovered. An absent account is described as closed only after finding
+its matching historical fill; the matched event's signature and slot are also printed.
+
+Both scripts warn on stderr when a listed transaction or its metadata is unavailable, and continue through available
+history. A lookup with no match reports "No matching fill event found in available history." Thrown RPC errors and
+account decoding failures propagate. These are inspection tools, not a production indexer: even a scan with no missing
+receipts cannot prove that the RPC retained the deployment's complete signature history.
+
+`test/svm/Scripts.Events.ts` covers the query helpers without network access. `yarn typecheck-svm-scripts` checks
+the retained scripts. They do not import contracts-generated clients or the SDK. See the
+[coverage and ownership map](../../test/svm-gateway/README.md#local-clients-and-coverage-ownership) for the program
+test migration and the separate packed-IDL consumer check.
+
 `test/svm/Scripts.CctpV2.ts` covers attestation polling and error handling without public transactions. `test/svm/SvmSpoke.HandleReceiveMessage.ts` exercises the shared script finalizer against the local validator and CCTP V2 program, including root/admin calls, already-delivered messages and failed-message recovery. `test/svm/Scripts.CctpV2Tokens.ts` covers the token receiver against Circle's local programs: fee deductions, finalized/unfinalized thresholds, expected recipient enforcement, used-nonce recovery and retry after on-chain rejection.
 
 Run these with the repository's SVM suite (`yarn test-svm`); the attestation tests can also run alone with `yarn ts-mocha -p tsconfig.json -t 10000 test/svm/Scripts.CctpV2.ts`. Local fixtures bypass Circle signature verification; they do not validate production attestations or deployed configuration.

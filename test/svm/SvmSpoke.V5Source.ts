@@ -23,14 +23,12 @@ import {
   TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
-import { address } from "@solana/kit";
 import { assert } from "chai";
-import { SvmSpokeClient } from "../../src/svm/clients";
 import { createHash } from "crypto";
 import { ethers } from "ethers";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { readEventsUntilFound } from "../../src/svm/web3-v1";
-import { DepositFields, encodeDeposit, u64, vec, word as bytes32 } from "./v5Encoding";
+import { DepositFields, encodeDeposit, encodeDepositJit, u64, vec, word as bytes32 } from "./v5Encoding";
 import { common } from "./SvmSpoke.common";
 
 const GATEWAY = new PublicKey("pVs6PJ3ofdqPyDhCXXdVW7waG6oNnwKQBKtuM6Mi6JP");
@@ -67,12 +65,10 @@ const signJit = (
       ]
     )
   );
-  return Buffer.from(
-    SvmSpokeClient.getAcrossDepositJitParamsEncoder().encode({
-      newOutputAmount: outputAmount,
-      newExclusiveRelayer: address(exclusiveRelayer.toBase58()),
-      signature: ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest))),
-    }) as Uint8Array
+  return encodeDepositJit(
+    outputAmount,
+    exclusiveRelayer,
+    ethers.utils.arrayify(ethers.utils.joinSignature(signer._signingKey().signDigest(digest)))
   );
 };
 
@@ -303,29 +299,15 @@ describe("svm_spoke V5 source deposit", () => {
 
   it("rejects direct callers and malformed wire", async () => {
     const input = encodeDeposit(deposit, { literal: true });
-    const generated = SvmSpokeClient.getAdapterExecuteAcrossV5Instruction({
-      dispatchAuthority: address(owner.toBase58()),
-      state: address(state.toBase58()),
-      eventAuthority: address(eventAuthority.toBase58()),
-      program: address(svmSpoke.programId.toBase58()),
-      stepId: context.stepId,
-      pathId: context.pathId,
-      submitter: address(context.submitter.toBase58()),
-      input,
-      jitData: Buffer.alloc(0),
-    });
-    const direct = new TransactionInstruction({
-      programId: new PublicKey(generated.programAddress),
-      keys: [
-        ...generated.accounts.map((a) => ({
-          pubkey: new PublicKey(a.address),
-          isSigner: a.role >= 2,
-          isWritable: a.role % 2 === 1,
-        })),
-        ...remaining(),
-      ],
-      data: Buffer.from(generated.data as Uint8Array),
-    });
+    const direct = await svmSpoke.methods
+      .adapterExecuteAcrossV5(
+        { stepId: [...context.stepId], pathId: [...context.pathId], submitter: context.submitter },
+        input,
+        Buffer.alloc(0)
+      )
+      .accountsStrict({ dispatchAuthority: owner, state, eventAuthority, program: svmSpoke.programId })
+      .remainingAccounts(remaining())
+      .instruction();
     await expectError(provider.sendAndConfirm(new Transaction().add(direct)), "InvalidDispatchAuthority");
 
     await expectError(execute(Buffer.concat([input, Buffer.from([0])])), "InvalidWireFormat");

@@ -1,5 +1,52 @@
 # SVM V5 real-Gateway conformance
 
+## Local clients and coverage ownership
+
+Program tests and operational/PoC scripts use Anchor 1.1.2 and `@solana/web3.js` 1.98.4. The shared
+[Spoke encoders](../svm/v5Encoding.ts) use the enriched production JSON IDL's Borsh types, with Anchor `BN`,
+`PublicKey` and enum values. Generate those assets with `yarn generate-svm-artifacts`, then run
+`yarn generate-svm-test-idls` for the ordinary validator suite. Test-only interfaces stay in `target/`.
+The real-Gateway runner builds its own test Spoke and pinned foreign programs; it also needs the enriched
+production assets for the shared encoders. No program test or operational script imports Kit or generated clients.
+Retained production client generation still runs as part of artifact generation until downstream migration completes.
+
+Coverage and owning suites:
+
+| Case                                                                                                           | Retained location                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| DepositV1 literal/balance-relative enum tags, FillV1, fixed 65-byte deposit signature, RelayData and V5FillJit | [V5Codecs](../svm/SvmSpoke.V5Codecs.ts): Anchor encoding and decoding against frozen Rust bytes                                     |
+| Direct caller, malformed wire, incorrect delegate/vault, allowance and signed JIT failures                     | [V5Source](../svm/SvmSpoke.V5Source.ts): Anchor instruction builder plus mock-Gateway execution                                     |
+| Removed raw selectors, historical events/status, expiry rent reclaim                                           | [SlowFillRetirement](../svm/SvmSpoke.SlowFillRetirement.ts): IDL assertions and validator execution with frozen historical accounts |
+| Canonical readonly event-authority resolution                                                                  | [PathVectors](PathVectors.ts): Anchor account resolution; external consumer fixture also checks Codama resolution                   |
+| Independent adapter bytes, tape/path hash, sorted sibling root and witness                                     | [PathVectors](PathVectors.ts), frozen `programs/svm-spoke/fixtures/*.json` and independent [wire helpers](wire.ts)                  |
+| Token account setup, wrapped SOL, Token-2022, replay and rollback                                              | [RealGateway](RealGateway.ts): Anchor `createTokenAccounts` with ordered remaining owner/ATA pairs                                  |
+| Generated builder/codec API availability and retired API absence                                               | [Packed-IDL consumer](../fixtures/svm-idl-consumer.cjs): generates and compiles its own clients outside this checkout               |
+| Query pagination, exact fill/PDA matching, incomplete history, current status and streaming output             | [Scripts.Events](../svm/Scripts.Events.ts): offline RPC fixtures, including event authority/prefix and malformed events             |
+
+Run offline checks with `yarn test-svm-gateway-vectors`, `yarn typecheck-tests` and `yarn typecheck-svm-scripts`.
+`yarn test-svm` runs the ordinary codec/source/fill/retirement suites; `yarn test-svm-gateway` runs the separate real
+Gateway suite described below. The fixture expectations are frozen independently of the Anchor encoder under test.
+
+### Why Codama and Kit are retained
+
+Migrating local program tests and operational scripts to Anchor does not remove these two uses:
+
+- **Existing package exports:** `src/svm/index.ts` still exports generated clients and `web3-v2` helpers that use
+  `@solana/kit`. `yarn generate-svm-artifacts` still calls `generate-svm-clients`, which uses `codama`,
+  `@codama/nodes-from-anchor` and `@codama/renderers-js`. Kit remains a runtime dependency for those exports;
+  the Codama packages remain development dependencies for generation.
+- **Packed-IDL consumer check:** `yarn test-svm-idl-package` packs the real npm package and runs
+  [the consumer fixture](../fixtures/svm-idl-consumer.cjs) outside the checkout. The fixture reads the three public
+  `svm/idl/*.json` paths, generates fresh clients with Codama, compiles them, and uses Kit to check codecs and account
+  resolution. This proves published IDLs work as inputs to downstream client generation. It does not use the
+  contracts-generated clients for those checks or replace the independent golden-byte tests.
+
+Runtime exports must remain until downstream consumers have migrated. SDK-owned generation must carry the
+generated API assertions, golden codec vectors, account resolution and production event-security regressions into
+its own validated suite. Removing the exports can then remove their runtime dependency on Kit, but the packed-IDL
+check and its CI lane must remain. Its Codama/Kit tooling must still be available as development or fixture
+dependencies, even after contracts stops publishing generated clients.
+
 ## Reproducible CU comparison
 
 `yarn bench-svm-cu` builds the legacy Spoke at `7445f72de17900544605c7e6706c5fb3b3784738`, this checkout's V5 Spoke,
@@ -313,7 +360,7 @@ validation, regardless of message contents or instruction-parameter buffers. All
 to the delivery requirements above.
 
 The ordinary SVM suite's [retirement tests](../svm/SvmSpoke.SlowFillRetirement.ts) check removed selectors with empty
-and padded payloads, unchanged account/token state on rejection, IDL/client exports, historical event decoding,
+and padded payloads, unchanged account/token state on rejection, IDL interfaces, historical event decoding,
 and expiry rent reclaim. The [V5 source tests](../svm/SvmSpoke.V5Source.ts) cover authenticated deposits and source
 validation; the [V5 fill tests](../svm/SvmSpoke.V5Fill.ts) cover delivery, witness/commitment checks, replay protection,
 and downstream rollback. [RealGateway.ts](RealGateway.ts) covers the committed destination swap described above.
