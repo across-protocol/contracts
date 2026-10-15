@@ -11,3 +11,5 @@ lib
 target
 idls
 *.rs
+# Generated, byte-identical fee evidence; SHA-256 recorded beside results.
+test/svm-gateway/fork/results/*-fee-evidence.json
