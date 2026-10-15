@@ -1,0 +1,126 @@
+# Solana operational scripts
+
+CCTP operational scripts use CCTP V2 with Anchor / `@solana/web3.js` v1. Solana is a light chain: HubPool/spoke liquidity rebalances are unsupported, and intents involving Solana repay relayers on the deposit's origin chain. Tokenless root/admin messages still travel from Ethereum to the spoke over CCTP.
+
+## Prerequisites
+
+Install dependencies with `yarn install --frozen-lockfile`, build with `yarn build-svm`, and generate current IDLs/types with `yarn generate-svm-artifacts`. Use Anchor 1.1.2 and Agave 4.1.2 from `Anchor.toml`. Validator tests use `--validator legacy` to retain `solana-test-validator`. Also run `yarn build-evm-foundry` for the pause and sponsored scripts, which import shared EVM helpers.
+
+The current clients use `@anchor-lang/core`. Circle types are generated from the reviewed snapshots in
+`idls/`, without fetching from devnet or requiring a legacy Anchor client. Update those snapshots explicitly
+when adopting a Circle interface change. Upgraded programs publish IDLs through
+Anchor 1.1.2's Program Metadata path. `squadsIdlUpgrade.ts` encodes the old in-program IDL dispatcher
+and is only suitable for legacy deployments; it must not be used for programs rebuilt with Anchor 1.1.2.
+Recompiling legacy programs does not require redeploying them during the V5 release.
+
+Set `ANCHOR_PROVIDER_URL` to the desired Solana RPC and `ANCHOR_WALLET` to a funded Solana keypair file, or supply Anchor's `--provider.cluster` and `--provider.wallet` options. The existing network resolver expects `devnet` or `mainnet` in the RPC URL; it selects the corresponding deployed program IDs and Circle Iris endpoint. Use the upgraded CCTP V2 spoke deployment. The production state seed is `0`.
+
+V5 Spoke/Gateway flows have no configured public-devnet deployment or supporting offchain infrastructure. The retained
+devnet Spoke address is a legacy deployment, not a V5 target. These scripts resolve addresses from the deployment registry
+independently of `Anchor.toml`; removing its devnet Spoke entry does not disable devnet script access. Other devnet tooling,
+including sponsored CCTP scripts, is retained.
+
+## Finalize an existing root/admin message or token transfer
+
+```sh
+anchor run finalizeCctpV2Message -- \
+  --sourceTx 0x_SOURCE_EVM_TRANSACTION_HASH \
+  --seed 0
+```
+
+This requires a Solana fee/rent payer and access to Circle Iris. It does not require an EVM RPC, mnemonic or HubPool signing authority. The source CCTP domain defaults to the selected spoke's state; use `--sourceDomain` for a token transfer from another CCTP domain.
+
+The script waits for V2 attestations and selects the receiver from the attested header. Messages addressed to the selected Solana spoke use accounts for every call its receiver supports:
+
+- `pauseDeposits(bool)` and `pauseFills(bool)`.
+- `setCrossDomainAdmin(address)`.
+- `relayRootBundle(bytes32,bytes32)`, using the current next root-bundle ID.
+- `emergencyDeleteRootBundle(uint256)`, using the ID in the message.
+
+Spoke messages must have finalized attestations (threshold at least 2000) and match the spoke's remote domain/admin. The script decodes finality from message bytes and ignores Iris's optional decoded metadata. A permissioned `destinationCaller` must match the Solana wallet for either receiver.
+
+Messages addressed to Circle's TokenMessengerMinterV2 use a separate token account builder. It reads `TokenPair.localToken` as the LocalToken account address, then reads its mint/custody and the TokenMessenger fee recipient. Token delivery supports both finalized and unfinalized attestations, subject to Circle's on-chain checks. The destination receives `amount - feeExecuted`.
+
+By default, the attested `mintRecipient` must equal the selected spoke's vault ATA for that mint. To finalize an independent inventory transfer, explicitly select its destination **token account**, not its wallet owner:
+
+```sh
+anchor run finalizeCctpV2Message -- \
+  --sourceTx 0x_SOURCE_EVM_TRANSACTION_HASH \
+  --sourceDomain 0 \
+  --tokenRecipient SOLANA_DESTINATION_TOKEN_ACCOUNT
+```
+
+This option checks the attested destination; it cannot redirect tokens. The destination and Circle fee-recipient token accounts must already exist. With an explicit source domain and token recipient, token delivery does not require reading spoke state. This is manual delivery of an existing burn, not a HubPool rebalance workflow.
+
+Polling stops after 120 seconds by default; use `--timeoutSeconds 600` for a longer wait. A missing or pending attestation does not cause another source transaction. Rerun with the same `--sourceTx` after a timeout, RPC error or interrupted process. Confirmed used-nonce accounts produce `already processed`, including for messages that changed the remote admin or created/deleted a root bundle. Errors other than an already-used nonce remain errors.
+
+If a transaction contains multiple matching messages, including a mix of Spoke and TokenMessenger messages, the script lists their nonces and requires `--nonce <decimal-or-0x-attested-nonce>` before submitting anything. Inspect the source transaction and deliver them individually in the intended order; Iris response order is not used to infer admin/root execution order. Token-recipient validation happens after nonce selection. The script waits for the transaction's V2 attestations before selecting a nonce. Do not run competing root-message finalizations; if the next root ID changes concurrently, rerun the failed message to rebuild accounts.
+
+## Send a pause/resume message
+
+For a HubPool-owned spoke:
+
+```sh
+anchor run remoteHubPoolPauseDeposits -- --chainId SOLANA_CHAIN_ID --pause true
+anchor run remoteHubPoolPauseDeposits -- --chainId SOLANA_CHAIN_ID --pause false
+```
+
+Sending requires `MNEMONIC`, `HUB_POOL_ADDRESS` and `NODE_URL_1` (mainnet) or `NODE_URL_11155111` (Sepolia/devnet). The EVM signer must be authorized to call HubPool. The adapter must already route tokenless messages through CCTP V2. The script checks the EVM network, spoke chain ID and configured cross-domain admin before sending.
+
+For a test spoke whose cross-domain admin is the EVM wallet itself:
+
+```sh
+anchor run remotePauseDeposits -- --seed 0 --pause true
+```
+
+This requires `MNEMONIC` and the matching `NODE_URL_*`. Both scripts print the source transaction hash before waiting for confirmation, then use the shared V2 finalizer with only the Spoke receiver enabled. For recovery, replace `--pause` with `--resumeRemoteTx 0x_SOURCE_HASH`, or use `finalizeCctpV2Message`. Recovery needs no EVM credentials or RPC. `--pause` and `--resumeRemoteTx` are mutually exclusive.
+
+## Intent examples and retained token transfers
+
+The legacy `simpleDeposit`, `nativeDeposit`, and `simpleFill` scripts and Anchor aliases are removed alongside the
+V4 deposit/fill entrypoints. `fakeFillWithRandomDistribution` remains a migration notice that exits without sending
+transactions. Build V5 intents through Gateway; see the [adapter specification](../../programs/svm-spoke/V5_ADAPTER_SPEC.md)
+and [reference Gateway integration](../../test/svm-gateway/README.md).
+
+`simpleFakeRelayerRepayment` is a test fixture: it transfers local tokens directly into the spoke vault (creating its ATA if needed),
+creates a synthetic refund root and repays on Solana with `amountToReturn = 0`. It needs local spoke admin authority
+and is not a production bundle-construction script. It does not create an Across deposit.
+
+There are no HubPool-to-spoke rebalance scripts because Solana is a light chain. Independent token transfers are supported: `SponsoredCctpSrc/*` uses CCTP V2 and provides deposit-for-burn, EVM receive, event-account reclamation and nonce/rent operations.
+
+## Reclaim fill-status rent
+
+`closeRelayerPdas.ts` is a reference cleanup script, separate from the production SDK/relayer runner. It discovers
+current fill-status accounts and closes those whose recorded fill deadline has passed:
+
+```sh
+anchor run closeRelayerPdas -- --seed 0 --submitter SOLANA_V5_SUBMITTER_PUBLIC_KEY
+anchor run closeRelayerPdas -- --seed 0 --relayer LEGACY_RELAYER_OR_REQUESTER_PUBLIC_KEY
+```
+
+Supply exactly one of `--submitter` or `--relayer`. V5 discovery derives the submitter's `v5_fill_payer` PDA and
+filters by that recorded rent recipient. Use the Solana submitter key, not the repayment address in `FilledRelay`.
+Legacy discovery matches the relayer or slow-fill requester directly, including historical requests that never filled.
+Both paths scan program accounts with the fill-status discriminator, account size and recipient filters; they do not
+replay events or require transaction history. The RPC must support `getProgramAccounts`.
+
+Existing legacy cleanup clients remain compatible when their wallet matches the recorded recipient. The production
+monitor's event-based discovery omits never-filled requests; this is a pre-existing limitation. Future backend V5
+integration must supply the recorded payer PDA when closing V5 accounts. That work is not required for legacy rent
+reclaim, and expired legacy accounts need not be closed before V5 enablement.
+
+The Anchor wallet pays transaction fees and may differ from the selected submitter/legacy recipient. Rent always
+returns to the recipient recorded on-chain. V5 rent replenishes the payer PDA; withdrawing that float is a separate,
+submitter-authorized operation. The script compares deadlines with confirmed block time, and the program enforces
+expiry again when closing. Re-running skips already-closed accounts. Other close failures are reported and produce
+a nonzero exit status after processing the remaining accounts.
+
+## Tests
+
+`test/svm/Scripts.CctpV2.ts` covers attestation polling and error handling without public transactions. `test/svm/SvmSpoke.HandleReceiveMessage.ts` exercises the shared script finalizer against the local validator and CCTP V2 program, including root/admin calls, already-delivered messages and failed-message recovery. `test/svm/Scripts.CctpV2Tokens.ts` covers the token receiver against Circle's local programs: fee deductions, finalized/unfinalized thresholds, expected recipient enforcement, used-nonce recovery and retry after on-chain rejection.
+
+Run these with the repository's SVM suite (`yarn test-svm`); the attestation tests can also run alone with `yarn ts-mocha -p tsconfig.json -t 10000 test/svm/Scripts.CctpV2.ts`. Local fixtures bypass Circle signature verification; they do not validate production attestations or deployed configuration.
+
+## Package boundary
+
+`contracts` exports the generated CCTP V2 clients (`MessageTransmitterV2Client`, `TokenMessengerMinterV2Client`) alongside the spoke and other program clients. CCTP V1 clients, IDLs/types, connectors and message helpers are not exported, including via deep imports. The scripts in this directory do not export production helpers; integration logic such as attestation handling, receiver account selection and transaction construction belongs downstream (principally in `sdk`). Historical V1 decoding/recovery, if needed, must be implemented downstream.

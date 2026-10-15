@@ -1,7 +1,7 @@
 // This script initializes a SVM Sponsored CCTP bridge with initialization parameters.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider } from "@anchor-lang/core";
 import { PublicKey, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import yargs from "yargs";

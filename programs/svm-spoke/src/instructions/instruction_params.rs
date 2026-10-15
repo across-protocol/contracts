@@ -72,5 +72,5 @@ pub fn close_instruction_params(ctx: Context<CloseInstructionParams>) -> Result<
     **closed_account.lamports.borrow_mut() = 0;
 
     closed_account.assign(&system_program::ID);
-    closed_account.realloc(0, false).map_err(Into::into)
+    closed_account.resize(0).map_err(Into::into)
 }

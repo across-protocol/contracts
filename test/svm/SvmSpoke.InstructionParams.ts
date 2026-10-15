@@ -1,13 +1,13 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import * as crypto from "crypto";
 import { Keypair, PublicKey } from "@solana/web3.js";
+import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
+import { requestAndConfirmAirdrop } from "./utils";
 
-const { provider, program, connection, assertSE, assert } = common;
+const { program, connection, assertSE } = common;
 
 describe("svm_spoke.instruction_params", () => {
-  anchor.setProvider(provider);
-
   // We use different caller in each test as instructionData seed is derived from initializer's address.
   let caller: Keypair;
   let instructionParams: PublicKey;
@@ -39,8 +39,7 @@ describe("svm_spoke.instruction_params", () => {
   beforeEach(async () => {
     caller = Keypair.generate();
 
-    await connection.requestAirdrop(caller.publicKey, 10_000_000_000); // 10 SOL
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait so that subsequent transactions have funds.
+    await requestAndConfirmAirdrop(connection, caller.publicKey, 10_000_000_000); // 10 SOL
 
     [instructionParams] = PublicKey.findProgramAddressSync(
       [Buffer.from("instruction_params"), caller.publicKey.toBuffer()],

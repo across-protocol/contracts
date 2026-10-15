@@ -138,7 +138,7 @@ pub fn deposit_for_burn(mut ctx: Context<DepositForBurn>, params: &DepositForBur
     // side effect is that the user signer address will show up as messageSender on the destination chain, not the
     // authority of this program. This is still acceptable in the current flow where SponsoredCCTPDstPeriphery contract
     // on the destination chain revalidates the quote signature.
-    let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
+    let cpi_program = ctx.accounts.token_messenger_minter_program.key();
     let cpi_accounts = DepositForBurnWithHook {
         owner: ctx.accounts.signer.to_account_info(),
         event_rent_payer: ctx.accounts.rent_fund.to_account_info(),
@@ -262,8 +262,7 @@ fn finance_accounts_creation(ctx: &mut Context<DepositForBurn>, quote: &Sponsore
             to: ctx.accounts.signer.to_account_info(),
         };
         let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
-        let cpi_context =
-            CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
+        let cpi_context = CpiContext::new_with_signer(ctx.accounts.system_program.key(), cpi_accounts, rent_fund_seeds);
         system_program::transfer(cpi_context, transfer_to_user)?;
     }
 
@@ -272,7 +271,7 @@ fn finance_accounts_creation(ctx: &mut Context<DepositForBurn>, quote: &Sponsore
             from: ctx.accounts.signer.to_account_info(),
             to: ctx.accounts.rent_fund.to_account_info(),
         };
-        let cpi_context = CpiContext::new(ctx.accounts.system_program.to_account_info(), cpi_accounts);
+        let cpi_context = CpiContext::new(ctx.accounts.system_program.key(), cpi_accounts);
         system_program::transfer(cpi_context, transfer_from_user)?;
     }
 

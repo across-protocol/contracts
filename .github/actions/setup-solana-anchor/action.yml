@@ -1,9 +1,5 @@
 name: Setup Solana and Anchor
 inputs:
-  verify_version:
-    description: "Solana verify version to install (leave empty to skip)"
-    required: false
-    default: ""
   node_version:
     description: "Node version to install"
     required: true
@@ -14,12 +10,17 @@ runs:
       uses: ./.github/actions/setup-node-if-needed
       with:
         node_version: ${{ inputs.node_version }}
-    - name: Extract Solana versions
-      uses: solana-developers/github-actions/extract-versions@v0.2.5
-      id: versions
-    - name: Setup Anchor & Solana
-      uses: solana-developers/github-actions/setup-all@v0.2.5
+    # Host Cargo is used for IDLs/unit tests; the verified image pins the SBF compiler.
+    - name: Install host Rust
+      uses: dtolnay/rust-toolchain@1.97.1
+    # Keyed on everything the installer reads, so a pin or installer change refetches the tools.
+    - name: Cache SVM tools
+      uses: actions/cache@v4
       with:
-        anchor_version: ${{ steps.versions.outputs.anchor_version }}
-        solana_version: ${{ steps.versions.outputs.solana_version }}
-        verify_version: ${{ inputs.verify_version }}
+        path: |
+          ~/svm-tools
+          ~/.cache/solana
+        key: svm-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Anchor.toml', 'verified-build.json', 'scripts/svm/buildHelpers/installSvmTools.sh') }}
+    - name: Install pinned Solana, Anchor and solana-verify release binaries
+      shell: bash
+      run: bash scripts/svm/buildHelpers/installSvmTools.sh

@@ -1,5 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
@@ -8,8 +7,6 @@ import { readEventsUntilFound } from "../../src/svm/web3-v1";
 const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
 describe("svm_spoke.ownership", () => {
-  anchor.setProvider(provider);
-
   const nonOwner = Keypair.generate();
   const newOwner = Keypair.generate();
   const newCrossDomainAdmin = Keypair.generate();

@@ -1,6 +1,7 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorError, AnchorProvider, Wallet } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorError, Wallet } from "@anchor-lang/core";
 import { Keypair, PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
+import { assert } from "chai";
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -11,12 +12,10 @@ import {
 } from "@solana/spl-token";
 import { common } from "./SvmSpoke.common";
 
-const { provider, program, connection, assertSE, assert, owner } = common;
+const { provider, program, connection, assertSE, owner } = common;
 
 describe("svm_spoke.create_token_accounts", () => {
-  anchor.setProvider(provider);
-
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
 
   let mint: PublicKey;
 
@@ -160,8 +159,8 @@ describe("svm_spoke.create_token_accounts", () => {
       { pubkey: associatedTokens[index], isWritable: true, isSigner: false },
     ]);
 
-    // Build and send the transaction with increased CU limit as the default 200k is not sufficient.
-    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 });
+    // Test the instruction-trace limit, allowing headroom for random ATA addresses' variable PDA-search cost.
+    const computeBudgetInstruction = ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 });
     const createTokenAccountsInstruction = await program.methods
       .createTokenAccounts()
       .accounts({ mint, tokenProgram: TOKEN_PROGRAM_ID })
@@ -170,10 +169,7 @@ describe("svm_spoke.create_token_accounts", () => {
     const transaction = new anchor.web3.Transaction();
     transaction.add(computeBudgetInstruction);
     transaction.add(createTokenAccountsInstruction);
-    await connection.sendTransaction(transaction, [payer]);
-
-    // Wait before transaction is processed
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await anchor.web3.sendAndConfirmTransaction(connection, transaction, [payer], { commitment: "confirmed" });
 
     // Verify all accounts were created
     for (const associatedToken of associatedTokens) {

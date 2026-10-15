@@ -9,17 +9,37 @@ publish = false
 crate-type = ["cdylib", "lib"]
 name = "svm_spoke"
 
+[[bin]]
+name = "export_v5_types"
+path = "idl/export_v5_types.rs"
+required-features = ["idl-build"]
+
 [features]
 default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "dep:serde_json"]
 test = []
 
 [dependencies]
-anchor-lang = { version = "0.31.1", features = ["init-if-needed","event-cpi"]}
-anchor-spl = "0.31.1"
-multicall-handler = { path = "../multicall-handler" }
+solana-secp256k1-recover = "3"
+anchor-lang = { version = "1.1.2", features = ["init-if-needed","event-cpi"]}
+anchor-spl = "1.1.2"
 solana-security-txt = "1.1.1"
+serde_json = { version = "1.0", optional = true }
+
+[dev-dependencies]
+hex = "0.4.3"
+libsecp256k1 = "0.7.2"
+serde_json = "1.0"
+
+# Anchor 1.x uses split Solana hashing crates. Host tests/IDL builds need software fallbacks.
+[target.'cfg(target_os = "solana")'.dependencies]
+solana-keccak-hasher = "3"
+solana-sha256-hasher = "3"
+
+[target.'cfg(not(target_os = "solana"))'.dependencies]
+solana-keccak-hasher = { version = "3", features = ["sha3"] }
+solana-sha256-hasher = { version = "3", features = ["sha2"] }

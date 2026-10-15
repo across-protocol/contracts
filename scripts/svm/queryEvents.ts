@@ -1,6 +1,6 @@
 // This script queries the events of the spoke pool and prints them in a human readable format.
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, Program } from "@anchor-lang/core";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { readProgramEvents, stringifyCpiEvent } from "../../src/svm/web3-v1";

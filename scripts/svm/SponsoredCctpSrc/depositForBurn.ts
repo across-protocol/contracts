@@ -1,8 +1,8 @@
 // This script deposits USDC on the SVM Sponsored CCTP bridge. The script requires the quote signer keys expected to be
 // used only on devnet.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
 import * as crypto from "crypto";

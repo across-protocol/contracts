@@ -1,8 +1,8 @@
 // This script finalizes the message on the SponsoredCCTPDstPeriphery contract.
 
 import { PUBLIC_NETWORKS } from "@across-protocol/constants";
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider } from "@anchor-lang/core";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {

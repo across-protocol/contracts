@@ -1,4 +1,4 @@
-import { BN, Idl, Program, utils, web3 } from "@coral-xyz/anchor";
+import { BN, Idl, Program, utils, web3 } from "@anchor-lang/core";
 import {
   ConfirmedSignatureInfo,
   Connection,

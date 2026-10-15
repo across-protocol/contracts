@@ -134,8 +134,7 @@ pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: &WithdrawRentF
     let cpi_accounts =
         Transfer { from: ctx.accounts.rent_fund.to_account_info(), to: ctx.accounts.recipient.to_account_info() };
     let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
-    let cpi_ctx =
-        CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
+    let cpi_ctx = CpiContext::new_with_signer(ctx.accounts.system_program.key(), cpi_accounts, rent_fund_seeds);
     system_program::transfer(cpi_ctx, params.amount)?;
 
     emit!(WithdrawnRentFund { amount: params.amount, recipient: ctx.accounts.recipient.key() });

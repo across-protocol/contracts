@@ -1,7 +1,7 @@
 // This script reclaims rent_fund debt to the depositor of the sponsored CCTP bridge.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider } from "@anchor-lang/core";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getSponsoredCctpSrcPeripheryProgram, readProgramEvents } from "../../../src/svm/web3-v1";
