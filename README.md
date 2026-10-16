@@ -91,17 +91,20 @@ code. Kit and Codama remain development dependencies only for the external packe
 The supported EVM/shared surface is retained:
 
 - Root deployment lookups, `DEPLOYMENTS`, `MerkleTree`, `EMPTY_MERKLE_ROOT`, constants and `getNodeUrl`.
-- `dist/index`, `dist/src/DeploymentUtils`, `dist/src/consts`, and `dist/utils/{index,MerkleTree,constants,network,utils}`,
-  with extensionless, `.js` and `.d.ts` paths. Existing deep filesystem, numeric and seeded-wallet utilities remain;
-  their removal requires a separate consumer audit.
 - `contracts/**/*.sol`, `dist/evm/artifacts/**/*.json` (ABI/bytecode),
   `dist/broadcast/deployed-addresses.json` and `package.json`. Filesystem artifact discovery from the package root
   continues to work; resolve `@across-protocol/contracts/package.json` to locate it.
 
-Before removal lands, refresh the consumer matrix for SDK, relayer, relayer-madrid, quote-api, indexer,
-sdk-private and private-relayer-v2, plus the organization-wide source, test, scripts and CI import inventory.
-For each active consumer record the exact commit, contracts/SDK pins, replacement imports and passing validation;
-inactive consumers require an owner-supported legacy pin/disposition. Validate multicall compilation, sponsored
+Import shared APIs from `@across-protocol/contracts`. Compiled TypeScript paths such as `dist/utils/MerkleTree`,
+`dist/utils/network` and `dist/src/DeploymentUtils` are private, including their `.js` and `.d.ts` variants.
+Modules needed by root exports remain in the tarball as implementation dependencies. Deep-only filesystem,
+numeric and seeded-wallet helpers from `dist/utils/utils` are no longer shipped; consumers must replace those
+imports downstream. The root `MerkleTree` and `EMPTY_MERKLE_ROOT` remain shared EVM/SVM bundle-building APIs;
+relocating them is outside this SVM client migration.
+
+Before removal lands, validate replacement imports across consumer source, tests, scripts and CI using the exact
+candidate packages. Track repository inventories, adoption status and validation evidence in the internal issue
+tracker. Validate multicall compilation, sponsored
 burns, historical indexing, test fixtures, unsupported fee-estimation handling and V2 tokenless finalization where
 applicable. SDK generation alone does not establish V2/light-chain behavior or consumer adoption.
 

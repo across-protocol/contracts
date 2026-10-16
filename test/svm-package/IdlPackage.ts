@@ -160,12 +160,10 @@ describe("Production IDL package", function () {
     const sharedModules = [
       "index",
       "src/DeploymentUtils",
-      "src/consts",
       "utils/index",
       "utils/MerkleTree",
       "utils/constants",
       "utils/network",
-      "utils/utils",
     ];
     const publicFiles = new Set([
       "package.json",
@@ -203,6 +201,8 @@ describe("Production IDL package", function () {
       "dist/src/svm/assets/idl/message_transmitter_v2.json",
       "dist/utils/internal.js",
       "dist/src/internal.d.ts",
+      "dist/utils/utils.js",
+      "dist/src/consts.js",
       "dist/scripts/internal.js",
       "svm/idl/test.json",
       "svm/idl/message_transmitter_v2.json",
