@@ -1,6 +1,16 @@
 import { strict as assert } from "assert";
 import { execFileSync } from "child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import { productionIdlNames, publicIdlNames } from "../../scripts/svm/buildHelpers/productionIdls";
@@ -51,13 +61,14 @@ describe("Production IDL package", function () {
     }
     runHelper("generateSvmAssets");
     runHelper("exportIdl");
-    for (const dir of ["src/svm/assets/idl", "svm/idl", "dist/src/svm/assets/idl"])
+    for (const dir of ["src/svm/assets/idl", "svm/idl"])
       assert.deepEqual(
         readdirSync(path.join(work, dir))
           .filter((name) => name.endsWith(".json"))
           .sort(),
         (dir === "svm/idl" ? publicIdlNames : productionIdlNames).map((name) => `${name}.json`).sort()
       );
+    assert(!existsSync(path.join(work, "dist/src/svm")));
     assert(!readFileSync(path.join(work, "src/svm/assets/index.ts"), "utf8").includes("TestAnchor"));
     assert(!readdirSync(path.join(work, "src/svm/assets")).includes("test.ts"));
   });
@@ -119,7 +130,7 @@ describe("Production IDL package", function () {
     assert.throws(() => runHelper("exportIdl"), /ENOENT/);
   });
 
-  it("packs consumable JSON, preserves legacy/EVM paths, and generates clients outside the checkout", () => {
+  it("packs only public interfaces, preserves EVM/shared paths, and generates clients outside the checkout", () => {
     // Exercise the actual npm pack lifecycle, including the clean TS build and EVM/IDL export.
     execFileSync(
       "npm",
@@ -138,22 +149,45 @@ describe("Production IDL package", function () {
     const tarballs = readdirSync(work).filter((file) => file.endsWith(".tgz"));
     assert.equal(tarballs.length, 1);
     const tarball = path.join(work, tarballs[0]);
+    for (const suffix of ["js", "d.ts"])
+      assert(!existsSync(path.join(root, `dist/src/types/svm.${suffix}`)), "Internal SVM types were built");
     const paths = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" })
       .trim()
       .split("\n")
       .map((file) => file.replace(/^package\//, ""));
-    for (const prefix of ["svm/idl/", "dist/src/svm/assets/idl/"])
-      assert.deepEqual(
-        paths.filter((file) => file.startsWith(prefix) && file.endsWith(".json")).sort(),
-        (prefix === "svm/idl/" ? publicIdlNames : productionIdlNames).map((name) => `${prefix}${name}.json`).sort()
+    assert.deepEqual(
+      paths.filter((file) => file.startsWith("svm/")).sort(),
+      publicIdlNames.map((name) => `svm/idl/${name}.json`).sort()
+    );
+    const sharedModules = [
+      "index",
+      "src/DeploymentUtils",
+      "src/consts",
+      "utils/index",
+      "utils/MerkleTree",
+      "utils/constants",
+      "utils/network",
+      "utils/utils",
+    ];
+    const publicFiles = new Set([
+      "package.json",
+      "README.md",
+      "LICENSE",
+      "dist/broadcast/deployed-addresses.json",
+      ...publicIdlNames.map((name) => `svm/idl/${name}.json`),
+      ...sharedModules.flatMap((name) => [`dist/${name}.js`, `dist/${name}.d.ts`]),
+    ]);
+    for (const file of paths)
+      assert(
+        publicFiles.has(file) || /^contracts\/.+\.sol$/.test(file) || /^dist\/evm\/artifacts\/.+\.json$/.test(file),
+        `Unexpected published file: ${file}`
       );
+    for (const file of publicFiles) assert(paths.includes(file), `Missing public file: ${file}`);
     assert(!paths.some((file) => /(?:^|\/)(?:test|mock_gateway)\.(?:json|js|d\.ts)$/.test(file)));
     for (const file of [
       "dist/index.js",
       "dist/index.d.ts",
       "dist/utils/MerkleTree.js",
-      "dist/src/svm/clients/SvmSpoke/index.js",
-      "dist/src/svm/web3-v1/index.js",
       "dist/evm/artifacts/HubPool.sol/HubPool.json",
       "contracts/hub-pool/HubPool.sol",
     ])
@@ -162,6 +196,50 @@ describe("Production IDL package", function () {
     const modules = path.join(work, "node_modules");
     const installed = path.join(modules, "@across-protocol/contracts");
     mkdirSync(installed, { recursive: true });
+    execFileSync("tar", ["-xzf", tarball, "--strip-components=1", "-C", installed]);
+    // Test the physical allowlist independently of prepack's clean build. Even stale internal output must not ship.
+    const staleFiles = [
+      "dist/src/svm/clients/SvmSpoke/index.js",
+      "dist/src/svm/web3-v1/index.js",
+      "dist/src/svm/assets/svm_spoke.d.ts",
+      "dist/src/svm/assets/idl/message_transmitter_v2.json",
+      "dist/src/types/svm.js",
+      "dist/src/types/svm.d.ts",
+      "dist/utils/internal.js",
+      "dist/src/internal.d.ts",
+      "dist/scripts/internal.js",
+      "svm/idl/test.json",
+      "svm/idl/message_transmitter_v2.json",
+      "target/deploy/svm_spoke.so",
+    ];
+    for (const file of staleFiles) {
+      mkdirSync(path.dirname(path.join(installed, file)), { recursive: true });
+      writeFileSync(path.join(installed, file), "{}");
+    }
+    const repack = path.join(work, "repack");
+    mkdirSync(repack);
+    execFileSync(
+      "npm",
+      [
+        "pack",
+        "--ignore-scripts",
+        "--offline",
+        "--silent",
+        "--pack-destination",
+        repack,
+        "--cache",
+        path.join(work, "npm-cache"),
+      ],
+      { cwd: installed, stdio: "pipe" }
+    );
+    const repackedPaths = execFileSync("tar", ["-tzf", path.join(repack, readdirSync(repack)[0])], { encoding: "utf8" })
+      .trim()
+      .split("\n")
+      .map((file) => file.replace(/^package\//, ""))
+      .sort();
+    assert.deepEqual(repackedPaths, [...paths].sort());
+    rmSync(installed, { recursive: true });
+    mkdirSync(installed);
     execFileSync("tar", ["-xzf", tarball, "--strip-components=1", "-C", installed]);
     // Reuse installed tool dependencies offline, but resolve contracts exclusively from the tarball.
     for (const entry of readdirSync(path.join(root, "node_modules"))) {

@@ -8,7 +8,7 @@ Program tests and operational/PoC scripts use Anchor 1.1.2 and `@solana/web3.js`
 `yarn generate-svm-test-idls` for the ordinary validator suite. Test-only interfaces stay in `target/`.
 The real-Gateway runner builds its own test Spoke and pinned foreign programs; it also needs the enriched
 production assets for the shared encoders. No program test or operational script imports Kit or generated clients.
-Retained production client generation still runs as part of artifact generation until downstream migration completes.
+Artifact generation retains internal Anchor assets; it no longer generates production Codama clients.
 
 Coverage and owning suites:
 
@@ -29,23 +29,17 @@ Gateway suite described below. The fixture expectations are frozen independently
 
 ### Why Codama and Kit are retained
 
-Migrating local program tests and operational scripts to Anchor does not remove these two uses:
+`yarn test-svm-idl-package` packs the real npm package and runs
+[the consumer fixture](../fixtures/svm-idl-consumer.cjs) outside the checkout. It reads only the three public
+`svm/idl/*.json` paths, generates fresh Codama clients, compiles them, and uses Kit to check codecs and account
+resolution. Codama and Kit remain development dependencies for this fixture; they are not runtime dependencies
+of the published package. The fixture also checks physical file exclusion, rejected runtime/type deep imports,
+CJS/ESM loading, TypeScript consumer resolution and retained EVM/shared interfaces.
 
-- **Existing package exports:** `src/svm/index.ts` still exports generated clients and `web3-v2` helpers that use
-  `@solana/kit`. `yarn generate-svm-artifacts` still calls `generate-svm-clients`, which uses `codama`,
-  `@codama/nodes-from-anchor` and `@codama/renderers-js`. Kit remains a runtime dependency for those exports;
-  the Codama packages remain development dependencies for generation.
-- **Packed-IDL consumer check:** `yarn test-svm-idl-package` packs the real npm package and runs
-  [the consumer fixture](../fixtures/svm-idl-consumer.cjs) outside the checkout. The fixture reads the three public
-  `svm/idl/*.json` paths, generates fresh clients with Codama, compiles them, and uses Kit to check codecs and account
-  resolution. This proves published IDLs work as inputs to downstream client generation. It does not use the
-  contracts-generated clients for those checks or replace the independent golden-byte tests.
-
-Runtime exports must remain until downstream consumers have migrated. SDK-owned generation must carry the
-generated API assertions, golden codec vectors, account resolution and production event-security regressions into
-its own validated suite. Removing the exports can then remove their runtime dependency on Kit, but the packed-IDL
-check and its CI lane must remain. Its Codama/Kit tooling must still be available as development or fixture
-dependencies, even after contracts stops publishing generated clients.
+The fixture and its CI lane remain required after production runtime removal. SDK-owned generation must retain
+generated API assertions, golden codec vectors, account resolution and production event-security regressions in
+its own validated suite. The [unreleased package boundary](../../README.md#breaking-package-boundary-unreleased-draft)
+remains gated on validated downstream replacements; this fixture does not prove consumer release readiness.
 
 ## Reproducible CU comparison
 
@@ -189,10 +183,10 @@ an isolated validator with those programs, SpokePool and Raydium CPMM loaded as 
 It does not clone mainnet state.
 The ordinary `test/svm` suite still uses `mock_gateway` at the same program address, so these suites must use separate
 validators. Logs and the temporary ledger are retained in the printed temporary directory; the validator is stopped
-after the run. Production package IDLs and clients are not regenerated.
+after the run. Production package IDLs are not regenerated.
 Run the ordinary Anchor suite separately: it uses fixed validator ports and shares generated test IDL files.
-Generate production Spoke artifacts first (`yarn generate-svm-artifacts`); the shared wire helpers use its public
-generated codecs. CI runs the vector checks after downloading those artifacts.
+Generate production Spoke artifacts first (`yarn generate-svm-artifacts`); the shared wire helpers use its enriched
+IDL through the internal Anchor encoders. CI runs the vector checks after downloading those artifacts.
 
 Install Agave 4.1.2 and Anchor CLI 1.1.2 for both foreign programs and this repository's IDL. The runner
 pins SpokePool compilation to Solana platform-tools v1.54 rather than the CLI's moving default. With Anchor
@@ -368,10 +362,10 @@ The disabled [fake-fill script](../../scripts/svm/fakeFillWithRandomDistribution
 before creating accounts or sending transactions.
 
 Standalone consumers retained in this repository are `programs/multicall-handler`, its Anchor deployment entries,
-`test/svm/MulticallHandler.ts`, public `MulticallHandlerCoder`/`AcrossPlusMessageCoder` exports, the program connector,
-and generated MulticallHandler IDLs/clients. Public package consumers outside this repository are not enumerable
-here; removing those exports or closing the deployed program is outside this change. Generated artifacts live in
-ignored `src/svm/assets` and `src/svm/clients`; regenerate production assets before test-only IDLs.
+`test/svm/MulticallHandler.ts`, internal `MulticallHandlerCoder`/`AcrossPlusMessageCoder` helpers, the program connector,
+and the published MulticallHandler JSON IDL. Downstream SDK helpers preserve standalone legacy route support.
+The package boundary does not close or redeploy this program. Internal generated Anchor artifacts live in
+ignored `src/svm/assets`; regenerate production assets before test-only IDLs.
 
 Follow the [deployment sequence](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#deployment-sequencing) to disable old
 routes and reconcile the in-flight window before upgrading. Production cutover requires API and relayer support

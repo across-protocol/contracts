@@ -6,7 +6,7 @@ CCTP operational scripts use CCTP V2 with Anchor / `@solana/web3.js` v1. Solana 
 
 Install dependencies with `yarn install --frozen-lockfile`, build with `yarn build-svm`, and generate current IDLs/types with `yarn generate-svm-artifacts`. Use Anchor 1.1.2 and Agave 4.1.2 from `Anchor.toml`. Validator tests use `--validator legacy` to retain `solana-test-validator`. Also run `yarn build-evm-foundry` for the pause and sponsored scripts, which import shared EVM helpers.
 
-The current clients use `@anchor-lang/core`. Circle types are generated from the reviewed snapshots in
+The internal Anchor clients use `@anchor-lang/core`. Circle Anchor TS types are generated from the reviewed snapshots in
 `idls/`, without fetching from devnet or requiring a legacy Anchor client. Update those snapshots explicitly
 when adopting a Circle interface change. Upgraded programs publish IDLs through
 Anchor 1.1.2's Program Metadata path. `squadsIdlUpgrade.ts` encodes the old in-program IDL dispatcher
@@ -136,7 +136,7 @@ account decoding failures propagate. These are inspection tools, not a productio
 receipts cannot prove that the RPC retained the deployment's complete signature history.
 
 `test/svm/Scripts.Events.ts` covers the query helpers without network access. `yarn typecheck-svm-scripts` checks
-the retained scripts. They do not import contracts-generated clients or the SDK. See the
+the retained scripts. They use internal Anchor clients and helpers, without importing Codama-generated clients or the SDK. See the
 [coverage and ownership map](../../test/svm-gateway/README.md#local-clients-and-coverage-ownership) for the program
 test migration and the separate packed-IDL consumer check.
 
@@ -146,4 +146,23 @@ Run these with the repository's SVM suite (`yarn test-svm`); the attestation tes
 
 ## Package boundary
 
-`contracts` exports the generated CCTP V2 clients (`MessageTransmitterV2Client`, `TokenMessengerMinterV2Client`) alongside the spoke and other program clients. CCTP V1 clients, IDLs/types, connectors and message helpers are not exported, including via deep imports. The scripts in this directory do not export production helpers; integration logic such as attestation handling, receiver account selection and transaction construction belongs downstream (principally in `sdk`). Historical V1 decoding/recovery, if needed, must be implemented downstream.
+The npm SVM surface consists of the three stable Across JSON IDLs described in the
+[root README](../../README.md#svm-json-interfaces). SVM clients, Anchor TS types and runtime helpers are not
+published; Circle V2 IDLs are also excluded from the package.
+
+`yarn generate-svm-artifacts` still generates Anchor TS types into `target/types` and copies production IDLs/types
+into `src/svm/assets` for local use. Circle V2 types come from the reviewed snapshots in `idls/`.
+[`programConnectors.ts`](../../src/svm/web3-v1/programConnectors.ts) constructs typed Anchor `Program` clients
+from these IDLs. Scripts such as `finalizeCctpV2Message.ts` and `SponsoredCctpSrc/*`, plus program tests, use
+these clients and handwritten Anchor/web3.js v1 helpers.
+
+Codama client generation has been removed from the normal build. Only the isolated
+[packed-IDL consumer fixture](../../test/fixtures/svm-idl-consumer.cjs) generates temporary Codama clients to
+verify that consumers can use the three published Across IDLs.
+
+Production integration logic such as
+attestation handling, receiver account selection, transaction construction and handwritten multicall compilation
+belongs downstream (principally in SDK). Historical V1 decoding/recovery, if needed, must be implemented downstream.
+
+This is an unreleased packaging draft: merge/release requires validated consumer replacements and preserved
+legacy route support. See the [migration gate](../../README.md#breaking-package-boundary-unreleased-draft).

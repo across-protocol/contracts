@@ -27,8 +27,8 @@ This repository assumes you have [Node](https://nodejs.org/en/download/package-m
 
 Use Node 22 for SVM development. `Anchor.toml` pins Anchor 1.1.2 and Agave 4.1.2;
 install these versions instead of selecting a moving `latest` toolchain.
-The generated Anchor client types now use `@anchor-lang/core` 1.1.2. Consumers updating this package
-should replace their `@coral-xyz/anchor` imports where they exchange Anchor providers or program types.
+Internal Anchor client types use `@anchor-lang/core` 1.1.2. These types are not npm exports; downstream
+clients generate their own types from the published JSON or use the SDK.
 For the 6.0.0 release, coordinate the SDK/relayer package updates and Anchor import changes with the
 program and canonical IDL upgrade. Legacy `Program.at`/`fetchIdl` readers do not follow the new metadata address.
 Artifact generation restores the canonical event-authority PDA seeds omitted by Anchor 1.1's IDL output,
@@ -65,11 +65,62 @@ Circle owns the MessageTransmitterV2 and TokenMessengerMinterV2 schemas. They ha
 exports here; downstream generators should use reviewed, commit-pinned IDLs from
 [Circle's repository](https://github.com/circlefin/solana-cctp-contracts/tree/master/examples/target/idl),
 with the source revision recorded and compatibility checked against the intended deployment.
-The reviewed Circle V2 snapshots in `idls/` remain available through the existing legacy IDL/client exports
-during migration. SDK owns the downstream Circle client generation; this does not remove CCTP support.
-Existing production generated clients, runtime helpers, legacy IDL deep imports, and EVM/shared exports remain available
-during downstream migration. `MulticallHandlerCoder` is a handwritten compilation helper, not generated from
-the program IDL; migrating it requires moving its logic downstream separately from IDL-based client generation.
+The reviewed Circle V2 snapshots in `idls/` remain internal inputs for contracts tests and scripts.
+SDK owns downstream Circle generation; consumers may also generate locally from a reviewed upstream pin.
+`MulticallHandlerCoder` is a handwritten compilation helper, not generated from the program IDL; migrating it
+requires adopting the separately ported SDK implementation, not merely generating a MulticallHandler client.
+
+### Breaking package boundary (unreleased draft)
+
+This draft removes SVM runtime exports. **Do not merge or release it until every active consumer has validated
+replacement imports and applicable protocol behavior.** A passing contracts package test does not satisfy that gate.
+The draft remains based on the local Anchor conversion; it does not authorize deployment or route activation.
+
+| Removed interface                                            | Replacement                                                                                     |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Root `*Client` namespaces and `dist/src/svm/clients/**`      | SDK-owned clients or local generation from the three stable Across JSON paths                   |
+| Root `*Idl` / `*Anchor` and `dist/src/svm/assets/**`         | Stable Across JSON plus consumer-owned types; reviewed upstream Circle JSON for Circle programs |
+| Internal SVM domain types at `dist/src/types/**`             | Consumer-owned types using the published IDLs and validated SDK interfaces                      |
+| Root SVM helpers and `dist/src/svm/web3-v1/**`, `web3-v2/**` | Validated SDK helpers or equivalent consumer-owned implementations                              |
+| `MulticallHandlerCoder` / `AcrossPlusMessageCoder`           | SDK handwritten compilation and serialization; preserve legacy multicall and sponsored routes   |
+
+All `dist/src/svm/**` and `dist/src/types/**` files are physically absent from the tarball. The package build
+excludes internal SVM domain types; tests and scripts still compile them through their own configurations.
+An explicit `exports` map rejects their deep imports, and the `files` allowlist excludes stale/internal output even
+when packing without build scripts. There is
+no catch-all `dist` entry point. Anchor, web3.js v1, Borsh and buffer-layout are development dependencies for internal
+code. Kit and Codama remain development dependencies only for the external packed-IDL consumer check.
+
+This cleanup is SVM-only. The following EVM/shared APIs remain supported and published:
+
+- Root deployment lookup functions, `DEPLOYMENTS`, `MerkleTree`, `EMPTY_MERKLE_ROOT`, constants and `getNodeUrl`.
+- Explicit compatibility paths for `dist/index`, `dist/src/DeploymentUtils`, `dist/src/consts` and
+  `dist/utils/{index,MerkleTree,constants,network,utils}`, including extensionless, `.js` and `.d.ts` variants.
+  The `dist` and `dist/utils` barrel aliases also remain; neither is a catch-all export.
+- Solidity sources at `contracts/**/*.sol`, ABI/bytecode at `dist/evm/artifacts/**/*.json`, deployment data at
+  `dist/broadcast/deployed-addresses.json`, and `package.json`.
+
+EVM artifact and deployment JSON paths retain extensionless CommonJS aliases. The stable SVM IDL paths require
+the explicit `.json` extension.
+
+Filesystem access to published EVM artifacts remains supported. Consumers can resolve
+`@across-protocol/contracts/package.json` to locate the package root and read its artifact files directly;
+this does not require a package-exported artifact-discovery helper. Existing filesystem, numeric and seeded-wallet
+helpers in `dist/utils/utils` remain compatibility exports pending a separate consumer audit.
+
+An artifacts/data-only package is a separate follow-up. Moving shared Merkle utilities, constants, deployment
+lookup functions and other runtime helpers downstream requires an inventory of production, test, script and CI
+consumers, validated replacements and a coordinated breaking release. ACP-240 does not perform that migration.
+
+Before removal lands, validate replacement imports across consumer source, tests, scripts and CI using the exact
+candidate packages. Track repository inventories, adoption status and validation evidence in the internal issue
+tracker. Validate multicall compilation, sponsored burns, historical indexing, test fixtures, unsupported
+fee-estimation handling and V2 tokenless finalization where applicable. SDK generation alone does not establish V2/light-chain behavior or consumer adoption.
+
+Choose a fresh breaking prerelease through the normal GitHub release workflow only after those gates pass.
+This draft intentionally leaves the existing package version unchanged; do not republish that version with the new
+boundary. Set `package.json` and the matching `v<version>` release tag together, mark prereleases accordingly,
+and record the tarball hash, IDL/generator pins and matching separate binary archives in the release handoff.
 
 Compatibility change from `6.0.0-beta.3`: the test program's root `TestIdl` and `TestAnchor` exports and
 `dist/src/svm/assets/idl/test.json`, `dist/src/svm/assets/test.js` and `dist/src/svm/assets/test.d.ts` are removed.
@@ -78,7 +129,7 @@ Tests that need these interfaces must generate them from the matching source tag
 For maintainers, `yarn generate-svm-artifacts` always generates production interfaces, even with `IS_TEST=true`.
 `yarn generate-svm-test-idls` writes test-feature and mock interfaces only under `target/`.
 The explicit `/svm/idl/` entries in `package.json` allowlist the public Across IDLs. `yarn build-ts` exports those JSON
-files to both the stable paths and the legacy `dist` paths, and retains Circle V2 JSON only in the legacy paths.
+files only to the stable paths. Internal Anchor types and Circle JSON are never copied into `dist`.
 `npm pack` and `npm publish` run the same `prepack`
 build, including EVM artifact export. Generate production artifacts first (and build EVM artifacts with
 `yarn build-evm-foundry`). Run `yarn test-svm-idl-package` to inspect a real tarball and generate/compile clients
@@ -125,7 +176,7 @@ yarn test-svm-solana-verify # Only test SVM code (verified docker build)
 yarn typecheck-tests # Typecheck all TypeScript tests without emitting files
 ```
 
-The test typecheck uses `tsconfig.test.json` and requires generated clients and test-feature IDLs. Run
+The test typecheck uses `tsconfig.test.json` and requires internal Anchor assets and test-feature IDLs. Run
 `yarn generate-svm-artifacts && yarn generate-svm-test-idls` first. CI runs this check after preparing these artifacts,
 before the verified SVM build and runtime tests. The package build continues to use `tsconfig.json`.
 

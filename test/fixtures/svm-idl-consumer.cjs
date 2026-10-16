@@ -1,7 +1,9 @@
 // Runs outside the checkout. The packed JSON subpaths are the only contracts inputs to generation.
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
-const { writeFileSync } = require("node:fs");
+const { existsSync, readFileSync, writeFileSync } = require("node:fs");
+const path = require("node:path");
+const Module = require("node:module");
 const { createFromRoot } = require("codama");
 const { rootNodeFromAnchor } = require("@codama/nodes-from-anchor");
 const { renderVisitor } = require("@codama/renderers-js");
@@ -11,7 +13,6 @@ async function main() {
   const names = ["svm_spoke", "multicall_handler", "sponsored_cctp_src_periphery"];
   for (const name of names) {
     const idl = require(`@across-protocol/contracts/svm/idl/${name}.json`);
-    assert.deepEqual(idl, require(`@across-protocol/contracts/dist/src/svm/assets/idl/${name}.json`));
     await createFromRoot(rootNodeFromAnchor(idl)).accept(renderVisitor(`generated/${name}`));
   }
   writeFileSync(
@@ -135,29 +136,170 @@ async function main() {
   assert.equal(typeof require("./compiled/multicall_handler").getHandleV3AcrossMessageInstruction, "function");
   assert.equal(typeof require("./compiled/sponsored_cctp_src_periphery").getDepositForBurnInstruction, "function");
   assert.equal(typeof require("@across-protocol/contracts/dist/utils/MerkleTree").MerkleTree, "function");
-  const contracts = require("@across-protocol/contracts");
-  for (const [name, exportName] of [
-    ["message_transmitter_v2", "MessageTransmitterV2Idl"],
-    ["token_messenger_minter_v2", "TokenMessengerMinterV2Idl"],
-  ]) {
-    assert.throws(() => require.resolve(`@across-protocol/contracts/svm/idl/${name}.json`), {
-      code: "MODULE_NOT_FOUND",
-    });
-    assert.deepEqual(contracts[exportName], require(`@across-protocol/contracts/dist/src/svm/assets/idl/${name}.json`));
+  // Shared consumers must not load an SVM runtime, even when fixture dependencies happen to be installed.
+  const load = Module._load;
+  let contracts;
+  try {
+    Module._load = function (request, ...args) {
+      assert(!/^(@solana(?:-program)?\/|@anchor-lang\/|@codama\/|codama$|bs58$|buffer-layout$)/.test(request), request);
+      return load.call(this, request, ...args);
+    };
+    contracts = require("@across-protocol/contracts");
+  } finally {
+    Module._load = load;
   }
-  assert.equal(typeof contracts.MessageTransmitterV2Client.getMessageTransmitterDecoder, "function");
-  assert.equal(typeof contracts.TokenMessengerMinterV2Client.getDepositForBurnInstruction, "function");
-  assert.equal(typeof contracts.MulticallHandlerCoder, "function");
+  const packageRoot = path.dirname(require.resolve("@across-protocol/contracts/package.json"));
+  const metadata = require("@across-protocol/contracts/package.json");
+  assert(
+    !Object.keys(metadata.dependencies).some((name) =>
+      /^(@solana|@anchor-lang|@codama|codama|bs58|buffer-layout)/.test(name)
+    )
+  );
+  assert(!existsSync(path.join(packageRoot, "dist/src/svm/index.js")));
   for (const name of [
-    "SvmSpokeClient",
-    "MulticallHandlerClient",
-    "SponsoredCctpSrcPeripheryClient",
-    "MessageTransmitterV2Client",
-    "TokenMessengerMinterV2Client",
+    "SvmSpoke",
+    "MulticallHandler",
+    "SponsoredCctpSrcPeriphery",
+    "MessageTransmitterV2",
+    "TokenMessengerMinterV2",
   ])
-    assert.equal(typeof contracts[name], "object");
+    for (const suffix of ["Client", "Idl", "Anchor"]) assert.equal(contracts[`${name}${suffix}`], undefined);
+  for (const name of [
+    "MulticallHandlerCoder",
+    "AcrossPlusMessageCoder",
+    "calculateRelayHashUint8Array",
+    "findProgramAddress",
+    "relayerRefundHashFn",
+    "getCpiEventsFromTransaction",
+    "createDefaultSolanaClient",
+    "readProgramEvents",
+  ])
+    assert.equal(contracts[name], undefined);
+  for (const subpath of [
+    "dist/src/types/svm",
+    "dist/src/types/svm.js",
+    "dist/src/types/svm.d.ts",
+    "dist/src/svm",
+    "dist/src/svm/index.js",
+    "dist/src/svm/web3-v1",
+    "dist/src/svm/web3-v2",
+    "dist/src/svm/web3-v1/coders",
+    "dist/src/svm/web3-v2/types",
+    "dist/src/svm/assets",
+    "dist/src/svm/assets/svm_spoke",
+    "dist/src/svm/clients/SvmSpoke",
+    "dist/src/svm/clients/MessageTransmitterV2",
+    ...[...names, "message_transmitter_v2", "token_messenger_minter_v2"].map(
+      (name) => `dist/src/svm/assets/idl/${name}.json`
+    ),
+    "svm/idl/message_transmitter_v2.json",
+    "svm/idl/token_messenger_minter_v2.json",
+    "svm/idl/test.json",
+    "dist/utils/internal",
+    "dist/scripts/internal",
+  ]) {
+    assert.throws(() => require.resolve(`@across-protocol/contracts/${subpath}`), {
+      code: "ERR_PACKAGE_PATH_NOT_EXPORTED",
+    });
+    assert(!existsSync(path.join(packageRoot, subpath)), `Internal path shipped: ${subpath}`);
+  }
+  const esm = await import("@across-protocol/contracts");
+  assert.deepEqual(esm.default, contracts);
+  for (const name of ["MerkleTree", "EMPTY_MERKLE_ROOT", "getDeployedAddress", "CHAIN_IDs", "getNodeUrl"])
+    assert.equal(esm[name], contracts[name]);
+  assert.deepEqual(require("@across-protocol/contracts/dist"), contracts);
+  assert.equal(require("@across-protocol/contracts/dist/utils").MerkleTree, contracts.MerkleTree);
   assert.equal(typeof contracts.getDeployedAddress, "function");
-  console.log("Packed IDLs: three public clients compile; Circle compatibility exports, V5 codecs and PDAs pass.");
+  const deployments = require("@across-protocol/contracts/dist/broadcast/deployed-addresses.json");
+  assert.equal(require("@across-protocol/contracts/dist/broadcast/deployed-addresses"), deployments);
+  const [chain, deployment] = Object.entries(deployments.chains).find(
+    ([, value]) => Object.keys(value.contracts).length
+  );
+  const [contractName, info] = Object.entries(deployment.contracts)[0];
+  assert.equal(contracts.getDeployedAddress(contractName, chain), info.address);
+  assert.equal(contracts.getDeployedBlockNumber(contractName, Number(chain)), info.block_number);
+  assert.equal(new contracts.MerkleTree([], (leaf) => leaf).getHexRoot(), contracts.EMPTY_MERKLE_ROOT);
+  assert.equal(contracts.CHAIN_IDs.MAINNET, 1);
+  process.env.NODE_URL_1 = "https://example.invalid";
+  assert.equal(contracts.getNodeUrl(1), "https://example.invalid");
+  const evmUtils = require("@across-protocol/contracts/dist/utils/utils");
+  assert.equal(evmUtils.toWei("1").toString(), "1000000000000000000");
+  for (const name of ["seedWallet", "seedContract", "getAllFilesInPath"])
+    assert.equal(typeof evmUtils[name], "function");
+  const artifactPath = require.resolve("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool.json");
+  const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
+  assert.equal(require.resolve("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool"), artifactPath);
+  assert.deepEqual(require("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool"), artifact);
+  assert(artifact.abi.some(({ name }) => name === "proposeRootBundle"));
+  assert.equal(typeof artifact.bytecode, "string");
+  assert.deepEqual(evmUtils.findArtifactFromPath("HubPool", path.dirname(artifactPath)), artifact);
+  assert(
+    readFileSync(require.resolve("@across-protocol/contracts/contracts/hub-pool/HubPool.sol"), "utf8").includes(
+      "contract HubPool"
+    )
+  );
+  for (const name of [
+    "index",
+    "src/DeploymentUtils",
+    "src/consts",
+    "utils/index",
+    "utils/MerkleTree",
+    "utils/constants",
+    "utils/network",
+    "utils/utils",
+  ])
+    assert.deepEqual(
+      require(`@across-protocol/contracts/dist/${name}.js`),
+      require(`@across-protocol/contracts/dist/${name}`)
+    );
+
+  writeFileSync(
+    "consumer.ts",
+    `
+import { MerkleTree, EMPTY_MERKLE_ROOT, getDeployedAddress, CHAIN_IDs } from "@across-protocol/contracts";
+import { getNodeUrl } from "@across-protocol/contracts/dist/utils/network";
+import { MerkleTree as DeepTree } from "@across-protocol/contracts/dist/utils/MerkleTree.js";
+import idl from "@across-protocol/contracts/svm/idl/svm_spoke.json";
+const tree: DeepTree<string> = new MerkleTree<string>([], (leaf) => leaf);
+const root: string = tree.getHexRoot() || EMPTY_MERKLE_ROOT;
+getDeployedAddress("HubPool", CHAIN_IDs.MAINNET);
+getNodeUrl(1);
+const program: string = idl.address;
+// @ts-expect-error SVM generated root exports have been removed.
+import { SvmSpokeClient } from "@across-protocol/contracts";
+// @ts-expect-error Anchor-generated types are internal.
+import { SvmSpokeAnchor } from "@across-protocol/contracts";
+// @ts-expect-error Internal SVM domain types are not published.
+import { RelayerRefundLeafSolana } from "@across-protocol/contracts/dist/src/types/svm";
+// @ts-expect-error Deep generated clients are physically absent.
+import * as client from "@across-protocol/contracts/dist/src/svm/clients/SvmSpoke";
+// @ts-expect-error Handwritten SVM helpers are internal.
+import { MulticallHandlerCoder } from "@across-protocol/contracts/dist/src/svm/web3-v1";
+// @ts-expect-error Circle JSON is no longer a contracts package interface.
+import circle from "@across-protocol/contracts/dist/src/svm/assets/idl/message_transmitter_v2.json";
+`
+  );
+  for (const module of ["commonjs", "Node16"])
+    execFileSync(
+      process.execPath,
+      [
+        require.resolve("typescript/bin/tsc"),
+        "--noEmit",
+        "--strict",
+        "--skipLibCheck",
+        "--esModuleInterop",
+        "--resolveJsonModule",
+        "--target",
+        "es2021",
+        "--module",
+        module,
+        "consumer.ts",
+      ],
+      { stdio: "inherit" }
+    );
+  console.log(
+    "Packed IDLs: three clients compile; V5 codecs/PDAs, removed runtime/types, and EVM/shared consumers pass."
+  );
 }
 main().catch((error) => {
   console.error(error);

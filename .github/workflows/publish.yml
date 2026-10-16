@@ -24,7 +24,6 @@ env:
     target/idl
     target/types
     src/svm/assets
-    src/svm/clients
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -28,7 +28,7 @@ for program in programs/*; do
     -- --locked
 done
 
-# Include schemas carried inside opaque V5 adapter arguments before publishing IDLs and clients.
+# Include schemas carried inside opaque V5 adapter arguments before publishing IDLs.
 yarn ts-node scripts/svm/buildHelpers/restoreEventAuthorityPdas.ts
 yarn ts-node scripts/svm/buildHelpers/includeV5IdlTypes.ts
 
