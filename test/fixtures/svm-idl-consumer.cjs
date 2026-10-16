@@ -176,6 +176,9 @@ async function main() {
   ])
     assert.equal(contracts[name], undefined);
   for (const subpath of [
+    "dist/src/types/svm",
+    "dist/src/types/svm.js",
+    "dist/src/types/svm.d.ts",
     "dist/src/svm",
     "dist/src/svm/index.js",
     "dist/src/svm/web3-v1",
@@ -208,6 +211,7 @@ async function main() {
   assert.equal(require("@across-protocol/contracts/dist/utils").MerkleTree, contracts.MerkleTree);
   assert.equal(typeof contracts.getDeployedAddress, "function");
   const deployments = require("@across-protocol/contracts/dist/broadcast/deployed-addresses.json");
+  assert.equal(require("@across-protocol/contracts/dist/broadcast/deployed-addresses"), deployments);
   const [chain, deployment] = Object.entries(deployments.chains).find(
     ([, value]) => Object.keys(value.contracts).length
   );
@@ -224,6 +228,8 @@ async function main() {
     assert.equal(typeof evmUtils[name], "function");
   const artifactPath = require.resolve("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool.json");
   const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
+  assert.equal(require.resolve("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool"), artifactPath);
+  assert.deepEqual(require("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool"), artifact);
   assert(artifact.abi.some(({ name }) => name === "proposeRootBundle"));
   assert.equal(typeof artifact.bytecode, "string");
   assert.deepEqual(evmUtils.findArtifactFromPath("HubPool", path.dirname(artifactPath)), artifact);
@@ -263,6 +269,8 @@ const program: string = idl.address;
 import { SvmSpokeClient } from "@across-protocol/contracts";
 // @ts-expect-error Anchor-generated types are internal.
 import { SvmSpokeAnchor } from "@across-protocol/contracts";
+// @ts-expect-error Internal SVM domain types are not published.
+import { RelayerRefundLeafSolana } from "@across-protocol/contracts/dist/src/types/svm";
 // @ts-expect-error Deep generated clients are physically absent.
 import * as client from "@across-protocol/contracts/dist/src/svm/clients/SvmSpoke";
 // @ts-expect-error Handwritten SVM helpers are internal.

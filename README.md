@@ -80,11 +80,14 @@ The draft remains based on the local Anchor conversion; it does not authorize de
 | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
 | Root `*Client` namespaces and `dist/src/svm/clients/**`      | SDK-owned clients or local generation from the three stable Across JSON paths                   |
 | Root `*Idl` / `*Anchor` and `dist/src/svm/assets/**`         | Stable Across JSON plus consumer-owned types; reviewed upstream Circle JSON for Circle programs |
+| Internal SVM domain types at `dist/src/types/**`             | Consumer-owned types using the published IDLs and validated SDK interfaces                      |
 | Root SVM helpers and `dist/src/svm/web3-v1/**`, `web3-v2/**` | Validated SDK helpers or equivalent consumer-owned implementations                              |
 | `MulticallHandlerCoder` / `AcrossPlusMessageCoder`           | SDK handwritten compilation and serialization; preserve legacy multicall and sponsored routes   |
 
-All `dist/src/svm/**` files are physically absent from the tarball. An explicit `exports` map rejects their deep
-imports, and the `files` allowlist excludes stale/internal output even when packing without build scripts. There is
+All `dist/src/svm/**` and `dist/src/types/**` files are physically absent from the tarball. The package build
+excludes internal SVM domain types; tests and scripts still compile them through their own configurations.
+An explicit `exports` map rejects their deep imports, and the `files` allowlist excludes stale/internal output even
+when packing without build scripts. There is
 no catch-all `dist` entry point. Anchor, web3.js v1, Borsh and buffer-layout are development dependencies for internal
 code. Kit and Codama remain development dependencies only for the external packed-IDL consumer check.
 
@@ -96,6 +99,9 @@ This cleanup is SVM-only. The following EVM/shared APIs remain supported and pub
   The `dist` and `dist/utils` barrel aliases also remain; neither is a catch-all export.
 - Solidity sources at `contracts/**/*.sol`, ABI/bytecode at `dist/evm/artifacts/**/*.json`, deployment data at
   `dist/broadcast/deployed-addresses.json`, and `package.json`.
+
+EVM artifact and deployment JSON paths retain extensionless CommonJS aliases. The stable SVM IDL paths require
+the explicit `.json` extension.
 
 Filesystem access to published EVM artifacts remains supported. Consumers can resolve
 `@across-protocol/contracts/package.json` to locate the package root and read its artifact files directly;

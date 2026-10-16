@@ -149,6 +149,8 @@ describe("Production IDL package", function () {
     const tarballs = readdirSync(work).filter((file) => file.endsWith(".tgz"));
     assert.equal(tarballs.length, 1);
     const tarball = path.join(work, tarballs[0]);
+    for (const suffix of ["js", "d.ts"])
+      assert(!existsSync(path.join(root, `dist/src/types/svm.${suffix}`)), "Internal SVM types were built");
     const paths = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" })
       .trim()
       .split("\n")
@@ -201,6 +203,8 @@ describe("Production IDL package", function () {
       "dist/src/svm/web3-v1/index.js",
       "dist/src/svm/assets/svm_spoke.d.ts",
       "dist/src/svm/assets/idl/message_transmitter_v2.json",
+      "dist/src/types/svm.js",
+      "dist/src/types/svm.d.ts",
       "dist/utils/internal.js",
       "dist/src/internal.d.ts",
       "dist/scripts/internal.js",
