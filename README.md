@@ -88,25 +88,28 @@ imports, and the `files` allowlist excludes stale/internal output even when pack
 no catch-all `dist` entry point. Anchor, web3.js v1, Borsh and buffer-layout are development dependencies for internal
 code. Kit and Codama remain development dependencies only for the external packed-IDL consumer check.
 
-The supported EVM/shared surface is retained:
+This cleanup is SVM-only. The following EVM/shared APIs remain supported and published:
 
-- Root deployment lookups, `DEPLOYMENTS`, `MerkleTree`, `EMPTY_MERKLE_ROOT`, constants and `getNodeUrl`.
-- `contracts/**/*.sol`, `dist/evm/artifacts/**/*.json` (ABI/bytecode),
-  `dist/broadcast/deployed-addresses.json` and `package.json`. Filesystem artifact discovery from the package root
-  continues to work; resolve `@across-protocol/contracts/package.json` to locate it.
+- Root deployment lookup functions, `DEPLOYMENTS`, `MerkleTree`, `EMPTY_MERKLE_ROOT`, constants and `getNodeUrl`.
+- Explicit compatibility paths for `dist/index`, `dist/src/DeploymentUtils`, `dist/src/consts` and
+  `dist/utils/{index,MerkleTree,constants,network,utils}`, including extensionless, `.js` and `.d.ts` variants.
+  The `dist` and `dist/utils` barrel aliases also remain; neither is a catch-all export.
+- Solidity sources at `contracts/**/*.sol`, ABI/bytecode at `dist/evm/artifacts/**/*.json`, deployment data at
+  `dist/broadcast/deployed-addresses.json`, and `package.json`.
 
-Import shared APIs from `@across-protocol/contracts`. Compiled TypeScript paths such as `dist/utils/MerkleTree`,
-`dist/utils/network` and `dist/src/DeploymentUtils` are private, including their `.js` and `.d.ts` variants.
-Modules needed by root exports remain in the tarball as implementation dependencies. Deep-only filesystem,
-numeric and seeded-wallet helpers from `dist/utils/utils` are no longer shipped; consumers must replace those
-imports downstream. The root `MerkleTree` and `EMPTY_MERKLE_ROOT` remain shared EVM/SVM bundle-building APIs;
-relocating them is outside this SVM client migration.
+Filesystem access to published EVM artifacts remains supported. Consumers can resolve
+`@across-protocol/contracts/package.json` to locate the package root and read its artifact files directly;
+this does not require a package-exported artifact-discovery helper. Existing filesystem, numeric and seeded-wallet
+helpers in `dist/utils/utils` remain compatibility exports pending a separate consumer audit.
+
+An artifacts/data-only package is a separate follow-up. Moving shared Merkle utilities, constants, deployment
+lookup functions and other runtime helpers downstream requires an inventory of production, test, script and CI
+consumers, validated replacements and a coordinated breaking release. ACP-240 does not perform that migration.
 
 Before removal lands, validate replacement imports across consumer source, tests, scripts and CI using the exact
 candidate packages. Track repository inventories, adoption status and validation evidence in the internal issue
-tracker. Validate multicall compilation, sponsored
-burns, historical indexing, test fixtures, unsupported fee-estimation handling and V2 tokenless finalization where
-applicable. SDK generation alone does not establish V2/light-chain behavior or consumer adoption.
+tracker. Validate multicall compilation, sponsored burns, historical indexing, test fixtures, unsupported
+fee-estimation handling and V2 tokenless finalization where applicable. SDK generation alone does not establish V2/light-chain behavior or consumer adoption.
 
 Choose a fresh breaking prerelease through the normal GitHub release workflow only after those gates pass.
 This draft intentionally leaves the existing package version unchanged; do not republish that version with the new

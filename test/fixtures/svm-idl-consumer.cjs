@@ -135,6 +135,7 @@ async function main() {
   });
   assert.equal(typeof require("./compiled/multicall_handler").getHandleV3AcrossMessageInstruction, "function");
   assert.equal(typeof require("./compiled/sponsored_cctp_src_periphery").getDepositForBurnInstruction, "function");
+  assert.equal(typeof require("@across-protocol/contracts/dist/utils/MerkleTree").MerkleTree, "function");
   // Shared consumers must not load an SVM runtime, even when fixture dependencies happen to be installed.
   const load = Module._load;
   let contracts;
@@ -203,6 +204,8 @@ async function main() {
   assert.deepEqual(esm.default, contracts);
   for (const name of ["MerkleTree", "EMPTY_MERKLE_ROOT", "getDeployedAddress", "CHAIN_IDs", "getNodeUrl"])
     assert.equal(esm[name], contracts[name]);
+  assert.deepEqual(require("@across-protocol/contracts/dist"), contracts);
+  assert.equal(require("@across-protocol/contracts/dist/utils").MerkleTree, contracts.MerkleTree);
   assert.equal(typeof contracts.getDeployedAddress, "function");
   const deployments = require("@across-protocol/contracts/dist/broadcast/deployed-addresses.json");
   const [chain, deployment] = Object.entries(deployments.chains).find(
@@ -215,16 +218,21 @@ async function main() {
   assert.equal(contracts.CHAIN_IDs.MAINNET, 1);
   process.env.NODE_URL_1 = "https://example.invalid";
   assert.equal(contracts.getNodeUrl(1), "https://example.invalid");
+  const evmUtils = require("@across-protocol/contracts/dist/utils/utils");
+  assert.equal(evmUtils.toWei("1").toString(), "1000000000000000000");
+  for (const name of ["seedWallet", "seedContract", "getAllFilesInPath"])
+    assert.equal(typeof evmUtils[name], "function");
   const artifactPath = require.resolve("@across-protocol/contracts/dist/evm/artifacts/HubPool.sol/HubPool.json");
   const artifact = JSON.parse(readFileSync(artifactPath, "utf8"));
   assert(artifact.abi.some(({ name }) => name === "proposeRootBundle"));
   assert.equal(typeof artifact.bytecode, "string");
+  assert.deepEqual(evmUtils.findArtifactFromPath("HubPool", path.dirname(artifactPath)), artifact);
   assert(
     readFileSync(require.resolve("@across-protocol/contracts/contracts/hub-pool/HubPool.sol"), "utf8").includes(
       "contract HubPool"
     )
   );
-  const privateModules = [
+  for (const name of [
     "index",
     "src/DeploymentUtils",
     "src/consts",
@@ -233,28 +241,20 @@ async function main() {
     "utils/constants",
     "utils/network",
     "utils/utils",
-  ];
-  for (const subpath of [
-    "dist",
-    "dist/utils",
-    ...privateModules.flatMap((name) => ["", ".js", ".d.ts"].map((suffix) => `dist/${name}${suffix}`)),
-  ]) {
-    assert.throws(() => require.resolve(`@across-protocol/contracts/${subpath}`), {
-      code: "ERR_PACKAGE_PATH_NOT_EXPORTED",
-    });
-    await assert.rejects(import(`@across-protocol/contracts/${subpath}`), {
-      code: "ERR_PACKAGE_PATH_NOT_EXPORTED",
-    });
-  }
-  for (const name of ["src/consts", "utils/utils"])
-    for (const suffix of [".js", ".d.ts"]) assert(!existsSync(path.join(packageRoot, `dist/${name}${suffix}`)));
+  ])
+    assert.deepEqual(
+      require(`@across-protocol/contracts/dist/${name}.js`),
+      require(`@across-protocol/contracts/dist/${name}`)
+    );
 
   writeFileSync(
     "consumer.ts",
     `
-import { MerkleTree, EMPTY_MERKLE_ROOT, getDeployedAddress, CHAIN_IDs, getNodeUrl } from "@across-protocol/contracts";
+import { MerkleTree, EMPTY_MERKLE_ROOT, getDeployedAddress, CHAIN_IDs } from "@across-protocol/contracts";
+import { getNodeUrl } from "@across-protocol/contracts/dist/utils/network";
+import { MerkleTree as DeepTree } from "@across-protocol/contracts/dist/utils/MerkleTree.js";
 import idl from "@across-protocol/contracts/svm/idl/svm_spoke.json";
-const tree: MerkleTree<string> = new MerkleTree<string>([], (leaf) => leaf);
+const tree: DeepTree<string> = new MerkleTree<string>([], (leaf) => leaf);
 const root: string = tree.getHexRoot() || EMPTY_MERKLE_ROOT;
 getDeployedAddress("HubPool", CHAIN_IDs.MAINNET);
 getNodeUrl(1);
@@ -271,19 +271,7 @@ import { MulticallHandlerCoder } from "@across-protocol/contracts/dist/src/svm/w
 import circle from "@across-protocol/contracts/dist/src/svm/assets/idl/message_transmitter_v2.json";
 `
   );
-  for (const module of ["commonjs", "Node16"]) {
-    // Legacy TS resolution ignores exports; Node16 must enforce the package boundary even for shipped internals.
-    if (module === "Node16")
-      writeFileSync(
-        "consumer.ts",
-        readFileSync("consumer.ts", "utf8") +
-          privateModules
-            .map(
-              (name, i) =>
-                `\n// @ts-expect-error Compiled implementation paths are private.\nimport * as private${i} from "@across-protocol/contracts/dist/${name}";\n`
-            )
-            .join("")
-      );
+  for (const module of ["commonjs", "Node16"])
     execFileSync(
       process.execPath,
       [
@@ -301,7 +289,6 @@ import circle from "@across-protocol/contracts/dist/src/svm/assets/idl/message_t
       ],
       { stdio: "inherit" }
     );
-  }
   console.log(
     "Packed IDLs: three clients compile; V5 codecs/PDAs, removed runtime/types, and EVM/shared consumers pass."
   );
