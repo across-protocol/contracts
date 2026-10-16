@@ -16,7 +16,6 @@ jobs:
         target/idl
         target/types
         src/svm/assets
-        src/svm/clients
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3

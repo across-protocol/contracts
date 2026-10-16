@@ -146,4 +146,12 @@ Run these with the repository's SVM suite (`yarn test-svm`); the attestation tes
 
 ## Package boundary
 
-`contracts` exports the generated CCTP V2 clients (`MessageTransmitterV2Client`, `TokenMessengerMinterV2Client`) alongside the spoke and other program clients. CCTP V1 clients, IDLs/types, connectors and message helpers are not exported, including via deep imports. The scripts in this directory do not export production helpers; integration logic such as attestation handling, receiver account selection and transaction construction belongs downstream (principally in `sdk`). Historical V1 decoding/recovery, if needed, must be implemented downstream.
+The npm SVM surface consists of the three stable Across JSON IDLs described in the
+[root README](../../README.md#svm-json-interfaces). Generated clients, Anchor TS types and runtime helpers,
+including Circle V2 IDLs/clients, are not published. Internal Anchor/web3.js v1 helpers and the reviewed Circle
+snapshots remain available to scripts and program tests in this checkout. Production integration logic such as
+attestation handling, receiver account selection, transaction construction and handwritten multicall compilation
+belongs downstream (principally in SDK). Historical V1 decoding/recovery, if needed, must be implemented downstream.
+
+This is an unreleased packaging draft: merge/release requires validated consumer replacements and preserved
+legacy route support. See the [migration gate](../../README.md#breaking-package-boundary-unreleased-draft).

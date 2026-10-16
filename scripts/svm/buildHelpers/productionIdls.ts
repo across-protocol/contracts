@@ -4,7 +4,7 @@ import path from "path";
 import { strict as assert } from "assert";
 import { files } from "../../../package.json";
 
-// Stable public paths cover Across-owned programs; Circle snapshots remain compatibility assets.
+// Stable public paths cover Across-owned programs; Circle snapshots are internal test/script assets.
 export const publicIdlNames = files
   .filter((file) => file.startsWith("/svm/idl/"))
   .map((file) => path.basename(file, ".json"));
