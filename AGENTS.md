@@ -97,6 +97,8 @@ lib/                 # External dependencies (git submodules)
 
 ## Build & Test Commands
 
+CI and publishing use Node.js 22.23.4, the October 2026 security release. Keep both workflow pins aligned when updating Node.
+
 ```bash
 yarn pin-foundry                      # Switch local Foundry to the version in .foundry-version (CI uses the same)
 yarn build-evm-foundry                # Foundry build

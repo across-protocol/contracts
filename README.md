@@ -23,9 +23,9 @@ The latest contract deployments can be found in `/broadcast/deployed-addresses.j
 
 ## Requirements
 
-This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 16.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
+This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, using the CI version 22.23.4 or a later patched Node 22 release. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
 
-Note if you get build issues on the initial `yarn` command try downgrading to node 20.17 (`nvm use 20.17`). If you've never used anchor before you might need to run `avm use latest` as well.
+If you've never used anchor before you might need to run `avm use latest` as well.
 
 ## Build
 
