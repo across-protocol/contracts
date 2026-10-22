@@ -81,6 +81,10 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
     /// @notice Thrown when direct execution is attempted with unsupported token.
     error InvalidDirectToken();
 
+    // Error thrown when a direct-flow call arrives without the baseToken funding
+    // the execution requires.
+    error InsufficientFunding();
+
     constructor(
         address _oftEndpoint,
         address _ioft,
@@ -173,7 +177,9 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
 
     /**
      * @notice Direct execution entrypoint for same-chain flows that bypass OFT transport.
-     * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
+     * @dev Caller must hold DIRECT_CALLER_ROLE and pull-fund `amountLD` of baseToken into
+     *      this contract in the same call. A held-balance check alone would let a compromised
+     *      DIRECT_CALLER spend pre-existing in-flight / orphaned balance.
      */
     function executeDirect(
         address tokenSent,
@@ -181,6 +187,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
         bytes calldata composeMsg
     ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
         if (tokenSent != baseToken) revert InvalidDirectToken();
+        if (IERC20(baseToken).balanceOf(msg.sender) < amountLD) revert InsufficientFunding();
+        IERC20(baseToken).safeTransferFrom(msg.sender, address(this), amountLD);
         if (!composeMsg._isValidComposeMsgBytelength()) revert InvalidComposeMsgFormat();
 
         bytes32 quoteNonce = composeMsg._getNonce();
