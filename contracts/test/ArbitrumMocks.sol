@@ -142,6 +142,45 @@ contract Inbox {
         );
         return 0;
     }
+
+    uint256 public unsafeCreateRetryableTicketCallCount;
+    uint256 public lastUnsafeCreateRetryableTicketMsgValue;
+    CreateRetryableTicketCall public lastUnsafeCreateRetryableTicketCall;
+
+    function unsafeCreateRetryableTicket(
+        address _destAddr,
+        uint256 _l2CallValue,
+        uint256 _maxSubmissionCost,
+        address _excessFeeRefundAddress,
+        address _callValueRefundAddress,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        bytes memory _data
+    ) external payable returns (uint256) {
+        unsafeCreateRetryableTicketCallCount++;
+        lastUnsafeCreateRetryableTicketMsgValue = msg.value;
+        lastUnsafeCreateRetryableTicketCall = CreateRetryableTicketCall(
+            _destAddr,
+            _l2CallValue,
+            _maxSubmissionCost,
+            _excessFeeRefundAddress,
+            _callValueRefundAddress,
+            _maxGas,
+            _gasPriceBid,
+            _data
+        );
+        emit RetryableTicketCreated(
+            _destAddr,
+            _l2CallValue,
+            _maxSubmissionCost,
+            _excessFeeRefundAddress,
+            _callValueRefundAddress,
+            _maxGas,
+            _gasPriceBid,
+            _data
+        );
+        return 0;
+    }
 }
 
 contract L2GatewayRouter {
