@@ -36,7 +36,7 @@ contract AcrossMerkleDistributor is MerkleDistributor {
     /**
      * @notice Updates whitelisted claimer status.
      * @dev Callable only by owner.
-     * @param newContract Reset claimer contract to this address.
+     * @param newContract Claimer address for which to set whitelist status.
      * @param whitelist True to whitelist claimer, False otherwise.
      */
     function whitelistClaimer(address newContract, bool whitelist) external onlyOwner {
@@ -77,7 +77,7 @@ contract AcrossMerkleDistributor is MerkleDistributor {
      *         claimer address. This function is designed to be called atomically with other transactions
      *         that ultimately return the claimed amount to the rightful recipient. For example,
      *         AcceleratingDistributor could call this function and then stake atomically on behalf of the user.
-     * @dev    Caller must be in whitelistedClaimers struct set to "true".
+     * @dev    Caller must be whitelisted in the whitelistedClaimers mapping (set to "true").
      * @param _claim leaf to claim.
      */
 
