@@ -316,6 +316,14 @@ leaf commits the permitted withdrawer) — **not permissionless** — so it can'
 in-flight deposits by sweeping funds to the source-chain refund path before they're bridged (see Open
 Questions #8).
 
+`WithdrawImplementation` only reaches EVM-side ERC-20/native balances. On HyperEVM,
+`HyperCoreWithdrawImplementation` is the Core-side counterpart: same `withdrawParams` and
+`submitterData` shapes (so both `AdminWithdrawManager` paths work unchanged), but it CoreWriter
+`spotSend`s the proxy's **HyperCore spot balance** to the committed user (`token` = the Core token's
+asset-bridge address, `amount` in Core wei units). Used to rescue Core-side sends made directly to a
+deposit address; for proxies minted without this leaf, add it via a root update
+(`script/counterfactual/RecoverHyperCoreSpotBalance.s.sol` is the worked example).
+
 `initialRoot` is just this tree at deploy time; after an upgrade, `activeRoot` may commit a different
 tree (more/updated routes), while the address — fixed by `initialRoot` — is unchanged.
 
