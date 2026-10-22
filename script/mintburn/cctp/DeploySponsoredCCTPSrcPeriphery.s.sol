@@ -30,6 +30,7 @@ contract DeploySponsoredCCTPSrcPeriphery is DeploymentUtils {
         SponsoredCCTPSrcPeriphery sponsoredCCTPSrcPeriphery = new SponsoredCCTPSrcPeriphery(
             cctpTokenMessenger,
             sourceDomain,
+            deployer,
             deployer
         );
 
