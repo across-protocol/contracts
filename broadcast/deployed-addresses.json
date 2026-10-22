@@ -237,6 +237,11 @@
           "block_number": 25138380,
           "transaction_hash": "0x135450e78b12f576b5d294d2fe26000eb1bb0bbf9ba755f5e8cd41d9587ac0f9"
         },
+        "Safe_Product": {
+          "address": "0xE9619c0450Fd890E28a5baA09Ab2e83e6A02C3fD",
+          "block_number": 26186875,
+          "transaction_hash": "0x40be70706bded78cf87a9faad18dc622d94b2ca62f371ab84264cd8e8fe6a526"
+        },
         "PermissionedMulticallHandler_CCTP_USDC": {
           "address": "0xDd52f8134f85f3979fbA24387Ce0CEC05937259E",
           "block_number": 25050834,
@@ -1443,6 +1448,11 @@
           "block_number": 46258138,
           "transaction_hash": "0x3267da18ba0bb69bad4f9dac7b1932ed00e16aa87b5a7f31cccefddafad248ec"
         },
+        "Safe_Product": {
+          "address": "0x3078c9b6ACAA960E6Ff0549A03C0Bb1b8c6823E7",
+          "block_number": 52572517,
+          "transaction_hash": "0x3afa31b24ca3a0538d2847f17557c154c22e4c1b1c301bde012fdb322633d474"
+        },
         "PermissionedMulticallHandler_CCTP_USDC": {
           "address": "0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4",
           "block_number": 44959757,
@@ -1533,6 +1543,11 @@
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 19174119,
           "transaction_hash": "0x7b48d4e46a0934f5580682b0f92cd9d083a72810b3925b353bc6a09527c75282"
+        },
+        "Safe_Product": {
+          "address": "0x3078c9b6ACAA960E6Ff0549A03C0Bb1b8c6823E7",
+          "block_number": 34993005,
+          "transaction_hash": "0x146e545f1928b57754fde7cde632ec0f216321dd80783c6c06f2eae7bdc03e78"
         },
         "WithdrawImplementation": {
           "address": "0x4eCffb4A23e26aE937Bd9185969c8bb71073fBb9",
