@@ -431,8 +431,8 @@ Per-execution values come from `submitterData`, authorized by the `signer` (see 
    the `signer`** (bound in the EIP-712 fee signature for SpokePool; via the periphery quote signature
    for CCTP/OFT — see _Execution Fees_). The deposit bridges `inputAmount − executionFee`; the fee is
    bounded by the leaf cap. This is **not live balance** — the amount is signed, so the `f(inputAmount)`
-   fee cap and the (caller-chosen) `executionFeeRecipient` can't be gamed. (Matches the
-   `taylor/counterfactual-route-policy` branch.)
+   fee cap can't be gamed. The `executionFeeRecipient` is **caller-chosen and deliberately unsigned** —
+   see _Who receives the execution fee_ below. (Matches the `taylor/counterfactual-route-policy` branch.)
 
 The destination is a native bridge fill / mint / compose to the recipient — no extra destination
 delivery mechanism.
@@ -490,6 +490,35 @@ Mechanism (identical across the four impls):
   by `maxFee`; when `true`, the existing relayer-fee + execution-fee bound applies.
 - Native-token deposits (SpokePool) pay the fee via a `call{value: executionFee}`; ERC-20 deposits via
   `safeTransfer`.
+
+### Who receives the execution fee (intended: caller-chosen, unsigned)
+
+`executionFeeRecipient` is supplied in `submitterData` and is **not** part of any typehash. This is
+intentional, not an oversight — the fee is an **open bounty**, not a designated payment:
+
+- **Execution is permissionless.** `execute` has no caller check; anyone holding a valid signature can
+  submit the deposit. The `signer` approves the fee **amount**, not who gets paid.
+- **The fee pays for execution gas.** It rewards whoever submits the transaction and pays the gas. Nobody
+  is owed it in advance, so nothing is "stolen" when a different submitter collects it — whoever did the
+  work gets paid. Signing the recipient would be functionally equivalent to paying `msg.sender`, which is
+  just as front-runnable (the front-runner would simply put their own address in the signed field when
+  requesting a quote).
+- **The depositor is never affected.** `inputAmount` / `outputAmount` (or the periphery quote's amount),
+  the route, and `finalRecipient` are all signed or fixed in the leaf. The deposit executes identically
+  whoever submits it, and the depositor pays the same signed fee either way.
+- **The fee is signed and capped.** `executionFee` is in the signature and bounded by the per-chain,
+  per-token cap resolved via `maxExecutionFeeGetter`. The most anyone can redirect is that small, bounded
+  fee.
+
+**Known, accepted consequence — relayer griefing.** A submitter who obtained a quote can be front-run by
+a third party that copies the calldata, swaps in its own `executionFeeRecipient`, and lands first: the
+front-runner collects the fee and the `nonce` is consumed, so the original submitter's transaction
+reverts (`InvalidNonce` locally, or at the periphery for CCTP/OFT) and it is out the gas for its failed
+attempt. The user's deposit still goes through correctly. Relayers that care about this should submit via
+a private mempool / builder. If designated-payee semantics are ever wanted, the change is to add
+`address executionFeeRecipient` to every typehash and `_verifySignature` encode list (and bump the EIP-712
+domain `version`); we have chosen not to, since it buys nothing for the depositor and only shifts which
+relayer can be griefed. **Reports of this behaviour are ineligible for a bug bounty.**
 
 Per-bridge typehash and binding:
 
@@ -601,6 +630,9 @@ ERC-20 (USDC) only.
 - The **execution-fee `signer`** (a `public immutable` on the beacon, `beacon.signer()`, rotated via a
   registry upgrade) is trusted to authorize only fair runtime `executionFee` values (bounded by the leaf
   cap). It cannot redirect funds — the recipient is the pinned identity — only attest to the fee; an
-  unsigned or expired fee reverts.
+  unsigned or expired fee reverts. It does **not** attest to the `executionFeeRecipient`, which is
+  caller-chosen by design (see _Who receives the execution fee_).
 - The **relayer** is untrusted: it can only move the proxy's funds to the pinned `finalRecipient` via
-  an authorized route.
+  an authorized route. It is also **unprotected**: the execution fee is an open bounty, so a relayer
+  holding a quote can be front-run for the fee and have its nonce burned (an accepted griefing vector —
+  see _Who receives the execution fee_).
