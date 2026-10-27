@@ -510,16 +510,6 @@ intentional, not an oversight — the fee is an **open bounty**, not a designate
   per-token cap resolved via `maxExecutionFeeGetter`. The most anyone can redirect is that small, bounded
   fee.
 
-**Known, accepted consequence — relayer griefing.** A submitter who obtained a quote can be front-run by
-a third party that copies the calldata, swaps in its own `executionFeeRecipient`, and lands first: the
-front-runner collects the fee and the `nonce` is consumed, so the original submitter's transaction
-reverts (`InvalidNonce` locally, or at the periphery for CCTP/OFT) and it is out the gas for its failed
-attempt. The user's deposit still goes through correctly. Relayers that care about this should submit via
-a private mempool / builder. If designated-payee semantics are ever wanted, the change is to add
-`address executionFeeRecipient` to every typehash and `_verifySignature` encode list (and bump the EIP-712
-domain `version`); we have chosen not to, since it buys nothing for the depositor and only shifts which
-relayer can be griefed. **Reports of this behaviour are ineligible for a bug bounty.**
-
 Per-bridge typehash and binding:
 
 | Impl             | EIP-712 typehash                                                                                                                                                                                                                                           | Route / amount binding                                                                                                                                                                                                                                                                                       |
