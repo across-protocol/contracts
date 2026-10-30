@@ -167,6 +167,12 @@ This delivery obligation is shared with EVM. API builders and relayers must port
 conformance cases before enabling SVM routes. This test lane alone does not enable a production route or require
 new aggregation support.
 
+Operators must provision the fill payer's standing float for planned fill-status rent plus the payer PDA's own
+rent-exempt reserve (`Rent::minimum_balance(0)`), replenishing it before fills consume that reserve. A fill that
+leaves a nonzero payer balance below the reserve fails under Solana's runtime rent rules. Do not rely on a fill
+draining the float exactly: an unsolicited lamport donation can turn that drain into a failing sub-rent remainder.
+When ceasing operations, use `withdraw_v5_fill_payer(u64::MAX)` to withdraw the live balance.
+
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing

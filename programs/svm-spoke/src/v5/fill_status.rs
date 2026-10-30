@@ -88,6 +88,7 @@ pub fn create_v5_fill_status_account<'a, 'info>(
         }
     }
     let current_lamports = fill_status.lamports();
+    // Operators must retain the payer's rent-exempt reserve; donated dust can make an exact drain fail.
     let required_lamports = Rent::get()?
         .minimum_balance(V5_FILL_STATUS_SPACE)
         .max(1)
