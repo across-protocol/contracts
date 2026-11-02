@@ -247,7 +247,7 @@ export MAX_LEN=$(( 2 * $(stat -c %s target/deploy/$PROGRAM.so) )) # Reserve twic
 
 #### Initial deployment
 
-Deploy the program and set the upgrade authority to the multisig:
+Deploy the selected program and initialize its canonical IDL while `$KEYPAIR` holds upgrade authority:
 
 ```shell
 solana program deploy \
@@ -264,22 +264,18 @@ anchor idl init \
   --provider.wallet $KEYPAIR \
   --filepath target/idl/$PROGRAM.json \
   $PROGRAM_ID
-solana program set-upgrade-authority \
-  --url $RPC_URL \
-  --keypair $KEYPAIR \
-  --skip-new-upgrade-authority-signer-check \
-  $PROGRAM_ID \
-  --new-upgrade-authority $MULTISIG
 ```
 
 Update and commit `deployments/legacy-addresses.json` with the deployed program ID and deployment slot.
 
 Anchor 1.1.2 stores canonical IDLs in the separate Program Metadata program. Its authority follows the
-program upgrade authority; there is no separate `anchor idl set-authority` step. The sequence above initializes
-the canonical IDL before transferring program authority. If Squads already holds authority,
+program upgrade authority; there is no separate `anchor idl set-authority` step. Initialize the canonical IDL
+and complete the applicable program setup below before transferring program authority. If Squads already holds authority,
 perform the canonical metadata write through Squads as described below.
 
-`svm_spoke` also requires initialization and transfer of ownership on the first deployment:
+For `svm_spoke`, initialize the state while `$KEYPAIR` is still the program's upgrade authority.
+The script makes `$KEYPAIR` the initial local owner, then transfers local ownership to `$MULTISIG` via `--svmAdmin`.
+Program upgrade authority is transferred separately after setup. See the [initialization requirements](scripts/svm/README.md#initialize-a-fresh-spoke-deployment).
 
 ```shell
 anchor run initialize \
@@ -303,7 +299,7 @@ anchor run createVault \
   --originToken $MINT
 ```
 
-`sponsored_cctp_src_periphery` requires initialization and setting minimum deposit amount for supported burn token:
+For `sponsored_cctp_src_periphery`, initialize and set the minimum deposit amount for the supported burn token:
 
 ```shell
 # Replace --quoteSigner with actual quote signer address
@@ -317,6 +313,23 @@ anchor run setMinimumDepositSponsoredCctpSrc \
   --provider.wallet $KEYPAIR -- \
   --burnToken 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU \
   --amount 0
+```
+
+These sponsored CCTP scripts submit directly when `$KEYPAIR` holds upgrade authority. If authority has already
+been transferred to Squads, they simulate and export transactions for multisig execution instead. Execute and
+confirm the initialization transaction through Squads before running the minimum-deposit script, then execute
+its exported transaction through Squads as well; simulation alone does not update on-chain state.
+
+After completing the setup for the selected program, transfer its upgrade authority to the multisig if `$KEYPAIR`
+still holds it:
+
+```shell
+solana program set-upgrade-authority \
+  --url $RPC_URL \
+  --keypair $KEYPAIR \
+  --skip-new-upgrade-authority-signer-check \
+  $PROGRAM_ID \
+  --new-upgrade-authority $MULTISIG
 ```
 
 #### Upgrades

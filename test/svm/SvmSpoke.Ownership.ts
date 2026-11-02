@@ -1,4 +1,4 @@
-import { BN } from "@anchor-lang/core";
+import { BN, workspace } from "@anchor-lang/core";
 import { Keypair, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { assert } from "chai";
 import { randomBytes } from "crypto";
@@ -62,7 +62,7 @@ describe("svm_spoke.ownership", () => {
       );
       // This is valid loader-owned ProgramData with the same upgrade authority, but for another program.
       const [foreignProgramData] = PublicKey.findProgramAddressSync(
-        [new PublicKey("FsD4uqAyXiAcQapVTokNvdz1ZC5hMHjY6a93nYmEqZQS").toBuffer()],
+        [workspace.SponsoredCctpSrcPeriphery.programId.toBuffer()],
         new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
       );
       try {
