@@ -160,7 +160,17 @@ async function main() {
     await send("setup:state", [
       await spoke.methods
         .initialize(new BN(stateSeed.toString()), 0, new BN(CHAIN_ID.toString()), 0, owner, 3600, 14400)
-        .accountsStrict({ signer: owner, state, systemProgram: SystemProgram.programId })
+        .accountsStrict({
+          signer: owner,
+          state,
+          ...(mode === "v5"
+            ? {
+                thisProgram: SPOKE,
+                programData: pda(new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"), SPOKE.toBuffer()),
+              }
+            : {}),
+          systemProgram: SystemProgram.programId,
+        })
         .instruction(),
     ]);
     await send("setup:clock", [

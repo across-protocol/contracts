@@ -11,6 +11,10 @@ import { DepositData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
 const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;
+const [programData] = PublicKey.findProgramAddressSync(
+  [program.programId.toBuffer()],
+  new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+);
 const owner = provider.wallet.publicKey;
 const chainId = new BN(420);
 const remoteDomain = new BN(0); // Ethereum
@@ -55,7 +59,12 @@ const initializeState = async (
       fillDeadlineBuffer,
     };
   }
-  const initializeAccounts = { state: state as any, signer: owner, systemProgram: anchor.web3.SystemProgram.programId };
+  const initializeAccounts = {
+    state: state as any,
+    signer: owner,
+    programData,
+    systemProgram: anchor.web3.SystemProgram.programId,
+  };
   await program.methods
     .initialize(
       actualSeed,
@@ -110,6 +119,7 @@ export const common = {
   provider,
   connection: provider.connection,
   program,
+  programData,
   owner,
   chainId,
   remoteDomain,
