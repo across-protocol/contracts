@@ -42,6 +42,7 @@
     "build-svm-solana-verify": "bash ./scripts/svm/buildHelpers/buildSolanaVerify.sh",
     "build-ts": "rm -rf ./dist && tsc && yarn export-idl",
     "typecheck-tests": "tsc -p tsconfig.test.json",
+    "typecheck-svm-scripts": "tsc -p tsconfig.svm-scripts.json",
     "test-svm-build-guard": "ts-mocha -p tsconfig.test.json -t 10000 test/svm/Scripts.SbfBuild.ts",
     "test-svm-idl-package": "NODE_OPTIONS=--no-experimental-strip-types ts-mocha -p tsconfig.test.json -t 120000 test/svm-package/IdlPackage.ts",
     "export-idl": "ts-node scripts/svm/buildHelpers/exportIdl.ts",

@@ -1,12 +1,20 @@
 // Shared test-only Spoke wire layouts; golden-vector derivations stay independent.
-import { BN } from "@anchor-lang/core";
-import { address } from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
+import { BN, IdlTypes, Program } from "@anchor-lang/core";
+import { Connection, PublicKey } from "@solana/web3.js";
 import { RelayData } from "../../src/types/svm";
-import { SvmSpokeClient } from "../../src/svm/clients";
+import { SvmSpokeIdl, SvmSpokeAnchor } from "../../src/svm/assets";
 
 import { u32, u64, vec } from "../svm-gateway/wire";
 export { u16, u32, u64, vec, word } from "../svm-gateway/wire";
+
+// The enriched production IDL includes Rust types carried inside opaque adapter bytes.
+// An explicit connection keeps offline codecs/builders independent of Anchor's wallet environment.
+export const encodingProgram = new Program<SvmSpokeAnchor>(SvmSpokeIdl, {
+  connection: new Connection("http://127.0.0.1:8899"),
+});
+type SpokeTypes = IdlTypes<SvmSpokeAnchor>;
+export const encodeType = <T extends keyof SpokeTypes>(name: T, value: SpokeTypes[T]) =>
+  encodingProgram.coder.types.encode(name, value);
 
 export type DepositFields = {
   depositor: PublicKey;
@@ -33,41 +41,31 @@ export const encodeDeposit = (
     relayer: false,
   }
 ) =>
-  Buffer.from(
-    SvmSpokeClient.getV5AdapterInputEncoder().encode({
-      __kind: "DepositV1",
-      fields: [
-        {
-          depositParams: {
-            ...deposit,
-            depositor: address(deposit.depositor.toBase58()),
-            recipient: address(deposit.recipient.toBase58()),
-            inputToken: address(deposit.inputToken.toBase58()),
-            outputToken: address(deposit.outputToken.toBase58()),
-            exclusiveRelayer: address(deposit.exclusiveRelayer.toBase58()),
-          },
-          dstStepId,
-          inputAmountMode:
-            "literal" in amountMode ? { __kind: "Literal" } : { __kind: "InputVaultBalance", bips: amountMode.bips },
-          modificationRules: {
-            authority: rules.authority,
-            allowOutputAmount: rules.output,
-            allowExclusiveRelayer: rules.relayer,
-          },
+  encodeType("v5AdapterInput", {
+    depositV1: [
+      {
+        depositParams: {
+          ...deposit,
+          inputAmount: new BN(deposit.inputAmount.toString()),
+          outputAmount: [...deposit.outputAmount],
+          destinationChainId: new BN(deposit.destinationChainId.toString()),
+          depositNonce: new BN(deposit.depositNonce.toString()),
         },
-      ],
-    }) as Uint8Array
-  );
+        dstStepId: [...dstStepId],
+        inputAmountMode: "literal" in amountMode ? { literal: {} } : { inputVaultBalance: { bips: amountMode.bips } },
+        modificationRules: {
+          authority: [...rules.authority],
+          allowOutputAmount: rules.output,
+          allowExclusiveRelayer: rules.relayer,
+        },
+      },
+    ],
+  });
 
 export const encodeFill = (recipient: PublicKey, outputToken: PublicKey, minOutputAmount: bigint) =>
-  Buffer.from(
-    SvmSpokeClient.getV5AdapterInputEncoder().encode({
-      __kind: "FillV1",
-      fields: [
-        { recipient: address(recipient.toBase58()), outputToken: address(outputToken.toBase58()), minOutputAmount },
-      ],
-    }) as Uint8Array
-  );
+  encodeType("v5AdapterInput", {
+    fillV1: [{ recipient, outputToken, minOutputAmount: new BN(minOutputAmount.toString()) }],
+  });
 export const encodeRelay = (relay: RelayData) =>
   Buffer.concat([
     relay.depositor.toBuffer(),
@@ -84,21 +82,15 @@ export const encodeRelay = (relay: RelayData) =>
     vec(relay.message),
   ]);
 export const encodeJit = (relay: RelayData, repaymentChainId: bigint | number | BN, repaymentAddress: PublicKey) =>
-  Buffer.from(
-    SvmSpokeClient.getV5FillJitEncoder().encode({
-      relayData: {
-        ...relay,
-        depositor: address(relay.depositor.toBase58()),
-        recipient: address(relay.recipient.toBase58()),
-        exclusiveRelayer: address(relay.exclusiveRelayer.toBase58()),
-        inputToken: address(relay.inputToken.toBase58()),
-        outputToken: address(relay.outputToken.toBase58()),
-        inputAmount: Uint8Array.from(relay.inputAmount),
-        outputAmount: BigInt(relay.outputAmount.toString()),
-        originChainId: BigInt(relay.originChainId.toString()),
-        depositId: Uint8Array.from(relay.depositId),
-      },
-      repaymentChainId: BigInt(repaymentChainId.toString()),
-      repaymentAddress: address(repaymentAddress.toBase58()),
-    }) as Uint8Array
-  );
+  encodeType("v5FillJit", {
+    relayData: relay,
+    repaymentChainId: new BN(repaymentChainId.toString()),
+    repaymentAddress,
+  });
+
+export const encodeDepositJit = (outputAmount: Buffer, exclusiveRelayer: PublicKey, signature: Uint8Array) =>
+  encodeType("acrossDepositJitParams", {
+    newOutputAmount: [...outputAmount],
+    newExclusiveRelayer: exclusiveRelayer,
+    signature: [...signature],
+  });

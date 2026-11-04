@@ -216,6 +216,9 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Build and test packed IDL interfaces
         run: yarn test-svm-idl-package
+      # Cross-chain operational scripts import Foundry ABIs (for example HubPool).
+      - name: Typecheck SVM scripts
+        run: yarn typecheck-svm-scripts
   test-evm:
     name: EVM Tests
     needs: upload-evm-artifacts

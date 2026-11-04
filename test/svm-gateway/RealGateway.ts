@@ -32,8 +32,6 @@ import {
   TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
-import { address, createNoopSigner } from "@solana/kit";
-import { SvmSpokeClient } from "../../src/svm/clients";
 import { assert } from "chai";
 import { createHash, randomBytes } from "crypto";
 import { ethers } from "ethers";
@@ -502,29 +500,14 @@ describe("SVM V5 with the pinned real Gateway", () => {
     await send(SystemProgram.transfer({ fromPubkey: owner, toPubkey: fillPayer, lamports: 10_000_000 }));
   });
 
-  // Execute the retained generated instruction builder, including its account metas.
-  const createAccounts = (owners: PublicKey[]) => {
-    const generated = SvmSpokeClient.getCreateTokenAccountsInstruction({
-      signer: createNoopSigner(address(owner.toBase58())),
-      mint: address(mint.toBase58()),
-      tokenProgram: address(tokenProgram.toBase58()),
-    });
-    return new TransactionInstruction({
-      programId: new PublicKey(generated.programAddress),
-      data: Buffer.from(generated.data as Uint8Array),
-      keys: [
-        ...generated.accounts.map((a) => ({
-          pubkey: new PublicKey(a.address),
-          isSigner: a.role >= 2,
-          isWritable: a.role % 2 === 1,
-        })),
-        ...owners.flatMap((who) => [
-          readonly(who),
-          writable(getAssociatedTokenAddressSync(mint, who, true, tokenProgram)),
-        ]),
-      ],
-    });
-  };
+  const createAccounts = (owners: PublicKey[]) =>
+    spoke.methods
+      .createTokenAccounts()
+      .accountsPartial({ signer: owner, mint, tokenProgram })
+      .remainingAccounts(
+        owners.flatMap((who) => [readonly(who), writable(getAssociatedTokenAddressSync(mint, who, true, tokenProgram))])
+      )
+      .instruction();
   async function alternateMint(native = false) {
     tokenProgram = native ? TOKEN_PROGRAM_ID : TOKEN_2022_PROGRAM_ID;
     mint = native
@@ -719,7 +702,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       const vaultBefore = await connection.getBalance(spokeVault);
       const gatewayBefore = await connection.getBalance(vault);
       const wrapping = [
-        ...(!existing ? [createAccounts([owner])] : []),
+        ...(!existing ? [await createAccounts([owner])] : []),
         SystemProgram.transfer({ fromPubkey: owner, toPubkey: userAta, lamports: amount }),
         createSyncNativeInstruction(userAta),
       ];
@@ -756,7 +739,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     });
   }
 
-  it("provisions a missing Spoke vault before a V5 deposit using the generated account builder", async () => {
+  it("provisions a missing Spoke vault before a V5 deposit using the Anchor account builder", async () => {
     // A fresh state has no vault for this mint. Funding still comes from the existing user account.
     ({ state } = await initializeState());
     now = (await spoke.account.state.fetch(state)).currentTime;
@@ -769,7 +752,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
     assert.equal((await getAccount(connection, userAta)).amount, before);
     assert.equal((await getAccount(connection, vault)).amount, 0n);
     assert.isNull((await getAccount(connection, vault)).delegate);
-    const create = createAccounts([state]);
+    const create = await createAccounts([state]);
     const { signature } = await execute(src, {
       funds,
       before: [create],
@@ -815,7 +798,7 @@ describe("SVM V5 with the pinned real Gateway", () => {
       const relays = recipients.map((who, i) => witness(dst, who, i + 1));
       const funds = [funding(userAta, mint, amount * BigInt(count))];
       const extra = atas.map(writable);
-      const create = createAccounts(recipients);
+      const create = await createAccounts(recipients);
       const table = await lookup([create], [...remaining(relays), ...extra]);
       const balanceBefore = (await getAccount(connection, userAta)).amount;
       const payerBefore = await connection.getBalance(fillPayer);
