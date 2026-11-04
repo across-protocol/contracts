@@ -23,7 +23,7 @@ The latest contract deployments can be found in `/broadcast/deployed-addresses.j
 
 ## Requirements
 
-This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, with a minimum version of 22.18.0. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
+This repository assumes you have [Node](https://nodejs.org/en/download/package-manager) installed, using the CI version 22.23.4 or a later patched Node 22 release. Depending on what you want to do with the repo you might also need [foundry](https://book.getfoundry.sh/getting-started/installation) and [anchor](https://www.anchor-lang.com/docs/installation) to also be installed. If you have build issues please ensure these are both installed first.
 
 Use Node 22 for SVM development. `Anchor.toml` pins Anchor 1.1.2 and Agave 4.1.2;
 install these versions instead of selecting a moving `latest` toolchain.
