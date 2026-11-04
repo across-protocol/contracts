@@ -27,6 +27,12 @@ pub struct Initialize<'info> {
     )]
     pub state: Account<'info, State>,
 
+    #[account(constraint = this_program.programdata_address()? == Some(program_data.key()) @ SvmError::InvalidProgramData)]
+    pub this_program: Program<'info, crate::program::SvmSpoke>,
+
+    #[account(constraint = program_data.upgrade_authority_address == Some(signer.key()) @ SvmError::NotUpgradeAuthority)]
+    pub program_data: Account<'info, ProgramData>,
+
     pub system_program: Program<'info, System>,
 }
 

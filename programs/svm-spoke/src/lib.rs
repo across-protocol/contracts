@@ -52,12 +52,14 @@ pub mod svm_spoke {
     /// Initializes the state for the SVM Spoke Pool. Only callable once.
     ///
     /// ### Required Accounts:
-    /// - signer (Writable, Signer): The account that pays for the transaction and will own the state.
-    /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
+    /// - signer (Writable, Signer): The program's current upgrade authority, which pays for and will own the state.
+    /// - state (Writable): Spoke state PDA. Seeds: ["state", seed], where seed is 0 in production.
+    /// - this_program: This SVM Spoke program's executable account.
+    /// - program_data: This program's ProgramData account, which must name signer as upgrade authority.
     /// - system_program: The system program required for account creation.
     ///
     /// ### Parameters:
-    /// - seed: A unique seed used to derive the state account's address. Must be 0 on Mainnet.
+    /// - seed: A unique seed used to derive the state account's address. Must be 0 in production.
     /// - initial_number_of_deposits: The initial number of deposits. Used to offset in upgrades.
     /// - chain_id: The chain ID for Solana, used to identify the Solana spoke in the rest of the Across protocol.
     /// - remote_domain: The CCTP domain for Mainnet Ethereum.

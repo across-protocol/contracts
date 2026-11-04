@@ -20,6 +20,16 @@ devnet Spoke address is a legacy deployment, not a V5 target. These scripts reso
 independently of `Anchor.toml`; removing its devnet Spoke entry does not disable devnet script access. Other devnet tooling,
 including sponsored CCTP scripts, is retained.
 
+## Initialize a fresh Spoke deployment
+
+`initialize` requires the new program's current upgrade authority to sign and pay for the state account.
+The program verifies that the supplied `ProgramData` belongs to itself and names that signer as upgrade authority.
+Initialize before transferring or revoking upgrade authority. A multisig upgrade authority must invoke initialization
+through its signing flow; the CLI script requires an `ANCHOR_WALLET` that is itself the upgrade authority.
+The signer becomes the initial local owner; `--svmAdmin` transfers ownership afterward. Regenerate IDLs and clients
+before initializing, since the instruction now requires `thisProgram` and `programData` accounts.
+Existing deployments retain their state and must not be initialized again during an upgrade.
+
 ## Finalize an existing root/admin message or token transfer
 
 ```sh

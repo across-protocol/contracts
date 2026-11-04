@@ -55,6 +55,10 @@ async function initialize(): Promise<void> {
 
   // Define the signer (replace with your actual signer)
   const signer = provider.wallet.publicKey;
+  const [programData] = PublicKey.findProgramAddressSync(
+    [programId.toBuffer()],
+    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+  );
 
   console.log("Initializing...");
   console.table([
@@ -85,6 +89,8 @@ async function initialize(): Promise<void> {
     .accounts({
       state: statePda,
       signer: signer,
+      thisProgram: programId,
+      programData,
       systemProgram: SystemProgram.programId,
     })
     .rpc();

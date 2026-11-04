@@ -1,6 +1,6 @@
 import { getConfirmedTransaction, provider } from "../svm/provider";
 import { BN, Program } from "@anchor-lang/core";
-import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { expect } from "chai";
 import { createHash } from "crypto";
 import bs58 from "bs58";
@@ -12,15 +12,36 @@ describe("svm_spoke verified production binary", () => {
   const program = new Program<SvmSpoke>(SvmSpokeIdl, provider);
   const [state] = PublicKey.findProgramAddressSync([Buffer.from("state"), Buffer.alloc(8)], program.programId);
   const signer = provider.wallet.publicKey;
-  const initialize = (seed: BN) => program.methods.initialize(seed, 0, new BN(420), 0, signer, 3600, 14400);
+  const [programData] = PublicKey.findProgramAddressSync(
+    [program.programId.toBuffer()],
+    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+  );
+  const initialize = (seed: BN) =>
+    program.methods.initialize(seed, 0, new BN(420), 0, signer, 3600, 14400).accountsPartial({ programData });
 
-  async function reject(ix: TransactionInstruction, code: number) {
+  async function reject(ix: TransactionInstruction, code: number, signers: Keypair[] = []) {
     const blockhash = await provider.connection.getLatestBlockhash();
     const tx = await provider.wallet.signTransaction(new Transaction({ ...blockhash, feePayer: signer }).add(ix));
+    if (signers.length) tx.partialSign(...signers);
     const signature = await provider.connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
     const result = await getConfirmedTransaction(signature);
     expect(result.meta?.err).to.deep.equal({ InstructionError: [0, { Custom: code }] });
   }
+
+  it("rejects an unauthorized initializer before the canonical state exists", async () => {
+    const attacker = Keypair.generate();
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        SystemProgram.transfer({ fromPubkey: signer, toPubkey: attacker.publicKey, lamports: 10_000_000 })
+      )
+    );
+    await reject(
+      await initialize(new BN(0)).accountsPartial({ signer: attacker.publicKey, state }).instruction(),
+      7018,
+      [attacker]
+    );
+    expect(await provider.connection.getAccountInfo(state)).to.equal(null);
+  });
 
   it("rejects nonzero state seeds and initializes the production state at seed zero", async () => {
     await reject(await initialize(new BN(1)).accountsPartial({ signer }).instruction(), 7014);
@@ -28,6 +49,7 @@ describe("svm_spoke verified production binary", () => {
     const account = await program.account.state.fetch(state);
     expect(account.seed.toNumber()).to.equal(0);
     expect(account.currentTime).to.equal(0);
+    expect(account.owner.equals(signer)).to.equal(true);
   });
 
   it("rejects clock overrides and excludes the test-only entrypoint", async () => {
