@@ -11,16 +11,16 @@ impl<T: AnchorSerialize> EncodeInstructionData for T {
     fn encode_instruction_data(&self, discriminator_str: &str) -> Result<Vec<u8>> {
         let mut data = Vec::with_capacity(DISCRIMINATOR_SIZE + size_of_val(self));
         data.extend_from_slice(
-            &anchor_lang::solana_program::hash::hash(discriminator_str.as_bytes()).to_bytes()[..DISCRIMINATOR_SIZE],
+            &solana_sha256_hasher::hash(discriminator_str.as_bytes()).to_bytes()[..DISCRIMINATOR_SIZE],
         );
-        data.extend_from_slice(&self.try_to_vec()?);
+        data.extend_from_slice(&borsh::to_vec(self)?);
 
         Ok(data)
     }
 }
 
 pub fn encode_solidity_selector(signature: &str) -> [u8; 4] {
-    let hash = anchor_lang::solana_program::keccak::hash(signature.as_bytes());
+    let hash = solana_keccak_hasher::hash(signature.as_bytes());
     let mut selector = [0u8; 4];
     selector.copy_from_slice(&hash.to_bytes()[..4]);
     selector

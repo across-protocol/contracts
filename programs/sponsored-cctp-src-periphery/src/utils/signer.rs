@@ -1,8 +1,7 @@
-use anchor_lang::{
-    prelude::*,
-    solana_program::{keccak, secp256k1_recover::secp256k1_recover},
-};
+use anchor_lang::prelude::*;
 use libsecp256k1::Signature as EVMSignature;
+use solana_keccak_hasher as keccak;
+use solana_secp256k1_recover::secp256k1_recover;
 
 use crate::{error::CommonError, utils::SponsoredCCTPQuote};
 

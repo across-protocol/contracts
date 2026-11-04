@@ -1,5 +1,5 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, workspace } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { BN, Program, workspace } from "@anchor-lang/core";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID, getAccount } from "@solana/spl-token";
 import {
   AddressLookupTableAccount,
@@ -27,12 +27,10 @@ import {
 import { requestAndConfirmAirdrop } from "./utils";
 
 describe("sponsored_cctp_src_periphery.deposit", () => {
-  anchor.setProvider(provider);
-
   const tokenMessengerMinterV2Program = workspace.TokenMessengerMinterV2 as Program<TokenMessengerMinterV2>;
   const messageTransmitterV2Program = workspace.MessageTransmitterV2 as Program<MessageTransmitterV2>;
 
-  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
+  const { payer } = provider.wallet as anchor.Wallet;
 
   const depositor = Keypair.generate();
   const operator = Keypair.generate();

@@ -1,5 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorError, AnchorProvider, BN, Wallet, web3 } from "@coral-xyz/anchor";
+import { AnchorError, BN, Wallet, web3 } from "@anchor-lang/core";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
@@ -18,19 +17,11 @@ import { loadExecuteRelayerRefundLeafParams, readEventsUntilFound, relayerRefund
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
 describe("svm_spoke.refund_claims", () => {
-  anchor.setProvider(provider);
-
   const claimInitializer = Keypair.generate();
 
   const relayer = Keypair.generate();
 
-  let state: PublicKey,
-    seed: BN,
-    mint: PublicKey,
-    tokenAccount: PublicKey,
-    claimAccount: PublicKey,
-    vault: PublicKey,
-    transferLiability: PublicKey;
+  let state: PublicKey, seed: BN, mint: PublicKey, tokenAccount: PublicKey, claimAccount: PublicKey, vault: PublicKey;
 
   let claimRelayerRefundAccounts: {
     signer: PublicKey;
@@ -45,7 +36,7 @@ describe("svm_spoke.refund_claims", () => {
     program: PublicKey;
   };
 
-  const payer = (AnchorProvider.env().wallet as Wallet).payer;
+  const payer = (provider.wallet as Wallet).payer;
   const initialMintAmount = 10_000_000_000;
 
   const initializeClaimAccount = async (initializer = claimInitializer) => {
@@ -111,7 +102,6 @@ describe("svm_spoke.refund_claims", () => {
       vault,
       tokenProgram: TOKEN_PROGRAM_ID,
       mint,
-      transferLiability,
       systemProgram: web3.SystemProgram.programId,
       program: program.programId,
     };
@@ -162,11 +152,6 @@ describe("svm_spoke.refund_claims", () => {
 
     // mint mint to vault
     await mintTo(connection, payer, mint, vault, provider.publicKey, initialMintAmount);
-
-    [transferLiability] = PublicKey.findProgramAddressSync(
-      [Buffer.from("transfer_liability"), mint.toBuffer()],
-      program.programId
-    );
   });
 
   it("Claim on behalf of single relayer", async () => {

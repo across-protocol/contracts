@@ -16,9 +16,9 @@
 //  --recipient "5HRmK3G6BzWAtF22dBgoTiPGVovSmG4rLvVQoUhum9FJ" \
 //  --message_hash "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
 
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
+import { BN } from "@anchor-lang/core";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {

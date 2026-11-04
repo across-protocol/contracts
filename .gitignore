@@ -54,6 +54,7 @@ target
 **/*.rs.bk
 test-ledger
 src/svm/assets 
+/svm/idl/
 src/svm/clients/*
 !src/svm/clients/index.ts
 

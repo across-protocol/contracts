@@ -1,20 +1,23 @@
 use anchor_lang::prelude::*;
 
-// Common Errors with EVM SpokePool.
-#[error_code]
-pub enum CommonError {
+// Anchor 1.1 requires one IDL error enum. Preserve the existing runtime ranges.
+#[error_code(offset = 6000)]
+pub enum SpokeError {
+    // Common errors with EVM SpokePool (6000–6015).
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
     #[msg("Invalid fill deadline!")]
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
+    // Reserved deployed slot 6003. Never emit, remove, or reuse.
     #[msg("The Deposit is still within the exclusivity window!")]
-    NoSlowFillsInExclusivityWindow,
+    RetiredNoSlowFillsInExclusivityWindow,
     #[msg("The relay has already been filled!")]
     RelayFilled,
+    // Reserved deployed slot 6005. Never emit, remove, or reuse.
     #[msg("Slow fill requires status of Unfilled!")]
-    InvalidSlowFillRequest,
+    RetiredInvalidSlowFillRequest,
     #[msg("The fill deadline has passed!")]
     ExpiredFillDeadline,
     #[msg("Invalid Merkle proof!")]
@@ -35,15 +38,9 @@ pub enum CommonError {
     InvalidExclusiveRelayer,
     #[msg("Invalid output token!")]
     InvalidOutputToken,
-}
-
-// SVM specific errors.
-#[error_code]
-pub enum SvmError {
+    // SVM specific errors (7000–7016).
     #[msg("Only the owner can call this function!")]
-    NotOwner,
-    #[msg("Invalid relay hash!")]
-    InvalidRelayHash,
+    NotOwner = 1000,
     #[msg("The fill deadline has not passed!")]
     CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
     #[msg("The caller is not the relayer!")]
@@ -56,8 +53,8 @@ pub enum SvmError {
     InvalidRemoteSender,
     #[msg("Invalid mint!")]
     InvalidMint,
-    #[msg("Exceeded pending bridge amount to HubPool!")]
-    ExceededPendingBridgeAmount,
+    #[msg("Relayer refund leaf must not return tokens to HubPool!")]
+    NonZeroAmountToReturn,
     #[msg("Overflow writing to parameters account!")]
     ParamsWriteOverflow,
     #[msg("Invalid refund address!")]
@@ -76,15 +73,40 @@ pub enum SvmError {
     InvalidATACreationAccounts,
     #[msg("Invalid delegate PDA!")]
     InvalidDelegatePda,
-    #[msg("Inconsistent optional parameters!")]
-    InconsistentOptionalParameters,
-}
-
-// CCTP specific errors.
-#[error_code]
-pub enum CallDataError {
+    // Across V5 adapter specific errors (8000–8014).
+    #[msg("Malformed Across V5 wire data!")]
+    InvalidWireFormat = 2000,
+    #[msg("Invalid Across V5 parameter modification signature!")]
+    InvalidParamModificationSignature,
+    #[msg("Missing required Across V5 account!")]
+    MissingAccount,
+    #[msg("Invalid Across V5 Gateway dispatch authority!")]
+    InvalidDispatchAuthority,
+    #[msg("Across V5 account must be writable!")]
+    InvalidAccountMutability,
+    #[msg("Resolved Across V5 input amount is below the committed floor!")]
+    ResolvedInputAmountBelowCommitted,
+    #[msg("Across V5 parameter modification is not an improvement!")]
+    ParamModificationNotAnImprovement,
+    #[msg("Across V5 input amount bips exceed the denominator!")]
+    InvalidAmountBips,
+    #[msg("Across V5 adapter mode is not enabled!")]
+    UnsupportedMode,
+    #[msg("Invalid Across V5 token account!")]
+    InvalidTokenAccount,
+    #[msg("Unsupported Across V5 token extension!")]
+    UnsupportedTokenExtension,
+    #[msg("Invalid Across V5 fill payer!")]
+    InvalidFillPayer,
+    #[msg("Invalid Across V5 fill status account!")]
+    InvalidFillStatusAccount,
+    #[msg("Across V5 fill data does not match the committed input!")]
+    FillCommitmentMismatch,
+    #[msg("Across V5 fill output amount is below the committed floor!")]
+    FillOutputAmountTooLow,
+    // CCTP specific errors (9000–9006).
     #[msg("Invalid solidity selector")]
-    InvalidSelector,
+    InvalidSelector = 3000,
     #[msg("Invalid solidity argument")]
     InvalidArgument,
     #[msg("Invalid solidity bool argument")]
@@ -99,23 +121,8 @@ pub enum CallDataError {
     UnsupportedSelector,
 }
 
-// Across+ specific errors.
-#[error_code]
-pub enum AcrossPlusError {
-    #[msg("Message did not deserialize")]
-    MessageDidNotDeserialize,
-    #[msg("Invalid handle message key length")]
-    InvalidMessageKeyLength,
-    #[msg("Invalid handle message read-only key length")]
-    InvalidReadOnlyKeyLength,
-    #[msg("Invalid message handler key")]
-    InvalidMessageHandler,
-    #[msg("Invalid message account key")]
-    InvalidMessageAccountKey,
-    #[msg("Not read-only message account key")]
-    NotReadOnlyMessageAccountKey,
-    #[msg("Not writable message account key")]
-    NotWritableMessageAccountKey,
-    #[msg("Missing value recipient key")]
-    MissingValueRecipientKey,
-}
+// Retain the existing call-site names while publishing one complete IDL error table.
+pub use SpokeError as CommonError;
+pub use SpokeError as SvmError;
+pub use SpokeError as V5Error;
+pub use SpokeError as CallDataError;

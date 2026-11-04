@@ -108,8 +108,7 @@ pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         to: ctx.accounts.token_account.to_account_info(),
         authority: ctx.accounts.state.to_account_info(),
     };
-    let cpi_context =
-        CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
+    let cpi_context = CpiContext::new_with_signer(ctx.accounts.token_program.key(), transfer_accounts, signer_seeds);
     transfer_checked(cpi_context, claim_amount, ctx.accounts.mint.decimals)?;
 
     emit_cpi!(ClaimedRelayerRefund {

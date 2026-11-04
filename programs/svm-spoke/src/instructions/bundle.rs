@@ -1,14 +1,15 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token,
     token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
+use solana_keccak_hasher as keccak;
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::{CommonError, SvmError},
-    event::{ExecutedRelayerRefundRoot, TokensBridged},
-    state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
+    event::ExecutedRelayerRefundRoot,
+    state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
 
@@ -51,15 +52,6 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     )]
     pub mint: InterfaceAccount<'info, Mint>,
 
-    #[account(
-        init_if_needed, // If first time creating, initialize the liability tracker, else re-use.
-        payer = signer,
-        space = DISCRIMINATOR_SIZE + TransferLiability::INIT_SPACE,
-        seeds = [b"transfer_liability", mint.key().as_ref()],
-        bump
-    )]
-    pub transfer_liability: Account<'info, TransferLiability>,
-
     pub token_program: Interface<'info, TokenInterface>,
 
     pub system_program: Program<'info, System>,
@@ -98,13 +90,10 @@ impl RelayerRefundLeaf {
     }
 }
 
-pub fn execute_relayer_refund_leaf<'c, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+pub fn execute_relayer_refund_leaf<'info>(
+    ctx: Context<'info, ExecuteRelayerRefundLeaf<'info>>,
     deferred_refunds: bool,
-) -> Result<()>
-where
-    'c: 'info, // The lifetime constraint 'c: 'info ensures that the lifetime 'c is at least as long as 'info.
-{
+) -> Result<()> {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
     let root_bundle_id = instruction_params.root_bundle_id;
@@ -119,6 +108,11 @@ where
 
     if relayer_refund_leaf.chain_id != state.chain_id {
         return err!(CommonError::InvalidChainId);
+    }
+
+    // This Spoke pool never bridges tokens back to the HubPool, so no leaf may request an amount to return.
+    if relayer_refund_leaf.amount_to_return != 0 {
+        return err!(SvmError::NonZeroAmountToReturn);
     }
 
     if is_claimed(&ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id) {
@@ -147,18 +141,6 @@ where
         false => distribute_relayer_refunds(&ctx, &relayer_refund_leaf)?,
     }
 
-    if relayer_refund_leaf.amount_to_return > 0 {
-        ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
-
-        emit_cpi!(TokensBridged {
-            amount_to_return: relayer_refund_leaf.amount_to_return,
-            chain_id: relayer_refund_leaf.chain_id,
-            leaf_id: relayer_refund_leaf.leaf_id,
-            l2_token_address: ctx.accounts.mint.key(),
-            caller: ctx.accounts.signer.key(),
-        });
-    }
-
     emit_cpi!(ExecutedRelayerRefundRoot {
         amount_to_return: relayer_refund_leaf.amount_to_return,
         chain_id: relayer_refund_leaf.chain_id,
@@ -175,7 +157,7 @@ where
 }
 
 fn distribute_relayer_refunds<'info>(
-    ctx: &Context<'_, '_, '_, 'info, ExecuteRelayerRefundLeaf<'info>>,
+    ctx: &Context<'info, ExecuteRelayerRefundLeaf<'info>>,
     relayer_refund_leaf: &RelayerRefundLeaf,
 ) -> Result<()> {
     // Derive the signer seeds for the state. The vault owns the state PDA so we need to derive this to create the
@@ -207,20 +189,17 @@ fn distribute_relayer_refunds<'info>(
             authority: ctx.accounts.state.to_account_info(),
         };
         let cpi_context =
-            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
+            CpiContext::new_with_signer(ctx.accounts.token_program.key(), transfer_accounts, signer_seeds);
         transfer_checked(cpi_context, amount.to_owned(), ctx.accounts.mint.decimals)?;
     }
 
     Ok(())
 }
 
-fn accrue_relayer_refunds<'c, 'info>(
-    ctx: &Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
+fn accrue_relayer_refunds<'info>(
+    ctx: &Context<'info, ExecuteRelayerRefundLeaf<'info>>,
     relayer_refund_leaf: &RelayerRefundLeaf,
-) -> Result<()>
-where
-    'c: 'info,
-{
+) -> Result<()> {
     for (i, amount) in relayer_refund_leaf.refund_amounts.iter().enumerate() {
         // It should be safe to access elements of refund_addresses and remaining_accounts as their lengths are checked
         // before calling this internal function.

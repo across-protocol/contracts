@@ -55,7 +55,9 @@ pub struct FundsDeposited {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
 pub enum FillType {
     FastFill,
+    // A fast fill replacing a pre-upgrade slow-fill request.
     ReplacedSlowFill,
+    // Historical event decoding only. Never remove or reorder these variants.
     SlowFill,
 }
 
@@ -86,7 +88,13 @@ pub struct FilledRelay {
     pub relay_execution_info: RelayExecutionEventInfo,
 }
 
-// Slow fill events
+#[event]
+pub struct V5FillFloatWithdrawn {
+    pub submitter: Pubkey,
+    pub amount: u64,
+}
+
+// Historical event decoding only; no instruction emits new slow-fill requests.
 #[event]
 pub struct RequestedSlowFill {
     pub input_token: Pubkey,
@@ -122,19 +130,4 @@ pub struct ClaimedRelayerRefund {
     pub l2_token_address: Pubkey,
     pub claim_amount: u64,
     pub refund_address: Pubkey,
-}
-
-#[event]
-pub struct BridgedToHubPool {
-    pub amount: u64,
-    pub mint: Pubkey,
-}
-
-#[event]
-pub struct TokensBridged {
-    pub amount_to_return: u64,
-    pub chain_id: u64,
-    pub leaf_id: u32,
-    pub l2_token_address: Pubkey,
-    pub caller: Pubkey,
 }

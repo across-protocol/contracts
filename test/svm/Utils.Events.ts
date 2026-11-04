@@ -1,12 +1,10 @@
-import * as anchor from "@coral-xyz/anchor";
-import { BorshCoder, EventParser, Program } from "@coral-xyz/anchor";
+import "./provider";
+import * as anchor from "@anchor-lang/core";
+import { BorshCoder, EventParser, Program } from "@anchor-lang/core";
 import { expect } from "chai";
 import { Test } from "../../target/types/test";
 
 describe("utils.events", () => {
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
-
   const program = anchor.workspace.Test as Program<Test>;
 
   const createLargeLog = async (size: number) => {

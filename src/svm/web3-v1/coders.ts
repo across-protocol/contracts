@@ -1,7 +1,7 @@
-import { BorshAccountsCoder } from "@coral-xyz/anchor";
-import { IdlCoder } from "@coral-xyz/anchor/dist/cjs/coder/borsh/idl";
-import { IdlTypeDef } from "@coral-xyz/anchor/dist/cjs/idl";
-import * as borsh from "@coral-xyz/borsh";
+import { BorshAccountsCoder } from "@anchor-lang/core";
+import { IdlCoder } from "@anchor-lang/core/dist/cjs/coder/borsh/idl";
+import { IdlTypeDef } from "@anchor-lang/core/dist/cjs/idl";
+import * as borsh from "@anchor-lang/borsh";
 import {
   CompiledInstruction,
   Message,

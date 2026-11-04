@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import type { BN } from "@coral-xyz/anchor";
+import type { BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 
 export interface SponsoredCCTPQuote {

@@ -47,8 +47,7 @@ pub fn repay_rent_fund_debt(ctx: Context<RepayRentFundDebt>) -> Result<()> {
         to: ctx.accounts.recipient.to_account_info(),
     };
     let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
-    let cpi_context =
-        CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
+    let cpi_context = CpiContext::new_with_signer(ctx.accounts.system_program.key(), cpi_accounts, rent_fund_seeds);
     system_program::transfer(cpi_context, repay_amount)?;
 
     // Update the remaining debt, safe to subtract repay_amount as it is guaranteed to be <= rent_claim.amount.
@@ -99,7 +98,7 @@ pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &Reclaim
     let cctp_v2_params =
         ReclaimEventAccountCctpV2Params { attestation: params.attestation.clone(), destination_message };
 
-    let cpi_program = ctx.accounts.message_transmitter_program.to_account_info();
+    let cpi_program = ctx.accounts.message_transmitter_program.key();
     let cpi_accounts = message_transmitter_v2::cpi::accounts::ReclaimEventAccount {
         payee: ctx.accounts.rent_fund.to_account_info(),
         message_transmitter: ctx.accounts.message_transmitter.to_account_info(),

@@ -1,0 +1,483 @@
+import * as anchor from "@anchor-lang/core";
+import { BN, Program } from "@anchor-lang/core";
+import {
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  AuthorityType,
+  setAuthority,
+  createMint,
+  getAccount,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  freezeAccount,
+  ExtensionType,
+  getMintLen,
+  createInitializePermanentDelegateInstruction,
+  createInitializeMintInstruction,
+} from "@solana/spl-token";
+import { AccountMeta, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { assert } from "chai";
+import { createHash, randomBytes } from "crypto";
+import { ethers } from "ethers";
+import { calculateRelayHashUint8Array, hashNonEmptyMessage, readEventsUntilFound } from "../../src/svm/web3-v1";
+import { RelayData } from "../../src/types/svm";
+import { SvmSpoke } from "../../target/types/svm_spoke";
+import { encodeFill, encodeJit, u64, vec } from "./v5Encoding";
+import { common } from "./SvmSpoke.common";
+
+const GATEWAY = new PublicKey("pVs6PJ3ofdqPyDhCXXdVW7waG6oNnwKQBKtuM6Mi6JP");
+const V5_PREFIX = Buffer.from("89ae4bc75915265a3f10e926c3894a29534f1d6362ee8959cb0e5be00f3527fd", "hex");
+const mockDiscriminator = createHash("sha256").update("global:execute_fill_adapter").digest().subarray(0, 8);
+const encodeContext = (stepId: Buffer, pathId: Buffer, submitter: PublicKey) =>
+  Buffer.concat([stepId, pathId, submitter.toBuffer()]);
+
+describe("svm_spoke V5 destination fill", () => {
+  const { connection, owner, provider, chainId, initializeState, program, setCurrentTime } = common;
+  const svmSpoke = program as Program<SvmSpoke>;
+  const wallet = (provider.wallet as anchor.Wallet).payer;
+  const [vaultAuthority] = PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], GATEWAY);
+  const [dispatchAuthority] = PublicKey.findProgramAddressSync(
+    [Buffer.from("dispatch_authority"), svmSpoke.programId.toBuffer()],
+    GATEWAY
+  );
+  const [fillDelegate] = PublicKey.findProgramAddressSync([Buffer.from("v5_fill_delegate")], svmSpoke.programId);
+  const [fillPayer] = PublicKey.findProgramAddressSync(
+    [Buffer.from("v5_fill_payer"), owner.toBuffer()],
+    svmSpoke.programId
+  );
+  const [eventAuthority] = PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], svmSpoke.programId);
+  const stepId = Buffer.alloc(32, 0xa5);
+  const pathId = Buffer.alloc(32, 0xb6);
+  const outputAmount = 500_000n;
+
+  let state: PublicKey;
+  let mint: PublicKey;
+  let gatewayVault: PublicKey;
+  let recipient: PublicKey;
+  let recipientToken: PublicKey;
+  let consumptionAccount: PublicKey;
+  let relay: RelayData;
+  let tokenProgram: PublicKey;
+
+  const relayHash = (value = relay) => Buffer.from(calculateRelayHashUint8Array(value, chainId));
+  const fillStatus = (value = relay) =>
+    PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash(value)], svmSpoke.programId)[0];
+
+  const instruction = (
+    input: Buffer,
+    jit: Buffer,
+    options: {
+      approval?: bigint | null;
+      consume?: bigint;
+      failAfter?: boolean;
+      recipientAccount?: PublicKey;
+      delegate?: PublicKey;
+      payer?: PublicKey;
+      status?: PublicKey;
+      stepId?: Buffer;
+    } = {}
+  ) => {
+    const approval = options.approval === undefined ? 750_000n : options.approval;
+    const keys: AccountMeta[] = [
+      { pubkey: owner, isSigner: true, isWritable: false },
+      { pubkey: vaultAuthority, isSigner: false, isWritable: false },
+      { pubkey: dispatchAuthority, isSigner: false, isWritable: false },
+      { pubkey: gatewayVault, isSigner: false, isWritable: true },
+      { pubkey: options.recipientAccount ?? recipientToken, isSigner: false, isWritable: true },
+      { pubkey: consumptionAccount, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: options.delegate ?? fillDelegate, isSigner: false, isWritable: false },
+      { pubkey: options.payer ?? fillPayer, isSigner: false, isWritable: true },
+      { pubkey: options.status ?? fillStatus(), isSigner: false, isWritable: true },
+      { pubkey: state, isSigner: false, isWritable: false },
+      { pubkey: eventAuthority, isSigner: false, isWritable: false },
+      { pubkey: tokenProgram, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: svmSpoke.programId, isSigner: false, isWritable: false },
+    ];
+    const encodedApproval = approval === null ? Buffer.from([0]) : Buffer.concat([Buffer.from([1]), u64(approval)]);
+    return new TransactionInstruction({
+      programId: GATEWAY,
+      keys,
+      data: Buffer.concat([
+        mockDiscriminator,
+        encodeContext(options.stepId ?? stepId, pathId, owner),
+        vec(input),
+        vec(jit),
+        encodedApproval,
+        u64(options.consume ?? 0n),
+        Buffer.from([Number(options.failAfter ?? false)]),
+      ]),
+    });
+  };
+
+  const execute = (
+    input = encodeFill(recipient, mint, outputAmount),
+    jit = encodeJit(relay, new BN(777), Keypair.generate().publicKey),
+    options: Parameters<typeof instruction>[2] = {}
+  ) => provider.sendAndConfirm(new Transaction().add(instruction(input, jit, options)));
+
+  const tokenError = (code: number) =>
+    new RegExp(`Program ${tokenProgram} failed: custom program error: 0x${code.toString(16)}\\b`);
+
+  const expectError = async (promise: Promise<unknown>, expected: string | RegExp) => {
+    try {
+      await promise;
+    } catch (error: any) {
+      const text = [error.toString(), ...(error.logs ?? [])].join("\n");
+      if (typeof expected === "string") assert.include(text, expected);
+      else assert.match(text, expected);
+      return;
+    }
+    assert.fail(`Expected ${expected}`);
+  };
+
+  const setupTokens = async (programId = TOKEN_PROGRAM_ID, existingMint?: PublicKey) => {
+    tokenProgram = programId;
+    mint = existingMint ?? (await createMint(connection, wallet, owner, owner, 6, undefined, undefined, tokenProgram));
+    recipient = Keypair.generate().publicKey;
+    [gatewayVault, recipientToken, consumptionAccount] = await Promise.all(
+      [vaultAuthority, recipient, owner].map(
+        async (authority) =>
+          (
+            await getOrCreateAssociatedTokenAccount(
+              connection,
+              wallet,
+              mint,
+              authority,
+              true,
+              undefined,
+              undefined,
+              tokenProgram
+            )
+          ).address
+      )
+    );
+    await mintTo(connection, wallet, mint, gatewayVault, owner, outputAmount, [], undefined, tokenProgram);
+  };
+
+  beforeEach(async () => {
+    ({ state } = await initializeState());
+    await setupTokens();
+
+    const now = (await svmSpoke.account.state.fetch(state)).currentTime;
+    relay = {
+      depositor: Keypair.generate().publicKey,
+      recipient,
+      exclusiveRelayer: owner,
+      inputToken: Keypair.generate().publicKey,
+      outputToken: mint,
+      inputAmount: [...randomBytes(32)],
+      outputAmount: new BN(outputAmount.toString()),
+      originChainId: new BN(1),
+      depositId: [...randomBytes(32)],
+      fillDeadline: now + 600,
+      exclusivityDeadline: now + 300,
+      message: Buffer.concat([V5_PREFIX, stepId]),
+    };
+
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: owner,
+          toPubkey: fillPayer,
+          lamports: await connection.getMinimumBalanceForRentExemption(45),
+        })
+      )
+    );
+  });
+
+  it("pulls exactly to an external ATA, records replay state, emits the standard event, and reclaims rent", async () => {
+    const repaymentAddress = Keypair.generate().publicKey;
+    const signature = await execute(
+      encodeFill(recipient, mint, outputAmount),
+      encodeJit(relay, new BN(777), repaymentAddress)
+    );
+
+    assert.equal((await getAccount(connection, gatewayVault)).amount, 0n);
+    assert.equal((await getAccount(connection, recipientToken)).amount, outputAmount);
+    const status = await svmSpoke.account.fillStatusAccount.fetch(fillStatus());
+    assert.hasAnyKeys(status.status, ["filled"]);
+    assert.equal(status.rentRecipient.toBase58(), fillPayer.toBase58());
+    assert.equal(status.fillDeadline, relay.fillDeadline);
+
+    const event = (await readEventsUntilFound(connection, signature, [svmSpoke])).find(
+      (value) => value.name === "filledRelay"
+    )?.data;
+    assert.isDefined(event);
+    assert.equal(event.recipient.toBase58(), recipient.toBase58());
+    assert.equal(event.outputToken.toBase58(), mint.toBase58());
+    assert.equal(event.outputAmount.toString(), outputAmount.toString());
+    assert.equal(event.repaymentChainId.toString(), "777");
+    assert.equal(event.relayer.toBase58(), repaymentAddress.toBase58());
+    assert.deepEqual([...event.messageHash], [...hashNonEmptyMessage(relay.message)]);
+    assert.equal(event.relayExecutionInfo.updatedRecipient.toBase58(), recipient.toBase58());
+    assert.equal(event.relayExecutionInfo.updatedOutputAmount.toString(), outputAmount.toString());
+    assert.deepEqual([...event.relayExecutionInfo.updatedMessageHash], [...Buffer.alloc(32)]);
+    assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
+
+    await setCurrentTime(svmSpoke, state, Keypair.generate(), new BN(relay.fillDeadline + 1));
+    await svmSpoke.methods
+      .closeFillPda()
+      .accountsPartial({ state, rentRecipient: fillPayer, fillStatus: fillStatus() })
+      .rpc();
+    assert.isNull(await connection.getAccountInfo(fillStatus()));
+    assert.equal(await connection.getBalance(fillPayer), await connection.getMinimumBalanceForRentExemption(45));
+  });
+
+  it("rejects sibling competition, malformed commitments, expired and non-exclusive fills", async () => {
+    await execute();
+    await expectError(execute(undefined, encodeJit(relay, new BN(888), Keypair.generate().publicKey)), "RelayFilled");
+
+    const fresh = { ...relay, depositId: [...randomBytes(32)] };
+    relay = fresh;
+    await expectError(execute(encodeFill(Keypair.generate().publicKey, mint, outputAmount)), "FillCommitmentMismatch");
+    await expectError(
+      execute(encodeFill(recipient, Keypair.generate().publicKey, outputAmount)),
+      "FillCommitmentMismatch"
+    );
+    await expectError(execute(encodeFill(recipient, mint, outputAmount + 1n)), "FillOutputAmountTooLow");
+    await expectError(
+      execute(Buffer.concat([encodeFill(recipient, mint, outputAmount), Buffer.from([1])])),
+      "InvalidWireFormat"
+    );
+
+    relay = { ...fresh, message: Buffer.concat([V5_PREFIX, Buffer.alloc(32, 9)]) };
+    await expectError(execute(), "FillCommitmentMismatch");
+    relay = { ...fresh, exclusiveRelayer: Keypair.generate().publicKey };
+    await expectError(execute(), "NotExclusiveRelayer");
+    relay = { ...fresh, exclusiveRelayer: PublicKey.default, fillDeadline: 0, exclusivityDeadline: 0 };
+    await expectError(execute(), "ExpiredFillDeadline");
+  });
+
+  it("rejects paused fills, wrong branch accounts, and insufficient allowance", async () => {
+    await svmSpoke.methods
+      .pauseFills(true)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
+    await expectError(execute(), "FillsArePaused");
+    await svmSpoke.methods
+      .pauseFills(false)
+      .accountsPartial({ state, signer: owner, program: svmSpoke.programId })
+      .rpc();
+
+    await expectError(execute(undefined, undefined, { approval: outputAmount - 1n }), tokenError(0x1));
+    await expectError(execute(undefined, undefined, { delegate: Keypair.generate().publicKey }), "MissingAccount");
+    await expectError(execute(undefined, undefined, { payer: Keypair.generate().publicKey }), "MissingAccount");
+    await expectError(execute(undefined, undefined, { status: Keypair.generate().publicKey }), "MissingAccount");
+  });
+
+  it("permits a non-exclusive submitter after exclusivity expires", async () => {
+    relay = { ...relay, exclusiveRelayer: Keypair.generate().publicKey };
+    await setCurrentTime(svmSpoke, state, wallet, new BN(relay.exclusivityDeadline + 1));
+    await execute();
+    assert.equal((await getAccount(connection, recipientToken)).amount, outputAmount);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+  });
+
+  it("rejects missing approval, wrong recipient accounts, mint mismatch, and reassigned ATA authority", async () => {
+    const payerBefore = await connection.getBalance(fillPayer);
+    await expectError(execute(undefined, undefined, { approval: null }), tokenError(0x4));
+    await expectError(execute(undefined, undefined, { recipientAccount: consumptionAccount }), "MissingAccount");
+    const otherMint = await createMint(connection, wallet, owner, null, 6);
+    const original = relay;
+    relay = { ...relay, outputToken: otherMint };
+    await expectError(execute(encodeFill(recipient, otherMint, outputAmount)), "MissingAccount");
+    relay = original;
+    const recipientSigner = Keypair.generate();
+    recipient = recipientSigner.publicKey;
+    recipientToken = (await getOrCreateAssociatedTokenAccount(connection, wallet, mint, recipient)).address;
+    relay = { ...relay, recipient };
+    await setAuthority(connection, wallet, recipientToken, recipientSigner, AuthorityType.AccountOwner, owner);
+    await expectError(execute(), "InvalidTokenAccount");
+    assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
+    assert.isNull((await getAccount(connection, gatewayVault)).delegate);
+    assert.equal((await getAccount(connection, recipientToken)).amount, 0n);
+    assert.isNull(await connection.getAccountInfo(fillStatus()));
+    assert.equal(await connection.getBalance(fillPayer), payerBefore);
+  });
+
+  it("rolls approval, transfer, fill status, and payer debit back after a downstream failure", async () => {
+    const payerBalance = await connection.getBalance(fillPayer);
+    await expectError(execute(undefined, undefined, { failAfter: true }), "ForcedFailure");
+    const source = await getAccount(connection, gatewayVault);
+    assert.equal(source.amount, outputAmount);
+    assert.isNull(source.delegate);
+    assert.equal((await getAccount(connection, recipientToken)).amount, 0n);
+    assert.isNull(await connection.getAccountInfo(fillStatus()));
+    assert.equal(await connection.getBalance(fillPayer), payerBalance);
+  });
+
+  it("self-transfers before owner-authorized consumption without spending the fill allowance", async () => {
+    relay = { ...relay, recipient: vaultAuthority };
+    const signature = await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      consume: outputAmount,
+      recipientAccount: gatewayVault,
+    });
+    assert.isString(signature);
+    const source = await getAccount(connection, gatewayVault);
+    assert.equal(source.amount, 0n);
+    assert.isTrue(source.delegate!.equals(fillDelegate));
+    assert.equal(source.delegatedAmount, 750_000n);
+    assert.equal((await getAccount(connection, consumptionAccount)).amount, outputAmount);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+  });
+
+  it("records an in-place fill without consuming the Gateway-vault balance or allowance", async () => {
+    relay = { ...relay, recipient: vaultAuthority };
+    const signature = await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      consume: 0n,
+      recipientAccount: gatewayVault,
+    });
+
+    assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
+    assert.equal((await getAccount(connection, gatewayVault)).delegatedAmount, 750_000n);
+    assert.equal((await getAccount(connection, consumptionAccount)).amount, 0n);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+
+    const event = (await readEventsUntilFound(connection, signature, [svmSpoke])).find(
+      (value) => value.name === "filledRelay"
+    )?.data;
+    assert.isDefined(event);
+    assert.equal(event.recipient.toBase58(), vaultAuthority.toBase58());
+    assert.equal(event.outputAmount.toString(), outputAmount.toString());
+    assert.equal(event.relayExecutionInfo.updatedRecipient.toBase58(), vaultAuthority.toBase58());
+    assert.equal(event.relayExecutionInfo.updatedOutputAmount.toString(), outputAmount.toString());
+    assert.deepEqual([...event.messageHash], [...hashNonEmptyMessage(relay.message)]);
+    assert.deepEqual([...event.relayExecutionInfo.updatedMessageHash], [...Buffer.alloc(32)]);
+    assert.deepEqual(event.relayExecutionInfo.fillType, { fastFill: {} });
+  });
+
+  // Pins accepted low-level behavior; off-chain route builders must prevent aggregate underdelivery.
+  it("records two distinct in-place fills against one unconsumed Gateway-vault balance", async () => {
+    relay = { ...relay, recipient: vaultAuthority };
+    const firstFillStatus = fillStatus();
+    await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      consume: 0n,
+      recipientAccount: gatewayVault,
+    });
+
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: owner,
+          toPubkey: fillPayer,
+          lamports: await connection.getMinimumBalanceForRentExemption(45),
+        })
+      )
+    );
+    const secondStepId = Buffer.alloc(32, 0xc7);
+    relay = {
+      ...relay,
+      depositId: [...randomBytes(32)],
+      message: Buffer.concat([V5_PREFIX, secondStepId]),
+    };
+    const secondFillStatus = fillStatus();
+    await execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+      approval: null,
+      consume: 0n,
+      recipientAccount: gatewayVault,
+      stepId: secondStepId,
+    });
+
+    assert.equal((await getAccount(connection, gatewayVault)).amount, outputAmount);
+    assert.equal((await getAccount(connection, consumptionAccount)).amount, 0n);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(firstFillStatus)).status, ["filled"]);
+    assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(secondFillStatus)).status, ["filled"]);
+  });
+
+  it("requires live vault balance for in-place delivery", async () => {
+    relay = { ...relay, recipient: vaultAuthority, outputAmount: new BN((outputAmount + 1n).toString()) };
+    await expectError(
+      execute(encodeFill(vaultAuthority, mint, outputAmount), undefined, {
+        recipientAccount: gatewayVault,
+      }),
+      tokenError(0x1)
+    );
+    assert.isNull(await connection.getAccountInfo(fillStatus()));
+  });
+
+  for (const inPlace of [false, true]) {
+    it(`rejects PermanentDelegate mints before ${inPlace ? "in-place" : "external"} fills can bypass approval`, async () => {
+      const extendedMint = Keypair.generate();
+      const space = getMintLen([ExtensionType.PermanentDelegate]);
+      await provider.sendAndConfirm(
+        new Transaction().add(
+          SystemProgram.createAccount({
+            fromPubkey: owner,
+            newAccountPubkey: extendedMint.publicKey,
+            lamports: await connection.getMinimumBalanceForRentExemption(space),
+            space,
+            programId: TOKEN_2022_PROGRAM_ID,
+          }),
+          createInitializePermanentDelegateInstruction(extendedMint.publicKey, fillDelegate, TOKEN_2022_PROGRAM_ID),
+          createInitializeMintInstruction(extendedMint.publicKey, 6, owner, owner, TOKEN_2022_PROGRAM_ID)
+        ),
+        [extendedMint]
+      );
+      await setupTokens(TOKEN_2022_PROGRAM_ID, extendedMint.publicKey);
+      relay = { ...relay, outputToken: mint, recipient: inPlace ? vaultAuthority : recipient };
+      const source = await getAccount(connection, gatewayVault, undefined, tokenProgram);
+      assert.isNull(source.delegate);
+      assert.equal(source.delegatedAmount, 0n);
+      // SPL would authorize this PDA as the permanent delegate without an ordinary account approval.
+      const watched = [gatewayVault, recipientToken, consumptionAccount, fillStatus(), fillPayer];
+      const before = await connection.getMultipleAccountsInfo(watched);
+      await expectError(
+        execute(encodeFill(relay.recipient, mint, outputAmount), undefined, {
+          approval: null,
+          recipientAccount: inPlace ? gatewayVault : recipientToken,
+        }),
+        "UnsupportedTokenExtension"
+      );
+      assert.deepEqual(await connection.getMultipleAccountsInfo(watched), before);
+      assert.isNull(await connection.getAccountInfo(fillStatus()));
+    });
+  }
+
+  for (const programId of [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID]) {
+    it(`validates in-place approval, allowance and frozen state through ${programId}`, async () => {
+      if (!programId.equals(tokenProgram)) await setupTokens(programId);
+      relay = { ...relay, outputToken: mint, recipient: vaultAuthority };
+      const input = encodeFill(vaultAuthority, mint, outputAmount);
+      const options = { recipientAccount: gatewayVault };
+      const payerBefore = await connection.getBalance(fillPayer);
+      await expectError(execute(input, undefined, { ...options, approval: null }), tokenError(0x4));
+      await expectError(execute(input, undefined, { ...options, approval: outputAmount - 1n }), tokenError(0x1));
+      const oversized = { ...relay, outputAmount: new BN((outputAmount + 1n).toString()) };
+      await expectError(
+        execute(input, encodeJit(oversized, new BN(777), owner), {
+          ...options,
+          approval: outputAmount + 1n,
+          status: fillStatus(oversized),
+        }),
+        tokenError(0x1)
+      );
+      assert.isNull(await connection.getAccountInfo(fillStatus()));
+      assert.isNull(await connection.getAccountInfo(fillStatus(oversized)));
+      assert.equal(await connection.getBalance(fillPayer), payerBefore);
+
+      await execute(input, undefined, { ...options, approval: outputAmount });
+      assert.hasAnyKeys((await svmSpoke.account.fillStatusAccount.fetch(fillStatus())).status, ["filled"]);
+      const vault = await getAccount(connection, gatewayVault, undefined, tokenProgram);
+      assert.equal(vault.amount, outputAmount);
+      assert.equal(vault.delegatedAmount, outputAmount);
+      assert.isTrue(vault.delegate!.equals(fillDelegate));
+
+      // Preserve a valid approval so rejection occurs in the Spoke's self-transfer, not an earlier approval CPI.
+      relay = { ...relay, depositId: [...randomBytes(32)] };
+      await provider.sendAndConfirm(
+        new Transaction().add(SystemProgram.transfer({ fromPubkey: owner, toPubkey: fillPayer, lamports: payerBefore }))
+      );
+      await freezeAccount(connection, wallet, gatewayVault, mint, owner, [], undefined, tokenProgram);
+      const frozenPayerBalance = await connection.getBalance(fillPayer);
+      await expectError(execute(input, undefined, { ...options, approval: null }), tokenError(0x11));
+      assert.isNull(await connection.getAccountInfo(fillStatus()));
+      assert.equal(await connection.getBalance(fillPayer), frozenPayerBalance);
+      const frozen = await getAccount(connection, gatewayVault, undefined, tokenProgram);
+      assert.isTrue(frozen.isFrozen);
+      assert.equal(frozen.amount, outputAmount);
+      assert.equal(frozen.delegatedAmount, outputAmount);
+    });
+  }
+});

@@ -1,7 +1,7 @@
 // This script queries the state of a given spoke pool.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";

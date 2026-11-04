@@ -1,4 +1,5 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::prelude::*;
+use solana_keccak_hasher as keccak;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SponsoredCCTPQuote {

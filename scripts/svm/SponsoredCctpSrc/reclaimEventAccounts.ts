@@ -1,7 +1,7 @@
 // This script reclaims used nonce accounts created on the sponsored CCTP bridge.
 
-import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
+import { AnchorProvider, BN } from "@anchor-lang/core";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {

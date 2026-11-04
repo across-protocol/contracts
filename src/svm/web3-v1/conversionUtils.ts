@@ -1,4 +1,4 @@
-import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
+import { utils as anchorUtils, BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
 
