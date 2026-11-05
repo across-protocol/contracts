@@ -1,5 +1,13 @@
 # SVM V5 real-Gateway conformance
 
+## Mainnet-snapshot CU estimates
+
+`yarn estimate-svm-fork-cu` reuses a CI-verified production Spoke binary and measures seven deposit/fill/swap flows
+against cloned mainnet Gateway, token programs and a real CPMM pool on a local validator. See the
+[fork estimator guide](fork/README.md) for artifact verification, local pause/inventory patches, per-transaction
+CU limits, and writable-account matching against Jussi snapshots. This is separate from the synthetic
+legacy-versus-V5 comparison below.
+
 ## Reproducible CU comparison
 
 `yarn bench-svm-cu` builds the legacy Spoke at `7445f72de17900544605c7e6706c5fb3b3784738`, this checkout's V5 Spoke,
