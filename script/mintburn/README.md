@@ -41,19 +41,22 @@ Run it with:
 
 The script reads RPC URLs from exported `NODE_URL_<chainId>` env vars. If a `.env` file exists at the repository root, it is loaded automatically.
 
-Per-chain multisigs come from [`prod-readiness-multisigs.json`](script/mintburn/prod-readiness-multisigs.json), which is intended to be committed because the values are not secret. The file is a flat JSON object keyed by chain id.
+Per-chain multisigs come from [`prod-readiness-multisigs.json`](script/mintburn/prod-readiness-multisigs.json), which is intended to be committed because the values are not secret. `ops_msig` is the default OPS multisig used for every chain; `overrides` records the chains that deviate from it, keyed by chain id.
 
 Example shape:
 
 ```json
 {
-  "1": "0x...",
-  "10": "0x...",
+  "ops_msig": "0x...",
+  "overrides": {
+    "1": "0x...",
+    "324": "0x..."
+  },
   "fallbackEOA": "0x..."
 }
 ```
 
-The chain multisig is used for ownership transfers and `DEFAULT_ADMIN_ROLE` handoff proposals. If a chain multisig is missing, the script falls back to `fallbackEOA` and prints a note next to the suggested command instead of adding a separate finding. Signer fixes are printed with a shell placeholder, for example `$CORRECT_SIGNER`, so the same value can be reused across commands if needed.
+The resolved multisig (`overrides[chainId]`, else `ops_msig`) is used for ownership transfers and `DEFAULT_ADMIN_ROLE` handoff proposals. Because a chain missing from `overrides` silently resolves to `ops_msig`, the script verifies once per chain that the resolved multisig has code there and emits a `WARN` (`OpsMultisig ... code`) if it does not — usually a sign that an `overrides` entry is missing. If both `ops_msig` and the override are missing, the script falls back to `fallbackEOA` and prints a note next to the suggested command instead of adding a separate finding. Signer fixes are printed with a shell placeholder, for example `$CORRECT_SIGNER`, so the same value can be reused across commands if needed.
 
 Checks performed:
 
@@ -75,7 +78,7 @@ For actionable `FAIL` and `WARN` findings, the script also prints ordered `cast 
 - `setAuthorizedPeriphery(...)` proposals when OFT src mappings are stale
 - `transferOwnership(...)` proposals when the donation box owner is wrong
 
-If both the chain multisig and `fallbackEOA` are missing from the JSON file, the script prints a note instead of a `cast` command for that ownership/admin fix.
+If the resolved multisig and `fallbackEOA` are both missing from the JSON file, the script prints a note instead of a `cast` command for that ownership/admin fix.
 
 When stdout is a terminal, the suggested-command section uses bold/color formatting to make each contract block easier to scan. Set `NO_COLOR=1` to disable that.
 

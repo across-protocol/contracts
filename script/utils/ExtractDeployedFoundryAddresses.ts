@@ -396,7 +396,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             } else {
               contractName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "") || "UnknownProxy";
             }
-          } else if (contractName.endsWith("_SpokePool")) {
+          } else if (contractName.endsWith("_SpokePool") || contractName.startsWith("DonationBox")) {
             // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
             continue;
           } else if (contractName === "CounterfactualBeacon" || contractName === "CounterfactualBeaconBootstrap") {
@@ -452,14 +452,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             if (chainId !== undefined) {
               contractName += `_${chainId}`;
             }
-          }
-
-          if (broadcastFile.scriptName === "DeployDstHandler.s.sol") {
-            contractName += "_OFT_USDT";
-          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeriphery.s.sol") {
-            contractName += "_CCTP_USDC";
-          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeripheryUSDH.s.sol") {
-            contractName += "_CCTP_USDH";
           }
 
           contracts.push({

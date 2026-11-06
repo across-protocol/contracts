@@ -60,9 +60,12 @@ You want to see `{"role":"user"}%` as a response. That means that the account wa
 5. Test that the baseToken + core accounts are functioning correctly by calling the `CreateSponsoredDeposit` script and waiting for tokens to show up on the Hyperliquid balance of the dev wallet.
 
 ```
+# Args: tokenName, amountLD, maxBpsToSponsor, dstEid (0 = default to HyperEVM/999), showCast
 forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-  --sig "run(string,uint256,uint256)" usdt0 1000000 100 --rpc-url arbitrum -vvvv --broadcast
+  --sig "run(string,uint256,uint256,uint32,bool)" usdt0 1000000 100 0 false --rpc-url arbitrum -vvvv --broadcast
 ```
+
+See the header of `CreateSponsoredDeposit.s.sol` for all entry points, including `runArbitrary` (executionMode 1/2 with arbitrary `CompressedCall[]` action data) and explicit-recipient/swap variants.
 
 ### Misc
 
