@@ -95,7 +95,8 @@ contract WithdrawalAdapterTest is Test {
             fillDeadlineBuffer,
             fillDeadlineBuffer,
             l2Usdc,
-            tokenMessenger
+            tokenMessenger,
+            address(0)
         );
         address proxy = address(
             // The cross domain admin is set as the messenger so that we may set remote token mappings.

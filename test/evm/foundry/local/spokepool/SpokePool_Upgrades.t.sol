@@ -26,7 +26,7 @@ contract SpokePoolUpgradesTest is Test {
         weth = new WETH9();
 
         vm.startPrank(owner);
-        MockSpokePool implementation = new MockSpokePool(address(weth));
+        MockSpokePool implementation = new MockSpokePool(address(weth), address(0));
         address proxy = address(
             new ERC1967Proxy(
                 address(implementation),

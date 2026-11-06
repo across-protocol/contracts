@@ -24,7 +24,7 @@ Across uses a **hub-and-spoke** model with optimistic verification to enable fas
 #### Core Contracts
 
 - **HubPool** (Ethereum L1) — Central contract that manages LP liquidity, validates cross-chain transfers via merkle root bundles, and coordinates rebalancing across all SpokePools. Uses UMA's Optimistic Oracle for dispute resolution.
-- **SpokePool** (each L2/sidechain) — Deployed on every supported chain. Handles user deposits, relayer fills, and execution of merkle leaves (relayer refunds, slow fills). UUPS upgradeable. Chain-specific variants (e.g. `Arbitrum_SpokePool`, `Optimism_SpokePool`) override admin verification and bridge-specific logic.
+- **SpokePool** (each L2/sidechain) — Deployed on every supported chain. Handles user deposits, relayer fills, and execution of merkle leaves (relayer refunds, slow fills). UUPS upgradeable. Chain-specific variants (e.g. `Arbitrum_SpokePool`, `OP_SpokePool`) override admin verification and bridge-specific logic.
 - **Chain Adapters** (`contracts/chain-adapters/`) — Stateless contracts called via `delegatecall` from HubPool to bridge tokens and relay messages to each L2. Each adapter wraps a chain's native bridge (Arbitrum Inbox, OP Stack messenger, Polygon FxPortal, etc.). Also supports CCTP, LayerZero OFT, and Wormhole.
 
 #### Key Roles
@@ -64,7 +64,7 @@ Canonical deployed addresses are generated into `broadcast/deployed-addresses.js
 ```
 contracts/           # Smart contract source files
   spoke-pools/       # SpokePool contracts (base + all chain-specific variants, PolygonTokenBridger)
-  hub-pool/          # HubPool, BondToken, LpTokenFactory, AcrossConfigStore, PermissionSplitterProxy, AdapterStore
+  hub-pool/          # HubPool, BondToken, LpTokenFactory, AcrossConfigStore, AdapterStore
   chain-adapters/    # L1 chain adapters (intents system)
   periphery/         # Periphery contracts (SpokePoolPeriphery, SpokePoolVerifier, AcrossEventEmitter)
     mintburn/        # Mint-burn system (sponsored CCTP, OFT flows)
@@ -97,7 +97,10 @@ lib/                 # External dependencies (git submodules)
 
 ## Build & Test Commands
 
+CI and publishing use Node.js 22.23.4, the October 2026 security release. Keep both workflow pins aligned when updating Node.
+
 ```bash
+yarn pin-foundry                      # Switch local Foundry to the version in .foundry-version (CI uses the same)
 yarn build-evm-foundry                # Foundry build
 yarn test-evm-foundry                 # Foundry local tests (recommended)
 yarn test-evm-foundry -- --match-test testDeposit
@@ -106,6 +109,8 @@ yarn test-evm-foundry -- -vvv         # Verbose output
 ```
 
 Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=local-test`. `yarn build-evm-foundry` can take up to 5 minutes.
+Match CI's toolchain with `yarn pin-foundry` if `forge --version` differs from `.foundry-version`; newer forge releases can
+change compiler behavior (forge 1.8.x's dynamic test linking breaks the solc 0.8.30 build).
 
 ## Naming Conventions
 

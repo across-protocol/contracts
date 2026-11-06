@@ -88,9 +88,17 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        address _gateway
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftDstEid, _oftFeeCap)
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            _oftDstEid,
+            _oftFeeCap,
+            _gateway
+        )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         ADMIN_UPDATE_BUFFER = _adminUpdateBufferSeconds;

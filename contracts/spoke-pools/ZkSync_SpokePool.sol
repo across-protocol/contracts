@@ -91,7 +91,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         uint256 _l1ChainId,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
+        uint32 _fillDeadlineBuffer,
+        address _gateway
     )
         SpokePool(
             _wrappedNativeTokenAddress,
@@ -99,7 +100,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
             _fillDeadlineBuffer,
             // ZkSync_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
             0,
-            0
+            0,
+            _gateway
         )
         CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
@@ -124,6 +126,9 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
      * likely be the hub pool.
+     * @dev The incorrect-initializer-order heuristic (upgrades-core 1.44) misfires on our standard pattern of
+     * delegating all parent setup to __SpokePool_init; each nested init is guarded by onlyInitializing.
+     * @custom:oz-upgrades-unsafe-allow incorrect-initializer-order
      */
     function initialize(
         uint32 _initialDepositId,

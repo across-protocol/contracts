@@ -53,7 +53,8 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
             info.hubChainId, // _l1ChainId
             cctpTokenMessenger, // _cctpTokenMessenger
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
-            FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
+            FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
+            getGateway() // _gateway
         );
 
         // Initialize deposit counter to 0 as per original script

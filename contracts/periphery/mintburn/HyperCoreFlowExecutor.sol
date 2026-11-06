@@ -992,7 +992,13 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint128 cloid
     ) external onlyRole(PERMISSIONED_BOT_ROLE) {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
-        finalTokenInfo.swapHandler.submitSpotLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
+        finalTokenInfo.swapHandler.submitSpotLimitOrder(
+            finalTokenInfo.spotIndex,
+            finalTokenInfo.isBuy,
+            priceX1e8,
+            sizeX1e8,
+            cloid
+        );
 
         emit SubmittedLimitOrder(finalToken, priceX1e8, sizeX1e8, cloid);
     }

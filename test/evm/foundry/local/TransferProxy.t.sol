@@ -50,6 +50,13 @@ contract HashUtils {
     ) external pure returns (bytes32) {
         return PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
     }
+
+    function hashSignedSwapAndDepositData(
+        SpokePoolPeriphery.SwapAndDepositData calldata swapAndDepositData,
+        uint256 deadline
+    ) external pure returns (bytes32) {
+        return PeripherySigningLib.hashSignedSwapAndDepositData(swapAndDepositData, deadline);
+    }
 }
 
 /// @dev Simple target contract that records calls from the MulticallHandler.
@@ -525,7 +532,11 @@ contract TransferProxyTest is Test {
 
         // Get the swap and deposit data signature.
         bytes32 swapAndDepositMsgHash = keccak256(
-            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashSwapAndDepositData(data))
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSignedSwapAndDepositData(data, block.timestamp)
+            )
         );
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
         bytes memory dataSignature = bytes.concat(_r, _s, bytes1(_v));

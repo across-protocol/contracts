@@ -104,7 +104,7 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
         uint256 maxBps = 500; // 5%
 
         // Ensure bridge has enough liquidity so safety check passes
-        address bridgeAddr = HyperCoreLib.toAssetBridgeAddress(CORE_INDEX);
+        address bridgeAddr = address(uint160(HyperCoreLib.BASE_ASSET_BRIDGE_ADDRESS_UINT256 + CORE_INDEX));
         hyperCore.forceSpot(bridgeAddr, CORE_INDEX, uint64(10_000_000e8)); // large buffer
 
         // Handler must hold user funds that arrived via bridge

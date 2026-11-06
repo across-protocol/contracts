@@ -34,6 +34,8 @@ import { BaseSimulatorTest } from "./external/hyper-evm-lib/test/BaseSimulatorTe
 // ──────────────────────────────────────────────────────────────────
 
 contract MockMessageTransmitter is IMessageTransmitterV2 {
+    function sendMessage(uint32, bytes32, bytes32, uint32, bytes calldata) external pure override {}
+
     function receiveMessage(bytes calldata, bytes calldata) external pure override returns (bool) {
         return true;
     }

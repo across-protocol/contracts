@@ -46,13 +46,9 @@ contract Constants is Script {
         address cctpTokenMessenger;
         address cctpV2TokenMessenger;
         address cctpMessageTransmitter;
+        address cctpV2MessageTransmitter;
         address lineaMessageService;
         address lineaTokenBridge;
-        address scrollERC20GatewayRouter;
-        address scrollMessengerRelay;
-        address scrollGasPriceOracle;
-        address blastYieldManager;
-        address blastDaiRetriever;
         address adapterStore;
         address donationBox;
         address hubPoolStore;
@@ -115,6 +111,10 @@ contract Constants is Script {
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpMessageTransmitter")
                     ),
+                    cctpV2MessageTransmitter: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpV2MessageTransmitter")
+                    ),
                     lineaMessageService: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".lineaMessageService")
@@ -122,26 +122,6 @@ contract Constants is Script {
                     lineaTokenBridge: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".lineaTokenBridge")
-                    ),
-                    scrollERC20GatewayRouter: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollERC20GatewayRouter")
-                    ),
-                    scrollMessengerRelay: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollMessengerRelay")
-                    ),
-                    scrollGasPriceOracle: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollGasPriceOracle")
-                    ),
-                    blastYieldManager: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastYieldManager")
-                    ),
-                    blastDaiRetriever: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastDaiRetriever")
                     ),
                     adapterStore: vm.parseJsonAddress(
                         file,

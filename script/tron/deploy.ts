@@ -69,6 +69,122 @@ export function validateTronAddresses(addresses: Record<string, string>): void {
   for (const [name, value] of Object.entries(addresses)) validateTronAddress(value, name);
 }
 
+/** Read a deployed address (Tron Base58) from a prior run's broadcast artifact; null if none exists. */
+export function readBroadcastAddress(contractName: string, chainId: string): string | null {
+  const runFile = path.resolve(
+    __dirname,
+    "../../broadcast",
+    `TronDeploy${contractName}.s.sol`,
+    chainId,
+    "run-latest.json"
+  );
+  if (!fs.existsSync(runFile)) return null;
+  const run = JSON.parse(fs.readFileSync(runFile, "utf-8"));
+  return run.transactions?.[0]?.contractAddress ?? null;
+}
+
+/** Validate chainId, derive the deployer key from MNEMONIC (Ethereum HD path, matching Foundry's
+ *  vm.deriveKey(mnemonic, 0) — NOT Tron's default path), and return a signing TronWeb instance. */
+export function initTronWeb(chainId: string): { tronWeb: TronWeb; deployerAddress: string } {
+  const TRON_CHAIN_IDS = [TRON_MAINNET_CHAIN_ID, TRON_TESTNET_CHAIN_ID];
+  if (!TRON_CHAIN_IDS.includes(chainId)) {
+    console.log(`Error: invalid chain ID "${chainId}". Use 728126428 (Tron mainnet) or 3448148188 (Nile testnet).`);
+    process.exit(1);
+  }
+
+  const mnemonic = process.env.MNEMONIC;
+  const fullNode = process.env[`NODE_URL_${chainId}`];
+  if (!mnemonic) {
+    console.log("Error: MNEMONIC env var is required.");
+    process.exit(1);
+  }
+  if (!fullNode) {
+    console.log(`Error: NODE_URL_${chainId} env var is required (Tron full node URL).`);
+    process.exit(1);
+  }
+
+  const tronWeb = new TronWeb({ fullHost: fullNode });
+  const { ethersHDNodeWallet, Mnemonic } = tronWeb.utils.ethersUtils;
+  const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
+  const wallet = ethersHDNodeWallet.fromMnemonic(mnemonicObj, "m/44'/60'/0'/0/0");
+  const privateKey = wallet.privateKey.slice(2);
+  tronWeb.setPrivateKey(privateKey);
+  const deployerAddress = tronWeb.address.fromPrivateKey(privateKey);
+  if (typeof deployerAddress !== "string") {
+    console.log("Error: could not derive deployer address from private key.");
+    process.exit(1);
+  }
+  return { tronWeb, deployerAddress };
+}
+
+/** The deployer address (Tron Base58) for a chain — account 0 of MNEMONIC, Ethereum HD path. */
+export function getDeployerAddress(chainId: string): string {
+  return initTronWeb(chainId).deployerAddress;
+}
+
+/** Poll until the transaction is confirmed and exit the process if it failed or timed out. */
+export async function waitForTx(tronWeb: TronWeb, txID: string): Promise<any> {
+  let txInfo: any;
+  for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    txInfo = await tronWeb.trx.getTransactionInfo(txID);
+    if (txInfo && txInfo.id) break;
+    console.log(`Waiting for confirmation... (${i + 1}/${MAX_POLL_ATTEMPTS})`);
+  }
+  if (!txInfo || !txInfo.id) {
+    console.log("Error: transaction not confirmed within timeout.");
+    process.exit(1);
+  }
+  if (txInfo.receipt?.result !== "SUCCESS") {
+    console.log("Error: transaction failed:", JSON.stringify(txInfo, null, 2));
+    process.exit(1);
+  }
+  return txInfo;
+}
+
+/**
+ * Call a state-changing function on a deployed Tron contract and wait for confirmation.
+ *
+ * @param opts.contract          Contract address (Tron Base58Check, T...)
+ * @param opts.functionSelector  Full signature, e.g. "setImplementation(address)"
+ * @param opts.parameters        Typed args, e.g. [{ type: "address", value: "T..." }]
+ */
+export async function callContract(opts: {
+  chainId: string;
+  contract: string;
+  functionSelector: string;
+  parameters?: { type: string; value: any }[];
+  feeLimit?: number;
+}): Promise<string> {
+  const { tronWeb } = initTronWeb(opts.chainId);
+  const feeLimit = opts.feeLimit ?? parseInt(process.env.TRON_FEE_LIMIT || "100000000", 10);
+
+  console.log(`Calling ${opts.functionSelector} on ${opts.contract}...`);
+  const { transaction, result } = await tronWeb.transactionBuilder.triggerSmartContract(
+    opts.contract,
+    opts.functionSelector,
+    { feeLimit },
+    opts.parameters ?? []
+  );
+  if (!result?.result) {
+    console.log("Error: triggerSmartContract rejected:", JSON.stringify(result, null, 2));
+    process.exit(1);
+  }
+
+  const signedTx = await tronWeb.trx.sign(transaction);
+  const broadcastResult = await tronWeb.trx.sendRawTransaction(signedTx);
+  if (!broadcastResult.result) {
+    console.log("Error: transaction rejected:", JSON.stringify(broadcastResult, null, 2));
+    process.exit(1);
+  }
+
+  const txID = broadcastResult.transaction.txID;
+  console.log(`Transaction sent: ${txID}`);
+  await waitForTx(tronWeb, txID);
+  console.log(`Confirmed: ${opts.functionSelector}`);
+  return txID;
+}
+
 /** Decode ABI-encoded constructor args into human-readable strings for the broadcast `arguments` field. */
 function decodeConstructorArgs(tronWeb: TronWeb, abi: any[], parameterHex: string): string[] | null {
   const ctor = abi.find((e: any) => e.type === "constructor");
@@ -183,43 +299,8 @@ export async function deployContract(opts: {
 }): Promise<DeployResult> {
   const { chainId, artifactPath, encodedArgs } = opts;
 
-  const TRON_CHAIN_IDS = ["728126428", "3448148188"]; // mainnet, Nile testnet
-  if (!TRON_CHAIN_IDS.includes(chainId)) {
-    console.log(`Error: invalid chain ID "${chainId}". Use 728126428 (Tron mainnet) or 3448148188 (Nile testnet).`);
-    process.exit(1);
-  }
-
-  const mnemonic = process.env.MNEMONIC;
-  const fullNode = process.env[`NODE_URL_${chainId}`];
-  if (!mnemonic) {
-    console.log("Error: MNEMONIC env var is required.");
-    process.exit(1);
-  }
-  if (!fullNode) {
-    console.log(`Error: NODE_URL_${chainId} env var is required (Tron full node URL).`);
-    process.exit(1);
-  }
-
+  const { tronWeb, deployerAddress } = initTronWeb(chainId);
   const feeLimit = opts.feeLimit ?? parseInt(process.env.TRON_FEE_LIMIT || "100000000", 10);
-
-  // Create a TronWeb instance (private key set below after mnemonic derivation).
-  const tronWeb = new TronWeb({ fullHost: fullNode });
-
-  // Derive account 0 private key from mnemonic (same derivation as Foundry's vm.deriveKey(mnemonic, 0)).
-  // We use Ethereum's HD path (m/44'/60'/0'/0/0) — NOT Tron's default (m/44'/195'/0'/0/0) — because
-  // the deployer key must match the one Foundry derives. TronWeb.fromMnemonic() enforces Tron's path,
-  // so we use the bundled ethers HDNodeWallet directly to derive with the Ethereum path.
-  const { ethersHDNodeWallet, Mnemonic } = tronWeb.utils.ethersUtils;
-  const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
-  const wallet = ethersHDNodeWallet.fromMnemonic(mnemonicObj, "m/44'/60'/0'/0/0");
-  const privateKey = wallet.privateKey.slice(2);
-  tronWeb.setPrivateKey(privateKey);
-  const deployerAddressRaw = tronWeb.address.fromPrivateKey(privateKey);
-  if (typeof deployerAddressRaw !== "string") {
-    console.log("Error: could not derive deployer address from private key.");
-    process.exit(1);
-  }
-  const deployerAddress = deployerAddressRaw;
 
   // Read the Foundry-compiled artifact to get the ABI and bytecode.
   if (!fs.existsSync(artifactPath)) {
@@ -247,7 +328,7 @@ export async function deployContract(opts: {
     parameter = encodedArgs.startsWith("0x") ? encodedArgs.slice(2) : encodedArgs;
   }
 
-  console.log(`Deploying ${contractName} to ${fullNode}...`);
+  console.log(`Deploying ${contractName} to ${process.env[`NODE_URL_${chainId}`]}...`);
   if (parameter) console.log(`  Constructor args: 0x${parameter}`);
   console.log(`  Fee limit: ${feeLimit} sun (${feeLimit / 1e6} TRX)`);
 
@@ -277,23 +358,7 @@ export async function deployContract(opts: {
   console.log(`Transaction sent: ${txID}`);
 
   // Poll for confirmation — Tron doesn't return receipts synchronously.
-  let txInfo: any;
-  for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    txInfo = await tronWeb.trx.getTransactionInfo(txID);
-    if (txInfo && txInfo.id) break;
-    console.log(`Waiting for confirmation... (${i + 1}/${MAX_POLL_ATTEMPTS})`);
-  }
-
-  if (!txInfo || !txInfo.id) {
-    console.log("Error: transaction not confirmed within timeout.");
-    process.exit(1);
-  }
-
-  if (txInfo.receipt?.result !== "SUCCESS") {
-    console.log("Error: transaction failed:", JSON.stringify(txInfo, null, 2));
-    process.exit(1);
-  }
+  const txInfo = await waitForTx(tronWeb, txID);
 
   // Extract contract address from transaction info (Tron returns hex with 41 prefix).
   const tronHexAddress: string = txInfo.contract_address;

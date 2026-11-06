@@ -35,8 +35,8 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     // Address of the SpokePool contract that can call handleV3AcrossMessage.
     address public spokePool;
 
-    // Track which accounts we have already sponsored for activation. Used to prevent griefing attacks when the same account is activated multiple times
-    // due to Hyperliquid's policy of removing dust from small accounts which technically could be taken advantage of by a griefer.
+    // Track which accounts this contract has already activated. HyperCore accounts persist once created (Hyperliquid's
+    // dust removal only sweeps balances), so this acts as replay protection for the nonce-less activation signature.
     mapping(address => bool) public accountsActivated;
 
     // EIP-712 type hash for activation signatures

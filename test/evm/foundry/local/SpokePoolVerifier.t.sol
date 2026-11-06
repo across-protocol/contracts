@@ -56,7 +56,8 @@ contract SpokePoolVerifierTest is Test {
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
             fillDeadlineBuffer,
-            fillDeadlineBuffer
+            fillDeadlineBuffer,
+            address(0)
         );
         address proxy = address(
             new ERC1967Proxy(address(implementation), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner)))

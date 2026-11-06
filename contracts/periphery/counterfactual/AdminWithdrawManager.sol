@@ -5,6 +5,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+import { CounterfactualNonces } from "./CounterfactualNonces.sol";
 import { WithdrawParams } from "./WithdrawImplementation.sol";
 
 /**
@@ -12,10 +13,12 @@ import { WithdrawParams } from "./WithdrawImplementation.sol";
  * @notice Manages admin withdrawals from counterfactual deposit clones via two paths:
  *         1. Direct withdraw — trusted `directWithdrawer` calls clone.execute() with arbitrary submitterData
  *         2. Signed withdraw — anyone can trigger with a `signer` signature; recipient is forced to the user
- * @dev Set this contract's address as `admin` in withdrawal merkle leaves.
+ * @dev Set this contract's address as `admin` in withdrawal merkle leaves. Signed withdrawals carry a
+ *      signed single-use `nonce` consumed in this contract's own storage (`CounterfactualNonces` — this
+ *      is a plain singleton, no delegatecall), so a signature can't be replayed against a re-funded clone.
  * @custom:security-contact bugs@across.to
  */
-contract AdminWithdrawManager is Ownable, EIP712 {
+contract AdminWithdrawManager is Ownable, EIP712, CounterfactualNonces {
     /// @notice Emitted when the direct withdrawer address is updated.
     /// @param directWithdrawer The new direct withdrawer address.
     event DirectWithdrawerUpdated(address indexed directWithdrawer);
@@ -30,7 +33,7 @@ contract AdminWithdrawManager is Ownable, EIP712 {
 
     /// @notice EIP-712 typehash for signed withdraw messages.
     bytes32 public constant SIGNED_WITHDRAW_TYPEHASH =
-        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
+        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,bytes32 nonce,uint256 deadline)");
 
     /// @notice Address authorized to call `directWithdraw` without a signature.
     address public directWithdrawer;
@@ -76,6 +79,7 @@ contract AdminWithdrawManager is Ownable, EIP712 {
      * @param token Token to withdraw.
      * @param amount Amount to withdraw.
      * @param proof Merkle proof for the withdrawal leaf.
+     * @param nonce Signed single-use nonce; reverts `InvalidNonce` if already consumed.
      * @param deadline Timestamp after which the signature is no longer valid.
      * @param signature EIP-712 signature from `signer`.
      */
@@ -86,13 +90,17 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         address token,
         uint256 amount,
         bytes32[] calldata proof,
+        bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
     ) external {
         if (block.timestamp > deadline) revert SignatureExpired();
 
-        bytes32 structHash = keccak256(abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, token, amount, deadline));
+        bytes32 structHash = keccak256(
+            abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, token, amount, nonce, deadline)
+        );
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
+        _useNonce(nonce);
 
         address to = abi.decode(params, (WithdrawParams)).user;
         ICounterfactualDeposit(depositAddress).execute(implementation, params, abi.encode(token, to, amount), proof);

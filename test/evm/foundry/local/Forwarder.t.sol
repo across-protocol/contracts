@@ -8,7 +8,8 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
+import { OP_Adapter } from "../../../../contracts/chain-adapters/OP_Adapter.sol";
+import { IOpUSDCBridgeAdapter } from "../../../../contracts/external/interfaces/IOpUSDCBridgeAdapter.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
@@ -36,7 +37,7 @@ contract Token_ERC20 is ERC20 {
 
 contract ForwarderTest is Test {
     Arbitrum_Forwarder arbitrumForwarder;
-    Optimism_Adapter optimismAdapter;
+    OP_Adapter opAdapter;
 
     Token_ERC20 l2Token;
     Token_ERC20 l3Token;
@@ -63,12 +64,14 @@ contract ForwarderTest is Test {
 
         adapterStore = new AdapterStore();
 
-        optimismAdapter = new Optimism_Adapter(
+        opAdapter = new OP_Adapter(
             WETH9Interface(address(l2Weth)),
+            IERC20(address(0)),
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
-            IERC20(address(0)),
-            ITokenMessenger(address(0))
+            IOpUSDCBridgeAdapter(address(0)),
+            ITokenMessenger(address(0)),
+            0
         );
 
         arbitrumForwarder = new Arbitrum_Forwarder(WETH9Interface(address(l2Weth)));
@@ -78,11 +81,11 @@ contract ForwarderTest is Test {
         arbitrumForwarder = Arbitrum_Forwarder(payable(proxy));
 
         vm.startPrank(aliasedOwner);
-        arbitrumForwarder.updateAdapter(L3_CHAIN_ID, address(optimismAdapter));
+        arbitrumForwarder.updateAdapter(L3_CHAIN_ID, address(opAdapter));
         vm.stopPrank();
     }
 
-    // Messages should be routed through the Optimism Adapter's `relayMessage` function.
+    // Messages should be routed through the OP Adapter's `relayMessage` function.
     function testForwardMessage(address target, bytes memory message) public {
         vm.expectRevert();
         arbitrumForwarder.relayMessage(target, L3_CHAIN_ID, message);
@@ -95,7 +98,7 @@ contract ForwarderTest is Test {
     }
 
     // Token relays should first be saved to state (when called by the cross domain admin).
-    // In a follow-up `sendTokens` call, tokens should then be routed through the Optimism
+    // In a follow-up `sendTokens` call, tokens should then be routed through the OP
     // Adapter's `relayTokens` function.
     function testForwardTokens(uint256 amountToSend, address random) public {
         l2Token.mint(address(arbitrumForwarder), amountToSend);

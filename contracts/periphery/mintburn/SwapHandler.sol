@@ -1,9 +1,9 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
-import { FinalTokenInfo } from "./Structs.sol";
 
 contract SwapHandler {
     // See https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#asset
@@ -46,14 +46,15 @@ contract SwapHandler {
     }
 
     function submitSpotLimitOrder(
-        FinalTokenInfo memory finalTokenInfo,
+        uint32 spotIndex,
+        bool isBuy,
         uint64 limitPriceX1e8,
         uint64 sizeX1e8,
         uint128 cloid
     ) external onlyParentHandler {
         HyperCoreLib.submitLimitOrder(
-            finalTokenInfo.spotIndex + SPOT_MARKET_INDEX_OFFSET,
-            finalTokenInfo.isBuy,
+            spotIndex + SPOT_MARKET_INDEX_OFFSET,
+            isBuy,
             limitPriceX1e8,
             sizeX1e8,
             false,

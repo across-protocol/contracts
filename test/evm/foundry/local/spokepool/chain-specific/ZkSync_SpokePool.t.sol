@@ -114,7 +114,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(0)), // No CCTP
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         // Deploy proxy
@@ -147,7 +148,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(0)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
 
         // Attempt upgrade from non-cross-domain admin should fail
@@ -186,7 +188,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(0)), // No CCTP
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
     }
 
@@ -200,7 +203,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(cctpMessenger)), // CCTP also set
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
     }
 
@@ -213,7 +217,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(0)), // No CCTP
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
         assertTrue(address(impl) != address(0));
     }
@@ -227,7 +232,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(cctpMessenger)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
         assertTrue(address(impl) != address(0));
     }
@@ -241,7 +247,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(0)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
         assertTrue(address(impl) != address(0));
     }
@@ -308,7 +315,8 @@ contract ZkSync_SpokePoolTest is Test {
             L1_CHAIN_ID,
             ITokenMessenger(address(0)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
-            TEST_FILL_DEADLINE_BUFFER
+            TEST_FILL_DEADLINE_BUFFER,
+            address(0)
         );
         vm.prank(crossDomainAlias);
         spokePool.upgradeTo(address(newImplementation));

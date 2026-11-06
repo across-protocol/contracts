@@ -136,3 +136,50 @@ export interface EventType {
  * Supported Networks
  */
 export type SupportedNetworks = "mainnet" | "devnet";
+
+/**
+ * Fill instruction accounts
+ */
+export type FillAccounts = {
+  signer: PublicKey;
+  instructionParams: PublicKey;
+  state: PublicKey;
+  delegate: PublicKey;
+  mint: PublicKey;
+  relayerTokenAccount: PublicKey;
+  recipientTokenAccount: PublicKey;
+  fillStatus: PublicKey;
+  tokenProgram: PublicKey;
+  associatedTokenProgram: PublicKey;
+  systemProgram: PublicKey;
+  program: PublicKey;
+};
+
+/**
+ * Request Slow Fill Accounts
+ */
+export type RequestSlowFillAccounts = {
+  signer: PublicKey;
+  instructionParams: PublicKey;
+  state: PublicKey;
+  fillStatus: PublicKey;
+  systemProgram: PublicKey;
+  program: PublicKey;
+};
+
+/**
+ * Execute Slow Relay Leaf Accounts
+ */
+export type ExecuteSlowRelayLeafAccounts = {
+  signer: PublicKey;
+  instructionParams: PublicKey;
+  state: PublicKey;
+  rootBundle: PublicKey;
+  fillStatus: PublicKey;
+  mint: PublicKey;
+  recipientTokenAccount: PublicKey;
+  vault: PublicKey;
+  tokenProgram: PublicKey;
+  systemProgram: PublicKey;
+  program: PublicKey;
+};

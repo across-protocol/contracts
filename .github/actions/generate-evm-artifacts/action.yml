@@ -16,8 +16,14 @@ runs:
     - name: Install packages
       shell: bash
       run: yarn install --frozen-lockfile
+    - name: Read pinned Foundry version
+      id: foundry
+      shell: bash
+      run: echo "version=$(cat .foundry-version)" >> "$GITHUB_OUTPUT"
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: ${{ steps.foundry.outputs.version }}
     - name: Install forge dependencies
       shell: bash
       run: forge install

@@ -31,3 +31,14 @@ pub fn is_valid_associated_token_account(
         && token_account.key()
             == get_associated_token_address_with_program_id(authority, &mint.key(), &token_program.key())
 }
+
+// Validates if the optional parameter presence is consistent with each other and counter to the instruction_params
+// account presence.
+pub fn has_valid_params_presence(params_presence: &[bool], account_present: bool) -> bool {
+    let Some((&first_present, remaining_presence)) = params_presence.split_first() else {
+        return false;
+    };
+
+    // All remaining param presence must match the first param presence and the account presence must not match it.
+    remaining_presence.iter().all(|&p| p == first_present) && account_present != first_present
+}
