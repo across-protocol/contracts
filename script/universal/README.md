@@ -9,7 +9,7 @@ This guide covers deploying the **Universal SpokePool** infrastructure to a new 
 - **curl** and **sha256sum** available in PATH
 - Access to Ethereum consensus layer RPC endpoints (beacon nodes)
 - A funded deployer wallet (via mnemonic)
-- `generated/constants.json` with chain configuration (run `yarn generate-constants` if missing)
+- `generated/constants.json` with chain configuration (run `yarn generate-constants-json` if missing)
 
 ## A Note to Deployers
 
