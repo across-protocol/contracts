@@ -11,9 +11,7 @@ error did not exist in that deployed release.
 Earlier undeployed revisions used different SVM/V5 assignments and introduced `V5FillOnly`,
 `LegacyFillMessageUnsupported`, and `UnsupportedMode`. These unused errors are now removed; none existed in the
 deployed baseline, so they have no deployed assignments to preserve. Removing `UnsupportedMode` compacts the
-previous 8009–8014 assignments to 8008–8013. SDK `5.0.0-svm-clients.4` encodes the previous
-assignments: regenerate SDK clients from the updated contracts IDL and adopt a matching SDK release in consumers
-before deployment. Do not decode the updated program's errors using clients generated from older IDLs.
+previous 8009–8014 assignments to 8008–8013.
 
 The tables cover every declared variant in [error.rs](src/error.rs) and every removed deployed variant.
 Enum membership does not imply reachability: the old `CommonError` slow-fill slots remain reserved as noted below.
