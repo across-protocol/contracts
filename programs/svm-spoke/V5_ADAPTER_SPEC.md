@@ -435,7 +435,7 @@ Before deploying V4 entrypoint retirement and the error-code migration:
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
    moves from 6000 to 7000 and `CallDataError` from 6000 to 9000; existing `CommonError` codes are unchanged.
    Removing the unused, undeployed `UnsupportedMode` compacts V5 errors from 8000–8014 to 8000–8013. Earlier
-   SDK prereleases through `5.0.0-svm-clients.4` must be replaced with clients regenerated from the updated IDL;
+   clients, including SDK `5.0.0-svm-clients.4`, must be regenerated from the updated IDL;
    refresh the SDK's contracts pin, IDL manifest/hash, generation digest, and downstream consumer pins together.
    Consumers matching runtime log names need no renumbering change, but mint validation now distinguishes
    `InvalidMint` and `UnsupportedTokenExtension` from actual `InvalidTokenAccount` failures.
