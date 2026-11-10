@@ -249,6 +249,9 @@ tokens, finalizes V5 fill status, and constructs the canonical events. The entry
 and fill modules, each owning its execution and account loading. Both loaders use `V5TokenAccounts::load` in
 `instructions/v5_adapter/token.rs` to validate the mint, token program, and canonical Gateway vault before their
 branch-specific recipient and delegate checks.
+Both handlers use `v5::codec::v5_witness` to construct the canonical `V5_MAGIC_PREFIX || step_id` message.
+Deposits emit it using `dst_step_id`; fills compare the entire relay message against the current step's witness,
+rejecting wrong prefixes, wrong steps, truncation, and trailing bytes without changing the wire format.
 When the committed fill recipient is `GATEWAY_VAULT_AUTHORITY`, the fill loader reuses that validated writable account
 instead of deriving, finding, and parsing the same ATA again. This reuse is confined to account loading before any
 CPI; external recipient validation and the token program's self-transfer checks remain unchanged.
@@ -372,7 +375,7 @@ orphaned message-validation helpers. Existing `CommonError` assignments remain 6
 7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
 Anchor 1.1.2 requires one IDL error enum. `SpokeError` preserves these runtime ranges using explicit
-discriminants; the former group names remain Rust aliases. The generated IDL now includes all 55 errors
+discriminants; the former group names remain Rust aliases. The generated IDL now includes all 54 errors
 with the correct runtime codes. Historical Anchor 0.31.1 IDLs were incomplete and ignored the custom
 offsets, so historical decoding still requires the version-appropriate runtime-code mapping.
 
@@ -431,8 +434,12 @@ Before deploying V4 entrypoint retirement and the error-code migration:
    already-emitted V5 relay hashes before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
    moves from 6000 to 7000 and `CallDataError` from 6000 to 9000; existing `CommonError` codes are unchanged.
-   Earlier undeployed V5 integrations must use the final 8000 range. Consumers matching runtime log names need no
-   renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
+   Removing the unused, undeployed `UnsupportedMode` compacts V5 errors from 8000–8014 to 8000–8013. Earlier
+   SDK prereleases through `5.0.0-svm-clients.4` must be replaced with clients regenerated from the updated IDL;
+   refresh the SDK's contracts pin, IDL manifest/hash, generation digest, and downstream consumer pins together.
+   Consumers matching runtime log names need no renumbering change, but mint validation now distinguishes
+   `InvalidMint` and `UnsupportedTokenExtension` from actual `InvalidTokenAccount` failures.
+   Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
 5. Publish the updated IDL and generated clients with the audited V5 release under a new package version in the

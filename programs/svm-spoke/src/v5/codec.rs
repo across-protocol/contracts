@@ -1,8 +1,17 @@
 use anchor_lang::prelude::*;
 
-use crate::{common::RelayData, constants::BIPS_DENOMINATOR, error::V5Error};
+use crate::{
+    common::RelayData,
+    constants::{BIPS_DENOMINATOR, V5_MAGIC_PREFIX},
+    error::V5Error,
+};
 
 pub const V5_SIGNATURE_LEN: usize = 65;
+
+/// Canonical relay message binding a V5 deposit or fill to its destination Gateway step.
+pub fn v5_witness(step_id: [u8; 32]) -> Vec<u8> {
+    [V5_MAGIC_PREFIX, step_id].concat()
+}
 
 /// Version 1 of the Gateway-attested context prepended to every adapter call.
 ///

@@ -8,7 +8,11 @@ use anchor_spl::{
     token_interface::TokenAccount,
 };
 
-use crate::{constants::GATEWAY_VAULT_AUTHORITY, error::V5Error, v5::accounts::find_v5_account};
+use crate::{
+    constants::GATEWAY_VAULT_AUTHORITY,
+    error::{SvmError, V5Error},
+    v5::accounts::find_v5_account,
+};
 
 /// Validated mint, token program, and canonical Gateway vault shared by deposits and fills.
 pub(super) struct V5TokenAccounts<'info> {
@@ -26,7 +30,7 @@ impl<'info> V5TokenAccounts<'info> {
         // Match Interface<TokenInterface>'s supported token-program IDs.
         require!(
             token_program_id == anchor_spl::token::ID || token_program_id == anchor_spl::token_2022::ID,
-            V5Error::InvalidTokenAccount
+            SvmError::InvalidMint
         );
         let token_program = find_v5_account(remaining_accounts, &token_program_id, false)?;
         let mint_decimals = validate_v5_mint(mint_info, &token_program_id)?;
@@ -64,11 +68,11 @@ pub(super) fn load_token_account(
 
 fn validate_v5_mint(info: &AccountInfo, token_program: &Pubkey) -> Result<u8> {
     let data = info.try_borrow_data()?;
-    let mint = StateWithExtensions::<SplMint>::unpack(&data).map_err(|_| error!(V5Error::InvalidTokenAccount))?;
+    let mint = StateWithExtensions::<SplMint>::unpack(&data).map_err(|_| error!(SvmError::InvalidMint))?;
     if *token_program == anchor_spl::token_2022::ID {
         let extensions = mint
             .get_extension_types()
-            .map_err(|_| error!(V5Error::InvalidTokenAccount))?;
+            .map_err(|_| error!(V5Error::UnsupportedTokenExtension))?;
         require!(extensions.iter().all(is_supported_v5_mint_extension), V5Error::UnsupportedTokenExtension);
     }
     Ok(mint.base.decimals)

@@ -76,7 +76,7 @@ fn gateway_path_root_and_witness_match_cross_vm_fixture() {
     let root = pair(a, b);
     assert_eq!(root, array::<32>(&fixture, "/stepRoot"));
     assert_eq!(pair(b, a), root);
-    assert_eq!([crate::constants::V5_MAGIC_PREFIX.as_slice(), &root].concat(), bytes(&fixture, "/witness"));
+    assert_eq!(v5_witness(root), bytes(&fixture, "/witness"));
 }
 
 #[test]
