@@ -82,7 +82,7 @@ pub(super) fn execute_v5_deposit<'info>(
         depositor: params.depositor,
         recipient: params.recipient,
         exclusive_relayer,
-        message: v5_witness(deposit.dst_step_id),
+        message: v5_witness(deposit.dst_step_id).to_vec(),
     });
     Ok(())
 }

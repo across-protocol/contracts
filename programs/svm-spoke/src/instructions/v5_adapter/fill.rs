@@ -34,7 +34,7 @@ pub(super) fn execute_v5_fill<'info>(
     require!(
         relay.recipient == fill_input.recipient
             && relay.output_token == fill_input.output_token
-            && relay.message == v5_witness(ctx_values.step_id),
+            && relay.message[..] == v5_witness(ctx_values.step_id),
         V5Error::FillCommitmentMismatch
     );
     require!(relay.output_amount >= fill_input.min_output_amount, V5Error::FillOutputAmountTooLow);
