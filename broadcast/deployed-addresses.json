@@ -177,6 +177,10 @@
           "block_number": 25639548,
           "transaction_hash": "0xfa63667a74d38eb417693c918f299655585ae9d92713e2e95bd858384505002d"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 23648453
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 25569014,
@@ -306,6 +310,10 @@
           "block_number": 154871032,
           "transaction_hash": "0x9bcc676fe1adca699f99c0312f93447c54286cd4787110b93f1097c702be57f8"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 142861956
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 154446315,
@@ -392,6 +400,10 @@
           "address": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
           "block_number": 69434159
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 65760974
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 110959968,
@@ -448,6 +460,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 54592487,
           "transaction_hash": "0x9bbc4bc074a9832acec008c96b4a4b868edf23469b51ff6437c4b3f507a438ca"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 30575071
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -555,6 +571,10 @@
           "block_number": 91090555,
           "transaction_hash": "0xb5f4d59436803327ca759b16fba6c4dc8b0449a3e8b36925d4cae175469d179e"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 78108988
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 90524452,
@@ -642,6 +662,10 @@
           "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449",
           "block_number": 36437473
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 37742816
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 88845100,
@@ -724,6 +748,10 @@
           "block_number": 6120096,
           "transaction_hash": "0xf13367dbf027d769d9dd9290de2cac7fd6d921455c44f26226555ac81071e0c6"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 4835847
+        },
         "Safe": {
           "address": "0x396eC04b105587E9DC1a13D27F28D99262f74910",
           "block_number": 5757517,
@@ -759,6 +787,10 @@
           "address": "0x7C99cED6d8011AF8A52488884F7BA2c61b0FA57D",
           "block_number": 71365129,
           "transaction_hash": "0xe323b2b400f3c2110db0ef6b50e4404ff46ddc3d546305ca5c8ff4f6f0cf3399"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 65503164
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -816,6 +848,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 33002612,
           "transaction_hash": "0xdfbf4eec7ab51558b7dafd23d7c9bc4a265154f11618cb3910d9deac5a0de5a0"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 20993917
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -905,6 +941,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 41769758,
           "transaction_hash": "0x0b381afe3e44c71b78da12b3f3eb435f063c5b4a8bd3443652accce4a6cb341f"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 17353287
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -1048,6 +1088,10 @@
           "block_number": 35306374,
           "transaction_hash": "0x9c32f395a26701ad15ec1f2202ea8e8e927cebe64d62672d7eb2f0ae73b46883"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 23296719
+        },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 30656209,
@@ -1088,6 +1132,10 @@
           "block_number": 26103396,
           "transaction_hash": "0xfa525a9b2eb8008e224cd0f454960b04b981449f21841ee109b24463f990e469"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 14094328
+        },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
           "block_number": 21453243,
@@ -1124,6 +1172,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 32295215,
           "transaction_hash": "0xdcc187a002d5c44b54d0e2eec582086c979edef77be28638257cda588085f777"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 44118954
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -1244,6 +1296,10 @@
     "4663": {
       "chain_name": "Robinhood",
       "contracts": {
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 70377565
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 14150724,
@@ -1403,6 +1459,10 @@
           "block_number": 49276102,
           "transaction_hash": "0x747aca52f3cf762ed088d87c6352bfb134ef6cc4fb4679679ec444c33a5aa850"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 37265997
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 48853091,
@@ -1499,6 +1559,10 @@
           "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba",
           "block_number": 1619956
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 4393363
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 27555243,
@@ -1560,6 +1624,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 42586986,
           "transaction_hash": "0x05dd04fbcac8ea9deb9c8c10704ebe715510da3054c460792ce495035cf8e071"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 30577523
         }
       }
     },
@@ -1603,6 +1671,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 488999997,
           "transaction_hash": "0xb33f6019e2161edb13f7fb8c4516d07b449443901f2a45ce5cc3044d857240ce"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 392949295
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -1791,6 +1863,10 @@
           "block_number": 51843150,
           "transaction_hash": "0x5b57c7187f13a91a8fdcb1f89bed43a21f269b4ef0c270e5fc4a9a512c79b001"
         },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 27823587
+        },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
           "block_number": 50997560,
@@ -1872,6 +1948,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 31558679,
           "transaction_hash": "0xabd5247a57c1db8ababa6af4d08a2436590d43137fb2f3b2f5f852f8bfdad7fd"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 24869869
         },
         "AdminWithdrawManager": {
           "address": "0x5adAbDE1b6AeDF8F768F782fFf1B1Cc396416f00",
@@ -2106,6 +2186,10 @@
           "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
           "block_number": 49323868,
           "transaction_hash": "0x38baef751a42a4034bce2241fa217d7a8024bf69e0a925679647ace4f1b11543"
+        },
+        "AcrossEventEmitter": {
+          "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+          "block_number": 37317157
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
