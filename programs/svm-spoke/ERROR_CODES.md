@@ -8,9 +8,10 @@ The compatibility baseline is the deployed release
 not intermediate PRs in this undeployed stack. V5 errors are new relative to that baseline. A dash means the
 error did not exist in that deployed release.
 
-Earlier undeployed revisions used different SVM/V5 assignments and introduced `V5FillOnly` and
-`LegacyFillMessageUnsupported`. Both unused callback-rejection errors are now removed; neither existed in the
-deployed baseline, so they have no deployed assignments to preserve.
+Earlier undeployed revisions used different SVM/V5 assignments and introduced `V5FillOnly`,
+`LegacyFillMessageUnsupported`, and `UnsupportedMode`. These unused errors are now removed; none existed in the
+deployed baseline, so they have no deployed assignments to preserve. Removing `UnsupportedMode` compacts the
+previous 8009–8014 assignments to 8008–8013.
 
 The tables cover every declared variant in [error.rs](src/error.rs) and every removed deployed variant.
 Enum membership does not imply reachability: the old `CommonError` slow-fill slots remain reserved as noted below.
@@ -18,7 +19,7 @@ Use the mapping for the program version being queried. Historical transaction er
 do not relabel them using the new table. Legacy
 numbers overlap across enums, so a number alone cannot identify a historical error. Runtime log names distinguish
 the original enums. Anchor 1.1.2 uses one `SpokeError` enum with explicit range boundaries and retains
-the old group names as Rust aliases. Its generated IDL now contains all 55 errors with their correct runtime
+the old group names as Rust aliases. Its generated IDL now contains all 54 errors with their correct runtime
 codes. Older Anchor 0.31.1 IDLs were incomplete and did not reflect the explicit offsets; use the mappings
 below when decoding historical errors.
 
@@ -94,13 +95,17 @@ includes these removals. Intermediate stack assignments were never deployed and 
 | `ResolvedInputAmountBelowCommitted` | —              | 8005         |
 | `ParamModificationNotAnImprovement` | —              | 8006         |
 | `InvalidAmountBips`                 | —              | 8007         |
-| `UnsupportedMode`                   | —              | 8008         |
-| `InvalidTokenAccount`               | —              | 8009         |
-| `UnsupportedTokenExtension`         | —              | 8010         |
-| `InvalidFillPayer`                  | —              | 8011         |
-| `InvalidFillStatusAccount`          | —              | 8012         |
-| `FillCommitmentMismatch`            | —              | 8013         |
-| `FillOutputAmountTooLow`            | —              | 8014         |
+| `InvalidTokenAccount`               | —              | 8008         |
+| `UnsupportedTokenExtension`         | —              | 8009         |
+| `InvalidFillPayer`                  | —              | 8010         |
+| `InvalidFillStatusAccount`          | —              | 8011         |
+| `FillCommitmentMismatch`            | —              | 8012         |
+| `FillOutputAmountTooLow`            | —              | 8013         |
+
+V5 mint ownership and unpacking failures return `InvalidMint` (7006). Token-2022 extension-list parsing failures,
+including extension types unknown to the linked library, and recognized extensions outside the allowlist return
+`UnsupportedTokenExtension` (8009). Actual token-account ownership, unpacking, mint, and authority failures retain
+`InvalidTokenAccount` (8008). The supported-extension allowlist is unchanged.
 
 ## CallDataError
 
