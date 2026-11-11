@@ -38,7 +38,7 @@ pub enum SpokeError {
     InvalidExclusiveRelayer,
     #[msg("Invalid output token!")]
     InvalidOutputToken,
-    // SVM specific errors (7000–7016).
+    // SVM specific errors (7000–7018).
     #[msg("Only the owner can call this function!")]
     NotOwner = 1000,
     #[msg("The fill deadline has not passed!")]
@@ -73,6 +73,10 @@ pub enum SpokeError {
     InvalidATACreationAccounts,
     #[msg("Invalid delegate PDA!")]
     InvalidDelegatePda,
+    #[msg("Invalid program data account!")]
+    InvalidProgramData,
+    #[msg("Only the program upgrade authority can initialize!")]
+    NotUpgradeAuthority,
     // Across V5 adapter specific errors (8000–8013).
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat = 2000,

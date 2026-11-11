@@ -1,16 +1,25 @@
-import { BN } from "@anchor-lang/core";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { BN, workspace } from "@anchor-lang/core";
+import { Keypair, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { assert } from "chai";
+import { randomBytes } from "crypto";
 import { common } from "./SvmSpoke.common";
 import { readEventsUntilFound } from "../../src/svm/web3-v1";
 
-const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
+const { provider, program, programData, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
 describe("svm_spoke.ownership", () => {
   const nonOwner = Keypair.generate();
   const newOwner = Keypair.generate();
   const newCrossDomainAdmin = Keypair.generate();
   let state: PublicKey;
+
+  before(async () => {
+    await provider.sendAndConfirm(
+      new Transaction().add(
+        SystemProgram.transfer({ fromPubkey: owner, toPubkey: nonOwner.publicKey, lamports: 10_000_000 })
+      )
+    );
+  });
 
   beforeEach(async () => {
     ({ state } = await initializeState());
@@ -31,6 +40,7 @@ describe("svm_spoke.ownership", () => {
 
     // Fetch the updated state
     const stateData = await program.account.state.fetch(state);
+    assertSE(stateData.owner, owner, "Upgrade authority becomes the initial owner");
 
     // Assert other properties as needed
     Object.keys(initialState).forEach((key) => {
@@ -42,6 +52,39 @@ describe("svm_spoke.ownership", () => {
       );
     });
   });
+
+  for (const substituteProgramData of [false, true]) {
+    it(`Rejects initialization with ${substituteProgramData ? "another program's ProgramData" : "an unauthorized signer"}`, async () => {
+      const seed = new BN(randomBytes(8));
+      const [freshState] = PublicKey.findProgramAddressSync(
+        [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
+        program.programId
+      );
+      // This is valid loader-owned ProgramData with the same upgrade authority, but for another program.
+      const [foreignProgramData] = PublicKey.findProgramAddressSync(
+        [workspace.SponsoredCctpSrcPeriphery.programId.toBuffer()],
+        new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+      );
+      try {
+        await program.methods
+          .initialize(seed, 0, new BN(420), 0, crossDomainAdmin, 3600, 14400)
+          .accountsPartial({
+            state: freshState,
+            signer: substituteProgramData ? owner : nonOwner.publicKey,
+            programData: substituteProgramData ? foreignProgramData : programData,
+          })
+          .signers(substituteProgramData ? [] : [nonOwner])
+          .rpc();
+        assert.fail("Unauthorized initialization should fail");
+      } catch (err: any) {
+        assert.equal(err.error?.errorCode?.code, substituteProgramData ? "InvalidProgramData" : "NotUpgradeAuthority");
+      }
+      assert.isNull(await provider.connection.getAccountInfo(freshState));
+      // The failed attempt must leave the state PDA available to the authorized initializer.
+      await initializeState(seed);
+      assertSE((await program.account.state.fetch(freshState)).owner, owner, "Owner remains the upgrade authority");
+    });
+  }
 
   it("Pauses and unpauses deposits", async () => {
     assert.isFalse((await program.account.state.fetch(state)).pausedDeposits, "Deposits should not be paused");

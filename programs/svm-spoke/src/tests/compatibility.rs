@@ -19,6 +19,8 @@ fn custom_error_ranges_are_stable() {
     assert_eq!(u32::from(SvmError::CanOnlyCloseFillStatusPdaIfFillDeadlinePassed), 7_001);
     assert_eq!(u32::from(SvmError::NotRelayer), 7_002);
     assert_eq!(u32::from(SvmError::InvalidDelegatePda), 7_016);
+    assert_eq!(u32::from(SvmError::InvalidProgramData), 7_017);
+    assert_eq!(u32::from(SvmError::NotUpgradeAuthority), 7_018);
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 8_000);
     assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 8_006);
     assert_eq!(u32::from(V5Error::InvalidAmountBips), 8_007);

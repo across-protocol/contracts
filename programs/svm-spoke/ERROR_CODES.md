@@ -1,8 +1,8 @@
 # Spoke runtime error-code migration
 
 This release assigns distinct runtime error ranges to `svm_spoke`. **Existing `CommonError` codes are unchanged.**
-`SvmError` moves from 6000–6018 to 7000–7016 after unused variants are removed; `CallDataError` moves from
-6000–6006 to 9000–9006.
+`SvmError` moves from 6000–6018 to 7000–7018 after unused variants are removed and initialization checks are added;
+`CallDataError` moves from 6000–6006 to 9000–9006.
 The compatibility baseline is the deployed release
 [`v5.0.12-beta.1` (`d8da3000`)](https://github.com/across-protocol/contracts/blob/d8da3000f1aba2593e712a9942a3249bf8e8205b/programs/svm-spoke/src/error.rs),
 not intermediate PRs in this undeployed stack. V5 errors are new relative to that baseline. A dash means the
@@ -19,7 +19,7 @@ Use the mapping for the program version being queried. Historical transaction er
 do not relabel them using the new table. Legacy
 numbers overlap across enums, so a number alone cannot identify a historical error. Runtime log names distinguish
 the original enums. Anchor 1.1.2 uses one `SpokeError` enum with explicit range boundaries and retains
-the old group names as Rust aliases. Its generated IDL now contains all 54 errors with their correct runtime
+the old group names as Rust aliases. Its generated IDL now contains all 56 errors with their correct runtime
 codes. Older Anchor 0.31.1 IDLs were incomplete and did not reflect the explicit offsets; use the mappings
 below when decoding historical errors.
 
@@ -76,12 +76,17 @@ These slots must never be emitted, removed, or reused. Keeping them in place pre
 | `InvalidProductionSeed`                         | 6015           | 7014         |
 | `InvalidATACreationAccounts`                    | 6016           | 7015         |
 | `InvalidDelegatePda`                            | 6017           | 7016         |
+| `InvalidProgramData`                            | —              | 7017         |
+| `NotUpgradeAuthority`                           | —              | 7018         |
 | `InconsistentOptionalParameters`                | 6018           | removed      |
 
 The CCTP V2 migration replaces `ExceededPendingBridgeAmount` with `NonZeroAmountToReturn`, which rejects
 relayer refund leaves that return tokens to the HubPool. V4 entrypoint retirement removes `InvalidRelayHash`
-and `InconsistentOptionalParameters`; neither has a remaining construction site. The final 7000–7016 mapping
+and `InconsistentOptionalParameters`; neither has a remaining construction site. The final 7000–7018 mapping
 includes these removals. Intermediate stack assignments were never deployed and are not compatibility constraints.
+
+Fresh-deployment initialization adds `InvalidProgramData` (7017) and `NotUpgradeAuthority` (7018), preserving all
+existing assignments.
 
 ## V5Error
 

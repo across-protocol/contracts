@@ -405,10 +405,10 @@ legacy range, and V5 errors are new in this release. The [runtime-code mapping](
 release with deployed `v5.0.12-beta.1`, including removed variants and reserved slow-fill slots. V4 retirement removes
 `InvalidRelayHash`, `InconsistentOptionalParameters`, `V5FillOnly`, and `LegacyFillMessageUnsupported`, plus their
 orphaned message-validation helpers. Existing `CommonError` assignments remain 6000–6015; the final SVM range is
-7000–7016. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
+7000–7018. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
 Anchor 1.1.2 requires one IDL error enum. `SpokeError` preserves these runtime ranges using explicit
-discriminants; the former group names remain Rust aliases. The generated IDL now includes all 54 errors
+discriminants; the former group names remain Rust aliases. The generated IDL now includes all 56 errors
 with the correct runtime codes. Historical Anchor 0.31.1 IDLs were incomplete and ignored the custom
 offsets, so historical decoding still requires the version-appropriate runtime-code mapping.
 
