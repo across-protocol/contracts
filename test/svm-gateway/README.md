@@ -203,6 +203,16 @@ The [V4-to-V5 coverage inventory](V4_COVERAGE.md) maps every deleted deposit/fil
 including guarded Token-2022 funding, native SOL wrapping, vault/ATA provisioning and two external fills in one
 transaction. Retired selector, sequential-ID and callback semantics are identified separately.
 
+Production destination fills must follow the
+[fill funding requirement](../../programs/svm-spoke/V5_ADAPTER_SPEC.md#fill-funding-authorization): fund within the
+fill transaction through `TransferFrom`, signed by `Submitter` or `LocalFundingSigner` after checking the complete
+relay against the source deposit and validating both repayment fields. Advance StepDelegate approvals, prefunded
+credits, and shared-vault balances do not bind that JIT data and must not supply fill principal for permissionless
+submission. The CPI-guarded StepDelegate fill case tests token-program mechanics, and fixtures that seed the vault
+test adapter behavior; neither establishes safe production funding authorization. StepDelegate and prefunded
+**source deposits** are separate from destination fill funding. Prefunded chaining after an already-recorded,
+relayer-funded fill likewise does not let a later swapper choose that fill's repayment.
+
 The suite covers StepDelegate and prefunded source deposits, standard deposit identities and witnesses, external and
 in-place destination delivery, first-fill-wins siblings, root mismatch and reuse, account/dispatch rejection, payer
 funding/reclaim/withdrawal, and downstream rollback. Deposit and fill approval failures are checked against the SPL

@@ -246,6 +246,33 @@ transfer, and event atomically.
 
 ## Enabled destination-fill behavior
 
+### Fill funding authorization
+
+A destination fill must be funded within its own transaction by a signer using Gateway `TransferFrom` with
+`FundingAuthority::Submitter` or `FundingAuthority::LocalFundingSigner`. Before signing, the funding signer must
+verify the complete `V5FillJit.relay_data` against the intended source deposit and validate `repayment_chain_id` and
+`repayment_address`. The signature authorizes that execution's JIT payload, including when supplied through a
+content-addressed Gateway parameter buffer. A separate broadcaster is supported when the funder co-signs as
+`LocalFundingSigner`.
+
+`V5FillInput` commits only recipient, output token, and minimum output amount. The adapter also checks the live
+step witness, deadlines, and exclusivity, but does not authenticate the rest of the relay against an origin-chain
+deposit or bind repayment to the funder. `FilledRelay.relayer` is the JIT `repayment_address`, not necessarily the
+submitter or funding signer. These are integration requirements; the Spoke adapter does not enforce the Gateway
+funding mode.
+
+Do not authorize fill principal ahead of time through `StepDelegateTransferFrom`, a prefunded credit released by a
+permissionless leaf, or funds left in the shared Gateway vault. A step-delegate approval binds step, mint, deadline,
+and amount, but not the full relay or repayment data. Another submitter can spend those funds using fabricated relay
+data that satisfies the committed bounds but matches no real deposit, so that fill cannot earn reimbursement. The
+intended deposit remains available for a valid fill. Alternatively, another submitter can redirect repayment on the
+real relay once exclusivity permits. Source-deposit funding through StepDelegate or prefunded credits remains a separate flow.
+The `v5_fill_delegate` approval from the Gateway vault to the Spoke is still required; it does not replace the
+funder's transaction signature. Likewise, the submitter's standing `v5_fill_payer` float pays only fill-status rent,
+not fill principal.
+
+### Fill execution
+
 Fill mode strictly decodes the JIT relay and repayment data, binds the recipient, output mint, minimum amount, and
 exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
@@ -399,7 +426,10 @@ The [real-Gateway suite](../../test/svm-gateway/README.md) pins and exercises a 
 It covers one fill and one committed swap, not arbitrary JIT routes or aggregate fills. Production builders must
 bind the complete destination outcome to every matching relay, validate venue instruction/version compatibility,
 and retain any auction winner and bid requirements outside a JIT swap window. Separate relayer/swapper executions
-can use prefunded chaining; they are distinct from this atomic fill-and-swap fixture.
+can park proceeds after a transaction funded and signed by the relayer records the Across fill and repayment.
+A later swapper may release those proceeds for downstream delivery; this does not authorize prefunding an
+unrecorded fill for another submitter to choose its relay or repayment data. Such chaining is distinct from this
+atomic fill-and-swap fixture and must satisfy the [fill funding requirement](#fill-funding-authorization).
 
 ### Deployment sequencing
 

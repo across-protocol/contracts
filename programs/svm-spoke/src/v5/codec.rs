@@ -94,6 +94,7 @@ pub struct V5FillInput {
     pub min_output_amount: u64,
 }
 
+/// The funder must validate the relay against the source deposit and both repayment fields before signing the fill tx.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V5FillJit {
     pub relay_data: RelayData,
