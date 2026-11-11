@@ -167,6 +167,12 @@ This delivery obligation is shared with EVM. API builders and relayers must port
 conformance cases before enabling SVM routes. This test lane alone does not enable a production route or require
 new aggregation support.
 
+Operators must provision the fill payer's standing float for planned fill-status rent plus the payer PDA's own
+rent-exempt reserve (`Rent::minimum_balance(0)`), replenishing it before fills consume that reserve. A fill that
+leaves a nonzero payer balance below the reserve fails under Solana's runtime rent rules. Do not rely on a fill
+draining the float exactly: an unsolicited lamport donation can turn that drain into a failing sub-rent remainder.
+When ceasing operations, use `withdraw_v5_fill_payer(u64::MAX)` to withdraw the live balance.
+
 Fill-status expiry reclaim is permissionless and closes back to the submitter-scoped payer PDA, replenishing its
 standing float. Only that submitter may withdraw the float to itself. Partial withdrawals remain subject to Solana's
 runtime rent-state rules, while `u64::MAX` withdraws the live balance. This also relaxes `close_fill_pda` for existing
@@ -240,6 +246,33 @@ transfer, and event atomically.
 
 ## Enabled destination-fill behavior
 
+### Fill funding authorization
+
+A destination fill must be funded within its own transaction by a signer using Gateway `TransferFrom` with
+`FundingAuthority::Submitter` or `FundingAuthority::LocalFundingSigner`. Before signing, the funding signer must
+verify the complete `V5FillJit.relay_data` against the intended source deposit and validate `repayment_chain_id` and
+`repayment_address`. The signature authorizes that execution's JIT payload, including when supplied through a
+content-addressed Gateway parameter buffer. A separate broadcaster is supported when the funder co-signs as
+`LocalFundingSigner`.
+
+`V5FillInput` commits only recipient, output token, and minimum output amount. The adapter also checks the live
+step witness, deadlines, and exclusivity, but does not authenticate the rest of the relay against an origin-chain
+deposit or bind repayment to the funder. `FilledRelay.relayer` is the JIT `repayment_address`, not necessarily the
+submitter or funding signer. These are integration requirements; the Spoke adapter does not enforce the Gateway
+funding mode.
+
+Do not authorize fill principal ahead of time through `StepDelegateTransferFrom`, a prefunded credit released by a
+permissionless leaf, or funds left in the shared Gateway vault. A step-delegate approval binds step, mint, deadline,
+and amount, but not the full relay or repayment data. Another submitter can spend those funds using fabricated relay
+data that satisfies the committed bounds but matches no real deposit, so that fill cannot earn reimbursement. The
+intended deposit remains available for a valid fill. Alternatively, another submitter can redirect repayment on the
+real relay once exclusivity permits. Source-deposit funding through StepDelegate or prefunded credits remains a separate flow.
+The `v5_fill_delegate` approval from the Gateway vault to the Spoke is still required; it does not replace the
+funder's transaction signature. Likewise, the submitter's standing `v5_fill_payer` float pays only fill-status rent,
+not fill principal.
+
+### Fill execution
+
 Fill mode strictly decodes the JIT relay and repayment data, binds the recipient, output mint, minimum amount, and
 exact `V5_MAGIC_PREFIX || step_id` witness to the committed input, and evaluates exclusivity against the
 Gateway-attested submitter. It derives the canonical relay hash on-chain, creates the shared fill-status PDA from the
@@ -249,6 +282,9 @@ tokens, finalizes V5 fill status, and constructs the canonical events. The entry
 and fill modules, each owning its execution and account loading. Both loaders use `V5TokenAccounts::load` in
 `instructions/v5_adapter/token.rs` to validate the mint, token program, and canonical Gateway vault before their
 branch-specific recipient and delegate checks.
+Both handlers use `v5::codec::v5_witness` to construct the canonical `V5_MAGIC_PREFIX || step_id` message.
+Deposits emit it using `dst_step_id`; fills compare the entire relay message against the current step's witness,
+rejecting wrong prefixes, wrong steps, truncation, and trailing bytes without changing the wire format.
 When the committed fill recipient is `GATEWAY_VAULT_AUTHORITY`, the fill loader reuses that validated writable account
 instead of deriving, finding, and parsing the same ATA again. This reuse is confined to account loading before any
 CPI; external recipient validation and the token program's self-transfer checks remain unchanged.
@@ -372,7 +408,7 @@ orphaned message-validation helpers. Existing `CommonError` assignments remain 6
 7000–7018. Intermediate undeployed stack values are not compatibility constraints. Tests pin the range endpoints
 and the deployed slow-fill slots retained to keep later `CommonError` assignments unchanged.
 Anchor 1.1.2 requires one IDL error enum. `SpokeError` preserves these runtime ranges using explicit
-discriminants; the former group names remain Rust aliases. The generated IDL now includes all 57 errors
+discriminants; the former group names remain Rust aliases. The generated IDL now includes all 56 errors
 with the correct runtime codes. Historical Anchor 0.31.1 IDLs were incomplete and ignored the custom
 offsets, so historical decoding still requires the version-appropriate runtime-code mapping.
 
@@ -393,7 +429,10 @@ The [real-Gateway suite](../../test/svm-gateway/README.md) pins and exercises a 
 It covers one fill and one committed swap, not arbitrary JIT routes or aggregate fills. Production builders must
 bind the complete destination outcome to every matching relay, validate venue instruction/version compatibility,
 and retain any auction winner and bid requirements outside a JIT swap window. Separate relayer/swapper executions
-can use prefunded chaining; they are distinct from this atomic fill-and-swap fixture.
+can park proceeds after a transaction funded and signed by the relayer records the Across fill and repayment.
+A later swapper may release those proceeds for downstream delivery; this does not authorize prefunding an
+unrecorded fill for another submitter to choose its relay or repayment data. Such chaining is distinct from this
+atomic fill-and-swap fixture and must satisfy the [fill funding requirement](#fill-funding-authorization).
 
 ### Deployment sequencing
 
@@ -431,8 +470,10 @@ Before deploying V4 entrypoint retirement and the error-code migration:
    already-emitted V5 relay hashes before enablement.
 4. Inspect off-chain consumers for hardcoded numeric errors and update affected maps before upgrading: `SvmError`
    moves from 6000 to 7000 and `CallDataError` from 6000 to 9000; existing `CommonError` codes are unchanged.
-   Earlier undeployed V5 integrations must use the final 8000 range. Consumers matching runtime log names need no
-   renumbering change. Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
+   Removing the unused, undeployed `UnsupportedMode` compacts V5 errors from 8000–8014 to 8000–8013.
+   Consumers matching runtime log names need no renumbering change, but mint validation now distinguishes
+   `InvalidMint` and `UnsupportedTokenExtension` from actual `InvalidTokenAccount` failures.
+   Use the [migration table](ERROR_CODES.md), including its historical-error guidance. Audit
    numeric maps by inspection: a stale 6xxx mapping can silently mislabel a preserved Common error, so waiting for
    an observable failure is insufficient. Complete this coordination before deployment, including non-callback paths.
 5. Publish the updated IDL and generated clients with the audited V5 release under a new package version in the

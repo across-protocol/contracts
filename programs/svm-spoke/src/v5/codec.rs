@@ -1,8 +1,20 @@
 use anchor_lang::prelude::*;
 
-use crate::{common::RelayData, constants::BIPS_DENOMINATOR, error::V5Error};
+use crate::{
+    common::RelayData,
+    constants::{BIPS_DENOMINATOR, V5_MAGIC_PREFIX},
+    error::V5Error,
+};
 
 pub const V5_SIGNATURE_LEN: usize = 65;
+
+/// Canonical relay message binding a V5 deposit or fill to its destination Gateway step.
+pub fn v5_witness(step_id: [u8; 32]) -> [u8; 64] {
+    let mut witness = [0; 64];
+    witness[..32].copy_from_slice(&V5_MAGIC_PREFIX);
+    witness[32..].copy_from_slice(&step_id);
+    witness
+}
 
 /// Version 1 of the Gateway-attested context prepended to every adapter call.
 ///
@@ -94,6 +106,7 @@ pub struct V5FillInput {
     pub min_output_amount: u64,
 }
 
+/// The funder must validate the relay against the source deposit and both repayment fields before signing the fill tx.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct V5FillJit {
     pub relay_data: RelayData,

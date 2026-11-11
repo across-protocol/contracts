@@ -3,13 +3,13 @@ use anchor_spl::{associated_token::get_associated_token_address_with_program_id,
 use solana_keccak_hasher as keccak;
 
 use crate::{
-    constants::{GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE, V5_MAGIC_PREFIX},
+    constants::{GATEWAY_VAULT_AUTHORITY, V5_FILL_DELEGATE},
     error::{CommonError, V5Error},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     utils::{get_current_time, get_relay_hash},
     v5::{
         accounts::find_v5_account,
-        codec::{decode_strict, GatewayContextV1, V5FillInput, V5FillJit},
+        codec::{decode_strict, v5_witness, GatewayContextV1, V5FillInput, V5FillJit},
         fill_status::{create_v5_fill_status_account, V5FillStatusPdas},
         transfer::{transfer_from, V5TransferDelegate},
     },
@@ -34,9 +34,7 @@ pub(super) fn execute_v5_fill<'info>(
     require!(
         relay.recipient == fill_input.recipient
             && relay.output_token == fill_input.output_token
-            && relay.message.len() == 64
-            && relay.message[..32] == V5_MAGIC_PREFIX
-            && relay.message[32..] == ctx_values.step_id,
+            && relay.message[..] == v5_witness(ctx_values.step_id),
         V5Error::FillCommitmentMismatch
     );
     require!(relay.output_amount >= fill_input.min_output_amount, V5Error::FillOutputAmountTooLow);
@@ -245,6 +243,60 @@ mod tests {
                 assert_eq!(loaded.transfer.authority.key(), V5_FILL_DELEGATE);
                 assert_eq!(loaded.mint_decimals, 6);
                 assert_eq!(loaded.token_program.key(), token_program);
+            }
+        }
+    }
+
+    #[test]
+    fn shared_token_loader_reports_invalid_mints() {
+        for token_program in [anchor_spl::token::ID, anchor_spl::token_2022::ID] {
+            for malformed in [false, true] {
+                let (input, mut accounts) = fixture(token_program, true);
+                if malformed {
+                    accounts[1] = account(input.output_token, token_program, vec![0; 3], false);
+                } else {
+                    accounts[1].owner = &anchor_lang::system_program::ID;
+                }
+                match V5TokenAccounts::load(&accounts, &input.output_token).err().unwrap() {
+                    anchor_lang::error::Error::AnchorError(error) => {
+                        assert_eq!(error.error_name, "InvalidMint");
+                        assert_eq!(error.error_code_number, 7_006);
+                    }
+                    error => panic!("{error}"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn shared_token_loader_classifies_known_and_unknown_extensions() {
+        use anchor_spl::token_2022::spl_token_2022::extension::{AccountType, ExtensionType};
+
+        // The unknown type simulates an extension introduced after our linked Token-2022 library.
+        for (extension, length, supported) in [
+            (ExtensionType::MintCloseAuthority as u16, 32, true),
+            (ExtensionType::TransferHook as u16, 64, false),
+            (u16::MAX, 0, false),
+        ] {
+            let (input, mut accounts) = fixture(anchor_spl::token_2022::ID, true);
+            let mut data = accounts[1].try_borrow_data().unwrap().to_vec();
+            data.resize(Account::LEN, 0);
+            data.push(AccountType::Mint as u8);
+            data.extend(extension.to_le_bytes());
+            data.extend((length as u16).to_le_bytes());
+            data.resize(data.len() + length, 0);
+            accounts[1] = account(input.output_token, anchor_spl::token_2022::ID, data, false);
+            let result = V5TokenAccounts::load(&accounts, &input.output_token);
+            if supported {
+                assert_eq!(result.unwrap().mint_decimals, 6);
+            } else {
+                match result.err().unwrap() {
+                    anchor_lang::error::Error::AnchorError(error) => {
+                        assert_eq!(error.error_name, "UnsupportedTokenExtension");
+                        assert_eq!(error.error_code_number, 8_009);
+                    }
+                    error => panic!("{error}"),
+                }
             }
         }
     }

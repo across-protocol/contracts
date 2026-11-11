@@ -242,8 +242,17 @@ describe("svm_spoke V5 destination fill", () => {
       "InvalidWireFormat"
     );
 
-    relay = { ...fresh, message: Buffer.concat([V5_PREFIX, Buffer.alloc(32, 9)]) };
-    await expectError(execute(), "FillCommitmentMismatch");
+    for (const message of [
+      Buffer.concat([V5_PREFIX, Buffer.alloc(32, 9)]),
+      Buffer.concat([Buffer.alloc(32), stepId]),
+      Buffer.alloc(0),
+      fresh.message.subarray(0, 63),
+      Buffer.concat([fresh.message, Buffer.from([0])]),
+    ]) {
+      relay = { ...fresh, message };
+      await expectError(execute(), "FillCommitmentMismatch");
+      assert.isNull(await connection.getAccountInfo(fillStatus()));
+    }
     relay = { ...fresh, exclusiveRelayer: Keypair.generate().publicKey };
     await expectError(execute(), "NotExclusiveRelayer");
     relay = { ...fresh, exclusiveRelayer: PublicKey.default, fillDeadline: 0, exclusivityDeadline: 0 };

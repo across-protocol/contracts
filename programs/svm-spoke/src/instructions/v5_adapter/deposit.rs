@@ -2,13 +2,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token_interface::TransferChecked};
 
 use crate::{
-    constants::{GATEWAY_PROGRAM_ID, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_DEPOSIT_DELEGATE, V5_MAGIC_PREFIX},
+    constants::{GATEWAY_PROGRAM_ID, MAX_EXCLUSIVITY_PERIOD_SECONDS, V5_DEPOSIT_DELEGATE},
     error::CommonError,
     event::FundsDeposited,
     utils::get_current_time,
     v5::{
         accounts::find_v5_account,
-        codec::{decode_strict, resolve_v5_input_amount, AcrossDepositInput, GatewayContextV1},
+        codec::{decode_strict, resolve_v5_input_amount, v5_witness, AcrossDepositInput, GatewayContextV1},
         jit::{derive_v5_deposit_id, resolve_v5_deposit_modifications},
         transfer::{transfer_from, V5TransferDelegate},
     },
@@ -82,7 +82,7 @@ pub(super) fn execute_v5_deposit<'info>(
         depositor: params.depositor,
         recipient: params.recipient,
         exclusive_relayer,
-        message: [V5_MAGIC_PREFIX, deposit.dst_step_id].concat(),
+        message: v5_witness(deposit.dst_step_id).to_vec(),
     });
     Ok(())
 }

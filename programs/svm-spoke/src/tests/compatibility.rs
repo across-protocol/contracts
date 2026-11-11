@@ -24,8 +24,12 @@ fn custom_error_ranges_are_stable() {
     assert_eq!(u32::from(V5Error::InvalidWireFormat), 8_000);
     assert_eq!(u32::from(V5Error::ParamModificationNotAnImprovement), 8_006);
     assert_eq!(u32::from(V5Error::InvalidAmountBips), 8_007);
-    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 8_012);
-    assert_eq!(u32::from(V5Error::FillOutputAmountTooLow), 8_014);
+    assert_eq!(u32::from(V5Error::InvalidTokenAccount), 8_008);
+    assert_eq!(u32::from(V5Error::UnsupportedTokenExtension), 8_009);
+    assert_eq!(u32::from(V5Error::InvalidFillPayer), 8_010);
+    assert_eq!(u32::from(V5Error::InvalidFillStatusAccount), 8_011);
+    assert_eq!(u32::from(V5Error::FillCommitmentMismatch), 8_012);
+    assert_eq!(u32::from(V5Error::FillOutputAmountTooLow), 8_013);
     assert_eq!(u32::from(CallDataError::InvalidSelector), 9_000);
     assert_eq!(u32::from(CallDataError::UnsupportedSelector), 9_006);
 }

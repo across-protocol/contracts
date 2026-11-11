@@ -77,7 +77,7 @@ pub enum SpokeError {
     InvalidProgramData,
     #[msg("Only the program upgrade authority can initialize!")]
     NotUpgradeAuthority,
-    // Across V5 adapter specific errors (8000–8014).
+    // Across V5 adapter specific errors (8000–8013).
     #[msg("Malformed Across V5 wire data!")]
     InvalidWireFormat = 2000,
     #[msg("Invalid Across V5 parameter modification signature!")]
@@ -94,8 +94,6 @@ pub enum SpokeError {
     ParamModificationNotAnImprovement,
     #[msg("Across V5 input amount bips exceed the denominator!")]
     InvalidAmountBips,
-    #[msg("Across V5 adapter mode is not enabled!")]
-    UnsupportedMode,
     #[msg("Invalid Across V5 token account!")]
     InvalidTokenAccount,
     #[msg("Unsupported Across V5 token extension!")]
