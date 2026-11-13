@@ -78,6 +78,7 @@
   "dependencies": {
     "@across-protocol/constants": "^3.1.124",
     "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/borsh": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.8.0",
     "@ethersproject/bytes": "5.8.0",
