@@ -1,16 +1,15 @@
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { BigNumber } from "ethers";
 
 /**
  * Relayer Refund Interfaces
  */
 export interface RelayerRefundLeaf {
   isSolana: boolean;
-  amountToReturn: BigNumber;
-  chainId: BigNumber;
-  refundAmounts: BigNumber[];
-  leafId: BigNumber;
+  amountToReturn: bigint;
+  chainId: bigint;
+  refundAmounts: bigint[];
+  leafId: bigint;
   l2TokenAddress: string;
   refundAddresses: string[];
 }

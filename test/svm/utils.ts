@@ -8,7 +8,7 @@ import {
 } from "@solana/kit";
 import { AccountMeta, Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import {
   AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
@@ -80,7 +80,7 @@ export function buildRelayerRefundMerkleTree({
   svmRelayers?: PublicKey[];
   evmRelayers?: string[];
   evmTokenAddress?: string;
-  evmRefundAmounts?: BigNumber[];
+  evmRefundAmounts?: bigint[];
   svmRefundAmounts?: BN[];
 }): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
   const relayerRefundLeaves: RelayerRefundLeafType[] = [];
@@ -98,12 +98,12 @@ export function buildRelayerRefundMerkleTree({
   const createEvmLeaf = (index: number) =>
     ({
       isSolana: false,
-      leafId: BigNumber.from(index),
-      chainId: BigNumber.from(chainId),
-      amountToReturn: BigNumber.from(0),
+      leafId: BigInt(index),
+      chainId: BigInt(chainId),
+      amountToReturn: 0n,
       l2TokenAddress: evmTokenAddress ?? randomAddress(),
       refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
-      refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
+      refundAmounts: evmRefundAmounts || [randomBigInt(), randomBigInt()],
     }) as RelayerRefundLeaf;
 
   if (mixLeaves) {

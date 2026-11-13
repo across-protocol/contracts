@@ -1,6 +1,6 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
+import { hexToBytes, isAddress, isHex, pad } from "viem";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
@@ -29,16 +29,11 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
 }
 
 /**
- * Converts a 32-byte Uint8Array to a BigNumber.
+ * Converts a 0x-prefixed, even-length hex string to bytes. Throws on malformed input.
  */
-export function u8Array32ToBigNumber(u8Array: Uint8Array | number[]): BigNumber {
-  const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
-  if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
-    const hexString = "0x" + Buffer.from(u8Array).toString("hex");
-    return BigNumber.from(hexString);
-  }
-
-  throw new Error("Input must be a Uint8Array or an array of 32 numbers.");
+export function hexToBytesStrict(hex: string): Uint8Array {
+  if (!isHex(hex) || hex.length % 2 !== 0) throw new Error(`Invalid hex string: ${hex}`);
+  return hexToBytes(hex);
 }
 
 /**
@@ -53,7 +48,7 @@ export function strPublicKey(publicKey: PublicKey): string {
  */
 export const evmAddressToPublicKey = (address: string): PublicKey => {
   const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
-  return new PublicKey(ethers.utils.arrayify(bytes32Address));
+  return new PublicKey(hexToBytesStrict(bytes32Address));
 };
 
 /**
@@ -97,9 +92,9 @@ export const fromBytes32ToAddress = (input: string): string => {
  * Converts EVM or SVM address to a bytes32 string.
  */
 export const addressOrBase58ToBytes32 = (input: string): string => {
-  if (ethers.utils.isAddress(input)) {
-    return ethers.utils.hexZeroPad(input, 32);
-  } else if (ethers.utils.isHexString(input, 32)) {
+  if (isAddress(input, { strict: false })) {
+    return pad(input, { size: 32 });
+  } else if (isHex(input) && input.length === 66) {
     return input;
   } else {
     return fromBase58ToBytes32(input);

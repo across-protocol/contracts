@@ -1,18 +1,14 @@
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
-import { BigNumber } from "@ethersproject/bignumber";
-import { ethers } from "ethers";
 import { DepositData } from "../../types/svm";
 import { PublicKey } from "@solana/web3.js";
 import { serialize } from "borsh";
-import { keccak256 } from "ethers/lib/utils";
+import { keccak256, stringToBytes } from "viem";
 
 /**
  * Returns the chainId for a given solana cluster.
  */
-export const getSolanaChainId = (cluster: "devnet" | "mainnet"): BigNumber => {
-  return BigNumber.from(
-    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFF")
-  );
+export const getSolanaChainId = (cluster: "devnet" | "mainnet"): bigint => {
+  return BigInt(keccak256(stringToBytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFF");
 };
 
 /**

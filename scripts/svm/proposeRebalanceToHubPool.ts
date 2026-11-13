@@ -68,7 +68,7 @@ async function proposeRebalanceToHubPool(): Promise<void> {
 
   // If evmChainId is mainnet, use mainnet solana cluster. Otherwise, use devnet.
   const solanaCluster = evmChainId === CHAIN_IDs.MAINNET ? "mainnet" : "devnet";
-  const solanaChainId = getSolanaChainId(solanaCluster);
+  const solanaChainId = BigNumber.from(getSolanaChainId(solanaCluster));
   const svmUsdc = evmChainId === CHAIN_IDs.MAINNET ? SOLANA_USDC_MAINNET : SOLANA_USDC_DEVNET;
 
   // Check there are no active proposals.
