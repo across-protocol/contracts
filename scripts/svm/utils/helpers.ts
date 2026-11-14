@@ -24,7 +24,7 @@ export const formatUsdc = (amount: BigNumber): string => {
   return ethers.utils.formatUnits(amount, 6);
 };
 
-export function constructEmptyPoolRebalanceTree(chainId: BigNumber, groupIndex: number) {
+export function constructEmptyPoolRebalanceTree(chainId: bigint, groupIndex: number) {
   const poolRebalanceLeaf = {
     chainId,
     groupIndex: BigNumber.from(groupIndex),
@@ -46,7 +46,7 @@ export function constructEmptyPoolRebalanceTree(chainId: BigNumber, groupIndex: 
 
 export const constructSimpleRebalanceTreeToHubPool = (
   netSendAmount: BigNumber,
-  solanaChainId: BigNumber,
+  solanaChainId: bigint,
   svmUsdc: PublicKey
 ) => {
   const relayerRefundLeaves: RelayerRefundLeafSolana[] = [];

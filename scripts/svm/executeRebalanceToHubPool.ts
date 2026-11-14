@@ -119,7 +119,7 @@ async function executeRebalanceToHubPool(): Promise<void> {
 
   // Resolve Solana cluster, EVM chain ID, Iris API URL and USDC addresses.
   const solanaCluster = isDevnet ? "devnet" : "mainnet";
-  const solanaChainId = BigNumber.from(getSolanaChainId(solanaCluster));
+  const solanaChainId = getSolanaChainId(solanaCluster);
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
   const supportedEvmChainId = isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
   const evmChainId = (await ethersProvider.getNetwork()).chainId;
@@ -305,7 +305,7 @@ function getRootBundlePda(rootBundleId: number, seed: BN) {
   );
 }
 
-async function executeRootBalanceOnHubPool(solanaChainId: BigNumber) {
+async function executeRootBalanceOnHubPool(solanaChainId: bigint) {
   // Reconstruct the merkle tree for the pool rebalance.
   const { poolRebalanceLeaf, poolRebalanceTree } = constructEmptyPoolRebalanceTree(solanaChainId, 0);
 
