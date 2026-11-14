@@ -5,7 +5,7 @@ import { PublicKey } from "@solana/web3.js";
  * Relayer Refund Interfaces
  */
 export interface RelayerRefundLeaf {
-  isSolana: boolean;
+  isSolana: false;
   amountToReturn: bigint;
   chainId: bigint;
   refundAmounts: bigint[];
@@ -15,7 +15,7 @@ export interface RelayerRefundLeaf {
 }
 
 export interface RelayerRefundLeafSolana {
-  isSolana: boolean;
+  isSolana: true;
   amountToReturn: BN;
   chainId: BN;
   refundAmounts: BN[];

@@ -1,6 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
-import { Address, encodeAbiParameters, keccak256, parseAbiParameters } from "viem";
-import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../../types/svm";
+import { Address, encodeAbiParameters, isAddress, keccak256, parseAbiParameters } from "viem";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType, SlowFillLeaf } from "../../types/svm";
 import { serialize } from "borsh";
 
 /**
@@ -129,30 +129,35 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
 }
 
 /**
+ * Validates an EVM address for ABI encoding. Mixed-case input must carry a valid checksum.
+ */
+const toEvmAddress = (address: string): Address => {
+  if (!isAddress(address)) throw new Error(`Invalid EVM address: ${address}`);
+  return address;
+};
+
+/**
  * Hash function for relayer refund leaves.
  */
-export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeafSolana) => {
-  if (!input.isSolana) {
-    const leaf = input as RelayerRefundLeaf;
-    const encodedData = encodeAbiParameters(
-      parseAbiParameters(
-        "(uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)"
-      ),
-      [
-        {
-          leafId: leaf.leafId,
-          chainId: leaf.chainId,
-          amountToReturn: leaf.amountToReturn,
-          l2TokenAddress: leaf.l2TokenAddress as Address,
-          refundAddresses: leaf.refundAddresses as Address[],
-          refundAmounts: leaf.refundAmounts,
-        },
-      ]
-    );
-    return keccak256(encodedData);
-  } else {
-    return calculateRelayerRefundLeafHashUint8Array(input as RelayerRefundLeafSolana);
-  }
+export const relayerRefundHashFn = (input: RelayerRefundLeafType) => {
+  if (input.isSolana) return calculateRelayerRefundLeafHashUint8Array(input);
+
+  const encodedData = encodeAbiParameters(
+    parseAbiParameters(
+      "(uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)"
+    ),
+    [
+      {
+        leafId: input.leafId,
+        chainId: input.chainId,
+        amountToReturn: input.amountToReturn,
+        l2TokenAddress: toEvmAddress(input.l2TokenAddress),
+        refundAddresses: input.refundAddresses.map(toEvmAddress),
+        refundAmounts: input.refundAmounts,
+      },
+    ]
+  );
+  return keccak256(encodedData);
 };
 
 /**

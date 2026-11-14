@@ -92,7 +92,7 @@ export const fromBytes32ToAddress = (input: string): string => {
  * Converts EVM or SVM address to a bytes32 string.
  */
 export const addressOrBase58ToBytes32 = (input: string): string => {
-  if (isAddress(input, { strict: false })) {
+  if (isAddress(input)) {
     return pad(input, { size: 32 });
   } else if (isHex(input) && input.length === 66) {
     return input;

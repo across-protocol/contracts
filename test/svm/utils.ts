@@ -22,7 +22,7 @@ import {
 import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import { MerkleTree } from "../../utils/MerkleTree";
-import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
+import { RelayerRefundLeaf, RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
 export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 
@@ -85,7 +85,7 @@ export function buildRelayerRefundMerkleTree({
 }): { relayerRefundLeaves: RelayerRefundLeafType[]; merkleTree: MerkleTree<RelayerRefundLeafType> } {
   const relayerRefundLeaves: RelayerRefundLeafType[] = [];
 
-  const createSolanaLeaf = (index: number) => ({
+  const createSolanaLeaf = (index: number): RelayerRefundLeafSolana => ({
     isSolana: true,
     leafId: new BN(index),
     chainId: new BN(chainId),
@@ -95,16 +95,15 @@ export function buildRelayerRefundMerkleTree({
     refundAmounts: svmRefundAmounts || [new BN(randomBigInt(2).toString()), new BN(randomBigInt(2).toString())],
   });
 
-  const createEvmLeaf = (index: number) =>
-    ({
-      isSolana: false,
-      leafId: BigInt(index),
-      chainId: BigInt(chainId),
-      amountToReturn: 0n,
-      l2TokenAddress: evmTokenAddress ?? randomAddress(),
-      refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
-      refundAmounts: evmRefundAmounts || [randomBigInt(), randomBigInt()],
-    }) as RelayerRefundLeaf;
+  const createEvmLeaf = (index: number): RelayerRefundLeaf => ({
+    isSolana: false,
+    leafId: BigInt(index),
+    chainId: BigInt(chainId),
+    amountToReturn: 0n,
+    l2TokenAddress: evmTokenAddress ?? randomAddress(),
+    refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
+    refundAmounts: evmRefundAmounts || [randomBigInt(), randomBigInt()],
+  });
 
   if (mixLeaves) {
     let solanaIndex = 0;
