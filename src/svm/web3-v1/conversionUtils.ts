@@ -1,7 +1,7 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { keccak_256 } from "@noble/hashes/sha3";
-import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
@@ -63,11 +63,12 @@ export function strPublicKey(publicKey: PublicKey): string {
 }
 
 /**
- * Converts an EVM address to a Solana PublicKey.
+ * Converts an EVM address or a bytes32 value, with or without 0x, to a Solana PublicKey.
  */
 export const evmAddressToPublicKey = (address: string): PublicKey => {
-  const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
-  return new PublicKey(hexToBytesStrict(bytes32Address, 32));
+  const hex = address.replace(/^0x/, "");
+  if (hex.length !== 40 && hex.length !== 64) throw new Error(`Invalid EVM address or bytes32: ${address}`);
+  return new PublicKey(hexToBytesStrict(`0x${hex.padStart(64, "0")}`));
 };
 
 /**
@@ -89,6 +90,7 @@ export const publicKeyToEvmAddress = (publicKey: PublicKey | string): string => 
  */
 export const fromBase58ToBytes32 = (input: string): string => {
   const decodedBytes = anchorUtils.bytes.bs58.decode(input);
+  if (decodedBytes.length !== 32) throw new Error(`Invalid base58 bytes32: ${input}`);
   return "0x" + Buffer.from(decodedBytes).toString("hex");
 };
 

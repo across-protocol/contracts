@@ -1,6 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
-import { keccak_256 } from "@noble/hashes/sha3";
-import { bytesToHex } from "@noble/hashes/utils";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType, SlowFillLeaf } from "../../types/svm";
 import { serialize } from "borsh";
 import { isEvmAddress } from "./conversionUtils";
@@ -133,7 +133,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
 }
 
 const uint256Word = (value: bigint): string => {
-  if (value < 0n || value >= 2n ** 256n) throw new Error(`Invalid uint256: ${value}`);
+  if (typeof value !== "bigint" || value < 0n || value >= 2n ** 256n) throw new Error(`Invalid uint256: ${value}`);
   return value.toString(16).padStart(64, "0");
 };
 

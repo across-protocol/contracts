@@ -2,8 +2,8 @@ import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { DepositData } from "../../types/svm";
 import { PublicKey } from "@solana/web3.js";
 import { serialize } from "borsh";
-import { keccak_256 } from "@noble/hashes/sha3";
-import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
+import { keccak_256 } from "@noble/hashes/sha3.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 /**
  * Returns the chainId for a given solana cluster.
