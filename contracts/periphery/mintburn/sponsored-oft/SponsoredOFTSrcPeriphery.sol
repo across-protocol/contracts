@@ -115,7 +115,9 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
                 quote.signedParams.actionData
             );
 
-            IERC20(TOKEN).safeTransferFrom(msg.sender, destinationHandler, quote.signedParams.amountLD);
+            // Pull from user into this contract, then let the dst handler pull-fund in-call.
+            IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
+            IERC20(TOKEN).forceApprove(destinationHandler, quote.signedParams.amountLD);
             DstOFTHandler(payable(destinationHandler)).executeDirect(TOKEN, quote.signedParams.amountLD, composeMsg);
 
             emit SponsoredOFTDirectExecution(
