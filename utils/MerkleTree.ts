@@ -1,11 +1,11 @@
 // Inlined from @uma/common MerkleTree. Based on the Uniswap merkle-distributor implementation:
 // https://github.com/Uniswap/merkle-distributor/blob/master/src/merkle-tree.ts
-import { bytesToHex, keccak256 as keccak256Fn } from "viem";
+import { keccak_256 } from "@noble/hashes/sha3";
 
 export const EMPTY_MERKLE_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
-const bufferToHex = (buf: Buffer): string => bytesToHex(buf);
-const keccak256 = (buf: Buffer): Buffer => Buffer.from(keccak256Fn(buf, "bytes"));
+const bufferToHex = (buf: Buffer): string => "0x" + buf.toString("hex");
+const keccak256 = (buf: Buffer): Buffer => Buffer.from(keccak_256(buf));
 
 export class MerkleTree<T> {
   private readonly elements: Buffer[];

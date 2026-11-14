@@ -1,7 +1,11 @@
 import { BN } from "@coral-xyz/anchor";
-import { Address, encodeAbiParameters, isAddress, keccak256, parseAbiParameters } from "viem";
+import { keccak_256 } from "@noble/hashes/sha3";
+import { bytesToHex } from "@noble/hashes/utils";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType, SlowFillLeaf } from "../../types/svm";
 import { serialize } from "borsh";
+import { isEvmAddress } from "./conversionUtils";
+
+const keccak256 = (data: Uint8Array): string => "0x" + bytesToHex(keccak_256(data));
 
 /**
  * Calculates the relay hash from relay data and chain ID.
@@ -128,36 +132,39 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
   return keccak256(contentToHash);
 }
 
-/**
- * Validates an EVM address for ABI encoding. Mixed-case input must carry a valid checksum.
- */
-const toEvmAddress = (address: string): Address => {
-  if (!isAddress(address)) throw new Error(`Invalid EVM address: ${address}`);
-  return address;
+const uint256Word = (value: bigint): string => {
+  if (value < 0n || value >= 2n ** 256n) throw new Error(`Invalid uint256: ${value}`);
+  return value.toString(16).padStart(64, "0");
+};
+
+const addressWord = (address: string): string => {
+  if (!isEvmAddress(address)) throw new Error(`Invalid EVM address: ${address}`);
+  return address.slice(2).toLowerCase().padStart(64, "0");
 };
 
 /**
- * Hash function for relayer refund leaves.
+ * Hash function for relayer refund leaves. EVM leaves are ABI-encoded as a single
+ * tuple(uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses).
  */
 export const relayerRefundHashFn = (input: RelayerRefundLeafType) => {
   if (input.isSolana) return calculateRelayerRefundLeafHashUint8Array(input);
 
-  const encodedData = encodeAbiParameters(
-    parseAbiParameters(
-      "(uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)"
-    ),
-    [
-      {
-        leafId: input.leafId,
-        chainId: input.chainId,
-        amountToReturn: input.amountToReturn,
-        l2TokenAddress: toEvmAddress(input.l2TokenAddress),
-        refundAddresses: input.refundAddresses.map(toEvmAddress),
-        refundAmounts: input.refundAmounts,
-      },
-    ]
-  );
-  return keccak256(encodedData);
+  const { amountToReturn, chainId, refundAmounts, leafId, l2TokenAddress, refundAddresses } = input;
+  const headSize = 6n * 32n;
+  const encodedData = [
+    uint256Word(32n), // Offset to the tuple, which is dynamic.
+    uint256Word(amountToReturn),
+    uint256Word(chainId),
+    uint256Word(headSize), // Offset to refundAmounts, relative to the tuple.
+    uint256Word(leafId),
+    addressWord(l2TokenAddress),
+    uint256Word(headSize + 32n * BigInt(refundAmounts.length + 1)), // Offset to refundAddresses.
+    uint256Word(BigInt(refundAmounts.length)),
+    ...refundAmounts.map(uint256Word),
+    uint256Word(BigInt(refundAddresses.length)),
+    ...refundAddresses.map(addressWord),
+  ].join("");
+  return keccak256(Buffer.from(encodedData, "hex"));
 };
 
 /**

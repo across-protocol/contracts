@@ -1,6 +1,7 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { hexToBytes, isAddress, isHex, pad } from "viem";
+import { keccak_256 } from "@noble/hashes/sha3";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
@@ -32,8 +33,19 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
  * Converts a 0x-prefixed, even-length hex string to bytes. Throws on malformed input.
  */
 export function hexToBytesStrict(hex: string): Uint8Array {
-  if (!isHex(hex) || hex.length % 2 !== 0) throw new Error(`Invalid hex string: ${hex}`);
-  return hexToBytes(hex);
+  if (!/^0x([0-9a-fA-F]{2})*$/.test(hex)) throw new Error(`Invalid hex string: ${hex}`);
+  return Buffer.from(hex.slice(2), "hex");
+}
+
+/**
+ * Returns true for a 0x-prefixed 20-byte hex address. Mixed-case input must carry a valid EIP-55 checksum.
+ */
+export function isEvmAddress(address: string): boolean {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return false;
+  const hex = address.slice(2);
+  if (hex === hex.toLowerCase() || hex === hex.toUpperCase()) return true;
+  const hash = bytesToHex(keccak_256(utf8ToBytes(hex.toLowerCase())));
+  return [...hex].every((c, i) => c === (parseInt(hash[i], 16) >= 8 ? c.toUpperCase() : c.toLowerCase()));
 }
 
 /**
@@ -92,9 +104,9 @@ export const fromBytes32ToAddress = (input: string): string => {
  * Converts EVM or SVM address to a bytes32 string.
  */
 export const addressOrBase58ToBytes32 = (input: string): string => {
-  if (isAddress(input)) {
-    return pad(input, { size: 32 });
-  } else if (isHex(input) && input.length === 66) {
+  if (isEvmAddress(input)) {
+    return "0x" + input.slice(2).padStart(64, "0");
+  } else if (/^0x[0-9a-fA-F]{64}$/.test(input)) {
     return input;
   } else {
     return fromBase58ToBytes32(input);
