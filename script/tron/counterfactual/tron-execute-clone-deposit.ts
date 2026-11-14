@@ -224,7 +224,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log(`\nDeposit executed!`);
+  console.log("\nDeposit executed!");
   console.log(`  Clone:    ${cloneAddress}`);
   console.log(`  TX ID:    ${executeTxID}`);
   console.log(`  Tronscan: ${tronscanBase}/#/transaction/${executeTxID}`);

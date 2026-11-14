@@ -612,7 +612,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       assert.fail("Reclaim used nonce account should have failed");
     } catch (err: any) {
       assert.instanceOf(err, SendTransactionError);
-      const logs = await (err as SendTransactionError).getLogs(connection);
+      const logs = await err.getLogs(connection);
       assert.isTrue(
         logs.some((log) => log.includes("QuoteDeadlineNotPassed")),
         "Expected QuoteDeadlineNotPassed error log"
@@ -631,7 +631,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       assert.fail("Fetching closed account should have failed");
     } catch (err: any) {
       assert.instanceOf(err, Error);
-      assert.include((err as Error).message, "Account does not exist", "Expected account not found error");
+      assert.include(err.message, "Account does not exist", "Expected account not found error");
     }
 
     const rentFundLamportsAfter = await connection.getBalance(rentFund);
@@ -773,7 +773,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       assert.fail("Deposit should have failed due to amount below minimum");
     } catch (err) {
       assert.instanceOf(err, SendTransactionError);
-      const logs = await (err as SendTransactionError).getLogs(connection);
+      const logs = await err.getLogs(connection);
       assert.isTrue(
         logs.some((log) => log.includes("DepositAmountBelowMinimum")),
         "Expected DepositAmountBelowMinimum error log"
@@ -902,7 +902,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       [Buffer.from("rent_claim"), depositor.publicKey.toBuffer()],
       program.programId
     );
-    let nonce = crypto.randomBytes(32);
+    const nonce = crypto.randomBytes(32);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
 
     const quoteData: SponsoredCCTPQuote = {
@@ -925,7 +925,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       executionMode,
       actionData,
     };
-    let { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
+    const { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
 
     const depositAccounts = {
       signer: depositor.publicKey,
@@ -949,7 +949,10 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       program: program.programId,
     };
 
-    let depositIx = await program.methods.depositForBurn({ quote, signature }).accounts(depositAccounts).instruction();
+    const depositIx = await program.methods
+      .depositForBurn({ quote, signature })
+      .accounts(depositAccounts)
+      .instruction();
     await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
       messageSentEventData,
     ]);

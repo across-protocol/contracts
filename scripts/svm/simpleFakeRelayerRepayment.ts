@@ -32,7 +32,7 @@ import {
   loadExecuteRelayerRefundLeafParams,
   relayerRefundHashFn,
 } from "../../src/svm/web3-v1";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { RelayerRefundLeafType } from "../../src/types/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -210,7 +210,7 @@ async function testBundleLogic(): Promise<void> {
 
   // Execute the single leaf
   const proof = merkleTree.getProof(relayerRefundLeaf).map((p) => Array.from(p));
-  const leaf = relayerRefundLeaf as RelayerRefundLeafSolana;
+  const leaf = relayerRefundLeaf;
 
   // Derive the transferLiability PDA
   const [transferLiability] = PublicKey.findProgramAddressSync(

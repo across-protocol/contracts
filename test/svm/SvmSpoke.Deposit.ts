@@ -77,7 +77,6 @@ describe("svm_spoke.deposit", () => {
   const tokenDecimals = 6;
 
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey, tokenProgram: PublicKey;
-  let seed: BN;
 
   // Re-used between tests to simplify props.
   type DepositAccounts = {
@@ -173,7 +172,7 @@ describe("svm_spoke.deposit", () => {
   });
 
   beforeEach(async () => {
-    ({ state, seed } = await initializeState());
+    ({ state } = await initializeState());
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupInputToken();
@@ -239,8 +238,8 @@ describe("svm_spoke.deposit", () => {
     }
 
     // Test the id recovery with the conversion utils
-    assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
-    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
+    assertSE(u8Array32ToInt(event.depositId), 1, "depositId should recover to 1");
+    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), "depositId should recover to 1");
 
     // Execute the second deposit call
     const tx2 = await approvedDeposit(depositData);
@@ -254,15 +253,15 @@ describe("svm_spoke.deposit", () => {
     }
 
     // Test the id recovery with the conversion utils
-    assertSE(u8Array32ToInt(event.depositId), 2, `depositId should recover to 2`);
-    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), `depositId should recover to 2`);
+    assertSE(u8Array32ToInt(event.depositId), 2, "depositId should recover to 2");
+    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), "depositId should recover to 2");
   });
 
   it("Deposit with deadline before current time succeeds", async () => {
     const currentTime = await getCurrentTime(program, state);
 
     // Fill deadline is before current time on the contract
-    let fillDeadline = currentTime - 1; // 1 second before current time on the contract.
+    const fillDeadline = currentTime - 1; // 1 second before current time on the contract.
     depositData.fillDeadline = new BN(fillDeadline);
     depositData.quoteTimestamp = new BN(currentTime - 1); // 1 second before current time on the contract to reset.
 
@@ -383,13 +382,13 @@ describe("svm_spoke.deposit", () => {
     const depositIx = await program.methods
       .depositNow(
         depositNowData.depositor!,
-        depositNowData.recipient!,
+        depositNowData.recipient,
         depositNowData.inputToken!,
-        depositNowData.outputToken!,
+        depositNowData.outputToken,
         depositNowData.inputAmount,
         depositNowData.outputAmount,
         depositNowData.destinationChainId,
-        depositNowData.exclusiveRelayer!,
+        depositNowData.exclusiveRelayer,
         fillDeadlineOffset,
         0,
         depositNowData.message
@@ -541,18 +540,18 @@ describe("svm_spoke.deposit", () => {
     const unsafeDepositIx = await program.methods
       .unsafeDeposit(
         depositData.depositor!,
-        depositData.recipient!,
+        depositData.recipient,
         depositData.inputToken!,
-        depositData.outputToken!,
-        depositData.inputAmount!,
-        depositData.outputAmount!,
-        depositData.destinationChainId!,
-        depositData.exclusiveRelayer!,
+        depositData.outputToken,
+        depositData.inputAmount,
+        depositData.outputAmount,
+        depositData.destinationChainId,
+        depositData.exclusiveRelayer,
         forcedDepositId, // deposit nonce
         depositData.quoteTimestamp.toNumber(),
         depositData.fillDeadline.toNumber(),
         depositData.exclusivityParameter.toNumber(),
-        depositData.message!
+        depositData.message
       )
       .accounts(depositAccounts) // Assuming depositAccounts is already set up correctly
       .instruction();
@@ -677,7 +676,7 @@ describe("svm_spoke.deposit", () => {
     const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
 
     const depositTx = new Transaction().add(transferIx, createIx, approveIx, depositIx, closeIx);
-    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
+    await sendAndConfirmTransaction(connection, depositTx, [depositor]);
 
     const fVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
     assertSE(
@@ -734,7 +733,7 @@ describe("svm_spoke.deposit", () => {
     const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
 
     const depositTx = new Transaction().add(transferIx, syncIx, approveIx, depositIx);
-    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
+    await sendAndConfirmTransaction(connection, depositTx, [depositor]);
 
     const fVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
     assertSE(
