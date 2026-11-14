@@ -1,9 +1,0 @@
-node_modules
-artifacts
-cache
-coverage*
-gasReporterOutput.json
-typechain
-artifacts-zk
-cache-zk
-lib
