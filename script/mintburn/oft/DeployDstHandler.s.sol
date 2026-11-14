@@ -35,6 +35,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
         address deployer = vm.addr(deployerPrivateKey);
 
         address ioft = config.get("oft_messenger").toAddress();
+        address srcPeriphery = config.get("src_periphery").toAddress();
         address baseToken = config.get("token").toAddress();
         address oftEndpoint = address(IOAppCore(ioft).endpoint());
         require(oftEndpoint != address(0) && ioft != address(0) && baseToken != address(0), "config missing");
@@ -58,6 +59,8 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
         } else {
             console.log("WARNING: deployer is not multicallHandler admin, skipping WHITELISTED_CALLER_ROLE grant");
         }
+
+        dstOFTHandler.grantRole(dstOFTHandler.DIRECT_CALLER_ROLE(), srcPeriphery);
 
         console.log("DstOFTHandler deployed to:", address(dstOFTHandler));
 
