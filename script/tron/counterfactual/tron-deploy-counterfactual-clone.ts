@@ -82,7 +82,7 @@ async function main(): Promise<void> {
   console.log(`Predicted address: ${predictedEvm}`);
 
   // Step 2: factory.deploy (state-changing)
-  console.log("\nCalling factory.deploy...");
+  console.log(`\nCalling factory.deploy...`);
   console.log(`  Factory:      ${factoryAddress}`);
   console.log(`  Initial root: ${initialRoot}`);
   console.log(`  Salt:         ${salt}`);
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
   const deployedBase58 = tronWeb.address.fromHex("41" + log.topics[1].slice(24));
   const match = predictedEvm.toLowerCase() === deployedEvm.toLowerCase();
 
-  console.log("\nClone deployed!");
+  console.log(`\nClone deployed!`);
   console.log(`  Predicted:  ${predictedEvm}`);
   console.log(`  Deployed:   ${deployedEvm}`);
   console.log(`  Tron addr:  ${deployedBase58}`);

@@ -68,7 +68,6 @@ jobs:
           if-no-files-found: error
   lint-and-check-generated:
     name: Lint and Check Generated Files
-    needs: upload-svm-artifacts # Typed linting resolves the generated SVM clients and IDLs.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -88,10 +87,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-optional
-      - name: Download SVM artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Lint js
         shell: bash
         run: yarn lint-js

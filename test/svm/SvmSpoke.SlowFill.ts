@@ -98,7 +98,7 @@ describe("svm_spoke.slow_fill", () => {
     slowRelayLeafChainId = chainId,
     message = encodedMessage
   ) => {
-    // TODO: verify that the leaf structure created here is equivalent to the one created by the EVM logic. I think
+    //TODO: verify that the leaf structure created here is equivalent to the one created by the EVM logic. I think
     // I've gotten the concatenation, endianness, etc correct but want to be sure.
     const slowRelayLeafs: SlowFillLeaf[] = [];
     const slowRelayLeaf: SlowFillLeaf = {
@@ -129,7 +129,7 @@ describe("svm_spoke.slow_fill", () => {
     const proof = merkleTree.getProof(slowRelayLeafs[0]);
     const leaf = slowRelayLeafs[0];
 
-    const stateAccountData = await program.account.state.fetch(state);
+    let stateAccountData = await program.account.state.fetch(state);
     const { rootBundleId } = stateAccountData;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -224,7 +224,7 @@ describe("svm_spoke.slow_fill", () => {
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
-        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), "MessageHash should match");
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
       } else {
         assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
       }
@@ -294,7 +294,7 @@ describe("svm_spoke.slow_fill", () => {
     assert.isNotNull(fillStatusAccount, "FillStatusAccount should be initialized after requestSlowFill");
     assert.equal(
       JSON.stringify(fillStatusAccount.status),
-      '{"requestedSlowFill":{}}',
+      `{\"requestedSlowFill\":{}}`,
       "FillStatus should be RequestedSlowFill"
     );
     assert.equal(fillStatusAccount.relayer.toString(), relayer.publicKey.toString(), "Caller should be set as relayer");
@@ -399,7 +399,7 @@ describe("svm_spoke.slow_fill", () => {
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
-        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), "MessageHash should match");
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
       } else {
         assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
       }
@@ -412,7 +412,7 @@ describe("svm_spoke.slow_fill", () => {
       "UpdatedMessageHash should match"
     );
     assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
-    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), '{"slowFill":{}}', "FillType should be SlowFill");
+    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"slowFill":{}}`, "FillType should be SlowFill");
     // These props below are not part of relayData.
     assertSE(event.repaymentChainId, new BN(0), "Repayment chain id should be 0");
     assertSE(event.relayer, PublicKey.default, "Repayment address should be 0");
@@ -683,16 +683,16 @@ describe("svm_spoke.slow_fill", () => {
     const requestEvents = await readEventsUntilFound(connection, tx1, [program]);
     const requestEvent = requestEvents.find((event) => event.name === "requestedSlowFill")?.data;
     assert.isNotNull(requestEvent, "RequestedSlowFill event should be emitted");
-    assertSE(requestEvent.messageHash, new Uint8Array(32), "MessageHash should be zeroed");
+    assertSE(requestEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
 
     const fillEvents = await readEventsUntilFound(connection, tx2, [program]);
     const fillEvent = fillEvents.find((event) => event.name === "filledRelay")?.data;
     assert.isNotNull(fillEvent, "FilledRelay event should be emitted");
-    assertSE(fillEvent.messageHash, new Uint8Array(32), "MessageHash should be zeroed");
+    assertSE(fillEvent.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
     assertSE(
       fillEvent.relayExecutionInfo.updatedMessageHash,
       new Uint8Array(32),
-      "UpdatedMessageHash should be zeroed"
+      `UpdatedMessageHash should be zeroed`
     );
   });
 });

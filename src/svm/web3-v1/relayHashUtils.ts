@@ -56,7 +56,7 @@ export function calculateRelayEventHashUint8Array(relayEventData: any, chainId: 
 /**
  * Reads a 256-bit unsigned integer from a buffer.
  */
-export const readUInt256BE = (buffer: Buffer): bigint => {
+export const readUInt256BE = (buffer: Buffer): BigInt => {
   let result = BigInt(0);
   for (let i = 0; i < buffer.length; i++) {
     result = (result << BigInt(8)) + BigInt(buffer[i]);

@@ -30,16 +30,16 @@ function loadMultisigConfig(configPath: string): MultisigConfig {
   const threshold = parsed.threshold;
   const saltNonce = parsed.saltNonce;
 
-  if (!Array.isArray(owners) || owners.length === 0) throw new Error("Multisig config must include owners");
-  if (typeof threshold !== "number") throw new Error("Multisig config must include threshold");
-  if (typeof saltNonce !== "string" || !saltNonce) throw new Error("Multisig config must include saltNonce");
+  if (!Array.isArray(owners) || owners.length === 0) throw new Error(`Multisig config must include owners`);
+  if (typeof threshold !== "number") throw new Error(`Multisig config must include threshold`);
+  if (typeof saltNonce !== "string" || !saltNonce) throw new Error(`Multisig config must include saltNonce`);
   if (threshold < 1 || threshold > owners.length) {
     throw new Error(`Threshold ${threshold} is invalid for ${owners.length} owners`);
   }
 
   const normalizedOwners = owners.map((owner) => getAddress(owner));
   if (new Set(normalizedOwners).size !== normalizedOwners.length) {
-    throw new Error("Multisig config contains duplicate owners");
+    throw new Error(`Multisig config contains duplicate owners`);
   }
 
   return {

@@ -27,13 +27,11 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
+// eslint-disable-next-line camelcase
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
   getMessages,
-  getMessageTransmitterProgram,
-  getSpokePoolProgram,
-  getTokenMessengerMinterProgram,
   isSolanaDevnet,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
@@ -43,6 +41,11 @@ import {
 } from "../../src/svm/web3-v1";
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { BigNumber, ethers } from "ethers";
+import {
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
+  getTokenMessengerMinterProgram,
+} from "../../src/svm/web3-v1";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import { formatUsdc, getBondTokenContract, requireEnv } from "./utils/helpers";
 
@@ -173,7 +176,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
   const nonceHash = ethers.utils.solidityKeccak256(["uint32", "uint64"], [solanaDomain, eventNonce]);
   const usedNonces = await messageTransmitter.usedNonces(nonceHash);
   if (usedNonces.eq(1)) {
-    console.log("Skipping already received message. Exiting...");
+    console.log(`Skipping already received message. Exiting...`);
     return;
   }
 
@@ -181,7 +184,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
   const receiveTx = await messageTransmitter.receiveMessage(message, attestation);
   console.log(`Tx hash: ${receiveTx.hash}`);
   await receiveTx.wait();
-  console.log("Received message");
+  console.log(`Received message`);
 
   const usdcBalanceAfter = await usdc.balanceOf(hubPoolAddress);
   console.log(

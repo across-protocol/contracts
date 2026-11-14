@@ -370,7 +370,7 @@ export async function deployContract(opts: {
   const contractAddress = tronWeb.address.fromHex(tronHexAddress);
   const tronscanBase = TRONSCAN_URLS[chainId] || "https://tronscan.org";
 
-  console.log("\nContract deployed!");
+  console.log(`\nContract deployed!`);
   console.log(`  Address:  ${contractAddress}`);
   console.log(`  TX ID:    ${txID}`);
   console.log(`  Tronscan: ${tronscanBase}/#/contract/${contractAddress}`);

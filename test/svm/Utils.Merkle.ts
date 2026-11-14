@@ -3,7 +3,8 @@ import { Program } from "@coral-xyz/anchor";
 import { Test } from "../../target/types/test";
 import { assert } from "chai";
 import { MerkleTree } from "../../utils/MerkleTree";
-import { BigNumberish, ethers } from "ethers";
+import { ethers } from "ethers";
+import { BigNumberish } from "ethers";
 import { common } from "./SvmSpoke.common";
 const { assertSE } = common;
 

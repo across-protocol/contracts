@@ -348,7 +348,7 @@ async function executeRelayerRefundLeaf(
 ) {
   // Execute the single leaf
   const proof = merkleTree.getProof(relayerRefundLeaf).map((p) => Array.from(p));
-  const leaf = relayerRefundLeaf;
+  const leaf = relayerRefundLeaf as RelayerRefundLeafSolana;
 
   const vault = getAssociatedTokenAddressSync(
     inputToken,

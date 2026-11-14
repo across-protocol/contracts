@@ -90,7 +90,7 @@ const getOrCreateVaultAta = async (payer: Signer, tokenMint: PublicKey, state: P
 };
 
 async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: anchor.web3.Keypair, newTime: BN) {
-  const setCurrentTimeAccounts = { state, signer: signer.publicKey };
+  let setCurrentTimeAccounts = { state, signer: signer.publicKey };
   await program.methods.setCurrentTime(newTime.toNumber()).accounts(setCurrentTimeAccounts).signers([signer]).rpc();
 }
 

@@ -92,7 +92,7 @@ const patchIdlV01 = (idl: IdlV01): void => {
     instruction.accounts.forEach((account) => {
       if ("pda" in account && account.pda?.program?.kind === "account") {
         const programPath = account.pda.program.path;
-        const programNode = instruction.accounts.find((acc) => acc.name === programPath);
+        const programNode = instruction.accounts.find((acc) => acc.name == programPath);
         if (!(programNode && "address" in programNode)) {
           delete account.pda;
         }

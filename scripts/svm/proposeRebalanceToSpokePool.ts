@@ -70,7 +70,7 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
     const tx = await bondToken.connect(ethersSigner).deposit({ value: bondAmount.sub(bondBalance) });
     console.log(`✔️ submitted tx hash: ${tx.hash}`);
     await tx.wait();
-    console.log("✔️ tx confirmed");
+    console.log(`✔️ tx confirmed`);
   }
   const allowance = await bondToken.callStatic.allowance(ethersSigner.address, hubPool.address);
   if (allowance.lt(bondAmount)) {
@@ -78,7 +78,7 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
     const tx = await bondToken.connect(ethersSigner).approve(hubPool.address, bondAmount);
     console.log(`✔️ submitted tx hash: ${tx.hash}`);
     await tx.wait();
-    console.log("✔️ tx confirmed");
+    console.log(`✔️ tx confirmed`);
   }
 
   // Propose the rebalance to the spoke pool.
@@ -92,7 +92,7 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
   );
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();
-  console.log("✔️ tx confirmed");
+  console.log(`✔️ tx confirmed`);
 
   console.log(
     "Rebalance proposal submitted successfully, to execute, run executeRebalanceToSpokePool script with the same netSendAmount after liveness period."

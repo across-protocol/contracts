@@ -128,8 +128,8 @@ describe("svm_spoke.ownership", () => {
     const tx = await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
 
     // Verify the TransferredOwnership event
-    const events = await readEventsUntilFound(provider.connection, tx, [program]);
-    const transferredOwnershipEvents = events.filter((event) => event.name === "transferredOwnership");
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
+    let transferredOwnershipEvents = events.filter((event) => event.name === "transferredOwnership");
     assert.equal(
       transferredOwnershipEvents[0].data.newOwner.toString(),
       newOwner.publicKey.toString(),
@@ -137,7 +137,7 @@ describe("svm_spoke.ownership", () => {
     );
 
     // Verify the new owner
-    const stateAccountData = await program.account.state.fetch(state);
+    let stateAccountData = await program.account.state.fetch(state);
     assert.equal(stateAccountData.owner.toString(), newOwner.publicKey.toString(), "Ownership should be transferred");
 
     // Try to transfer ownership as non-owner
@@ -163,7 +163,7 @@ describe("svm_spoke.ownership", () => {
       .rpc();
 
     // Verify the new cross-domain admin
-    const stateAccountData = await program.account.state.fetch(state);
+    let stateAccountData = await program.account.state.fetch(state);
     assert.equal(
       stateAccountData.crossDomainAdmin.toString(),
       newCrossDomainAdmin.publicKey.toString(),
@@ -171,8 +171,8 @@ describe("svm_spoke.ownership", () => {
     );
 
     // Verify the SetXDomainAdmin event
-    const events = await readEventsUntilFound(provider.connection, tx, [program]);
-    const setXDomainAdminEvents = events.filter((event) => event.name === "setXDomainAdmin");
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
+    let setXDomainAdminEvents = events.filter((event) => event.name === "setXDomainAdmin");
     assert.equal(
       setXDomainAdminEvents[0].data.newAdmin.toString(),
       newCrossDomainAdmin.publicKey.toString(),

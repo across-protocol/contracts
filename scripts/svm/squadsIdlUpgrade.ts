@@ -2,9 +2,10 @@
 // imported in the Squads transaction builder. This requires one first to have written the upgraded IDL to the buffer
 // account (anchor idl write-buffer) and set its authority to the Squads multisig (anchor idl set-authority).
 
+import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { AccountMeta, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { AccountMeta, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { sha256 } from "@noble/hashes/sha2";
 import bs58 from "bs58";
 

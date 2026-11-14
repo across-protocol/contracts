@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
-import { array, assert, enums, object, optional, string, union, nullable, Infer, coerce } from "superstruct";
+import { array, enums, object, optional, string, union, nullable, Infer, coerce } from "superstruct";
 import { ethers } from "ethers";
+import { assert } from "superstruct";
 import { readUInt256BE } from "./relayHashUtils";
 import { addressOrBase58ToBytes32 } from "./conversionUtils";
 
@@ -38,11 +39,11 @@ export type TokenMessengerV2MessageBody = {
   version: number;
   burnToken: anchor.web3.PublicKey;
   mintRecipient: anchor.web3.PublicKey;
-  amount: bigint;
+  amount: BigInt;
   messageSender: anchor.web3.PublicKey;
-  maxFee: bigint;
-  feeExecuted: bigint;
-  expirationBlock: bigint;
+  maxFee: BigInt;
+  feeExecuted: BigInt;
+  expirationBlock: BigInt;
   hookData: Buffer;
 };
 
@@ -53,7 +54,7 @@ export type MessageHeaderV2 = {
   version: number;
   sourceDomain: number;
   destinationDomain: number;
-  nonce: bigint;
+  nonce: BigInt;
   sender: anchor.web3.PublicKey;
   recipient: anchor.web3.PublicKey;
   destinationCaller: anchor.web3.PublicKey;

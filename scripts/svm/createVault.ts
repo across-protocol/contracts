@@ -34,6 +34,9 @@ async function createVault(): Promise<void> {
     programId
   );
 
+  // Define the signer (replace with your actual signer)
+  const signer = provider.wallet.publicKey;
+
   console.log("Creating vault...");
   console.table([
     { Property: "seed", Value: seed.toString() },

@@ -9,7 +9,7 @@ export type Deployments = Record<
   }
 >;
 
-export const DEPLOYMENTS: Readonly<Deployments> = deployments_.chains;
+export const DEPLOYMENTS: Readonly<Deployments> = deployments_.chains as Deployments;
 
 /**
  * Returns the deployed address of any contract on any network.
@@ -58,7 +58,7 @@ export function getDeployedBlockNumber(contractName: string, networkId: number):
 /**
  * Returns the chainId and contract name for a given contract address.
  */
-export function getContractInfoFromAddress(contractAddress: string): { chainId: number; contractName: string } {
+export function getContractInfoFromAddress(contractAddress: string): { chainId: Number; contractName: string } {
   const returnValue: { chainId: number; contractName: string }[] = [];
 
   Object.keys(DEPLOYMENTS).forEach((_chainId) =>

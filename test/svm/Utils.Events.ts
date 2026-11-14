@@ -43,7 +43,7 @@ describe("utils.events", () => {
     const events = eventParser.parseLogs(logs);
 
     const returnEvents: any[] = [];
-    for (const event of events) {
+    for (let event of events) {
       returnEvents.push(event);
     }
 
@@ -80,7 +80,7 @@ describe("utils.events", () => {
     let recoveredFunctionName;
     let recoveredLength;
 
-    for (const signature of pastSignatures) {
+    for (let signature of pastSignatures) {
       const txResult = await connection.getParsedTransaction(signature.signature, {
         commitment: "confirmed",
         maxSupportedTransactionVersion: 0,
@@ -103,6 +103,7 @@ describe("utils.events", () => {
       let decodedIx;
       if ("data" in instruction) {
         decodedIx = borshCoder.instruction.decode(instruction.data, "base58");
+        recoveredFunctionName = decodedIx?.name;
       } else {
         console.error("Instruction does not have data");
       }

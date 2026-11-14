@@ -32,7 +32,7 @@ import { TronWeb } from "tronweb";
 import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId } from "../deploy";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-// / Mirrors CounterfactualConfig.NATIVE_SENTINEL / CounterfactualDepositSpokePool.NATIVE_SENTINEL.
+/// Mirrors CounterfactualConfig.NATIVE_SENTINEL / CounterfactualDepositSpokePool.NATIVE_SENTINEL.
 const NATIVE_SENTINEL = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
