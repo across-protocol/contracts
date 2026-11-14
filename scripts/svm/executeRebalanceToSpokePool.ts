@@ -72,7 +72,7 @@ async function executeRebalanceToSpokePool(): Promise<void> {
 
   // Resolve chain IDs, Iris API URL and USDC addresses.
   const solanaCluster = isDevnet ? "devnet" : "mainnet";
-  const solanaChainId = getSolanaChainId(solanaCluster);
+  const solanaChainId = BigNumber.from(getSolanaChainId(solanaCluster));
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
   const supportedEvmChainId = isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
   const evmChainId = (await ethersProvider.getNetwork()).chainId;

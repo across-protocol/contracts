@@ -1,18 +1,15 @@
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
-import { BigNumber } from "@ethersproject/bignumber";
-import { ethers } from "ethers";
 import { DepositData } from "../../types/svm";
 import { PublicKey } from "@solana/web3.js";
 import { serialize } from "borsh";
-import { keccak256 } from "ethers/lib/utils";
+import { keccak_256 } from "@noble/hashes/sha3";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
 
 /**
  * Returns the chainId for a given solana cluster.
  */
-export const getSolanaChainId = (cluster: "devnet" | "mainnet"): BigNumber => {
-  return BigNumber.from(
-    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFF")
-  );
+export const getSolanaChainId = (cluster: "devnet" | "mainnet"): bigint => {
+  return BigInt("0x" + bytesToHex(keccak_256(utf8ToBytes(`solana-${cluster}`)))) & BigInt("0xFFFFFFFFFFFF");
 };
 
 /**
@@ -30,8 +27,7 @@ export const isSolanaDevnet = (provider: AnchorProvider): boolean => {
  */
 function deriveSeedHash<T>(schema: Map<any, any>, seedObj: T): Uint8Array {
   const serialized = serialize(schema, seedObj);
-  const hashHex = keccak256(serialized);
-  return Buffer.from(hashHex.slice(2), "hex");
+  return Buffer.from(keccak_256(serialized));
 }
 
 /**

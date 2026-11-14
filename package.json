@@ -80,9 +80,7 @@
     "@coral-xyz/anchor": "^0.31.1",
     "@coral-xyz/borsh": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
-    "@ethersproject/bignumber": "5.8.0",
-    "@ethersproject/bytes": "5.8.0",
-    "@ethersproject/keccak256": "5.8.0",
+    "@noble/hashes": "^1.8.0",
     "@openzeppelin/contracts": "5.5.0",
     "@openzeppelin/contracts-upgradeable": "5.5.0",
     "@openzeppelin/contracts-upgradeable-v4": "npm:@openzeppelin/contracts-upgradeable@4.9.6",
@@ -90,8 +88,7 @@
     "@solana-program/address-lookup-table": "0.10.0",
     "@solana/kit": "^5.4.0",
     "@solana/web3.js": "1.98.2",
-    "bs58": "^6.0.0",
-    "ethers": "5.8.0"
+    "bs58": "^6.0.0"
   },
   "devDependencies": {
     "@codama/nodes-from-anchor": "1.2.2",
@@ -117,6 +114,7 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-promise": "^5.1.0",
+    "ethers": "5.8.0",
     "husky": "^4.2.3",
     "mocha": "^10.0.0",
     "prettier": "^3.8.1",

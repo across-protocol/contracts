@@ -1,6 +1,7 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
+import { keccak_256 } from "@noble/hashes/sha3";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
@@ -29,16 +30,22 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
 }
 
 /**
- * Converts a 32-byte Uint8Array to a BigNumber.
+ * Converts a 0x-prefixed, even-length hex string to bytes. Throws on malformed input.
  */
-export function u8Array32ToBigNumber(u8Array: Uint8Array | number[]): BigNumber {
-  const isValidArray = (arr: any): arr is number[] => Array.isArray(arr) && arr.every(Number.isInteger);
-  if ((u8Array instanceof Uint8Array || isValidArray(u8Array)) && u8Array.length === 32) {
-    const hexString = "0x" + Buffer.from(u8Array).toString("hex");
-    return BigNumber.from(hexString);
-  }
+export function hexToBytesStrict(hex: string): Uint8Array {
+  if (!/^0x([0-9a-fA-F]{2})*$/.test(hex)) throw new Error(`Invalid hex string: ${hex}`);
+  return Buffer.from(hex.slice(2), "hex");
+}
 
-  throw new Error("Input must be a Uint8Array or an array of 32 numbers.");
+/**
+ * Returns true for a 0x-prefixed 20-byte hex address. Mixed-case input must carry a valid EIP-55 checksum.
+ */
+export function isEvmAddress(address: string): boolean {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return false;
+  const hex = address.slice(2);
+  if (hex === hex.toLowerCase() || hex === hex.toUpperCase()) return true;
+  const hash = bytesToHex(keccak_256(utf8ToBytes(hex.toLowerCase())));
+  return [...hex].every((c, i) => c === (parseInt(hash[i], 16) >= 8 ? c.toUpperCase() : c.toLowerCase()));
 }
 
 /**
@@ -53,7 +60,7 @@ export function strPublicKey(publicKey: PublicKey): string {
  */
 export const evmAddressToPublicKey = (address: string): PublicKey => {
   const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
-  return new PublicKey(ethers.utils.arrayify(bytes32Address));
+  return new PublicKey(hexToBytesStrict(bytes32Address));
 };
 
 /**
@@ -97,9 +104,9 @@ export const fromBytes32ToAddress = (input: string): string => {
  * Converts EVM or SVM address to a bytes32 string.
  */
 export const addressOrBase58ToBytes32 = (input: string): string => {
-  if (ethers.utils.isAddress(input)) {
-    return ethers.utils.hexZeroPad(input, 32);
-  } else if (ethers.utils.isHexString(input, 32)) {
+  if (isEvmAddress(input)) {
+    return "0x" + input.slice(2).padStart(64, "0");
+  } else if (/^0x[0-9a-fA-F]{64}$/.test(input)) {
     return input;
   } else {
     return fromBase58ToBytes32(input);

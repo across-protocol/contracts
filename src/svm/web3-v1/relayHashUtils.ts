@@ -1,7 +1,11 @@
 import { BN } from "@coral-xyz/anchor";
-import { ethers } from "ethers";
-import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../../types/svm";
+import { keccak_256 } from "@noble/hashes/sha3";
+import { bytesToHex } from "@noble/hashes/utils";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType, SlowFillLeaf } from "../../types/svm";
 import { serialize } from "borsh";
+import { isEvmAddress } from "./conversionUtils";
+
+const keccak256 = (data: Uint8Array): string => "0x" + bytesToHex(keccak_256(data));
 
 /**
  * Calculates the relay hash from relay data and chain ID.
@@ -23,7 +27,7 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8
     chainId.toArrayLike(Buffer, "le", 8),
   ]);
 
-  const relayHash = ethers.utils.keccak256(contentToHash);
+  const relayHash = keccak256(contentToHash);
   const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
   return new Uint8Array(relayHashBuffer);
 }
@@ -48,7 +52,7 @@ export function calculateRelayEventHashUint8Array(relayEventData: any, chainId: 
     chainId.toArrayLike(Buffer, "le", 8),
   ]);
 
-  const relayHash = ethers.utils.keccak256(contentToHash);
+  const relayHash = keccak256(contentToHash);
   const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
   return new Uint8Array(relayHashBuffer);
 }
@@ -69,7 +73,7 @@ export const readUInt256BE = (buffer: Buffer): BigInt => {
  */
 export function hashNonEmptyMessage(message: Buffer) {
   if (message.length > 0) {
-    const hash = ethers.utils.keccak256(message);
+    const hash = keccak256(message);
     return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
   }
   // else return zeroed bytes32
@@ -125,34 +129,42 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
   // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
   const contentToHash = Buffer.concat([Buffer.alloc(64, 0), serializedData]);
 
-  return ethers.utils.keccak256(contentToHash);
+  return keccak256(contentToHash);
 }
 
+const uint256Word = (value: bigint): string => {
+  if (value < 0n || value >= 2n ** 256n) throw new Error(`Invalid uint256: ${value}`);
+  return value.toString(16).padStart(64, "0");
+};
+
+const addressWord = (address: string): string => {
+  if (!isEvmAddress(address)) throw new Error(`Invalid EVM address: ${address}`);
+  return address.slice(2).toLowerCase().padStart(64, "0");
+};
+
 /**
- * Hash function for relayer refund leaves.
+ * Hash function for relayer refund leaves. EVM leaves are ABI-encoded as a single
+ * tuple(uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses).
  */
-export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeafSolana) => {
-  if (!input.isSolana) {
-    const abiCoder = new ethers.utils.AbiCoder();
-    const encodedData = abiCoder.encode(
-      [
-        "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
-      ],
-      [
-        {
-          leafId: input.leafId,
-          chainId: input.chainId,
-          amountToReturn: input.amountToReturn,
-          l2TokenAddress: (input as RelayerRefundLeaf).l2TokenAddress, // Type assertion
-          refundAddresses: (input as RelayerRefundLeaf).refundAddresses, // Type assertion
-          refundAmounts: (input as RelayerRefundLeaf).refundAmounts, // Type assertion
-        },
-      ]
-    );
-    return ethers.utils.keccak256(encodedData);
-  } else {
-    return calculateRelayerRefundLeafHashUint8Array(input as RelayerRefundLeafSolana);
-  }
+export const relayerRefundHashFn = (input: RelayerRefundLeafType) => {
+  if (input.isSolana) return calculateRelayerRefundLeafHashUint8Array(input);
+
+  const { amountToReturn, chainId, refundAmounts, leafId, l2TokenAddress, refundAddresses } = input;
+  const headSize = 6n * 32n;
+  const encodedData = [
+    uint256Word(32n), // Offset to the tuple, which is dynamic.
+    uint256Word(amountToReturn),
+    uint256Word(chainId),
+    uint256Word(headSize), // Offset to refundAmounts, relative to the tuple.
+    uint256Word(leafId),
+    addressWord(l2TokenAddress),
+    uint256Word(headSize + 32n * BigInt(refundAmounts.length + 1)), // Offset to refundAddresses.
+    uint256Word(BigInt(refundAmounts.length)),
+    ...refundAmounts.map(uint256Word),
+    uint256Word(BigInt(refundAddresses.length)),
+    ...refundAddresses.map(addressWord),
+  ].join("");
+  return keccak256(Buffer.from(encodedData, "hex"));
 };
 
 /**
@@ -218,5 +230,5 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves cannot be played on SVM and vice versa
   const contentToHash = Buffer.concat([Buffer.alloc(64, 0), serializedData]);
 
-  return ethers.utils.keccak256(contentToHash);
+  return keccak256(contentToHash);
 }

@@ -31,7 +31,7 @@ import {
   mintTo,
 } from "@solana/spl-token";
 import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
+import { ethers } from "ethers";
 import { SvmSpokeClient, createDefaultTransaction, signAndSendTransaction } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import {
@@ -41,7 +41,6 @@ import {
   getDepositSeedHash,
   intToU8Array32,
   readEventsUntilFound,
-  u8Array32ToBigNumber,
   u8Array32ToInt,
 } from "../../src/svm/web3-v1";
 import { DepositData, DepositDataValues } from "../../src/types/svm";
@@ -240,7 +239,6 @@ describe("svm_spoke.deposit", () => {
 
     // Test the id recovery with the conversion utils
     assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
-    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
 
     // Execute the second deposit call
     const tx2 = await approvedDeposit(depositData);
@@ -255,7 +253,6 @@ describe("svm_spoke.deposit", () => {
 
     // Test the id recovery with the conversion utils
     assertSE(u8Array32ToInt(event.depositId), 2, `depositId should recover to 2`);
-    assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(2), `depositId should recover to 2`);
   });
 
   it("Deposit with deadline before current time succeeds", async () => {
