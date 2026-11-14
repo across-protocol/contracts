@@ -30,10 +30,17 @@ export function u8Array32ToInt(u8Array: Uint8Array | number[]): bigint {
 }
 
 /**
- * Converts a 0x-prefixed, even-length hex string to bytes. Throws on malformed input.
+ * Returns true for a 0x-prefixed, even-length hex string, of exactly `length` bytes when given.
  */
-export function hexToBytesStrict(hex: string): Uint8Array {
-  if (!/^0x([0-9a-fA-F]{2})*$/.test(hex)) throw new Error(`Invalid hex string: ${hex}`);
+function isStrictHex(hex: string, length?: number): boolean {
+  return /^0x([0-9a-fA-F]{2})*$/.test(hex) && (length === undefined || hex.length === 2 + 2 * length);
+}
+
+/**
+ * Converts a 0x-prefixed, even-length hex string to bytes, of exactly `length` bytes when given. Throws on malformed input.
+ */
+export function hexToBytesStrict(hex: string, length?: number): Uint8Array {
+  if (!isStrictHex(hex, length)) throw new Error(`Invalid hex string: ${hex}`);
   return Buffer.from(hex.slice(2), "hex");
 }
 
@@ -41,7 +48,7 @@ export function hexToBytesStrict(hex: string): Uint8Array {
  * Returns true for a 0x-prefixed 20-byte hex address. Mixed-case input must carry a valid EIP-55 checksum.
  */
 export function isEvmAddress(address: string): boolean {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return false;
+  if (!isStrictHex(address, 20)) return false;
   const hex = address.slice(2);
   if (hex === hex.toLowerCase() || hex === hex.toUpperCase()) return true;
   const hash = bytesToHex(keccak_256(utf8ToBytes(hex.toLowerCase())));
@@ -60,7 +67,7 @@ export function strPublicKey(publicKey: PublicKey): string {
  */
 export const evmAddressToPublicKey = (address: string): PublicKey => {
   const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
-  return new PublicKey(hexToBytesStrict(bytes32Address));
+  return new PublicKey(hexToBytesStrict(bytes32Address, 32));
 };
 
 /**
@@ -106,7 +113,7 @@ export const fromBytes32ToAddress = (input: string): string => {
 export const addressOrBase58ToBytes32 = (input: string): string => {
   if (isEvmAddress(input)) {
     return "0x" + input.slice(2).padStart(64, "0");
-  } else if (/^0x[0-9a-fA-F]{64}$/.test(input)) {
+  } else if (isStrictHex(input, 32)) {
     return input;
   } else {
     return fromBase58ToBytes32(input);
