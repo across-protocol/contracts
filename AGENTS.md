@@ -179,7 +179,7 @@ Prioritize security, succinctness, and DRY code.
 
 ## Linting
 
-Run `yarn lint-fix` to auto-fix all lint issues. For checking only: `yarn lint-solidity` (Solhint) and `yarn lint-js` (Prettier).
+Run `yarn lint-fix` to auto-fix all lint issues. For checking only: `yarn lint-solidity` (Solhint) and `yarn lint-js` (ESLint + Prettier; ESLint needs the generated SVM artifacts).
 
 ## License
 

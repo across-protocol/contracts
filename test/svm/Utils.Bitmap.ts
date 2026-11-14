@@ -29,7 +29,7 @@ describe("utils.bitmap", () => {
     const indices = [0, 1, 42, 69, 1449, 1501];
 
     for (const index of indices) {
-      let isClaimed = await program.methods
+      const isClaimed = await program.methods
         .testIsClaimed(index)
         .accounts({
           bitmapAccount,
@@ -48,7 +48,7 @@ describe("utils.bitmap", () => {
     }
 
     for (const index of indices) {
-      let isClaimed = await program.methods
+      const isClaimed = await program.methods
         .testIsClaimed(index)
         .accounts({
           bitmapAccount,
@@ -60,7 +60,7 @@ describe("utils.bitmap", () => {
     // Checking all other indices to ensure they are not claimed.
     for (let i = 0; i <= Math.max(...indices); i++) {
       if (!indices.includes(i)) {
-        let isClaimed = await program.methods
+        const isClaimed = await program.methods
           .testIsClaimed(i)
           .accounts({
             bitmapAccount,

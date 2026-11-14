@@ -268,7 +268,7 @@ async function executeRebalanceOnHubPool(l1TokenAddress: string, netSendAmount: 
     );
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();
-  console.log(`✔️ tx confirmed`);
+  console.log("✔️ tx confirmed");
 
   return tx.hash;
 }

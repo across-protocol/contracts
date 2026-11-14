@@ -20,7 +20,7 @@ import {
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 import { MerkleTree } from "../../utils";
 import { common } from "./SvmSpoke.common";
-import { buildRelayerRefundMerkleTree, randomBigInt, readEvents, readProgramEvents } from "./utils";
+import { buildRelayerRefundMerkleTree, randomBigInt } from "./utils";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 
@@ -115,7 +115,7 @@ describe("svm_spoke.bundle", () => {
       .rpc();
 
     // Fetch the relayer refund root and slow relay root
-    let rootBundleAccountData = await program.account.rootBundle.fetch(rootBundle);
+    const rootBundleAccountData = await program.account.rootBundle.fetch(rootBundle);
     const relayerRefundRootHex = Buffer.from(rootBundleAccountData.relayerRefundRoot).toString("hex");
     const slowRelayRootHex = Buffer.from(rootBundleAccountData.slowRelayRoot).toString("hex");
     assert.isTrue(
@@ -162,7 +162,7 @@ describe("svm_spoke.bundle", () => {
     const slowRelayRootBuffer = crypto.randomBytes(32);
     const slowRelayRootArray = Array.from(slowRelayRootBuffer);
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
@@ -177,7 +177,7 @@ describe("svm_spoke.bundle", () => {
       .rpc();
 
     // Check for the emitted event
-    let events = await readEventsUntilFound(connection, tx, [program]);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events.find((event) => event.name === "relayedRootBundle")?.data;
     assert.isTrue(event.rootBundleId.toString() === rootBundleId.toString(), "Root bundle ID should match");
     assert.isTrue(
@@ -208,7 +208,7 @@ describe("svm_spoke.bundle", () => {
     const proof = merkleTree.getProof(relayerRefundLeaves[0]);
     const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -217,7 +217,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
     const remainingAccounts = [
       { pubkey: relayerTA, isWritable: true, isSigner: false },
@@ -259,7 +259,7 @@ describe("svm_spoke.bundle", () => {
     assert.isNull(instructionParamsInfo, "Instruction params account should be closed");
 
     // Verify the ExecutedRelayerRefundRoot event
-    let events = await readEventsUntilFound(connection, tx, [program]);
+    const events = await readEventsUntilFound(connection, tx, [program]);
     let event = events.find((event) => event.name === "executedRelayerRefundRoot")?.data;
     // Remove the expectedValues object and use direct assertions
     assertSE(event.amountToReturn, relayerRefundLeaves[0].amountToReturn, "amountToReturn should match");
@@ -346,7 +346,7 @@ describe("svm_spoke.bundle", () => {
     const leaf = relayerRefundLeaves[solanaLeafNumber] as RelayerRefundLeafSolana;
     const proofAsNumbers = proof.map((p) => Array.from(p));
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
@@ -354,7 +354,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -451,7 +451,7 @@ describe("svm_spoke.bundle", () => {
         program,
         owner,
         stateAccountData.rootBundleId,
-        invalidRelayerRefundLeaf as RelayerRefundLeafSolana,
+        invalidRelayerRefundLeaf,
         proofAsNumbers
       );
       await program.methods
@@ -479,7 +479,7 @@ describe("svm_spoke.bundle", () => {
     });
 
     const root = merkleTree.getRoot();
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
@@ -487,7 +487,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -508,7 +508,7 @@ describe("svm_spoke.bundle", () => {
       const proof = merkleTree.getProof(leaf);
       const proofAsNumbers = proof.map((p) => Array.from(p));
 
-      let executeRelayerRefundLeafAccounts = {
+      const executeRelayerRefundLeafAccounts = {
         state: state,
         rootBundle: rootBundle,
         signer: owner,
@@ -574,7 +574,7 @@ describe("svm_spoke.bundle", () => {
     });
 
     const root = merkleTree.getRoot();
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
@@ -582,7 +582,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -603,7 +603,7 @@ describe("svm_spoke.bundle", () => {
       const proof = merkleTree.getProof(leaf);
       const proofAsNumbers = proof.map((p) => Array.from(p));
 
-      let executeRelayerRefundLeafAccounts = {
+      const executeRelayerRefundLeafAccounts = {
         state: state,
         rootBundle: rootBundle,
         signer: owner,
@@ -677,7 +677,7 @@ describe("svm_spoke.bundle", () => {
     const proof = merkleTree.getProof(relayerRefundLeaves[0]);
     const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -686,7 +686,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -739,7 +739,7 @@ describe("svm_spoke.bundle", () => {
     const proof = merkleTree.getProof(relayerRefundLeaves[0]);
     const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -748,7 +748,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -801,7 +801,7 @@ describe("svm_spoke.bundle", () => {
     const root = merkleTree.getRoot();
     const proof = relayerRefundLeaves.map((leaf) => merkleTree.getProof(leaf).map((p) => Array.from(p)));
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -810,7 +810,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [{ pubkey: relayerTA, isWritable: true, isSigner: false }];
@@ -1193,13 +1193,13 @@ describe("svm_spoke.bundle", () => {
       const root = merkleTree.getRoot();
       const proof = merkleTree.getProof(relayerRefundLeaves[0]);
       const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
-      let stateAccountData = await program.account.state.fetch(state);
+      const stateAccountData = await program.account.state.fetch(state);
       const rootBundleId = stateAccountData.rootBundleId;
       const rootBundleIdBuffer = Buffer.alloc(4);
       rootBundleIdBuffer.writeUInt32LE(rootBundleId);
       const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
       const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
-      let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+      const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
       await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
       const proofAsNumbers = proof.map((p) => Array.from(p));
       const executeRelayerRefundLeafAccounts = {
@@ -1266,7 +1266,7 @@ describe("svm_spoke.bundle", () => {
     const root = merkleTree.getRoot();
     const proof = relayerRefundLeaves.map((leaf) => merkleTree.getProof(leaf).map((p) => Array.from(p)));
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -1578,8 +1578,8 @@ describe("svm_spoke.bundle", () => {
     });
 
     // Custom hash function without leading 64 bytes
-    const customRelayerRefundHashFn = (input: RelayerRefundLeafType): string => {
-      input = input as RelayerRefundLeafSolana;
+    const customRelayerRefundHashFn = (leaf: RelayerRefundLeafType): string => {
+      const input = leaf as RelayerRefundLeafSolana;
       const refundAmountsBuffer = Buffer.concat(
         input.refundAmounts.map((amount) => {
           const buf = Buffer.alloc(8);
@@ -1609,7 +1609,7 @@ describe("svm_spoke.bundle", () => {
     const proof = merkleTree.getProof(relayerRefundLeaves[0]);
     const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -1618,7 +1618,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -1627,7 +1627,7 @@ describe("svm_spoke.bundle", () => {
     ];
 
     // Attempt to verify the leaf, expecting failure
-    let executeRelayerRefundLeafAccounts = {
+    const executeRelayerRefundLeafAccounts = {
       state: state,
       rootBundle: rootBundle,
       signer: owner,
@@ -1668,8 +1668,8 @@ describe("svm_spoke.bundle", () => {
     });
 
     // Custom hash function without leading 64 bytes
-    const customRelayerRefundHashFn = (input: RelayerRefundLeafType): string => {
-      input = input as RelayerRefundLeafSolana;
+    const customRelayerRefundHashFn = (leaf: RelayerRefundLeafType): string => {
+      const input = leaf as RelayerRefundLeafSolana;
       const refundAmountsBuffer = Buffer.concat(
         input.refundAmounts.map((amount) => {
           const buf = Buffer.alloc(8);
@@ -1700,7 +1700,7 @@ describe("svm_spoke.bundle", () => {
     const proof = merkleTree.getProof(relayerRefundLeaves[0]);
     const leaf = relayerRefundLeaves[0] as RelayerRefundLeafSolana;
 
-    let stateAccountData = await program.account.state.fetch(state);
+    const stateAccountData = await program.account.state.fetch(state);
     const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
@@ -1709,7 +1709,7 @@ describe("svm_spoke.bundle", () => {
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
-    let relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
+    const relayRootBundleAccounts = { state, rootBundle, signer: owner, payer: owner, program: program.programId };
     await program.methods.relayRootBundle(Array.from(root), Array.from(root)).accounts(relayRootBundleAccounts).rpc();
 
     const remainingAccounts = [
@@ -1718,7 +1718,7 @@ describe("svm_spoke.bundle", () => {
     ];
 
     // Attempt to verify the leaf, expecting failure
-    let executeRelayerRefundLeafAccounts = {
+    const executeRelayerRefundLeafAccounts = {
       state: state,
       rootBundle: rootBundle,
       signer: owner,

@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { ethers } from "ethers";
-import { BigNumber, Signer, Contract } from "ethers";
+import { ethers, BigNumber, Signer, Contract } from "ethers";
 import { OFT_EIDs } from "../src/consts";
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {
