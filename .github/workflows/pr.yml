@@ -189,6 +189,8 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Build TypeScript
         run: yarn build-ts
+      - name: Test TypeScript utilities
+        run: yarn test-ts
   test-evm:
     name: EVM Tests
     needs: upload-evm-artifacts

@@ -46,13 +46,15 @@ export function getAllDeployedAddresses(
 
 /**
  * Returns the deployment block number of any contract on any network.
+ * @throws If the contract or its deployment block number is not found on the network.
  */
 export function getDeployedBlockNumber(contractName: string, networkId: number): number {
-  try {
-    return DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.block_number;
-  } catch (_) {
+  const blockNumber = DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.block_number;
+  if (blockNumber === undefined) {
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployed-addresses.json`);
   }
+
+  return blockNumber;
 }
 
 /**
