@@ -534,7 +534,7 @@ describe("svm_spoke.bundle", () => {
 
     const totalRefund = relayerRefundLeaves
       .filter((leaf) => leaf.isSolana)
-      .reduce((acc, leaf) => acc.add((leaf.refundAmounts[0] as BN).add(leaf.refundAmounts[1] as BN)), new BN(0))
+      .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0].add(leaf.refundAmounts[1])), new BN(0))
       .toString();
 
     assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
@@ -543,7 +543,7 @@ describe("svm_spoke.bundle", () => {
       BigInt(
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
-          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0] as BN), new BN(0))
+          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0]), new BN(0))
           .toString()
       ),
       "Relayer A bal"
@@ -553,7 +553,7 @@ describe("svm_spoke.bundle", () => {
       BigInt(
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
-          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1] as BN), new BN(0))
+          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1]), new BN(0))
           .toString()
       ),
       "Relayer B bal"
@@ -629,7 +629,7 @@ describe("svm_spoke.bundle", () => {
 
     const totalRefund = relayerRefundLeaves
       .filter((leaf) => leaf.isSolana)
-      .reduce((acc, leaf) => acc.add((leaf.refundAmounts[0] as BN).add(leaf.refundAmounts[1] as BN)), new BN(0))
+      .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0].add(leaf.refundAmounts[1])), new BN(0))
       .toString();
 
     assert.strictEqual(BigInt(iVaultBal) - BigInt(fVaultBal), BigInt(totalRefund), "Vault balance");
@@ -638,7 +638,7 @@ describe("svm_spoke.bundle", () => {
       BigInt(
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
-          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0] as BN), new BN(0))
+          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0]), new BN(0))
           .toString()
       ),
       "Relayer A bal"
@@ -648,7 +648,7 @@ describe("svm_spoke.bundle", () => {
       BigInt(
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
-          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1] as BN), new BN(0))
+          .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1]), new BN(0))
           .toString()
       ),
       "Relayer B bal"

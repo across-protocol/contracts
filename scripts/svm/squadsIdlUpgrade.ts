@@ -5,7 +5,7 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { AccountMeta, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
-import { sha256 } from "@noble/hashes/sha2";
+import { sha256 } from "@noble/hashes/sha2.js";
 import bs58 from "bs58";
 
 // Parse arguments

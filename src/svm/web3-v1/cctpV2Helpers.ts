@@ -1,8 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { array, assert, enums, object, optional, string, union, nullable, Infer, coerce } from "superstruct";
-import { ethers } from "ethers";
 import { readUInt256BE } from "./relayHashUtils";
-import { addressOrBase58ToBytes32 } from "./conversionUtils";
+import { addressOrBase58ToBytes32, hexToBytesStrict } from "./conversionUtils";
 
 // Index positions to decode Message Header from
 // https://developers.circle.com/cctp/technical-guide#message-header
@@ -210,8 +209,8 @@ export async function getV2BurnAttestation(
       isMatchingV2BurnMessage(sourceMessage, message.decodedMessage)
     ) {
       return {
-        destinationMessage: Buffer.from(ethers.utils.arrayify(message.message)),
-        attestation: Buffer.from(ethers.utils.arrayify(message.attestation)),
+        destinationMessage: Buffer.from(hexToBytesStrict(message.message)),
+        attestation: Buffer.from(hexToBytesStrict(message.attestation)),
       };
     }
   }
@@ -246,7 +245,7 @@ function isMatchingV2BurnMessage(
     // feeExecuted is only set on destination
     // expirationBlock is only set on destination
     sourceMessage.messageBody.hookData.equals(
-      Buffer.from(ethers.utils.arrayify(destinationMessage.decodedMessageBody.hookData || "0x"))
+      Buffer.from(hexToBytesStrict(destinationMessage.decodedMessageBody.hookData || "0x"))
     )
   );
 }
