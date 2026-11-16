@@ -75,8 +75,7 @@ describe("svm_spoke.fill", () => {
     relayerTA: PublicKey,
     recipientTA: PublicKey,
     otherRelayerTA: PublicKey,
-    tokenProgram: PublicKey,
-    seed: BN;
+    tokenProgram: PublicKey;
 
   const relayAmount = 500000;
   let relayData: RelayData; // reused relay data for all tests.
@@ -120,7 +119,7 @@ describe("svm_spoke.fill", () => {
     callingRelayer: Keypair = relayer
   ): Promise<string> => {
     const relayHash = Uint8Array.from(fillDataValues[0]);
-    const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
+    const { pda: delegatePda } = getFillRelayDelegatePda(
       relayHash,
       fillDataValues[2],
       fillDataValues[3],
@@ -166,7 +165,7 @@ describe("svm_spoke.fill", () => {
   });
 
   beforeEach(async () => {
-    ({ state, seed } = await initializeState());
+    ({ state } = await initializeState());
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
 
     const initialRelayData = {
@@ -224,7 +223,7 @@ describe("svm_spoke.fill", () => {
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
-        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
+        assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), "MessageHash should match");
       } else {
         assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
       }
@@ -237,7 +236,7 @@ describe("svm_spoke.fill", () => {
       "UpdatedMessageHash should match"
     );
     assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
-    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"fastFill":{}}`, "FillType should be FastFill");
+    assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), '{"fastFill":{}}', "FillType should be FastFill");
     // These props below are not part of relayData.
     assertSE(event.repaymentChainId, new BN(420), "Repayment chain id should match");
     assertSE(event.relayer, otherRelayer.publicKey, "Repayment address should match");
@@ -366,7 +365,7 @@ describe("svm_spoke.fill", () => {
     // Fetch FillStatusAccount after fillRelay
     fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
     assert.isNotNull(fillStatusAccount, "FillStatusAccount should be initialized after fillRelay");
-    assert.equal(JSON.stringify(fillStatusAccount.status), `{\"filled\":{}}`, "FillStatus should be Filled");
+    assert.equal(JSON.stringify(fillStatusAccount.status), '{"filled":{}}', "FillStatus should be Filled");
     assert.equal(fillStatusAccount.relayer.toString(), relayer.publicKey.toString(), "Caller should be set as relayer");
   });
 
@@ -683,8 +682,8 @@ describe("svm_spoke.fill", () => {
     assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data has zeroed message hash.
-    assertSE(event.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);
-    assertSE(event.relayExecutionInfo.updatedMessageHash, new Uint8Array(32), `UpdatedMessageHash should be zeroed`);
+    assertSE(event.messageHash, new Uint8Array(32), "MessageHash should be zeroed");
+    assertSE(event.relayExecutionInfo.updatedMessageHash, new Uint8Array(32), "UpdatedMessageHash should be zeroed");
   });
 
   describe("codama client and solana kit", () => {

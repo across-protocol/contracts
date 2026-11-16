@@ -52,7 +52,7 @@ async function getDeposits(txSignature: string): Promise<{ quoteSignature: Buffe
   if (!txResult) {
     throw new Error(`Transaction ${txSignature} not found`);
   }
-  if (!!txResult.meta?.err) {
+  if (txResult.meta?.err) {
     throw new Error(`Transaction ${txSignature} failed: ${txResult.meta.err}`);
   }
 

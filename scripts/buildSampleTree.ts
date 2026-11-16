@@ -13,7 +13,7 @@ import { ZERO_ADDRESS } from "../src/consts";
 function getStructType(functionName: string): ethers.utils.ParamType {
   const entry = MerkleLibTestArtifact.abi.find((e: any) => e.name === functionName);
   const tupleInput = entry!.inputs.find((i: any) => i.type === "tuple");
-  return ethers.utils.ParamType.from(tupleInput!);
+  return ethers.utils.ParamType.from(tupleInput);
 }
 
 const POOL_REBALANCE_LEAF_TYPE = getStructType("verifyPoolRebalance");
@@ -36,7 +36,7 @@ const SLOW_RELAY_RECIPIENT_ADDRESS = "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d
 const SLOW_RELAY_AMOUNT = 0.1; // Amount of tokens to send out of SpokePool to slow relay recipient address
 const SPOKE_POOL_CHAIN_ID = 5;
 
-function tuplelifyLeaf(leaf: Object) {
+function tuplelifyLeaf(leaf: object) {
   return JSON.stringify(
     Object.values(leaf).map((x: any) => (Array.isArray(x) ? x.map((y: any) => y.toString()) : x.toString()))
   );

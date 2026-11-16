@@ -103,11 +103,10 @@ export async function readEventsUntilFound<IDL extends Idl = Idl>(
   programs: Program<IDL>[]
 ) {
   const startTime = Date.now();
-  let txResult = null;
 
   while (Date.now() - startTime < 5000) {
     // 5 seconds timeout to wait to find the event.
-    txResult = await connection.getTransaction(txSignature, {
+    const txResult = await connection.getTransaction(txSignature, {
       commitment: "confirmed",
       maxSupportedTransactionVersion: 0,
     });
@@ -241,7 +240,7 @@ export function stringifyCpiEvent(obj: any, eventName: string): any {
     return obj.toString();
   } else if (typeof obj === "bigint") {
     return obj.toString();
-  } else if (Array.isArray(obj) && obj.length == 32) {
+  } else if (Array.isArray(obj) && obj.length === 32) {
     return Buffer.from(obj).toString("hex"); // Hex representation for fixed-length arrays
   } else if (Array.isArray(obj)) {
     return obj.map((obj) => stringifyCpiEvent(obj, eventName));

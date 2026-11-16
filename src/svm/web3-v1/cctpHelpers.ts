@@ -28,7 +28,7 @@ export type TokenMessengerMessageBody = {
   version: number;
   burnToken: anchor.web3.PublicKey;
   mintRecipient: anchor.web3.PublicKey;
-  amount: BigInt;
+  amount: bigint;
   messageSender: anchor.web3.PublicKey;
 };
 
@@ -149,6 +149,7 @@ export const getMessages = async (
   srcDomain: number,
   irisApiUrl: string
 ): Promise<AttestationResponse> => {
+  // eslint-disable-next-line no-console
   console.log("Fetching attestations and messages for tx...", txHash);
   let attestationResponse: any = {};
   while (
@@ -173,6 +174,7 @@ export const getMessages = async (
   try {
     AttestationResponseStruct.assert(attestationResponse);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Invalid attestation response structure:", error);
     throw new Error("Invalid attestation response structure");
   }

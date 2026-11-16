@@ -444,7 +444,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
                 console.log(
                   `No destination chainId for ${contractName} at ${tx.contractAddress}: broadcast returns empty ` +
                     `and no network matched cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}). ` +
-                    `Redeploy with a script that returns the destination chain id to fix the naming.`
+                    "Redeploy with a script that returns the destination chain id to fix the naming."
                 );
               }
             }
@@ -494,7 +494,7 @@ function getBlockExplorerUrl(chainId: number): string | null {
         return chainInfo.blockExplorer;
       }
     }
-  } catch (error) {
+  } catch {
     // Fall through to default handling
   }
 
@@ -529,7 +529,7 @@ function toChecksumAddress(address: string): string {
     // Use ethers.js to get the checksummed address for valid Ethereum addresses
     try {
       return getAddress(address);
-    } catch (error) {
+    } catch {
       // If ethers validation fails, return the original address
       console.warn(`Warning: Invalid Ethereum address format: ${address}`);
       return address;
@@ -540,24 +540,10 @@ function toChecksumAddress(address: string): string {
   }
 }
 
-function sanitizeContractName(name: string): string {
-  // Remove special characters and replace with underscores
-  let sanitized = name.replace(/[^a-zA-Z0-9]/g, "_");
-  // Remove multiple consecutive underscores
-  sanitized = sanitized.replace(/_+/g, "_");
-  // Remove leading/trailing underscores
-  sanitized = sanitized.replace(/^_+|_+$/g, "");
-  // Ensure it starts with a letter
-  if (sanitized && /^\d/.test(sanitized)) {
-    sanitized = "CONTRACT_" + sanitized;
-  }
-  return sanitized.toUpperCase();
-}
-
 function deduplicateContracts(scripts: { [scriptName: string]: Contract[] }): Map<string, Contract> {
   const contractMap = new Map<string, Contract>();
   for (const contracts of Object.values(scripts)) {
-    for (const contract of contracts as Contract[]) {
+    for (const contract of contracts) {
       const existing = contractMap.get(contract.contractName);
       if (!existing) {
         contractMap.set(contract.contractName, contract);

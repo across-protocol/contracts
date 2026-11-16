@@ -29,7 +29,7 @@ describe("svm_spoke.handle_receive_message", () => {
   let nonce = 0;
   let remainingAccounts: web3.AccountMeta[];
   const cctpMessageversion = 0;
-  let destinationCaller = new web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
+  const destinationCaller = new web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
   let receiveMessageAccounts: any;
 
   const ethereumIface = new ethers.utils.Interface([
@@ -277,9 +277,9 @@ describe("svm_spoke.handle_receive_message", () => {
   it("Sets cross-domain admin remotely", async () => {
     const newCrossDomainAdminAddress = ethers.Wallet.createRandom().address;
     const newCrossDomainAdminPubkey = evmAddressToPublicKey(newCrossDomainAdminAddress);
-    let calldata = ethereumIface.encodeFunctionData("setCrossDomainAdmin", [newCrossDomainAdminAddress]);
-    let messageBody = Buffer.from(calldata.slice(2), "hex");
-    let message = encodeMessageHeader({
+    const calldata = ethereumIface.encodeFunctionData("setCrossDomainAdmin", [newCrossDomainAdminAddress]);
+    const messageBody = Buffer.from(calldata.slice(2), "hex");
+    const message = encodeMessageHeader({
       version: cctpMessageversion,
       sourceDomain: remoteDomain.toNumber(),
       destinationDomain: localDomain,
@@ -294,7 +294,7 @@ describe("svm_spoke.handle_receive_message", () => {
       .accounts(receiveMessageAccounts)
       .remainingAccounts(remainingAccounts)
       .rpc();
-    let stateData = await program.account.state.fetch(state);
+    const stateData = await program.account.state.fetch(state);
     assert.strictEqual(
       stateData.crossDomainAdmin.toString(),
       newCrossDomainAdminPubkey.toString(),
