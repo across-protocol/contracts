@@ -6,7 +6,7 @@
  *
  * It specifically looks at the run-latest.json file for each smart contract and inside
  * that JSON looks at the `contractAddress` field. Multi-chain broadcasts (broadcast/multi/
- * <Script>.s.sol-latest/run.json) are also scanned; each per-chain deployment element inside
+ * <Script>.s.sol-latest/<entrypoint>.json) are also scanned; each per-chain deployment element inside
  * them is processed exactly like a single-chain run-latest.json.
  */
 
@@ -155,9 +155,10 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
             // Chain ID directories (e.g., 11155111 for Sepolia)
             const runLatestPath = path.join(chainPath, "run-latest.json");
             const resolvedPath = path.resolve(runLatestPath);
+            const materialized = materializeEntrypointBroadcasts(chainPath);
 
             // Only include files that exist AND are tracked by git (committed or staged)
-            if (fs.existsSync(runLatestPath) && trackedFiles.has(resolvedPath)) {
+            if (fs.existsSync(runLatestPath) && (materialized || trackedFiles.has(resolvedPath))) {
               broadcastFiles.push({
                 scriptName: scriptDir,
                 chainId: parseInt(chainDir),
@@ -176,7 +177,35 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
 }
 
 /**
- * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/run.json). Forge writes
+ * Forge names single-chain logs after the entrypoint (<entrypoint>-latest.json, e.g. runOn-latest.json for
+ * runOn(string)). These stay gitignored: copy any that landed on-chain (has receipts) and is newer into
+ * run-latest.json, the committed per-chain record. Returns true if run-latest.json was rewritten.
+ */
+function materializeEntrypointBroadcasts(chainPath: string): boolean {
+  const runLatestPath = path.join(chainPath, "run-latest.json");
+  const timestampOf = (file: string): number => {
+    try {
+      return JSON.parse(fs.readFileSync(file, "utf8")).timestamp ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+  let materialized = false;
+  for (const file of fs.readdirSync(chainPath)) {
+    const source = path.join(chainPath, file);
+    if (!file.endsWith("-latest.json") || file === "run-latest.json") continue;
+    const data = JSON.parse(fs.readFileSync(source, "utf8"));
+    if (!data.receipts?.length || (data.timestamp ?? 0) <= timestampOf(runLatestPath)) continue;
+    fs.copyFileSync(source, runLatestPath);
+    console.log(`Materialized ${path.relative(process.cwd(), runLatestPath)} from ${file}; commit it.`);
+    materialized = true;
+  }
+  return materialized;
+}
+
+/**
+ * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/<entrypoint>.json, e.g.
+ * run.json or runOn.json). Forge writes
  * these instead of per-chain run-latest.json files when a script broadcasts to several chains in one
  * run. Each element of the sequence's `deployments` array has the same shape as a single-chain
  * run-latest.json, so each becomes a virtual broadcast file for its chain.
@@ -196,20 +225,26 @@ function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
     for (const seqDir of fs.readdirSync(multiDir)) {
       // Only the -latest sequence counts (timestamped siblings and dry-run are historical/simulated).
       const match = seqDir.match(/^(.+?\.s\.sol).*-latest$/);
-      const runJsonPath = path.join(multiDir, seqDir, "run.json");
+      if (!match) continue;
+      // Forge names the file after the entrypoint: run.json for run(), runOn.json for runOn(string), etc.
+      for (const runFile of fs.readdirSync(path.join(multiDir, seqDir)).filter((f) => f.endsWith(".json"))) {
+        const runJsonPath = path.join(multiDir, seqDir, runFile);
+        // run.json must be tracked by git (committed or staged). Other entrypoint logs stay gitignored; their
+        // deployments are persisted via the committed per-chain run-latest.json files (see below).
+        if (runFile === "run.json" && !trackedFiles.has(path.resolve(runJsonPath))) continue;
 
-      // Only include files that exist AND are tracked by git (committed or staged)
-      if (!match || !fs.existsSync(runJsonPath) || !trackedFiles.has(path.resolve(runJsonPath))) continue;
-
-      const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
-      for (const deployment of data.deployments ?? []) {
-        if (typeof deployment.chain !== "number") continue;
-        broadcastFiles.push({
-          scriptName: match[1],
-          chainId: deployment.chain,
-          filePath: runJsonPath,
-          multiRunData: deployment,
-        });
+        const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+        for (const deployment of data.deployments ?? []) {
+          // Skip chains whose transactions never landed (e.g. a broadcast that aborted mid-sequence):
+          // without receipts the element would record undeployed addresses.
+          if (typeof deployment.chain !== "number" || !deployment.receipts?.length) continue;
+          broadcastFiles.push({
+            scriptName: match[1],
+            chainId: deployment.chain,
+            filePath: runJsonPath,
+            multiRunData: deployment,
+          });
+        }
       }
     }
   } catch (error) {
@@ -396,6 +431,10 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             } else {
               contractName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "") || "UnknownProxy";
             }
+          } else if (["Tron_SpokePoolPeriphery", "Tron_SwapProxy"].includes(contractName)) {
+            // Tron variants (USDT-tolerant transfers) are the canonical periphery on Tron; file them under the
+            // mainline name so lookups resolve the same key on every chain.
+            contractName = contractName.replace(/^Tron_/, "");
           } else if (contractName.endsWith("_SpokePool")) {
             // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
             continue;
