@@ -1,0 +1,22 @@
+{
+  "sourceCommit": "11533867fa44ef3cd1cd9f59d50465ee9a5666b0",
+  "ciRun": 38383072889,
+  "ciJob": 115248042182,
+  "ciUrl": "https://github.com/across-protocol/contracts/actions/runs/38383072889",
+  "binarySha256": "a0886d810ed678bb0bd874f4386fc3a5aec9c7f006f56216befd5a545c2474ad",
+  "idlSha256": "99b26fbf9d22b63f124245e6d36ca3f624e6e8909176b5f9a94e27f9f204b664",
+  "release": {
+    "tag": "v6.0.0-beta.3",
+    "url": "https://github.com/across-protocol/contracts/releases/tag/v6.0.0-beta.3",
+    "production": {
+      "url": "https://github.com/across-protocol/contracts/releases/download/v6.0.0-beta.3/svm-verified-production-binaries.tar.gz",
+      "sha256": "f04ff205af2c929952b3554d04982047c2999b78865f388134023f7145b6d010",
+      "member": "target/deploy/svm_spoke.so"
+    },
+    "package": {
+      "url": "https://registry.npmjs.org/@across-protocol/contracts/-/contracts-6.0.0-beta.3.tgz",
+      "sha256": "407a271ffed65860d8decf1ea4ce7734a470b22e61bf53b038247d056de02f6a",
+      "member": "package/dist/src/svm/assets/idl/svm_spoke.json"
+    }
+  }
+}
