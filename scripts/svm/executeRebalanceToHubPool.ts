@@ -305,7 +305,7 @@ function getRootBundlePda(rootBundleId: number, seed: BN) {
   );
 }
 
-async function executeRootBalanceOnHubPool(solanaChainId: BigNumber) {
+async function executeRootBalanceOnHubPool(solanaChainId: bigint) {
   // Reconstruct the merkle tree for the pool rebalance.
   const { poolRebalanceLeaf, poolRebalanceTree } = constructEmptyPoolRebalanceTree(solanaChainId, 0);
 

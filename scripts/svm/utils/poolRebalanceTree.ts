@@ -1,7 +1,7 @@
 import { MerkleTree } from "../../../utils/MerkleTree";
 import { BigNumber, ethers } from "ethers";
 
-export function constructSimpleRebalanceTree(l1TokenAddress: string, netSendAmount: BigNumber, chainId: BigNumber) {
+export function constructSimpleRebalanceTree(l1TokenAddress: string, netSendAmount: BigNumber, chainId: bigint) {
   const poolRebalanceLeaf = {
     chainId,
     groupIndex: BigNumber.from(1), // Not 0 as this script is not relaying root bundles, only sending tokens to spoke.

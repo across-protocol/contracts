@@ -236,7 +236,7 @@ async function executeRebalanceToSpokePool(): Promise<void> {
   console.log("Your transaction signature", receiveMessageTx);
 }
 
-async function executeRebalanceOnHubPool(l1TokenAddress: string, netSendAmount: BigNumber, solanaChainId: BigNumber) {
+async function executeRebalanceOnHubPool(l1TokenAddress: string, netSendAmount: BigNumber, solanaChainId: bigint) {
   // Reconstruct the merkle tree for the pool rebalance.
   const { poolRebalanceTree, poolRebalanceLeaf } = constructSimpleRebalanceTree(
     l1TokenAddress,
