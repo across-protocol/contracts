@@ -1,0 +1,1 @@
+echo '🏃‍♂️ Running pre-commit hook on staged files' && yarn pre-commit-hook
