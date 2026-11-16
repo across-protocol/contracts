@@ -12,7 +12,8 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import bs58 from "bs58";
-import { Layout } from "buffer-layout";
+// eslint-disable-next-line n/no-extraneous-import -- Type-only, see src/types/buffer-layout.d.ts.
+import type { Layout } from "buffer-layout";
 import { AcrossPlusMessage } from "../../types/svm";
 
 /**
