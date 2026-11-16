@@ -38,6 +38,7 @@
     "build-ts": "rm -rf ./dist && tsc",
     "export-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
     "export-evm-artifacts": "sh scripts/exportEvmArtifacts.sh",
+    "prepare": "husky",
     "prepublishOnly": "yarn build-ts && yarn export-idl && yarn export-evm-artifacts",
     "build": "yarn build-evm-foundry && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
     "build-verified": "yarn build-evm-foundry && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
@@ -113,7 +114,7 @@
     "eslint-plugin-mocha": "^11.3.0",
     "eslint-plugin-n": "^17.24.0",
     "ethers": "5.8.0",
-    "husky": "^4.2.3",
+    "husky": "^9.1.7",
     "mocha": "^10.0.0",
     "prettier": "^3.8.1",
     "prettier-plugin-rust": "^0.1.9",
@@ -149,11 +150,6 @@
     },
     "@openzeppelin/contracts-v4": {
       "optional": true
-    }
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "echo '🏃‍♂️ Running pre-commit hook on staged files' && yarn pre-commit-hook"
     }
   },
   "publishConfig": {
