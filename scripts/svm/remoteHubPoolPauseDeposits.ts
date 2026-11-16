@@ -187,7 +187,7 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   console.log("\nReceived remote message");
   console.log("Your transaction signature", receiveMessageTx);
 
-  let stateAccount = await svmSpokeProgram.account.state.fetch(statePda);
+  const stateAccount = await svmSpokeProgram.account.state.fetch(statePda);
   console.log("Updated deposit state to: pausedDeposits =", stateAccount.pausedDeposits);
 }
 

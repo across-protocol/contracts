@@ -140,19 +140,19 @@ async function main(): Promise<void> {
   // For a single-leaf tree, the merkle root IS the leaf (proof is empty).
   const merkleRoot = leaf;
 
-  console.log(`\n--- Merkle tree ---`);
+  console.log("\n--- Merkle tree ---");
   console.log(`  paramsHash:     ${paramsHash}`);
   console.log(`  innerEncoding:  abi.encode(${spokePoolDepositImplEvm}, ${paramsHash})`);
   console.log(`  innerHash:      ${innerHash}`);
   console.log(`  leaf (root):    ${merkleRoot}`);
-  console.log(`  proof:          [] (single leaf)`);
+  console.log("  proof:          [] (single leaf)");
 
   // Salt
   const salt = ethersUtils.id("test-clone-" + Date.now());
   console.log(`  salt:           ${salt}`);
 
   // --- Predict address ---
-  console.log(`\n--- Predicting clone address ---`);
+  console.log("\n--- Predicting clone address ---");
   const predictResult = await tronWeb.transactionBuilder.triggerConstantContract(
     factoryTronHex,
     "predictDepositAddress(address,bytes32,bytes32)",
@@ -166,11 +166,11 @@ async function main(): Promise<void> {
 
   const predictedEvm = "0x" + predictResult.constant_result[0].slice(24);
   const predictedTronHex = "41" + predictResult.constant_result[0].slice(24);
-  const predictedBase58 = tronWeb.address.fromHex(predictedTronHex) as string;
+  const predictedBase58 = tronWeb.address.fromHex(predictedTronHex);
   console.log(`  Predicted: ${predictedBase58} (${predictedEvm})`);
 
   // --- Deploy clone ---
-  console.log(`\n--- Deploying clone ---`);
+  console.log("\n--- Deploying clone ---");
   const deployTx = await tronWeb.transactionBuilder.triggerSmartContract(
     factoryTronHex,
     "deploy(address,bytes32,bytes32)",
@@ -203,13 +203,13 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  console.log(`\nClone deployed!`);
+  console.log("\nClone deployed!");
   console.log(`  Address:  ${predictedBase58} (${predictedEvm})`);
   console.log(`  TX ID:    ${deployTxID}`);
   console.log(`  Energy:   ${deployInfo.receipt?.energy_usage_total}`);
   console.log(`  Tronscan: ${tronscanBase}/#/transaction/${deployTxID}`);
 
-  console.log(`\n--- Execute script command ---`);
+  console.log("\n--- Execute script command ---");
   console.log(
     `yarn tron-execute-clone-deposit ${predictedBase58} ${spokePoolDepositImpl} ${inputTokenAddress} <amount>${chainId !== TRON_MAINNET_CHAIN_ID ? " --testnet" : ""}`
   );

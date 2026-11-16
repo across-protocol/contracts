@@ -84,7 +84,7 @@ export async function sendTransactionWithLookupTable(
   const txSignature = await connection.sendTransaction(versionedTx);
 
   // Confirm the versioned transaction
-  let block = await connection.getLatestBlockhash();
+  const block = await connection.getLatestBlockhash();
   await connection.confirmTransaction(
     { signature: txSignature, blockhash: block.blockhash, lastValidBlockHeight: block.lastValidBlockHeight },
     "confirmed"
@@ -117,7 +117,7 @@ export async function sendTransactionWithExistingLookupTable(
   const txSignature = await connection.sendTransaction(versionedTx);
 
   // Confirm the versioned transaction
-  let block = await connection.getLatestBlockhash();
+  const block = await connection.getLatestBlockhash();
   await connection.confirmTransaction(
     { signature: txSignature, blockhash: block.blockhash, lastValidBlockHeight: block.lastValidBlockHeight },
     "confirmed"
