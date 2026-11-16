@@ -1,11 +1,4 @@
 import { BN } from "@anchor-lang/core";
-import {
-  airdropFactory,
-  createSolanaRpc,
-  createSolanaRpcSubscriptions,
-  generateKeyPairSigner,
-  lamports,
-} from "@solana/kit";
 import { Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
@@ -15,8 +8,7 @@ import {
   readEvents,
   readProgramEvents,
   relayerRefundHashFn,
-  RpcClient,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 
 import { MerkleTree } from "../../utils/MerkleTree";
 import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
@@ -129,22 +121,6 @@ export function buildRelayerRefundMerkleTree({
 
   return { relayerRefundLeaves, merkleTree };
 }
-
-export const createDefaultSolanaClient = () => {
-  const rpc = createSolanaRpc("http://127.0.0.1:8899");
-  const rpcSubscriptions = createSolanaRpcSubscriptions("ws://127.0.0.1:8900");
-  return { rpc, rpcSubscriptions };
-};
-
-export const generateKeyPairSignerWithSol = async (rpcClient: RpcClient, putativeLamports: bigint = 1_000_000_000n) => {
-  const signer = await generateKeyPairSigner();
-  await airdropFactory(rpcClient)({
-    recipientAddress: signer.address,
-    lamports: lamports(putativeLamports),
-    commitment: "confirmed",
-  });
-  return signer;
-};
 
 export const requestAndConfirmAirdrop = async (
   connection: Connection,

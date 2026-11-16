@@ -3,7 +3,6 @@ import { BN } from "@anchor-lang/core";
 import { createMint, getAccount, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 import { Keypair, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { assert } from "chai";
-import { SvmSpokeClient } from "../../src/svm/clients";
 import { calculateRelayHashUint8Array, getSpokePoolProgram } from "../../src/svm/web3-v1";
 import { closeExpiredFillStatuses } from "../../scripts/svm/closeRelayerPdas";
 import { SvmSpokeIdl } from "../../src/svm/assets";
@@ -53,17 +52,7 @@ describe("svm_spoke V4 and slow-fill retirement compatibility", () => {
     );
   });
 
-  it("removes client entrypoints while retaining historical event decoding", () => {
-    for (const name of ["Deposit", "DepositNow", "UnsafeDeposit", "FillRelay", "GetUnsafeDepositId"]) {
-      assert.notProperty(SvmSpokeClient, `get${name}Instruction`);
-      assert.notProperty(SvmSpokeClient, `get${name}InstructionAsync`);
-    }
-    assert.property(SvmSpokeClient, "getAdapterExecuteAcrossV5Instruction");
-    for (const suffix of ["Encoder", "Decoder", "Codec"]) {
-      assert.notProperty(SvmSpokeClient, `getFillRelayParams${suffix}`);
-      assert.property(SvmSpokeClient, `getRelayData${suffix}`);
-      assert.property(SvmSpokeClient, `getV5FillJit${suffix}`);
-    }
+  it("removes IDL entrypoints while retaining historical event decoding", () => {
     for (const idl of [program.idl, SvmSpokeIdl]) {
       const names = idl.instructions.map((ix: { name: string }) => ix.name.replace(/_/g, "").toLowerCase());
       for (const name of ["deposit", "depositnow", "unsafedeposit", "fillrelay", "getunsafedepositid"])

@@ -1,30 +1,26 @@
 import { assert } from "chai";
 import { BN } from "@anchor-lang/core";
 import { PublicKey } from "@solana/web3.js";
-import { address } from "@solana/kit";
-import { SvmSpokeClient } from "../../src/svm/clients";
 import fixture from "../../programs/svm-spoke/fixtures/v5_gateway_path.json";
 import adapterFixture from "../../programs/svm-spoke/fixtures/v5_adapter_v1.json";
-import { encodeDeposit, encodeFill, encodeJit, word } from "../svm/v5Encoding";
+import { encodeDeposit, encodeFill, encodeJit, encodingProgram, word } from "../svm/v5Encoding";
 import { GATEWAY_COMMIT, PREFIX, floor, pair, pathId, tape, transfer } from "./reference";
 
 describe("Gateway path cross-VM vectors", () => {
-  it("preserves the generated async builder's canonical event-authority resolution", async () => {
-    const program = SvmSpokeClient.SVM_SPOKE_PROGRAM_ADDRESS;
-    const key = address(PublicKey.default.toBase58());
-    const instruction = await SvmSpokeClient.getAdapterExecuteAcrossV5InstructionAsync({
-      dispatchAuthority: key,
-      state: key,
-      program,
-      stepId: new Uint8Array(32),
-      pathId: new Uint8Array(32),
-      submitter: key,
-      input: new Uint8Array(),
-      jitData: new Uint8Array(),
-    });
-    const [authority] = PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], new PublicKey(program));
-    assert.equal(instruction.accounts[2].address, authority.toBase58());
-    assert.equal(instruction.accounts[2].role, 0); // Readonly, not a transaction signer.
+  it("resolves the Anchor builder's canonical readonly event authority", async () => {
+    const key = PublicKey.default;
+    const instruction = await encodingProgram.methods
+      .adapterExecuteAcrossV5(
+        { stepId: Array(32).fill(0), pathId: Array(32).fill(0), submitter: key },
+        Buffer.alloc(0),
+        Buffer.alloc(0)
+      )
+      .accountsPartial({ dispatchAuthority: key, state: key, program: encodingProgram.programId })
+      .instruction();
+    const [authority] = PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], encodingProgram.programId);
+    assert.isTrue(instruction.keys[2].pubkey.equals(authority));
+    assert.isFalse(instruction.keys[2].isSigner);
+    assert.isFalse(instruction.keys[2].isWritable);
   });
 
   it("checks shared Spoke encoders against the independent adapter fixture", () => {
