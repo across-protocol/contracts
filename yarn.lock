@@ -1470,7 +1470,7 @@
     "@solana/rpc-types" "5.4.0"
     "@solana/transaction-messages" "5.4.0"
 
-"@solana/web3.js@1.98.2", "@solana/web3.js@^1.69.0":
+"@solana/web3.js@^1.69.0", "@solana/web3.js@^1.98.2":
   version "1.98.2"
   resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.98.2.tgz#45167a5cfb64436944bf4dc1e8be8482bd6d4c14"
   integrity sha512-BqVwEG+TaG2yCkBMbD3C4hdpustR4FpuUFRPUmqRZYYlPI9Hg4XMWxHWOWRzHE9Lkc9NDjzXFX7lDXSgzC7R1A==

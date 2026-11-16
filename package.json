@@ -87,7 +87,7 @@
     "@openzeppelin/contracts-v4": "npm:@openzeppelin/contracts@4.9.6",
     "@solana-program/address-lookup-table": "0.10.0",
     "@solana/kit": "^5.4.0",
-    "@solana/web3.js": "1.98.2",
+    "@solana/web3.js": "^1.98.2",
     "borsh": "^0.7.0",
     "bs58": "^6.0.0",
     "superstruct": "^2.0.2"
