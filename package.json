@@ -129,6 +129,30 @@
     "typescript-eslint": "^8.72.1",
     "yargs": "^17.7.2"
   },
+  "peerDependencies": {
+    "@eth-optimism/contracts": "^0.5.40",
+    "@openzeppelin/contracts": "^5.5.0",
+    "@openzeppelin/contracts-upgradeable": "^5.5.0",
+    "@openzeppelin/contracts-upgradeable-v4": "npm:@openzeppelin/contracts-upgradeable@^4.9.6",
+    "@openzeppelin/contracts-v4": "npm:@openzeppelin/contracts@^4.9.6"
+  },
+  "peerDependenciesMeta": {
+    "@eth-optimism/contracts": {
+      "optional": true
+    },
+    "@openzeppelin/contracts": {
+      "optional": true
+    },
+    "@openzeppelin/contracts-upgradeable": {
+      "optional": true
+    },
+    "@openzeppelin/contracts-upgradeable-v4": {
+      "optional": true
+    },
+    "@openzeppelin/contracts-v4": {
+      "optional": true
+    }
+  },
   "husky": {
     "hooks": {
       "pre-commit": "echo '🏃‍♂️ Running pre-commit hook on staged files' && yarn pre-commit-hook"
