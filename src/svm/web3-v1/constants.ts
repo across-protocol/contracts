@@ -1,4 +1,4 @@
-import BN from "bn.js";
+import { BN } from "@coral-xyz/anchor";
 
 export const CIRCLE_IRIS_API_URL_DEVNET = "https://iris-api-sandbox.circle.com";
 export const CIRCLE_IRIS_API_URL_MAINNET = "https://iris-api.circle.com";
