@@ -6,7 +6,7 @@
  *
  * It specifically looks at the run-latest.json file for each smart contract and inside
  * that JSON looks at the `contractAddress` field. Multi-chain broadcasts (broadcast/multi/
- * <Script>.s.sol-latest/run.json) are also scanned; each per-chain deployment element inside
+ * <Script>.s.sol-latest/<entrypoint>.json) are also scanned; each per-chain deployment element inside
  * them is processed exactly like a single-chain run-latest.json.
  */
 
@@ -155,9 +155,10 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
             // Chain ID directories (e.g., 11155111 for Sepolia)
             const runLatestPath = path.join(chainPath, "run-latest.json");
             const resolvedPath = path.resolve(runLatestPath);
+            const materialized = materializeEntrypointBroadcasts(chainPath);
 
             // Only include files that exist AND are tracked by git (committed or staged)
-            if (fs.existsSync(runLatestPath) && trackedFiles.has(resolvedPath)) {
+            if (fs.existsSync(runLatestPath) && (materialized || trackedFiles.has(resolvedPath))) {
               broadcastFiles.push({
                 scriptName: scriptDir,
                 chainId: parseInt(chainDir),
@@ -169,14 +170,52 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
       }
     }
   } catch (error) {
-    console.error(`Error reading broadcast directory: ${error}`);
+    // Fatal: continuing would regenerate the address files from a partial scan and silently drop entries.
+    throw new Error(`Error reading broadcast directory: ${error}`);
   }
 
   return broadcastFiles;
 }
 
+/** A receipt succeeded unless it records a revert (status 0x0); legacy receipts without a status count as success. */
+const receiptSucceeded = (receipt: any): boolean => receipt?.status == null || Number(receipt.status) === 1;
+
 /**
- * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/run.json). Forge writes
+ * Forge names single-chain logs after the entrypoint (<entrypoint>-latest.json, e.g. runOn-latest.json for
+ * runOn(string)). These stay gitignored: copy any that landed on-chain (has receipts) and is newer into
+ * run-latest.json, the committed per-chain record. Returns true if run-latest.json was rewritten.
+ */
+function materializeEntrypointBroadcasts(chainPath: string): boolean {
+  const runLatestPath = path.join(chainPath, "run-latest.json");
+  const timestampOf = (file: string): number => {
+    try {
+      return JSON.parse(fs.readFileSync(file, "utf8")).timestamp ?? 0;
+    } catch {
+      return 0;
+    }
+  };
+  let materialized = false;
+  for (const file of fs.readdirSync(chainPath)) {
+    const source = path.join(chainPath, file);
+    if (!file.endsWith("-latest.json") || file === "run-latest.json") continue;
+    let data: any;
+    try {
+      data = JSON.parse(fs.readFileSync(source, "utf8"));
+    } catch {
+      console.warn(`Skipping unreadable ${path.relative(process.cwd(), source)} (e.g. an interrupted forge write).`);
+      continue;
+    }
+    if (!data.receipts?.some(receiptSucceeded) || (data.timestamp ?? 0) <= timestampOf(runLatestPath)) continue;
+    fs.copyFileSync(source, runLatestPath);
+    console.log(`Materialized ${path.relative(process.cwd(), runLatestPath)} from ${file}; commit it.`);
+    materialized = true;
+  }
+  return materialized;
+}
+
+/**
+ * Find multi-chain broadcast sequences (broadcast/multi/<Script>.s.sol-latest/<entrypoint>.json, e.g.
+ * run.json or runOn.json). Forge writes
  * these instead of per-chain run-latest.json files when a script broadcasts to several chains in one
  * run. Each element of the sequence's `deployments` array has the same shape as a single-chain
  * run-latest.json, so each becomes a virtual broadcast file for its chain.
@@ -196,24 +235,38 @@ function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
     for (const seqDir of fs.readdirSync(multiDir)) {
       // Only the -latest sequence counts (timestamped siblings and dry-run are historical/simulated).
       const match = seqDir.match(/^(.+?\.s\.sol).*-latest$/);
-      const runJsonPath = path.join(multiDir, seqDir, "run.json");
+      if (!match) continue;
+      // Forge names the file after the entrypoint: run.json for run(), runOn.json for runOn(string), etc.
+      for (const runFile of fs.readdirSync(path.join(multiDir, seqDir)).filter((f) => f.endsWith(".json"))) {
+        const runJsonPath = path.join(multiDir, seqDir, runFile);
+        // run.json must be tracked by git (committed or staged). Other entrypoint logs stay gitignored; their
+        // deployments are persisted via the committed per-chain run-latest.json files (see below).
+        if (runFile === "run.json" && !trackedFiles.has(path.resolve(runJsonPath))) continue;
 
-      // Only include files that exist AND are tracked by git (committed or staged)
-      if (!match || !fs.existsSync(runJsonPath) || !trackedFiles.has(path.resolve(runJsonPath))) continue;
-
-      const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
-      for (const deployment of data.deployments ?? []) {
-        if (typeof deployment.chain !== "number") continue;
-        broadcastFiles.push({
-          scriptName: match[1],
-          chainId: deployment.chain,
-          filePath: runJsonPath,
-          multiRunData: deployment,
-        });
+        let data: any;
+        try {
+          data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+        } catch {
+          console.warn(
+            `Skipping unreadable ${path.relative(process.cwd(), runJsonPath)} (e.g. an interrupted forge write).`
+          );
+          continue;
+        }
+        for (const deployment of data.deployments ?? []) {
+          // Skip chains where nothing landed (aborted mid-sequence or every tx reverted): the element would
+          // otherwise record undeployed addresses. Individual reverted txs are filtered at extraction.
+          if (typeof deployment.chain !== "number" || !deployment.receipts?.some(receiptSucceeded)) continue;
+          broadcastFiles.push({
+            scriptName: match[1],
+            chainId: deployment.chain,
+            filePath: runJsonPath,
+            multiRunData: deployment,
+          });
+        }
       }
     }
   } catch (error) {
-    console.error(`Error reading multi broadcast directory: ${error}`);
+    throw new Error(`Error reading multi broadcast directory: ${error}`);
   }
 
   return broadcastFiles;
@@ -329,6 +382,11 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       // entry by Foundry (e.g. when a sequence contains both a CREATE and a later CALL to the same address). We
       // therefore resolve a CREATE's transaction hash and block number from the receipt whose `contractAddress`
       // matches, falling back to `tx.hash` only when no matching receipt exists (e.g. simulation-only runs).
+      // Mined-but-reverted txs still get a receipt (status 0x0); their predicted addresses were never deployed.
+      const succeededTxHashes = new Set(receipts.filter(receiptSucceeded).map((r: any) => r.transactionHash));
+      const failedTxHashes = new Set(
+        receipts.filter((r: any) => !receiptSucceeded(r)).map((r: any) => r.transactionHash)
+      );
       const txHashToBlock: { [hash: string]: number } = {};
       const addressToReceipt: { [address: string]: { transactionHash: string; blockNumber: number | null } } = {};
       for (const receipt of receipts) {
@@ -352,7 +410,11 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
         // CREATE. Both `upgradeToAndCall(address,bytes)` (0x4f1ef286) and `setImplementation(address)`
         // (0xd784d426) ALWAYS target the proxy and at least one of them is emitted on any beacon run that
         // changes anything, so capture the canonical `CounterfactualBeacon` address from their target.
-        if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" && tx.transactionType === "CALL") {
+        if (
+          broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" &&
+          tx.transactionType === "CALL" &&
+          !failedTxHashes.has(tx.hash)
+        ) {
           const input: string = (tx.transaction && tx.transaction.input) || "";
           const to: string | undefined = tx.transaction && tx.transaction.to;
           if (to && (input.startsWith("0x4f1ef286") || input.startsWith("0xd784d426"))) {
@@ -368,6 +430,11 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
         if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
           const receipt = addressToReceipt[tx.contractAddress.toLowerCase()];
           const txHash = receipt?.transactionHash ?? tx.hash;
+          // When the log has receipts, require this tx's own successful one: matched by address for a plain CREATE,
+          // by hash for CREATE2-via-factory (whose receipt has no contractAddress). This drops reverted txs and txs
+          // never sent because the sequence aborted partway. Logs with no receipts at all (legacy) are trusted.
+          const landed = receipt ? !failedTxHashes.has(txHash) : succeededTxHashes.has(tx.hash);
+          if (receipts.length > 0 && !landed) continue;
           const blockNumber = receipt?.blockNumber ?? txHashToBlock[tx.hash] ?? null;
 
           let contractName = (tx.contractName as string | null) ?? "";
@@ -396,6 +463,10 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             } else {
               contractName = broadcastFile.scriptName.replace(/\.s\.sol$/, "").replace(/^Deploy/, "") || "UnknownProxy";
             }
+          } else if (["Tron_SpokePoolPeriphery", "Tron_SwapProxy"].includes(contractName)) {
+            // Tron variants (USDT-tolerant transfers) are the canonical periphery on Tron; file them under the
+            // mainline name so lookups resolve the same key on every chain.
+            contractName = contractName.replace(/^Tron_/, "");
           } else if (contractName.endsWith("_SpokePool")) {
             // skip the SpokePool implementation (the proxy, handled above, is the canonical address)
             continue;

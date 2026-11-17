@@ -230,6 +230,11 @@ Deploys `Tron_SpokePoolPeriphery`, the Tron-specific `SpokePoolPeriphery` varian
 yarn tron-deploy-spoke-pool-periphery <permit2> <multicall3> [--testnet]
 ```
 
+`yarn extract-addresses` records it under `SpokePoolPeriphery` (the same key as other chains). Deployment uses
+~4.5M energy (Nov 2026), far above the default 100 TRX fee limit: rent/stake energy or raise `TRON_FEE_LIMIT`.
+Simulate first with a TronGrid `wallet/triggerconstantcontract` call (owner = deployer, `data` = bytecode +
+constructor args, no contract address); its `energy_used` is the deployment cost.
+
 ### Tron_SwapProxy
 
 Deploys a standalone `Tron_SwapProxy` (the Tron-specific `SwapProxy` variant with the same balance-delta transfer check). Use this only if a dedicated `SwapProxy` is needed outside of a periphery deployment (the periphery's constructor already deploys its own).

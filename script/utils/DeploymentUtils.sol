@@ -209,6 +209,23 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     }
 
     /**
+     * @notice Check if a chain ID has been dropped from Across support. Their deployments are kept in
+     * deployed-addresses.json for reference, so multichain scripts must skip them explicitly.
+     * @dev Boba (288) and Scroll (534352) were removed in #1514; the rest are listed here because
+     * the across-protocol constants package still includes them.
+     */
+    function isDeprecatedChain(uint256 chainId) internal pure returns (bool) {
+        return
+            chainId == 232 || // Lens
+            chainId == 288 || // Boba
+            chainId == 1135 || // Lisk
+            chainId == 34443 || // Mode
+            chainId == 81457 || // Blast
+            chainId == 534352 || // Scroll
+            chainId == 7777777; // Zora
+    }
+
+    /**
      * @notice Check if a chain ID is a ZkStack chain
      * @dev This function will revert if the chain ID is a ZkSync chain but the FOUNDRY_PROFILE is not zksync
      * @param chainId Chain ID to check

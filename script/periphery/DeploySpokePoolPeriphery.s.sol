@@ -16,15 +16,19 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 // 4. To deploy to specific chains only, add: --sig "runOn(string)" "1,10,42161"
 //
 // run() targets every non-testnet chain in broadcast/deployed-addresses.json that has a SpokePool, skipping
-// chains the default profile cannot deploy to (SVM/TVM and ZK-stack chains — deploy those with the zksync
-// profile) and chains missing a permit2 entry, NODE_URL, or the deterministic CREATE2 factory. Deployments
-// use CREATE2 with a fixed salt, so addresses match on every chain and re-runs skip already-deployed chains.
+// non-EVM chains (SVM/TVM), deprecated chains (DeploymentUtils.isDeprecatedChain), and chains missing a
+// permit2 entry, NODE_URL, or the deterministic CREATE2 factory. ZK-stack chains with the EVM interpreter
+// (e.g. zkSync) deploy through the CREATE2 factory like any other chain. Deployments use CREATE2 with a fixed
+// salt, so re-runs skip already-deployed chains, and addresses match across chains that share a permit2
+// address (zkSync's permit2 differs, so its periphery address does too).
 //
-// Multi-chain broadcasts are logged under broadcast/multi/<Script>.s.sol-latest/run.json; `git add` that
-// file and run `yarn extract-addresses` to record the new deployments in deployed-addresses.json. The
-// extractor also materializes each chain's deployment into broadcast/<Script>.s.sol/<chainId>/run-latest.json;
-// commit those too — forge overwrites the multi -latest folder wholesale on reruns that broadcast to two or
-// more chains, so the per-chain files are the durable record.
+// Forge logs broadcasts under the entrypoint's name: run.json / run-latest.json for run(), runOn.json /
+// runOn-latest.json for runOn(string). Run `yarn extract-addresses` after every broadcast. After run(), first
+// `git add` broadcast/multi/<Script>.s.sol-latest/run.json (or the per-chain run-latest.json for a single
+// chain): the extractor skips untracked run logs. runOn logs are gitignored and read without a git add. The
+// extractor skips transactions that never landed or reverted, and materializes each chain's deployment into
+// broadcast/<Script>.s.sol/<chainId>/run-latest.json. Commit those along with deployed-addresses.*: forge
+// overwrites the runOn logs on every rerun, so the per-chain files are the record.
 abstract contract MultichainPeripheryDeployer is DeploymentUtils {
     /// @dev Deploys to the currently selected fork; called with an active broadcast.
     function _deploy(address permit2) internal virtual;
@@ -78,6 +82,7 @@ abstract contract MultichainPeripheryDeployer is DeploymentUtils {
         bytes32 family = keccak256(bytes(getChainFamily(chainId)));
         if (family == keccak256("SVM") || family == keccak256("TVM")) return "non-EVM chain";
         if (isTestnet(chainId)) return "testnet";
+        if (isDeprecatedChain(chainId)) return "chain no longer supported";
         if (!hasAddress(chainId, "SpokePool")) return "no SpokePool deployed";
         if (!vm.keyExists(file, string.concat(".L2_ADDRESS_MAP.", chainIdStr, ".permit2")))
             return "no permit2 entry in constants.json";
