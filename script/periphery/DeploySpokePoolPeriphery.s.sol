@@ -23,10 +23,12 @@ import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 // address (zkSync's permit2 differs, so its periphery address does too).
 //
 // Forge logs broadcasts under the entrypoint's name: run.json / run-latest.json for run(), runOn.json /
-// runOn-latest.json for runOn(string). Run `yarn extract-addresses` after every broadcast: it reads the runOn
-// logs (gitignored, no git add needed), skips chains whose transactions never landed, and materializes each
-// chain's deployment into broadcast/<Script>.s.sol/<chainId>/run-latest.json. Commit those along with
-// deployed-addresses.*: forge overwrites the runOn logs on every rerun, so the per-chain files are the record.
+// runOn-latest.json for runOn(string). Run `yarn extract-addresses` after every broadcast. After run(), first
+// `git add` broadcast/multi/<Script>.s.sol-latest/run.json (or the per-chain run-latest.json for a single
+// chain): the extractor skips untracked run logs. runOn logs are gitignored and read without a git add. The
+// extractor skips transactions that never landed or reverted, and materializes each chain's deployment into
+// broadcast/<Script>.s.sol/<chainId>/run-latest.json. Commit those along with deployed-addresses.*: forge
+// overwrites the runOn logs on every rerun, so the per-chain files are the record.
 abstract contract MultichainPeripheryDeployer is DeploymentUtils {
     /// @dev Deploys to the currently selected fork; called with an active broadcast.
     function _deploy(address permit2) internal virtual;

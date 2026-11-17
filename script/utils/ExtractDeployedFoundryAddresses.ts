@@ -170,11 +170,15 @@ function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
       }
     }
   } catch (error) {
-    console.error(`Error reading broadcast directory: ${error}`);
+    // Fatal: continuing would regenerate the address files from a partial scan and silently drop entries.
+    throw new Error(`Error reading broadcast directory: ${error}`);
   }
 
   return broadcastFiles;
 }
+
+/** A receipt succeeded unless it records a revert (status 0x0); legacy receipts without a status count as success. */
+const receiptSucceeded = (receipt: any): boolean => receipt?.status == null || Number(receipt.status) === 1;
 
 /**
  * Forge names single-chain logs after the entrypoint (<entrypoint>-latest.json, e.g. runOn-latest.json for
@@ -194,8 +198,14 @@ function materializeEntrypointBroadcasts(chainPath: string): boolean {
   for (const file of fs.readdirSync(chainPath)) {
     const source = path.join(chainPath, file);
     if (!file.endsWith("-latest.json") || file === "run-latest.json") continue;
-    const data = JSON.parse(fs.readFileSync(source, "utf8"));
-    if (!data.receipts?.length || (data.timestamp ?? 0) <= timestampOf(runLatestPath)) continue;
+    let data: any;
+    try {
+      data = JSON.parse(fs.readFileSync(source, "utf8"));
+    } catch {
+      console.warn(`Skipping unreadable ${path.relative(process.cwd(), source)} (e.g. an interrupted forge write).`);
+      continue;
+    }
+    if (!data.receipts?.some(receiptSucceeded) || (data.timestamp ?? 0) <= timestampOf(runLatestPath)) continue;
     fs.copyFileSync(source, runLatestPath);
     console.log(`Materialized ${path.relative(process.cwd(), runLatestPath)} from ${file}; commit it.`);
     materialized = true;
@@ -233,11 +243,19 @@ function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
         // deployments are persisted via the committed per-chain run-latest.json files (see below).
         if (runFile === "run.json" && !trackedFiles.has(path.resolve(runJsonPath))) continue;
 
-        const data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+        let data: any;
+        try {
+          data = JSON.parse(fs.readFileSync(runJsonPath, "utf8"));
+        } catch {
+          console.warn(
+            `Skipping unreadable ${path.relative(process.cwd(), runJsonPath)} (e.g. an interrupted forge write).`
+          );
+          continue;
+        }
         for (const deployment of data.deployments ?? []) {
-          // Skip chains whose transactions never landed (e.g. a broadcast that aborted mid-sequence):
-          // without receipts the element would record undeployed addresses.
-          if (typeof deployment.chain !== "number" || !deployment.receipts?.length) continue;
+          // Skip chains where nothing landed (aborted mid-sequence or every tx reverted): the element would
+          // otherwise record undeployed addresses. Individual reverted txs are filtered at extraction.
+          if (typeof deployment.chain !== "number" || !deployment.receipts?.some(receiptSucceeded)) continue;
           broadcastFiles.push({
             scriptName: match[1],
             chainId: deployment.chain,
@@ -248,7 +266,7 @@ function findMultiBroadcastFiles(broadcastDir: string): BroadcastFile[] {
       }
     }
   } catch (error) {
-    console.error(`Error reading multi broadcast directory: ${error}`);
+    throw new Error(`Error reading multi broadcast directory: ${error}`);
   }
 
   return broadcastFiles;
@@ -364,6 +382,11 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       // entry by Foundry (e.g. when a sequence contains both a CREATE and a later CALL to the same address). We
       // therefore resolve a CREATE's transaction hash and block number from the receipt whose `contractAddress`
       // matches, falling back to `tx.hash` only when no matching receipt exists (e.g. simulation-only runs).
+      // Mined-but-reverted txs still get a receipt (status 0x0); their predicted addresses were never deployed.
+      const succeededTxHashes = new Set(receipts.filter(receiptSucceeded).map((r: any) => r.transactionHash));
+      const failedTxHashes = new Set(
+        receipts.filter((r: any) => !receiptSucceeded(r)).map((r: any) => r.transactionHash)
+      );
       const txHashToBlock: { [hash: string]: number } = {};
       const addressToReceipt: { [address: string]: { transactionHash: string; blockNumber: number | null } } = {};
       for (const receipt of receipts) {
@@ -387,7 +410,11 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
         // CREATE. Both `upgradeToAndCall(address,bytes)` (0x4f1ef286) and `setImplementation(address)`
         // (0xd784d426) ALWAYS target the proxy and at least one of them is emitted on any beacon run that
         // changes anything, so capture the canonical `CounterfactualBeacon` address from their target.
-        if (broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" && tx.transactionType === "CALL") {
+        if (
+          broadcastFile.scriptName === "DeployCounterfactualBeacon.s.sol" &&
+          tx.transactionType === "CALL" &&
+          !failedTxHashes.has(tx.hash)
+        ) {
           const input: string = (tx.transaction && tx.transaction.input) || "";
           const to: string | undefined = tx.transaction && tx.transaction.to;
           if (to && (input.startsWith("0x4f1ef286") || input.startsWith("0xd784d426"))) {
@@ -403,6 +430,11 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
         if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
           const receipt = addressToReceipt[tx.contractAddress.toLowerCase()];
           const txHash = receipt?.transactionHash ?? tx.hash;
+          // When the log has receipts, require this tx's own successful one: matched by address for a plain CREATE,
+          // by hash for CREATE2-via-factory (whose receipt has no contractAddress). This drops reverted txs and txs
+          // never sent because the sequence aborted partway. Logs with no receipts at all (legacy) are trusted.
+          const landed = receipt ? !failedTxHashes.has(txHash) : succeededTxHashes.has(tx.hash);
+          if (receipts.length > 0 && !landed) continue;
           const blockNumber = receipt?.blockNumber ?? txHashToBlock[tx.hash] ?? null;
 
           let contractName = (tx.contractName as string | null) ?? "";
