@@ -10,7 +10,8 @@ import { getNodeUrl } from "../../utils";
 import { getChainId, getProvider, getSigner } from "../../scripts/utils";
 import { writeMultisigBroadcastArtifact } from "./broadcast";
 
-const DEFAULT_CONFIG_PATH = path.resolve(__dirname, "config.json");
+const CONFIG_DIR = path.resolve(__dirname, "config");
+const DEFAULT_MULTISIG_NAME = "operations";
 const CANONICAL_INFRA_PATH = path.resolve(__dirname, "canonicalSafeInfraAddresses.json");
 
 interface MultisigConfig {
@@ -24,7 +25,17 @@ function getArg(flag: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
+// Each multisig role (operations, product, ...) has its own owner set in config/<name>.json. The name also
+// selects the broadcast folder and the deployed-addresses key (see broadcast.ts), so deploying one role never
+// overwrites another's artifacts.
+function resolveMultisigName(): string {
+  const name = getArg("--name") ?? DEFAULT_MULTISIG_NAME;
+  if (!/^[a-z][a-z0-9-]*$/.test(name)) throw new Error(`Invalid --name value: ${name} (use lowercase kebab-case)`);
+  return name;
+}
+
 function loadMultisigConfig(configPath: string): MultisigConfig {
+  if (!fs.existsSync(configPath)) throw new Error(`Multisig config not found: ${configPath}`);
   const parsed = JSON.parse(fs.readFileSync(configPath, "utf8")) as Partial<MultisigConfig>;
   const owners = parsed.owners;
   const threshold = parsed.threshold;
@@ -50,9 +61,11 @@ function loadMultisigConfig(configPath: string): MultisigConfig {
 }
 
 function printUsage(): void {
-  console.log(`Usage: yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id <id> [--use-canonical-infra]
+  console.log(`Usage: yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id <id> [--name <multisig>] [--use-canonical-infra]
 
 Options:
+  --name <multisig>      Which multisig to deploy (default: ${DEFAULT_MULTISIG_NAME}). Reads
+                         config/<name>.json and writes broadcast/DeploySafe[_<Name>].s.sol/<chainId>.
   --use-canonical-infra  Resolve Safe contract addresses from canonicalSafeInfraAddresses.json
                          instead of the safe-deployments registry bundled with protocol-kit.
                          Required for chains the registry does not know (e.g. Arc, 5042).
@@ -119,10 +132,11 @@ async function main() {
     return;
   }
 
-  const configPath = DEFAULT_CONFIG_PATH;
+  const multisigName = resolveMultisigName();
+  const configPath = path.join(CONFIG_DIR, `${multisigName}.json`);
+  const config = loadMultisigConfig(configPath);
   const useCanonicalInfra = process.argv.includes("--use-canonical-infra");
   const { chainId, provider, nodeUrl } = await resolveChainContext();
-  const config = loadMultisigConfig(configPath);
   const contractNetworks = useCanonicalInfra ? await loadCanonicalContractNetworks(chainId, provider) : undefined;
   const wallet = getSigner(provider);
   const privateKey = wallet._signingKey().privateKey;
@@ -139,6 +153,7 @@ async function main() {
   };
 
   console.log(`Connected to chain ${chainId} via ${nodeUrl}`);
+  console.log(`Multisig: ${multisigName}`);
   console.log(`Config: ${configPath}`);
   console.log(`Owners: ${config.owners.join(", ")}`);
   console.log(`Threshold: ${config.threshold}`);
@@ -181,6 +196,7 @@ async function main() {
   }
 
   const broadcastPath = writeMultisigBroadcastArtifact({
+    multisigName,
     chainId,
     contractAddress: safeAddress,
     deploymentTransaction: {
