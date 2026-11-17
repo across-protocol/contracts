@@ -219,7 +219,6 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
             chainId == 232 || // Lens
             chainId == 288 || // Boba
             chainId == 1135 || // Lisk
-            chainId == 1868 || // Soneium
             chainId == 34443 || // Mode
             chainId == 81457 || // Blast
             chainId == 534352 || // Scroll

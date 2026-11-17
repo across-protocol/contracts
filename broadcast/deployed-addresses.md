@@ -281,7 +281,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://soneium.blockscout.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | Safe               | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://soneium.blockscout.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
-| SpokePoolPeriphery | [0x97CCDBea4632140639aD5eA9b944aa034eb15fD4](https://soneium.blockscout.com/address/0x97CCDBea4632140639aD5eA9b944aa034eb15fD4) |
+| SpokePoolPeriphery | [0x4E9eF0a5fe749079Dd11e68AAd5d75FCcfaAf9Af](https://soneium.blockscout.com/address/0x4E9eF0a5fe749079Dd11e68AAd5d75FCcfaAf9Af) |
 | SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://soneium.blockscout.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 
 ## Tempo (4217)

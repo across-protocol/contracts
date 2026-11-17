@@ -1084,9 +1084,9 @@
           "block_number": 9982275
         },
         "SpokePoolPeriphery": {
-          "address": "0x97CCDBea4632140639aD5eA9b944aa034eb15fD4",
-          "block_number": 26103396,
-          "transaction_hash": "0xfa525a9b2eb8008e224cd0f454960b04b981449f21841ee109b24463f990e469"
+          "address": "0x4E9eF0a5fe749079Dd11e68AAd5d75FCcfaAf9Af",
+          "block_number": 30869898,
+          "transaction_hash": "0x7fb6d2884baf9119786528fec1c1b3ea5b9346a83b40a89150f3772457a85824"
         },
         "Safe": {
           "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
