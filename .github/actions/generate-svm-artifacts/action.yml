@@ -32,4 +32,5 @@ runs:
       shell: bash
       env:
         CACHE_PATHS: ${{ inputs.path }}
-      run: echo "$CACHE_PATHS" | xargs tar -cf svm-${{ inputs.type }}.tar
+        SVM_TYPE: ${{ inputs.type }}
+      run: echo "$CACHE_PATHS" | xargs tar -cf "svm-${SVM_TYPE}.tar"
