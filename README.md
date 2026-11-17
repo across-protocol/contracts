@@ -47,6 +47,7 @@ yarn test-verified # Run all unit tests (without gas analysis) with verified SVM
 yarn test:gas-analytics # Run only tests that count gas costs
 yarn test:report-gas # Run unit tests with gas reporting enabled
 yarn test-evm # Only test EVM code
+yarn test-ts # Test TypeScript deployment utilities without building contracts
 yarn test-svm # Only test SVM code (local toolchain build)
 yarn test-svm-solana-verify # Only test SVM code (verified docker build)
 ```
