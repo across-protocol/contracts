@@ -7,10 +7,11 @@
  *   await deployContract({ chainId, artifactPath, encodedArgs });
  *
  * Env vars:
- *   MNEMONIC              — BIP-39 mnemonic (derives account 0 private key)
- *   NODE_URL_728126428    — Tron mainnet full node URL
- *   NODE_URL_3448148188   — Tron Nile testnet full node URL
- *   TRON_FEE_LIMIT        — optional, in sun (default: 100000000 = 100 TRX)
+ *   MNEMONIC                — BIP-39 mnemonic (derives account 0 private key)
+ *   NODE_URL_728126428      — Tron mainnet full node URL
+ *   NODE_URL_3448148188     — Tron Nile testnet full node URL
+ *   TRON_FEE_LIMIT          — optional, in sun (default: 100000000 = 100 TRX)
+ *   TRON_SKIP_ENERGY_CHECK  — optional, set to 1 to skip the pre-flight energy/balance check
  */
 
 import "dotenv/config";
@@ -20,6 +21,8 @@ import { TronWeb } from "tronweb";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes
+const ENERGY_SAFETY_MARGIN = 1.2; // pad the simulated energy estimate by 20%
+const SUN_PER_TRX = 1e6;
 
 export const TRON_MAINNET_CHAIN_ID = "728126428";
 export const TRON_TESTNET_CHAIN_ID = "3448148188";
@@ -281,6 +284,99 @@ function writeBroadcastArtifact(opts: {
   console.log(`  Broadcast:    ${runFile}`);
 }
 
+/** Extract a numeric chain parameter by key (e.g. getEnergyFee = sun per energy unit). */
+function getChainParameter(params: any, key: string): number {
+  const value = params.chainParameter?.find((p: any) => p.key === key)?.value;
+  if (typeof value !== "number") {
+    console.log(`Error: could not read chain parameter ${key}.`);
+    process.exit(1);
+  }
+  return value;
+}
+
+/**
+ * Pre-flight resource check: simulate the deployment to estimate energy, then verify the fee
+ * limit and account balance can cover it BEFORE broadcasting. An OUT_OF_ENERGY failure on Tron
+ * burns the entire fee limit without deploying anything, so failing fast here costs nothing.
+ * Set TRON_SKIP_ENERGY_CHECK=1 to bypass (e.g. if the node rejects constant execution).
+ */
+async function checkDeploymentResources(opts: {
+  tronWeb: TronWeb;
+  deployerAddress: string;
+  initCode: string; // bytecode + encoded constructor args, no 0x prefix
+  txSizeBytes: number;
+  feeLimit: number;
+}): Promise<void> {
+  if (process.env.TRON_SKIP_ENERGY_CHECK === "1") {
+    console.log("  WARNING: TRON_SKIP_ENERGY_CHECK=1 — skipping pre-flight energy check.");
+    return;
+  }
+  const { tronWeb, deployerAddress, initCode, txSizeBytes, feeLimit } = opts;
+
+  // Estimate deployment energy: triggerconstantcontract with the init code in `data` and no
+  // contract_address executes the deployment without broadcasting.
+  const est: any = await tronWeb.fullNode.request(
+    "wallet/triggerconstantcontract",
+    { owner_address: deployerAddress, data: initCode, visible: true } as any,
+    "post"
+  );
+  // Failures surface differently across node versions: result.result false, ret FAILED,
+  // or result.message set (e.g. "REVERT opcode executed") with result.result still true.
+  if (!est.result?.result || est.result?.message || est.transaction?.ret?.[0]?.ret === "FAILED" || !est.energy_used) {
+    const rawMsg: string = est.result?.message ?? "";
+    const message = /^[0-9a-fA-F]+$/.test(rawMsg) ? Buffer.from(rawMsg, "hex").toString() : rawMsg;
+    console.log(`Error: deployment simulation failed — this deploy would revert on-chain. ${message}`);
+    console.log(JSON.stringify({ ...est, transaction: undefined }, null, 2));
+    process.exit(1);
+  }
+
+  const energyNeeded = Math.ceil(est.energy_used * ENERGY_SAFETY_MARGIN);
+  // Raw POST with a non-empty body instead of tronWeb.trx.getChainParameters(), whose
+  // empty-bodied request some providers (e.g. Alchemy) reject with HTTP 400.
+  const [resources, balance, chainParams] = await Promise.all([
+    tronWeb.trx.getAccountResources(deployerAddress) as Promise<any>,
+    tronWeb.trx.getBalance(deployerAddress),
+    tronWeb.fullNode.request("wallet/getchainparameters", { visible: true } as any, "post"),
+  ]);
+  const energyPrice = getChainParameter(chainParams, "getEnergyFee"); // sun per energy unit
+  const bandwidthPrice = getChainParameter(chainParams, "getTransactionFee"); // sun per bandwidth byte
+
+  const stakedEnergy = (resources.EnergyLimit ?? 0) - (resources.EnergyUsed ?? 0);
+  const bandwidth =
+    (resources.freeNetLimit ?? 0) - (resources.freeNetUsed ?? 0) + (resources.NetLimit ?? 0) - (resources.NetUsed ?? 0);
+
+  // fee_limit must cover the TOTAL energy priced in TRX — energy served by staking counts
+  // against it too — while the balance only pays for the unstaked shortfall (+ bandwidth).
+  const requiredFeeLimit = energyNeeded * energyPrice;
+  const burnSun =
+    Math.max(0, energyNeeded - stakedEnergy) * energyPrice +
+    (bandwidth >= txSizeBytes ? 0 : txSizeBytes * bandwidthPrice);
+
+  console.log(
+    `  Energy estimate: ${est.energy_used} (+20% margin = ${energyNeeded}), staked energy available: ${stakedEnergy}`
+  );
+  console.log(
+    `  Max TRX burn: ${(burnSun / SUN_PER_TRX).toFixed(2)} TRX (balance: ${(balance / SUN_PER_TRX).toFixed(2)} TRX)`
+  );
+
+  const errors: string[] = [];
+  if (feeLimit < requiredFeeLimit)
+    errors.push(
+      `fee limit ${feeLimit / SUN_PER_TRX} TRX is below the ~${Math.ceil(requiredFeeLimit / SUN_PER_TRX)} TRX this deploy needs. ` +
+        `Set TRON_FEE_LIMIT=${requiredFeeLimit} (fee_limit prices ALL energy used, staked or burned).`
+    );
+  if (balance < burnSun)
+    errors.push(
+      `balance ${(balance / SUN_PER_TRX).toFixed(2)} TRX is below the ~${Math.ceil(burnSun / SUN_PER_TRX)} TRX that would be burned for energy/bandwidth. ` +
+        `Top up the deployer, or stake/rent energy (much cheaper than burning).`
+    );
+  if (errors.length) {
+    errors.forEach((e) => console.log(`Error: ${e}`));
+    console.log("Aborting before broadcast — nothing was spent.");
+    process.exit(1);
+  }
+}
+
 /**
  * Deploy a contract to Tron via TronWeb.
  *
@@ -342,6 +438,16 @@ export async function deployContract(opts: {
   };
 
   const tx = await tronWeb.transactionBuilder.createSmartContract(txOptions);
+
+  // Pre-flight: verify energy, fee limit, and balance before broadcasting — an OUT_OF_ENERGY
+  // failure would burn the entire fee limit without deploying the contract.
+  await checkDeploymentResources({
+    tronWeb,
+    deployerAddress,
+    initCode: bytecode + (parameter || ""),
+    txSizeBytes: tx.raw_data_hex.length / 2 + 70, // + signature and protobuf framing overhead
+    feeLimit,
+  });
 
   // Sign the transaction (SHA-256 + secp256k1, not keccak256 like Ethereum).
   const signedTx = await tronWeb.trx.sign(tx);

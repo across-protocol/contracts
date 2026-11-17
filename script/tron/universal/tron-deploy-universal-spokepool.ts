@@ -10,6 +10,7 @@
  *   NODE_URL_728126428                — Tron mainnet full node URL
  *   NODE_URL_3448148188               — Tron Nile testnet full node URL
  *   TRON_FEE_LIMIT                    — optional, in sun (default: 100000000 = 100 TRX)
+ *   TRON_SKIP_ENERGY_CHECK            — optional, set to 1 to skip the pre-flight energy/balance check
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
@@ -25,6 +26,7 @@ import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId, TRON_TEST
 
 // WTRX (Wrapped TRX) contract address
 const WTRX_ADDRESS = "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR";
+const GATEWAY_ADDRESS = "TJeqGqHXjDNiad6nV9rf1oL6rvmdWN9XPa";
 
 /** Read and cache generated/constants.json. */
 function readConstants(): any {
@@ -96,6 +98,7 @@ async function main(): Promise<void> {
   const hubPoolStoreAddress = getHubPoolStoreAddress(constants, hubChainId);
   const hubPoolAddress = getHubPoolAddress(hubChainId);
   const wrappedNativeToken = tronToEvmAddress(WTRX_ADDRESS);
+  const gateway = tronToEvmAddress(GATEWAY_ADDRESS);
   const depositQuoteTimeBuffer = constants.TIME_CONSTANTS.QUOTE_TIME_BUFFER;
   const fillDeadlineBuffer = constants.TIME_CONSTANTS.FILL_DEADLINE_BUFFER;
   // USDC / CCTP is not supported on Tron.
@@ -120,7 +123,19 @@ async function main(): Promise<void> {
   // Step 1: Deploy implementation contract
   console.log("\n--- Deploying implementation ---");
   const implEncodedArgs = encodeArgs(
-    ["uint256", "address", "address", "address", "uint32", "uint32", "address", "address", "uint32", "uint256"],
+    [
+      "uint256",
+      "address",
+      "address",
+      "address",
+      "uint32",
+      "uint32",
+      "address",
+      "address",
+      "uint32",
+      "uint256",
+      "address",
+    ],
     [
       adminUpdateBuffer,
       heliosAddress,
@@ -132,6 +147,7 @@ async function main(): Promise<void> {
       cctpTokenMessenger,
       oftDstEid,
       oftFeeCap,
+      gateway,
     ]
   );
 
@@ -188,5 +204,6 @@ async function main(): Promise<void> {
 
 main().catch((err) => {
   console.log("Fatal error:", err.message || err);
+  if (err.response?.data) console.log("Node response:", JSON.stringify(err.response.data));
   process.exit(1);
 });
