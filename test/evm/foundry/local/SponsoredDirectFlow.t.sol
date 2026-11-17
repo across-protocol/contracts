@@ -126,7 +126,7 @@ contract OFTDirectFlowTest is Test {
         oft.setEndpoint(address(endpoint));
         oft.setFeesToReturn(0.01 ether, 0);
 
-        srcPeriphery = new SponsoredOFTSrcPeriphery(address(token), address(oft), SRC_EID, signer);
+        srcPeriphery = new SponsoredOFTSrcPeriphery(address(token), address(oft), SRC_EID, signer, address(this));
         mockDstHandler = new MockDirectDstOFTHandler();
 
         // Fund user
@@ -304,7 +304,8 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
         srcPeriphery = new SponsoredCCTPSrcPeriphery(
             address(messageTransmitter), // not used for direct, but required by constructor
             SOURCE_DOMAIN,
-            signer
+            signer,
+            address(this)
         );
 
         // Deploy CCTP dst periphery
@@ -314,7 +315,9 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
             signer,
             address(donationBox),
             address(usdc),
-            multicallHandler
+            multicallHandler,
+            address(this),
+            30 minutes
         );
 
         // Grant DIRECT_CALLER_ROLE to srcPeriphery on dstPeriphery
