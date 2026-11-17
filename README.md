@@ -15,7 +15,7 @@ All SpokePools can be upgraded if the "admin" of the contract calls `upgradeTo`.
 
 All SpokePools are implemented such that the admin is the HubPool, and therefore we describe the SpokePools as having "cross-chain ownership". The owner of the HubPool can call [this function](https://github.com/across-protocol/contracts/blob/555475cdee6109afc85065ca415c740d7f97b992/contracts/HubPool.sol#L249) to send a cross-chain execution of `upgradeTo` on any SpokePool in order to upgrade it.
 
-This [script](https://github.com/across-protocol/contracts/blob/555475cdee6109afc85065ca415c740d7f97b992/tasks/upgradeSpokePool.ts) is useful for creating the calldata to execute a cross-chain upgrade via the HubPool.
+This [script](script/tasks/UpgradeSpokePool.s.sol) is useful for creating the calldata to execute a cross-chain upgrade via the HubPool.
 
 ## Deployed Contract Versions
 
@@ -44,8 +44,6 @@ matches). Bump the pin by editing that file.
 ```shell
 yarn test # Run all unit tests without gas analysis, using local toolchain SVM build
 yarn test-verified # Run all unit tests (without gas analysis) with verified SVM docker build
-yarn test:gas-analytics # Run only tests that count gas costs
-yarn test:report-gas # Run unit tests with gas reporting enabled
 yarn test-evm # Only test EVM code
 yarn test-svm # Only test SVM code (local toolchain build)
 yarn test-svm-solana-verify # Only test SVM code (verified docker build)
@@ -70,7 +68,7 @@ yarn lint-fix
 ```shell
 forge build
 
-forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+forge script script/hub-pool/DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
 
 ```
 
@@ -81,13 +79,13 @@ To enable ZKSync support, the zksync fork of foundry must be installed (see [her
 Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
 
 ```shell
-FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+FOUNDRY_PROFILE=zksync forge script script/spoke-pools/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
 ```
 
 Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
 
 ```shell
-yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+yarn forge-script-zksync script/spoke-pools/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
 ```
 
 ### SVM
@@ -299,7 +297,7 @@ prototype custom analyses.
 Spire-Contracts has been analyzed using `Slither@0.9.2` and no major bugs was found. To rerun the analytics, run:
 
 ```sh
-slither contracts/SpokePool.sol
+slither contracts/spoke-pools/SpokePool.sol
 \ --solc-remaps @=node_modules/@
 \ --solc-args "--optimize --optimize-runs 1000000"
 \ --filter-paths "node_modules"
@@ -312,13 +310,15 @@ You can replace `SpokePool.sol` with the specific contract you want to analyze.
 
 ZK EVM's typically require a special compiler to convert Solidity into code that can be run on the ZK VM.
 
-There are special instructions for compiling and deploying contracts on `zksync`. The compile command will create `artifacts-zk` and `cache-zk` directories.
+There are special instructions for compiling and deploying contracts on `zksync`. Compilation uses the zksync Foundry profile (see Foundry (ZKSync) above) and writes artifacts to `zkout`.
 
 #### Compile
 
-This step requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) to be running, as the `solc` docker image is fetched as a prerequisite.
+Install the zksync fork of Foundry first (see the Foundry (ZKSync) section above), then run:
 
-`yarn compile-zksync`
+```shell
+yarn forge-build-zksync
+```
 
 ## License
 
